@@ -24,19 +24,25 @@ it is asked — see `.agents/specs/panel/spec.md`. A destination that resets to 
 every launch answers it correctly and then makes the user re-state their answer, which is
 the same friction one level down.
 
-## What this proposal does not settle
+## The three open questions, answered
 
-Three things, named here so they are not quietly decided by whoever types first. Two are
-product calls and the third touches behaviour that already works:
+Asked with the alternatives and the risk of each stated. These are the user's answers, and
+they are recorded here rather than left in the conversation — an answer that lives only in
+a transcript gets asked again next session, and does not come out the same.
 
-- **Where the preference is stored.** Beside the project, or in the user's own config.
-  These are different claims: *this repository installs into the project* is not the same
-  as *I prefer the project*.
-- **Per project, or one global preference.** Remembering `project` while sitting in a
-  different repository could install somewhere unintended — destructive and silent, the
-  worst pair.
-- **Whether the subcommands honour it, or only the panel.** `libretto install` with no
-  flag goes to global today.
+- **Where the preference is stored: in the global `.claude`.** `~/.claude`, honouring
+  `CLAUDE_HOME`. One consequence worth naming because it was not the reason for the
+  choice but pays for it anyway: `CLAUDE_HOME` is what already makes the suite safe to run
+  twice, so the preference is test-isolated without a second mechanism.
+- **One preference, not per project.** The alternative — keyed by working directory —
+  was offered together with the case against a single value: the panel can open on
+  `project` while sitting in a repository that was never meant to have it. Accepted
+  knowingly, and the next line is why the cost is small.
+- **Only the panel honours it.** `libretto install` with no flag still goes to global.
+  A command typed into a terminal does not change meaning because of state left by an
+  earlier session. This also bounds the risk above: the remembered value decides which
+  side the panel *opens* on, and the destination strip is visible before any key that
+  acts — installing stays an explicit gesture against a destination you can see.
 
 ## What is already settled
 
