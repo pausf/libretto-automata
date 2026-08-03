@@ -90,8 +90,8 @@ reporting, not one worth resolving by guessing.
 
 `prune` and `uninstall` are both dry by default. A destructive command that acts before
 being asked twice eventually deletes the wrong thing, and a pipe is no reason to be less
-careful. In the panel they take two presses, and moving the cursor or switching
-destination disarms them.
+careful. In the panel they show the plan and then ask — `y` to go ahead, `n` to cancel,
+and no other key carries them out.
 
 **`prune` and `uninstall` are not the same thing.** Prune cleans up after *the repo*
 changed — rename an item and the old link points at nothing, which is `stale`. Uninstall

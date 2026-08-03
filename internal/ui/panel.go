@@ -77,6 +77,11 @@ type Panel struct {
 	// install again — without relaunching between each step.
 	Results []string
 
+	// Confirm is the question a destructive action is waiting on. Rendered inside the
+	// frame, in the attention colour, because a question you have to hunt for is a
+	// question that gets answered by accident.
+	Confirm string
+
 	Notice    string // one-line feedback under the panel
 	Width     int    // terminal width; 0 means lay out at the minimum
 	Height    int    // terminal height; 0 means do not centre vertically
@@ -126,6 +131,9 @@ func (t Theme) Render(p Panel) string {
 	if len(p.Results) > 0 {
 		rows = append(rows, separator)
 		rows = append(rows, t.results(p, cw)...)
+	}
+	if p.Confirm != "" {
+		rows = append(rows, "", "  "+Fg(t.Gold).Render(p.Confirm))
 	}
 
 	parts := []string{t.frame(rows, cw), t.footer(p, cw+2)}
@@ -284,7 +292,12 @@ const footerIndent = 6
 // cursor, so anybody watching the `❯` sees nothing move and concludes the key does
 // nothing — an unlisted key that appears broken is worse than no key.
 func (t Theme) footer(p Panel, width int) string {
-	const hints = "↑↓ · ⏎ select · tab scope · q quit"
+	hints := "↑↓ · ⏎ select · tab scope · q quit"
+	if p.Confirm != "" {
+		// While a question is open the only keys that matter are its answers.
+		// Listing the others invites pressing one by reflex.
+		hints = "y yes · n no"
+	}
 
 	left := strings.Repeat(" ", footerIndent) + p.Version
 	gap := width - lipgloss.Width(left) - lipgloss.Width(hints) - footerIndent

@@ -273,23 +273,29 @@ The model:
   Proof: cmd/libretto/scope_test.go TestStripAndRunnerAgreeOnTheProjectRoot
 - **prune from the panel touches only the active destination**
   Proof: cmd/libretto/scope_test.go TestPanelPruneActsOnTheActiveDestinationOnly
-- **a destructive action needs a second press**, and the plan stays on screen for it
-  Proof: internal/ui/panel_test.go TestDestructiveActionNeedsASecondPress
-- moving the cursor disarms it
-  Proof: internal/ui/panel_test.go TestMovingTheCursorDisarms
-- **switching destination disarms it** — the case that would delete from the wrong place
-  Proof: internal/ui/panel_test.go TestSwitchingDestinationDisarms
-- an empty plan arms nothing
-  Proof: internal/ui/panel_test.go TestNothingToRemoveIsNotArmed
-- a non-destructive action runs on the first press
+- **a destructive action asks first**, with the plan on screen and the answers offered
+  Proof: internal/ui/panel_test.go TestDestructiveActionAsksBeforeActing
+- answering no changes nothing
+  Proof: internal/ui/panel_test.go TestAnsweringNoChangesNothing
+- **no key but `y` carries it out** — not enter, not navigation, not any other rune
+  Proof: internal/ui/panel_test.go TestOnlyYesCarriesADestructiveActionOut
+- navigation dismisses the question rather than leaving it stale
+  Proof: internal/ui/panel_test.go TestNavigationDismissesTheQuestion
+- the question names the destination it was asked for
+  Proof: internal/ui/panel_test.go TestTheQuestionNamesItsDestination
+- an empty plan asks nothing
+  Proof: internal/ui/panel_test.go TestNothingToRemoveAsksNothing
+- a non-destructive action runs at once
   Proof: internal/ui/panel_test.go TestNonDestructiveActionRunsAtOnce
+- **the footer offers only the answers while asking**
+  Proof: internal/ui/panel_test.go TestFooterOffersTheAnswersWhileAsking
 - **the second press really removes, and only from the active destination**
   Proof: cmd/libretto/panelrun_test.go TestPanelPruneConfirmsInPlace
-- **one press removes nothing**
+- **showing the plan removes nothing**
   Proof: cmd/libretto/panelrun_test.go TestPanelPruneOnOnePressRemovesNothing
 - **uninstall is offered, enabled, marked destructive, and names its destination**
   Proof: cmd/libretto/uninstall_test.go TestPanelOffersUninstallAsDestructive
-- **one press of uninstall removes nothing; the second does**
+- **an unconfirmed uninstall from the panel removes nothing; a confirmed one does**
   Proof: cmd/libretto/uninstall_test.go TestPanelUninstallNeedsTwoPresses
 - report lines keep their head, so the verb survives the elision
   Proof: internal/ui/panel_test.go TestReportLinesKeepTheirHead

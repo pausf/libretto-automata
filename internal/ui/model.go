@@ -20,11 +20,15 @@ type Model struct {
 	refresh Refresh
 	run     Runner
 
-	// armed remembers a destructive action that has shown its plan and is waiting
-	// for a second press. Scoped to the destination it was armed for, so tabbing
-	// away cannot carry the confirmation with it.
-	armed      string
-	armedScope int
+	// pending is a destructive action that has shown its plan and is waiting on an
+	// answer. Scoped to the destination it was planned for, so a confirmation can
+	// never be spent somewhere else.
+	//
+	// An explicit question beats a second press: "⏎ again to go ahead" is a rule you
+	// have to know, and the key that means "go ahead" is the same one that meant
+	// "show me" a moment ago. `y` and `n` are an answer to something asked.
+	pending      string
+	pendingScope int
 }
 
 // Runner performs a menu action and returns its report, one line per row.
@@ -76,8 +80,51 @@ func (m Model) WithRunner(r Runner) Model {
 // Results exposes the last report for tests.
 func (m Model) Results() []string { return m.panel.Results }
 
-// Armed reports the destructive action waiting for a second press, if any.
-func (m Model) Armed() string { return m.armed }
+// Pending reports the destructive action waiting on an answer, if any.
+func (m Model) Pending() string { return m.pending }
+
+// Confirm exposes the open question for tests.
+func (m Model) Confirm() string { return m.panel.Confirm }
+
+// forget drops an unanswered question without acting on it.
+func (m Model) forget() Model {
+	m.pending, m.pendingScope, m.panel.Confirm = "", 0, ""
+	return m
+}
+
+// cancelPending answers no.
+func (m Model) cancelPending() (tea.Model, tea.Cmd) {
+	label := m.pending
+	m = m.forget()
+	m.notice = label + " · cancelled, nothing changed"
+	return m, nil
+}
+
+// carryOut answers yes.
+//
+// The destination is the one the plan was made for, not whatever is active now. They
+// cannot differ — switching destination cancels the question — but reading it from
+// the answer rather than from the current state is what makes that true by
+// construction instead of by discipline.
+func (m Model) carryOut() (tea.Model, tea.Cmd) {
+	label, dest := m.pending, m.pendingScope
+	m = m.forget()
+
+	lines, err := m.run(label, dest, true)
+	m.panel.Results = lines
+	if err != nil {
+		m.notice = label + " · " + err.Error()
+		return m, nil
+	}
+	m.notice = label + " · done"
+
+	if m.refresh != nil {
+		if menu, targets, rerr := m.refresh(m.activeScope()); rerr == nil {
+			m.panel.Menu, m.panel.Targets = menu, targets
+		}
+	}
+	return m, nil
+}
 
 func (m Model) Init() tea.Cmd { return nil }
 
@@ -90,18 +137,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		// A question is open: answer it, or cancel it and let the key do its usual
+		// job. Anything other than "yes" cancels — a destructive action never
+		// proceeds on a key that meant something else.
+		if m.pending != "" {
+			switch msg.String() {
+			case "y", "Y":
+				return m.carryOut()
+			case "n", "N", "esc":
+				return m.cancelPending()
+			default:
+				m = m.forget()
+			}
+		}
+
 		switch msg.String() {
 		case "q", "esc", "ctrl+c":
 			m.done = true
 			return m, tea.Quit
 
 		case "up", "k":
-			m.notice, m.armed = "", ""
+			m.notice = ""
 			m.panel.Selected = wrap(m.panel.Selected-1, len(m.panel.Menu))
 			return m, nil
 
 		case "down", "j":
-			m.notice, m.armed = "", ""
+			m.notice = ""
 			m.panel.Selected = wrap(m.panel.Selected+1, len(m.panel.Menu))
 			return m, nil
 
@@ -134,7 +195,6 @@ func (m Model) nextScope() (tea.Model, tea.Cmd) {
 	}
 
 	m.panel.Menu, m.panel.Targets = menu, targets
-	m.armed = "" // a confirmation cannot follow you to another destination
 
 	// Say it out loud. The switch changes the destination, not the cursor, so the
 	// `❯` stays where it was and the only other evidence is a bullet and a path
@@ -182,20 +242,15 @@ func (m Model) selectCurrent() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// A destructive action is asked twice, in place.
+	// A destructive action reports what it would do and then asks.
 	//
-	// The first press runs it dry and shows exactly what it would remove; the second
-	// on the same row carries it out. Moving the cursor, or switching destination,
-	// disarms it — so the confirmation can only ever apply to the plan you just read,
-	// for the destination you were looking at.
-	//
-	// The alternative was telling the user to leave the panel and type `prune --yes`,
-	// which is a confirmation step that throws away the plan it was confirming.
-	armed := m.armed == item.Label && m.armedScope == m.activeScope()
-
-	lines, err := m.run(item.Label, m.activeScope(), armed)
+	// Telling the user to leave the panel and type `prune --yes` was a confirmation
+	// step that threw away the plan it was confirming. Asking with a second press was
+	// worse in a different way: the key that means "go ahead" was the same one that
+	// meant "show me" a moment earlier, and the rule lived in a notice you had to
+	// read. A question with two answers is a question.
+	lines, err := m.run(item.Label, m.activeScope(), false)
 	m.panel.Results = lines
-	m.armed, m.armedScope = "", 0
 
 	if err != nil {
 		// The report stays. An action that half-finished has the most to say, and
@@ -204,13 +259,15 @@ func (m Model) selectCurrent() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if item.Destructive && !armed {
+	if item.Destructive {
 		if len(lines) == 0 {
 			m.notice = item.Label + " · nothing to do"
 			return m, nil
 		}
-		m.armed, m.armedScope = item.Label, m.activeScope()
-		m.notice = item.Label + " · nothing changed. ⏎ again to go ahead"
+		m.pending, m.pendingScope = item.Label, m.activeScope()
+		m.panel.Confirm = "Go ahead and " + item.Label + " " +
+			m.panel.Targets[m.activeScope()].Name + "?   y / n"
+		m.notice = "nothing has changed yet"
 		return m, nil
 	}
 	m.notice = item.Label + " · done"

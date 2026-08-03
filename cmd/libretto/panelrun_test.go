@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"io"
 	"os"
 	"strings"
@@ -33,7 +32,7 @@ func TestPanelRunsInstallAndReportsInPlace(t *testing.T) {
 		})
 
 	// tab → project, enter → install (row 0), q → leave.
-	in := bytes.NewReader([]byte{0x09, 0x0d, 'q'})
+	in := keys(0x09, 0x0d, 'q')
 	p := tea.NewProgram(model, tea.WithInput(in), tea.WithOutput(io.Discard))
 
 	done := make(chan tea.Model, 1)
@@ -128,8 +127,8 @@ func TestPanelPruneConfirmsInPlace(t *testing.T) {
 		}).
 		SetSelectedForTest(rowOf(t, menu, "prune"))
 
-	// enter → plan, enter → go ahead, q → leave.
-	in := bytes.NewReader([]byte{0x0d, 0x0d, 'q'})
+	// enter → plan and question, y → go ahead, q → leave.
+	in := keys(0x0d, 'y', 'q')
 	p := tea.NewProgram(model, tea.WithInput(in), tea.WithOutput(io.Discard))
 
 	done := make(chan tea.Model, 1)
@@ -153,7 +152,7 @@ func TestPanelPruneConfirmsInPlace(t *testing.T) {
 	}
 }
 
-// One press removes nothing. The whole point of asking twice.
+// Showing the plan removes nothing. The whole point of asking.
 func TestPanelPruneOnOnePressRemovesNothing(t *testing.T) {
 	f := newFixture(t)
 	f.skill(t, "alpha")
@@ -169,7 +168,7 @@ func TestPanelPruneOnOnePressRemovesNothing(t *testing.T) {
 		}).
 		SetSelectedForTest(rowOf(t, menu, "prune"))
 
-	in := bytes.NewReader([]byte{0x0d, 'q'})
+	in := keys(0x0d, 'q')
 	p := tea.NewProgram(model, tea.WithInput(in), tea.WithOutput(io.Discard))
 	done := make(chan tea.Model, 1)
 	go func() { m, _ := p.Run(); done <- m }()
@@ -184,4 +183,25 @@ func TestPanelPruneOnOnePressRemovesNothing(t *testing.T) {
 	if _, err := os.Lstat(f.projectDest("skills", "gone")); err != nil {
 		t.Fatal("a single press deleted a link")
 	}
+}
+
+// keys feeds bytes one at a time, with a pause between them.
+//
+// bubbletea batches whatever is available on a single read into one message, so
+// handing it `y` and `q` together arrives as Runes{'y','q'} — a "key" called "yq"
+// that matches nothing, and a program that never quits. Real typing has gaps in it;
+// the test has to as well.
+func keys(b ...byte) io.Reader {
+	r, w := io.Pipe()
+	go func() {
+		defer w.Close()
+		for _, c := range b {
+			time.Sleep(20 * time.Millisecond)
+			if _, err := w.Write([]byte{c}); err != nil {
+				return
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+	}()
+	return r
 }

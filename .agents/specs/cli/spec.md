@@ -187,6 +187,12 @@ right exit codes and refuses what it promised to refuse.
 `CLAUDE_HOME` is what makes them safe: every one runs against `t.TempDir()`, so
 commands that write and delete never see a real `~/.claude`.
 
+**Keys are fed to the panel one at a time, with a pause.** Bubbletea batches whatever
+is available on a single read into one message, so handing it `y` and `q` together
+arrives as `Runes{'y','q'}` — a key called `yq` that matches nothing, and a program that
+never exits. The test hung for ten seconds and looked like a deadlock in the code. Real
+typing has gaps in it; the harness has to as well.
+
 - **a conflict makes `install` exit non-zero, and the foreign file is unchanged**
   Proof: cmd/libretto/main_test.go TestInstallExitsNonZeroOnConflict
 - everything linking exits zero, and the link is really there

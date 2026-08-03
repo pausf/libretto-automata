@@ -693,83 +693,141 @@ func destructiveModel(t *testing.T, calls *[]bool) Model {
 	return m
 }
 
-func TestDestructiveActionNeedsASecondPress(t *testing.T) {
+func TestDestructiveActionAsksBeforeActing(t *testing.T) {
 	var calls []bool
 	m := destructiveModel(t, &calls)
 
 	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	after := next.(Model)
+
 	if len(calls) != 1 || calls[0] {
 		t.Fatalf("the first press ran with confirm=%v, want a dry run", calls)
 	}
-	if after.Armed() != "prune" {
-		t.Fatalf("prune is not armed after showing its plan: %q", after.Armed())
+	if after.Pending() != "prune" {
+		t.Fatalf("nothing is waiting on an answer: %q", after.Pending())
 	}
-	if !strings.Contains(after.Notice(), "again") {
-		t.Errorf("the notice does not ask for a second press: %q", after.Notice())
+	if q := after.Confirm(); !strings.Contains(q, "y") || !strings.Contains(q, "n") {
+		t.Errorf("the question does not offer its answers: %q", q)
 	}
 	if len(after.Results()) == 0 {
-		t.Error("the plan it wants confirming is not on screen")
+		t.Error("the plan it is asking about is not on screen")
+	}
+	if !strings.Contains(after.Notice(), "nothing has changed") {
+		t.Errorf("notice = %q, want it to say nothing happened yet", after.Notice())
 	}
 
-	next, _ = after.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	// y goes ahead.
+	next, _ = after.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	done := next.(Model)
 	if len(calls) != 2 || !calls[1] {
-		t.Fatalf("the second press ran with confirm=%v, want it carried out", calls)
+		t.Fatalf("y ran with confirm=%v, want it carried out", calls)
 	}
-	if got := next.(Model).Armed(); got != "" {
-		t.Errorf("still armed after going ahead: %q", got)
+	if done.Pending() != "" || done.Confirm() != "" {
+		t.Error("the question is still open after being answered")
+	}
+	if !strings.Contains(done.Notice(), "done") {
+		t.Errorf("notice = %q, want it to say the action finished", done.Notice())
 	}
 }
 
-// Moving the cursor disarms. Otherwise a confirmation could be spent on a row you
-// walked to afterwards.
-func TestMovingTheCursorDisarms(t *testing.T) {
+func TestAnsweringNoChangesNothing(t *testing.T) {
 	var calls []bool
 	m := destructiveModel(t, &calls)
 
 	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyUp})
-	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyDown})
-	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	after := next.(Model)
 
-	if len(calls) != 2 || calls[1] {
-		t.Fatalf("calls=%v — a confirmation survived moving the cursor", calls)
+	if len(calls) != 1 {
+		t.Fatalf("calls=%v — answering no ran something", calls)
+	}
+	if after.Pending() != "" || after.Confirm() != "" {
+		t.Error("the question stayed open after no")
+	}
+	if !strings.Contains(after.Notice(), "cancelled") {
+		t.Errorf("notice = %q, want it to say it was cancelled", after.Notice())
 	}
 }
 
-// Switching destination disarms, or the confirmation would apply to a plan read for
-// somewhere else. This is the one that would delete from the wrong place.
-func TestSwitchingDestinationDisarms(t *testing.T) {
+// The invariant that matters: **no key but `y` carries a destructive action out.**
+//
+// Whether the question then closes or is asked again is cosmetic. `enter` cancels and
+// falls through to selection, which re-runs the plan dry and asks again — consistent,
+// and safe, which is the part worth pinning down.
+func TestOnlyYesCarriesADestructiveActionOut(t *testing.T) {
+	for _, key := range []tea.KeyMsg{
+		{Type: tea.KeyEnter},
+		{Type: tea.KeyDown},
+		{Type: tea.KeyUp},
+		{Type: tea.KeyTab},
+		{Type: tea.KeyRunes, Runes: []rune{'x'}},
+		{Type: tea.KeyRunes, Runes: []rune{'q'}},
+	} {
+		var calls []bool
+		m := destructiveModel(t, &calls)
+
+		next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+		next, _ = next.(Model).Update(key)
+
+		for i, c := range calls {
+			if c {
+				t.Errorf("%v carried the action out (call %d was confirmed)", key, i)
+			}
+		}
+	}
+}
+
+// And the keys that are not selection dismiss it outright, so a stale question does
+// not sit there inviting a `y` for a plan you have navigated away from.
+func TestNavigationDismissesTheQuestion(t *testing.T) {
+	for _, key := range []tea.KeyMsg{
+		{Type: tea.KeyDown},
+		{Type: tea.KeyTab},
+		{Type: tea.KeyRunes, Runes: []rune{'x'}},
+	} {
+		var calls []bool
+		m := destructiveModel(t, &calls)
+
+		next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+		next, _ = next.(Model).Update(key)
+
+		if got := next.(Model).Confirm(); got != "" {
+			t.Errorf("%v left the question open: %q", key, got)
+		}
+	}
+}
+
+// The question names the destination it was asked for, and the answer acts on that
+// one — not on whatever is active by the time it is given.
+func TestTheQuestionNamesItsDestination(t *testing.T) {
 	var calls []bool
 	m := destructiveModel(t, &calls)
 
-	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyTab})
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab}) // to project
 	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
 
-	if len(calls) != 2 || calls[1] {
-		t.Fatalf("calls=%v — a confirmation followed the user to another destination", calls)
+	if q := next.(Model).Confirm(); !strings.Contains(q, "project") {
+		t.Errorf("the question does not name the destination: %q", q)
 	}
 }
 
-// Nothing to remove is not something to confirm.
-func TestNothingToRemoveIsNotArmed(t *testing.T) {
+func TestNothingToRemoveAsksNothing(t *testing.T) {
 	menu := []MenuItem{{Label: "prune", Desc: "d", Enabled: true, Destructive: true}}
 	m := NewModel("v0", menu, []TargetRow{{Name: "global", Active: true}}, false).
 		WithRunner(func(string, int, bool) ([]string, error) { return nil, nil })
 
 	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	after := next.(Model)
-	if after.Armed() != "" {
-		t.Errorf("armed with an empty plan: %q", after.Armed())
+	if after.Confirm() != "" {
+		t.Errorf("asked about an empty plan: %q", after.Confirm())
 	}
 	if !strings.Contains(after.Notice(), "nothing") {
 		t.Errorf("notice = %q, want it to say there was nothing to do", after.Notice())
 	}
 }
 
-// A non-destructive action runs on the first press. Asking twice for everything
-// teaches people to press twice for everything.
+// A non-destructive action is not asked about. Asking for everything teaches people
+// to answer yes without reading.
 func TestNonDestructiveActionRunsAtOnce(t *testing.T) {
 	var calls []bool
 	m := destructiveModel(t, &calls)
@@ -779,18 +837,30 @@ func TestNonDestructiveActionRunsAtOnce(t *testing.T) {
 	if len(calls) != 1 {
 		t.Fatalf("calls=%v, want one", calls)
 	}
-	if got := next.(Model).Armed(); got != "" {
-		t.Errorf("a non-destructive action armed itself: %q", got)
+	if got := next.(Model).Confirm(); got != "" {
+		t.Errorf("a non-destructive action asked: %q", got)
 	}
 	if !strings.Contains(next.(Model).Notice(), "done") {
 		t.Errorf("notice = %q, want it to say the action finished", next.(Model).Notice())
 	}
 }
 
-// A report line leads with its verb and its subject and trails off into paths, so an
-// over-long one keeps its head. Keeping the tail instead ate the verb: `would remove
-// skills/gone → /very/long/path` rendered as `…/001/skills/gone`, which is
-// unreadable and looks like a different fact altogether.
+// While a question is open the footer offers its answers and nothing else. Listing
+// the ordinary keys invites pressing one by reflex.
+func TestFooterOffersTheAnswersWhileAsking(t *testing.T) {
+	t.Setenv(EnvTheme, "dark")
+	p := demoPanel()
+	p.Confirm = "Go ahead and prune global?   y / n"
+
+	out := stripANSI(NewTheme().Render(p))
+	if !strings.Contains(out, "y yes") || !strings.Contains(out, "n no") {
+		t.Errorf("the footer does not offer the answers:\n%s", out)
+	}
+	if strings.Contains(out, "tab scope") {
+		t.Error("the footer still offers keys that would cancel the question")
+	}
+}
+
 func TestReportLinesKeepTheirHead(t *testing.T) {
 	long := "  would remove  skills/gone → /private/var/folders/gn/n55rl6v17v3g4wzhvcl/T/x/001/skills/gone"
 	got := elideRight(long, 40)
