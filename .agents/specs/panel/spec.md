@@ -222,6 +222,11 @@ The model:
   Proof: cmd/libretto/scope_test.go TestEveryMenuLabelDispatches
 - prune chosen from the menu is still dry
   Proof: cmd/libretto/scope_test.go TestDispatchedPruneIsDry
+- **a real program run returns the choice and the destination** — the glue between
+  quitting and dispatching, driven through `tea.WithInput`
+  Proof: cmd/libretto/panelrun_test.go TestPanelRunReturnsTheChoiceAndScope
+- and that choice installs where the strip pointed
+  Proof: cmd/libretto/panelrun_test.go TestPanelChoiceInstallsIntoTheChosenScope
 - **the rows report their own state and can differ**
   Proof: cmd/libretto/scope_test.go TestStripRowsReportTheirOwnState
 - the status row follows the active destination rather than summing both
