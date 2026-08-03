@@ -25,6 +25,12 @@ A prompt asked once at startup would be worse: an answer given at the top of a s
 is invisible by the time you press a key, and *where did that just install?* is the
 question this strip exists to answer before it is asked.
 
+**Each row reports its own state**, not the repository's contents. `2 missing` beside
+`1 linked · 1 missing` tells you which destination has what; the item counts of the
+repo, filtered by the kinds a target accepts, are identical for every destination by
+construction and so say nothing at all. **Two rows that cannot differ are two rows that
+mislead**, and they looked authoritative while doing it.
+
 **`tab` is listed in the footer and the switch announces itself.** Both are required,
 not polish. The key changes the *destination*, not the cursor, so the `❯` stays exactly
 where it was — anybody watching it sees nothing move and reports the key as broken.
@@ -167,3 +173,7 @@ The model:
   Proof: internal/ui/panel_test.go TestFooterListsTheScopeKey
 - **switching names the destination it now acts on**
   Proof: internal/ui/panel_test.go TestSwitchingScopeSaysSo
+- **the rows report their own state and can differ**
+  Proof: cmd/libretto/scope_test.go TestStripRowsReportTheirOwnState
+- the status row follows the active destination rather than summing both
+  Proof: cmd/libretto/scope_test.go TestStatusRowFollowsTheActiveScope

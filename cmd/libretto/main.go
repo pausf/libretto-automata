@@ -163,28 +163,34 @@ func panelData(root string, scope target.Scope) ([]ui.MenuItem, []ui.TargetRow, 
 	rows := make([]ui.TargetRow, 0, len(scopeOrder))
 	overall := map[link.State]int{}
 
+	// Each row reports **its own** state, not the repo's contents.
+	//
+	// It used to show `link.Counts`, which counts items in the repo filtered by the
+	// kinds a target accepts. Both scopes accept the same three kinds, so both rows
+	// showed identical numbers — always, by construction. The column answered "what
+	// does the repo hold?" twice and looked like it was answering "what is installed
+	// here?". Two rows that cannot differ are two rows that mislead.
+	//
+	// Scanning both costs a second read-only pass, which is the correct price for a
+	// strip that distinguishes its destinations.
 	for _, sc := range scopeOrder {
 		tg := target.Resolve(sc, "")
-		counts, err := link.Counts(root, tg)
+
+		entries, err := link.Scan(root, tg)
 		if err != nil {
 			return nil, nil, err
 		}
+		tally := link.Tally(entries)
 
-		// Only the active scope contributes to the tally. A count that mixed both
-		// would answer a question nobody asked.
 		if sc == scope {
-			entries, err := link.Scan(root, tg)
-			if err != nil {
-				return nil, nil, err
-			}
-			for state, n := range link.Tally(entries) {
+			for state, n := range tally {
 				overall[state] += n
 			}
 		}
 
 		rows = append(rows, ui.TargetRow{
 			Name:       string(sc),
-			Info:       describe(tg, counts) + "  " + shorten(tg.Root()),
+			Info:       pad(summarise(tally), 24) + shorten(tg.Root()),
 			Configured: configured(tg),
 			Active:     sc == scope,
 		})
@@ -199,6 +205,15 @@ func panelData(root string, scope target.Scope) ([]ui.MenuItem, []ui.TargetRow, 
 		{Label: "prune", Desc: "drop links whose source is gone", Enabled: true},
 	}
 	return menu, rows, nil
+}
+
+// pad widens s to n columns so the roots line up in the strip. It never truncates —
+// a column that silently cuts its content is a column that lies about it.
+func pad(s string, n int) string {
+	if len([]rune(s)) >= n {
+		return s + " "
+	}
+	return s + strings.Repeat(" ", n-len([]rune(s)))
 }
 
 // pathBudget is how many columns a root may occupy in the panel.
@@ -251,16 +266,6 @@ func shorten(path string) string {
 		return "…" + string(r[len(r)-pathBudget+1:])
 	}
 	return "…" + out
-}
-
-// describe renders "12 skills · 8 agents · 4 commands" in the target's own kind
-// order.
-func describe(tg target.Target, counts map[target.Kind]int) string {
-	parts := make([]string, 0, len(tg.Kinds()))
-	for _, k := range tg.Kinds() {
-		parts = append(parts, fmt.Sprintf("%d %s", counts[k], plural(string(k), counts[k])))
-	}
-	return strings.Join(parts, " · ")
 }
 
 // plural singularises a kind name for a count of one. Every kind is named in the

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/pausf/libretto-automata/internal/target"
+	"github.com/pausf/libretto-automata/internal/ui"
 )
 
 // The promise of scopes is isolation: installing into one must leave the other
@@ -186,4 +187,75 @@ func TestShortenSaysWhenThereIsNoRoot(t *testing.T) {
 	if got := shorten(""); got != "not configured" {
 		t.Errorf("an empty root rendered as %q", got)
 	}
+}
+
+// ── the strip must be able to tell its destinations apart ─────────────────────
+
+// The bug this pins down: the strip showed `link.Counts`, which counts items in
+// the *repo* filtered by the kinds a target accepts. Both scopes accept the same
+// three kinds, so both rows showed identical numbers — always, by construction. It
+// looked like "what is installed here?" and answered "what does the repo hold?"
+// twice.
+//
+// Reported as "lo mismo y eso me parece raro", which it was.
+func TestStripRowsReportTheirOwnState(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	f.skill(t, "beta")
+
+	// One of the two is linked globally. Nothing is linked in the project.
+	f.link(t, f.Repo+"/skills/alpha", f.dest("skills", "alpha"))
+
+	_, rows, err := panelData(f.Repo, target.GlobalScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("the strip has %d rows, want 2", len(rows))
+	}
+
+	global, project := rows[0].Info, rows[1].Info
+	if global == project {
+		t.Fatalf("both rows report %q — a strip whose rows cannot differ is a strip that misleads", global)
+	}
+	if !strings.Contains(global, "linked") {
+		t.Errorf("the global row does not mention the item that is linked: %q", global)
+	}
+	if strings.Contains(project, "linked") {
+		t.Errorf("the project row claims something is linked when nothing is: %q", project)
+	}
+}
+
+// The status row follows the active destination, not a sum of both. A count that
+// mixed them would answer a question nobody asked.
+func TestStatusRowFollowsTheActiveScope(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	f.link(t, f.Repo+"/skills/alpha", f.dest("skills", "alpha"))
+
+	g, _, err := panelData(f.Repo, target.GlobalScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, _, err := panelData(f.Repo, target.ProjectScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gs, ps := descOf(g, "status"), descOf(p, "status")
+	if gs == ps {
+		t.Fatalf("the status row reads %q for both destinations", gs)
+	}
+	if !strings.Contains(gs, "linked") || !strings.Contains(ps, "missing") {
+		t.Errorf("global=%q project=%q — each should describe its own destination", gs, ps)
+	}
+}
+
+func descOf(menu []ui.MenuItem, label string) string {
+	for _, m := range menu {
+		if m.Label == label {
+			return m.Desc
+		}
+	}
+	return ""
 }
