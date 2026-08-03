@@ -110,6 +110,30 @@ argument and offers GitHub Issues as an optional variant.
 mode rather than scanning the same directories its own way. Two answers to "what work
 exists" is one too many, and the one that disagrees is always the one nobody is reading.
 
+**Phase 1 produces an artifact, not only a report.** A source-3 request leaves
+`.agents/changes/<name>/proposal.md` on disk — `Tracker: none`, and the ask in the words
+it arrived in — **before** the phase reports, and the reading is confirmed after that file
+exists rather than instead of it. A reading agreed in conversation and recorded nowhere is
+re-derived next session and does not come out the same.
+
+The rule was already written, in prose, under the source-3 heading. It read as a
+description of what a proposal contains rather than as a step, and it was skipped: the ask
+was reported, confirmation was asked for, and no file existed until the user pointed it
+out. **A step stated as prose is a step that gets read and not done**, so phase 1 now
+states its outputs as a table of what must exist before it may report.
+
+Writing that file means committing it, and committing means a branch — so **phase 1
+branches when it writes the proposal**, and phase 6's step 0 *ensures* a branch instead of
+creating one. A step that assumes it is first makes a second branch and splits one change
+across two.
+
+**A branch is work in flight too.** Scanning `.agents/changes/*/plan.md` cannot see the
+trivial lane: a change that needed no spec has no plan to scan, so it exists only as
+commits on a branch. The lane's first real run produced exactly that, and the next phase 1
+reported an empty house. Phase 1 also reads `git branch --no-merged` and the forge's open
+requests, and names the state worth naming: **unpushed and un-requested** is work nobody
+but this machine has.
+
 **Landed changes are deleted, not archived.** gentle-ai moves them to `changes/archive/`;
 git history is the archive here, and a directory nobody reopens is growth. A decision,
 not an oversight.
@@ -154,10 +178,12 @@ the copy stays comparable with upstream.
   it, and the "no" collapses phase 7's gate with it.
 - Phase 6 does not fan out. Parallel implementation needs isolation, a serial merge
   queue and a conflict protocol; without those three, concurrency manufactures races.
-- **Phase 6 owns the branch, at step 0, before the first file is written** — not before
-  the first commit. `git checkout -b` carries uncommitted work, so editing on the base
-  branch and branching at commit time succeeds until the base has moved or touches one
-  of your files. Phase 8 keeps the same check as a backstop, names phase 6 as its owner,
+- **The branch exists before the first write** — not before the first commit.
+  `git checkout -b` carries uncommitted work, so editing on the base branch and branching
+  at commit time succeeds until the base has moved or touches one of your files. Whichever
+  phase writes first creates it: phase 1 when it writes a proposal, phase 6's step 0
+  otherwise, which *ensures* rather than creates. Phase 8 keeps the same check as a
+  backstop, names the writing phase as its owner,
   and reports rather than silently fixes: a backstop that covers for the rule it backs up
   is how the rule stops being followed.
 - **Push and the pull request are one question.** Asked separately they bought a second
