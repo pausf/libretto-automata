@@ -125,11 +125,26 @@ There is no configuration file. A value that never varies is not configuration.
 
 ## The flow
 
-Eight phases, installed as skills. Start it with `/libretto-flow EUCAR-1234`.
+Eight phases, installed as skills. Start it with `/libretto-flow`, with or without a
+tracker key.
+
+**The flow does not begin at a tracker.** Phase 1 asks three sources in order — a change
+already in flight, a tracker key or URL, and what you said — and the order is the point:
+starting something new while a change sits half-finished is how the half-finished thing
+gets abandoned.
+
+`/libretto-status` runs only the first of those and stops, for when the question is just
+"what is open?"
+
+```bash
+/libretto-status              # what is in flight, how much is left, what can start
+/libretto-flow                # find the work and take it through the phases
+/libretto-flow EUCAR-1234     # …starting from a ticket
+```
 
 | | Phase | Skill |
 |---|---|---|
-| 1 | read the task from the tracker | `read-task-jira` |
+| 1 | find the work — in flight, tracker, or asked for | `find-work` |
 | 0·2·3 | does a spec even need to exist · the six pillars · one per subtask | `write-spec` |
 | 5 | the plan — live state, one writer | `write-plan` |
 | 6 | build, with proportionate checks | `build-and-check` |

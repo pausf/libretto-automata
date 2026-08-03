@@ -1,6 +1,6 @@
 ---
-name: read-task-jira
-description: "Trigger: starting the Libretto flow, reading a Jira task or subtasks, a Jira issue or board URL, or preflighting tracker access. Verifies the jira CLI is installed, configured and authenticated, then loads one task and its subtasks."
+name: find-work
+description: "Trigger: starting the Libretto flow; asking what to work on; resuming a half-finished change; reading a Jira task, issue URL or board URL; a request made in conversation. Phase 1 — finds the work wherever it came from and loads exactly one piece of it."
 license: MIT
 metadata:
   author: pausf
@@ -9,12 +9,63 @@ metadata:
 
 ## What this does
 
-Phase 1 of the Libretto flow: **read the task**. Confirms the tracker is
-reachable, then loads exactly one task with its subtasks and its description.
+Phase 1 of the Libretto flow: **find the work**, and load exactly one piece of it.
 
 It stops there. It does not write specs, plan, branch, code or commit.
 
-Everything goes through the `jira` CLI (ankitpokhrel/jira-cli). Never reach for an
+The flow does not begin at a tracker. A tracker is one of three places work comes
+from, and in practice the least common:
+
+| Source | When |
+|---|---|
+| **a change already in flight** | there are unchecked boxes in `.agents/changes/*/plan.md` |
+| **a tracker key or URL** | one was given |
+| **what the user said** | anything else — the request *is* the input |
+
+**Asked in that order, and the order is the point.** Starting something new while a
+change sits half-finished is how the half-finished thing gets abandoned, and the cost
+is not the wasted work — it is a `.agents/changes/` directory nobody trusts any more.
+
+## Source 1 — a change already in flight
+
+Look at home before looking anywhere else.
+
+```
+rg -c '^\s*- \[ \]' .agents/changes/*/plan.md
+rg -c '^\s*- \[x\]' .agents/changes/*/plan.md
+```
+
+A change with open boxes is work waiting. For each one, report:
+
+- its name, and what its `proposal.md` says it is for in one line
+- how many boxes are open out of how many
+- **what its plan says can start now** — the plans record dependencies, and a plan whose
+  dependencies nobody reads is a list, not a plan
+
+Then ask: continue one, or begin something else. **Never choose.** Picking up somebody's
+half-finished work without asking is a decision about their priorities.
+
+No `.agents/changes/` directory, or none with open boxes, means nothing is in flight.
+That is a state, not an error — say it in one line and move on.
+
+## Source 3 — what the user said
+
+**A request in conversation is a legitimate input, not a fallback.** It is how most work
+arrives; every change in this repository so far arrived that way.
+
+There is no key, so two things have to be produced rather than looked up:
+
+- **the change's name**, from the request, verb-led and readable — `add-relative-discounts`,
+  never an invented ticket id. A fake key implies a tracker that could be consulted.
+- **`proposal.md` recording `Tracker: none`** and what was asked, in the words it was
+  asked in. Paraphrasing a request loses the part you did not understand yet.
+
+Confirm the reading before phase 2 starts. A request understood slightly wrong becomes a
+spec that is confidently wrong, and the spec is harder to unpick than the sentence.
+
+## Source 2 — a tracker key or URL
+
+Everything below goes through the `jira` CLI (ankitpokhrel/jira-cli). Never reach for an
 MCP server or the REST API directly.
 
 ## Rules that hold for every command here

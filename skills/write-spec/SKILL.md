@@ -11,7 +11,7 @@ metadata:
 
 Phase 2 of the Libretto flow: turn a task into a contract.
 
-Input is a task already loaded by `read-task-jira` — key, summary, description,
+Input is a task already loaded by `find-work` — key, summary, description,
 subtasks. Output is one or more spec files and nothing else.
 
 **No code. No branch. No commit. No plan.** Those are phases 5, 6 and 8. A spec

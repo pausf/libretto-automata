@@ -88,6 +88,26 @@ scripts/check-payload   repo-only tooling. Never referenced from a skill.
 docs/                   FLOW.md (the flow) · DESIGN.md · PLAN.md · STATE.md · SPEC.md (index only)
 ```
 
+## Where work comes from
+
+Not from a tracker. Phase 1 asks three sources in order:
+
+1. **a change already in flight** — unchecked boxes in `.agents/changes/*/plan.md`
+2. a tracker key or URL, if one was given
+3. **what the user said** — a legitimate input, not a fallback
+
+Home first. Starting new work while something sits half-finished is how the half-finished
+thing gets abandoned, and the cost is a `.agents/changes/` nobody trusts.
+
+Creating a task without a tracker *is* creating the change folder: `proposal.md` with
+`Tracker: none` and the request in the words it was asked in, named verb-led —
+`add-relative-discounts`, never an invented ticket id.
+
+`/libretto-status` reports what is open and changes nothing.
+
+**Mark the boxes as you go.** A plan that is 11/11 open while the work is nearly done is
+documentation pretending to be state — which happened while building this very feature.
+
 ## Specs
 
 Per **capability**, never per ticket, in `.agents/specs/<capability>/spec.md`. Eight of

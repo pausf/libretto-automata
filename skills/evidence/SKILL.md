@@ -47,7 +47,7 @@ Then read `/tmp/gate.out`. Do not summarise from memory of what you expected.
 
 **A pipe destroys the exit code.** `cmd | head` reports the status of `head`, so a
 failed command reads as success. This is not hypothetical — it happened while
-building `read-task-jira`: a `jira` call printed an error and the shell reported
+building `find-work`: a `jira` call printed an error and the shell reported
 `exit=0`, because the output went through `head`. Redirect to a file instead. If a
 pipe is genuinely needed, `set -o pipefail` or check `${PIPESTATUS[0]}`.
 

@@ -1,71 +1,72 @@
 # Where this stands
 
-Handoff note, last updated 2026-07-31. Read this first, then
-[SPEC.md](SPEC.md) · [DESIGN.md](DESIGN.md) · [PLAN.md](PLAN.md).
+Handoff note, last updated 2026-08-03. Read this first, then
+[SPEC.md](SPEC.md) · [DESIGN.md](DESIGN.md) · [FLOW.md](FLOW.md).
+
+Live task state lives in `.agents/specs/*/spec.md`, at the bottom of each spec.
+**[PLAN.md](PLAN.md) is superseded and stale** — it still shows `git init`,
+`internal/repo/git.go` and the README rewrite as pending, and all three landed.
+Two ledgers means the one nobody reads is the one that lies. It goes, or it becomes
+a pointer.
 
 ## The one thing to understand
 
-**The mechanism is built. The product is empty.**
+**Both halves exist now, and neither has been exercised.**
 
 ```
-skills/     empty
-agents/     empty
-commands/   empty
+skills/     10 items   (7 phase skills + evidence + 2 vendored delegates)
+agents/      1 item    (spec-writer)
+commands/    2 items   (libretto-flow, libretto-status)
 ```
 
-The CLI, the panel, the symlink logic and 155 tests are all *delivery*. What
-Libretto Automata is actually for is the payload — the author's own SDD flow, as
-skills and commands. None of that is written yet.
+The CLI, the panel and the symlink logic are *delivery*, and they are green:
+**161 test functions pass**, `gofmt` clean, `go vet` clean. The payload — the
+author's own flow as skills and commands — is written and statically checked:
+`scripts/check-payload` passes, `spec-drift --self-test` passes, and
+`spec-drift --anchors` resolves **156 citations, file and test name**.
 
-Writing the payload is **not blocked** by any remaining CLI phase. A skill is a
-markdown file with frontmatter. `install.sh` still exists and still symlinks, so
-skills can be written and installed today while the Go CLI is finished in
-parallel.
+What none of that proves is behaviour. A skill is a prompt and a prompt is checked
+by running it, and **the flow has never been run end to end against a real task**.
+That is the next thing, not another phase of Go.
 
-## The open question
+## The open question — answered
 
-**What does this flow have that gentle-ai's does not?**
+**What does this flow have that gentle-ai's does not?** The answer, from the
+sessions that built this repo rather than from theory:
 
-If the answer turns out to be `sdd-explore`, `sdd-propose`, `sdd-spec`,
-`sdd-design`, `sdd-tasks`, `sdd-apply`, `sdd-verify`, `sdd-archive` under new
-names, this is a fork with a new logo and is not worth building.
+**The design came before the spec.** The order of work was explore → name → *draw
+the panel* → spec → plan → implement. gentle-ai runs proposal → spec → design →
+tasks. Seeing the panel is what produced the requirements: the first palette
+**satisfied the spec and was unreadable** at 1.4:1 border contrast. No spec written
+before seeing a terminal catches that; a WCAG measurement after seeing it caught it
+immediately.
 
-One observation from the session that built this repo, offered as evidence rather
-than theory:
-
-**The design came before the spec.** The actual order of work was: explore →
-name → *draw the panel* → write the spec → write the plan → implement. gentle-ai
-runs proposal → spec → design → tasks. This project did not, and it was not
-sloppiness: seeing the panel is what produced the requirements. Requirements
-changed *after* each render — the palette, the centring, the fluid width, the
-single-colour menu.
-
-The proof that this ordering was right: the first palette **satisfied the spec
-and was unreadable**. Contrast of 1.4:1 on borders. No spec written before
-seeing a terminal would have caught that; a WCAG measurement after seeing it
-did, immediately.
-
-If that generalises, this flow has a phase gentle-ai's lacks, and it belongs
-early. Next session starts by naming the phases.
+The second answer is smaller and turned out to matter more: **work is found, not
+fetched.** Phase 1 asks home first — unchecked boxes in `.agents/changes/*/plan.md`
+— then a tracker, then what the user said. Every change in this repository arrived
+by the third route.
 
 ## What is done
 
-| Phase | | Notes |
+| | | Proof |
 |---|---|---|
-| 0 | Groundwork | Go 1.26.5, `go mod init`, Makefile. **No `git init` yet.** |
-| 1 | `internal/target` | `Target` interface + Claude Code. `CLAUDE_HOME` override is what makes the whole suite safe. |
-| 2 | `internal/link` | `own.go` ownership predicate, `scan.go` enumeration, `state.go` five-state classification. Read-only. |
-| 6 | `internal/ui` | Logo, theme, fluid panel, Bubbletea model. |
+| 0 | Groundwork, `git init`, 16 commits, version stamped from git | `make build` |
+| 1 | `internal/target` — `Target`, Claude Code, global/project scope | `internal/target` tests |
+| 2 | `internal/link` — ownership, scan, five-state classification | `internal/link` tests |
+| 3 | `plan.go`, `apply.go`, prune — the code that writes to disk | `internal/link` tests |
+| 4 | `internal/repo/git.go` and the update flow, wired into the CLI | `internal/repo/git_test.go` |
+| 5 | subcommands: `status` `preview` `install` `uninstall` `update` `doctor` `prune` `version` `help`, TTY detection | `cmd/libretto` tests |
+| 6 | logo, theme, fluid panel, model, destination switch, in-place actions and confirmation | `internal/ui` + `panelrun_test.go` |
+| 7 | `Makefile`, README rewritten, licence | — |
+| — | the payload: 7 phase skills, `evidence`, both commands, `spec-writer`, `spec-drift`, `check-payload` | `scripts/check-payload` |
 
-**155 tests green.** `gofmt` clean, `go vet` clean.
-
-Working commands: `libretto` (TUI), `libretto status`, `libretto preview`, `libretto version`,
-`libretto help`. `install`, `update`, `doctor` and `prune` are present in the menu and
-refuse to run — deliberately, until Phase 3 has tests.
+`libretto install` installs into the global config or into the project, per the
+active destination in the strip. `uninstall` undoes it. `prune` asks in place and
+removes only on the second press, scoped to the destination it was planned for.
 
 ### The five states
 
-`libretto status` reports, per item per target:
+`libretto status` reports, per item per destination:
 
 | State | Meaning | Remedy |
 |---|---|---|
@@ -97,36 +98,27 @@ test:
 
 ## What is pending
 
-| | |
-|---|---|
-| **0.2** | `git init` + first commit. Nothing is versioned. This also makes the Spec-Anchored rule ("doc and code in the same commit") enforceable rather than aspirational. |
-| **3.1–3.3** | `plan.go`, `apply.go`, prune. The code that writes to disk. Menu buttons stay disabled until its tests are green. |
-| **4.1–4.2** | `internal/repo/git.go`, the update flow. |
-| **5.1–5.3** | Remaining subcommands, `--json`, TTY-detection tests. |
-| **6.5–6.7** | Huh confirmation form, target-strip goldens, `teatest` flow. |
-| **7.2–7.3** | README rewrite, delete `install.sh` (only after `libretto install` is proven). |
-| — | **The payload: the SDD skills and commands.** Not in PLAN.md at all — it needs its own plan. |
+Eleven open boxes, in the specs that own them. In the order they are worth doing:
 
-### Spec drift — closed
+| Where | What | Why now |
+|---|---|---|
+| payload | **run the flow end to end against a real task** | the only thing that checks a prompt. Start with the failure paths, which are written and never run: an unconfigured tracker, a board URL where a key was expected, a trivial task that should skip phase 2, a sub-agent that hits a question it must not answer |
+| cli | `install`: present the plan before applying, as `prune` already does | the one asymmetry left in the destructive-action story — `prune` shows what it will do, `install` just does it |
+| cli | `doctor`: target directory missing or unwritable; repo dirty or behind | `doctor` currently reports less than `status` can already see |
+| cli | `7.3` delete `install.sh` | goes only once `libretto install` is verified against a real `~/.claude`. Still referenced by AGENTS.md and the cli spec |
+| repo-sync | a fake `Git` and the flow's own tests | the interface exists precisely to make this testable, and nothing uses it that way yet |
+| panel | `6.6` target-strip golden files | behaviour is tested (`TestStripRowsReportTheirOwnState`); the rendering is not pinned. No `testdata/` exists |
+| panel | `6.7` `teatest` end-to-end flow | `panelrun_test.go` drives a real `tea.Program` by hand and covers the glue. `teatest` is not a dependency. **Decide whether this box still means anything** before adding one |
+| cli | `5.2` `--json` for `status` and `doctor` | nothing consumes it yet. Lowest value on this list |
+| cli | `5.3` the panel path under a real TTY | needs a pty; `COLUMNS` already makes layout checkable in a pipe |
+| payload | an independent verifier, never run by whoever wrote the code | worth having after the flow has been run once, not before |
 
-All of it. SPEC.md now describes what is true, carries a `Governs:` anchor and
-`Proof:` citations, and lists what is not built yet in its own section rather than
-mixing it in with what is.
-
-Nine divergences were reconciled: the three that had accumulated since Phase 2
-(`preview` missing from R8, five environment variables documented nowhere, R5
-splitting broken from stale) and six created by Phase 3 (`prune --yes`, doctor's
-prerequisites section, and four R5/R9 promises that turned out to be future work).
-
-`skills/record-work/spec-drift` now makes the question mechanical in both directions, and the
-anchor immediately earned it: the first pass cited a test
-(`TestClaudeHonoursClaudeHome`) that **did not exist**. A file-level check had
-passed it. The tool now verifies the test name, not just the file.
-
-The lesson worth keeping: the drift was not created by carelessness about
-documents. It was created by writing `install`, `doctor` and `prune` in one sitting
-and reconciling the spec in the next — which is precisely the gap the same-commit
-rule exists to close, and it happened anyway to the people who wrote the rule.
+**`panel/6.5` was closed in this pass.** The confirmation exists, in the model
+rather than as a Huh form, with four tests behind it
+(`TestFooterOffersTheAnswersWhileAsking`, `TestPanelPruneConfirmsInPlace`,
+`TestPanelPruneOnOnePressRemovesNothing`, `TestPanelUninstallNeedsTwoPresses`).
+The box had gone stale against its own spec body, which already describes the
+behaviour in prose.
 
 ## Decisions not to relitigate
 
@@ -146,10 +138,12 @@ rule exists to close, and it happened anyway to the people who wrote the rule.
 
   `𝄞` is README-only and must never reach a terminal (SMP plane, renders as tofu).
   `♩♪♫♬` are banned too (East Asian Ambiguous Width tears the layout).
-- **Stack.** Go + Bubbletea + Lipgloss + Huh. opencode was measured, not assumed:
-  its binary contains `opentui`, `yoga`, `solid-js`, `kitty`, `sixel` and no Go
-  runtime, so it is TypeScript on its own framework. Higher ceiling, irrelevant
-  for a symlink installer.
+- **Stack.** Go + Bubbletea + Lipgloss. **Huh was planned and never needed** — the
+  confirmation is two states in the model and one footer line, which is less code
+  than wiring a form library into a panel that already owns its own layout. opencode
+  was measured, not assumed: its binary contains `opentui`, `yoga`, `solid-js`,
+  `kitty`, `sixel` and no Go runtime, so it is TypeScript on its own framework.
+  Higher ceiling, irrelevant for a symlink installer.
 - **Symlink per item, never per directory.** `~/.claude/skills/` is shared with
   gentle-ai's sync.
 - **Contrast floor 4.5:1 for text, 3:1 for borders**, enforced by a WCAG test.
@@ -157,12 +151,30 @@ rule exists to close, and it happened anyway to the people who wrote the rule.
 - **Fluid panel, 58–98 content columns**, centred on both axes when there is room.
 - **One menu row, one colour.** Selected row gold end to end. Disabled rows are
   *not* dimmed — colour carries selection and nothing else.
+- **A skill may only invoke what gets installed.** `install` links `skills/`,
+  `agents/` and `commands/` and nothing else, so a tool a skill needs ships inside
+  the skill's own directory — which is why `spec-drift` lives under
+  `skills/record-work/` and not in `scripts/`.
+- **Landed changes are deleted, not archived.** Git history is the archive; a
+  `changes/archive/` directory nobody reopens is growth.
+- **Module path is `github.com/pausf/libretto-automata`**, confirmed against the
+  real repository. It had been `pausanchezv`, a guess that would have broken
+  `go install` and every import for anyone but us.
 - **Out of scope:** `CLAUDE.md` and `settings.json` (other tooling rewrites them);
-  targets other than Claude Code; migrating the author's existing skills out of
-  `~/.claude` (that happens only after `libretto install` is proven).
+  targets other than Claude Code; requiring `ponytail` or `caveman` (called when
+  present, reported by `doctor`, never required); migrating the author's existing
+  skills out of `~/.claude` (only after `libretto install` is proven).
 
-## Loose end — closed
+## Spec drift — closed, and how it stays closed
 
-The module path is `github.com/pausf/libretto-automata`, confirmed against the real
-repository. It had been `pausanchezv`, which was a guess, and publishing with it would
-have broken `go install` and every import for anyone but us.
+`skills/record-work/spec-drift` makes the question mechanical in both directions,
+and the anchor earned it immediately: the first pass cited a test
+(`TestClaudeHonoursClaudeHome`) that **did not exist**, and a file-level check had
+passed it. The tool verifies the test name, not just the file.
+
+The lesson worth keeping: the drift was not created by carelessness about
+documents. It was created by writing `install`, `doctor` and `prune` in one sitting
+and reconciling the spec in the next — precisely the gap the same-commit rule
+exists to close, and it happened anyway to the people who wrote the rule. This
+handoff note is the same failure at a longer wavelength: it described an empty
+`skills/` directory for three days after ten skills landed in it.

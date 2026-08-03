@@ -830,7 +830,7 @@ type Prereq struct {
 
 // prerequisites reports what the payload's own skills expect to find.
 //
-// Nothing here is required. `read-task-jira` needs the jira CLI, `record-work`
+// Nothing here is required. `find-work` needs the jira CLI, `record-work`
 // needs a git host, and ponytail and caveman are companions the flow calls when
 // present. Reporting a missing optional as a problem would train people to ignore
 // this section.
@@ -838,16 +838,16 @@ func prerequisites() []Prereq {
 	home, _ := os.UserHomeDir()
 
 	jira := onPath("jira")
-	jiraNote := "read-task-jira — brew install ankitpokhrel/jira-cli/jira-cli"
+	jiraNote := "find-work — brew install ankitpokhrel/jira-cli/jira-cli"
 	if jira {
 		cfg := os.Getenv("JIRA_CONFIG_FILE")
 		if cfg == "" {
 			cfg = filepath.Join(home, ".config", ".jira", ".config.yml")
 		}
 		if _, err := os.Stat(cfg); err == nil {
-			jiraNote = "read-task-jira — configured"
+			jiraNote = "find-work — configured"
 		} else {
-			jiraNote = "read-task-jira — installed, run `jira init` yourself"
+			jiraNote = "find-work — installed, run `jira init` yourself"
 			jira = false
 		}
 	}
