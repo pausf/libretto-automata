@@ -28,8 +28,8 @@ func TestPanelRunsInstallAndReportsInPlace(t *testing.T) {
 		WithRefresh(func(i int) ([]ui.MenuItem, []ui.TargetRow, error) {
 			return panelData(f.Repo, f.Project, scopeOrder[i])
 		}).
-		WithRunner(func(action string, dest int) ([]string, error) {
-			return runCaptured(action, f.Repo, target.Resolve(scopeOrder[dest], f.Project))
+		WithRunner(func(action string, dest int, _ bool) ([]string, error) {
+			return runCaptured(action, f.Repo, target.Resolve(scopeOrder[dest], f.Project), false)
 		})
 
 	// tab → project, enter → install (row 0), q → leave.
@@ -69,7 +69,7 @@ func TestRunCapturedReturnsLinesAndRestoresStdout(t *testing.T) {
 	f.skill(t, "alpha")
 	before := os.Stdout
 
-	lines, err := runCaptured("install", f.Repo, f.global())
+	lines, err := runCaptured("install", f.Repo, f.global(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,11 +96,92 @@ func TestRunCapturedKeepsOutputOnFailure(t *testing.T) {
 	f.skill(t, "alpha")
 	f.putReal(t, "skills", "alpha", "somebody else's file")
 
-	lines, err := runCaptured("install", f.Repo, f.global())
+	lines, err := runCaptured("install", f.Repo, f.global(), false)
 	if err == nil {
 		t.Fatal("a conflict returned no error")
 	}
 	if len(lines) == 0 {
 		t.Fatal("the failure hid the report that explains it")
+	}
+}
+
+// The destructive path, driven for real: prune shows its plan, the second press
+// carries it out, and only the destination the strip pointed at loses anything.
+func TestPanelPruneConfirmsInPlace(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	gone := f.Repo + "/skills/gone"
+	f.link(t, gone, f.dest("skills", "gone"))
+	f.link(t, gone, f.projectDest("skills", "gone"))
+
+	menu, targets, err := panelData(f.Repo, f.Project, target.ProjectScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := ui.NewModel("v0", menu, targets, false).
+		WithRefresh(func(i int) ([]ui.MenuItem, []ui.TargetRow, error) {
+			return panelData(f.Repo, f.Project, scopeOrder[i])
+		}).
+		WithRunner(func(action string, dest int, confirm bool) ([]string, error) {
+			return runCaptured(action, f.Repo, target.Resolve(scopeOrder[dest], f.Project), confirm)
+		}).
+		SetSelectedForTest(4) // prune
+
+	// enter → plan, enter → go ahead, q → leave.
+	in := bytes.NewReader([]byte{0x0d, 0x0d, 'q'})
+	p := tea.NewProgram(model, tea.WithInput(in), tea.WithOutput(io.Discard))
+
+	done := make(chan tea.Model, 1)
+	go func() { m, _ := p.Run(); done <- m }()
+
+	select {
+	case final := <-done:
+		if got := final.(ui.Model).Results(); len(got) == 0 {
+			t.Fatal("the panel shows no report after pruning")
+		}
+	case <-time.After(10 * time.Second):
+		p.Kill()
+		t.Fatal("the panel never exited")
+	}
+
+	if _, err := os.Lstat(f.projectDest("skills", "gone")); !os.IsNotExist(err) {
+		t.Error("the second press did not carry the prune out")
+	}
+	if _, err := os.Lstat(f.dest("skills", "gone")); err != nil {
+		t.Fatal("pruning the project removed a link from the global config")
+	}
+}
+
+// One press removes nothing. The whole point of asking twice.
+func TestPanelPruneOnOnePressRemovesNothing(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	f.link(t, f.Repo+"/skills/gone", f.projectDest("skills", "gone"))
+
+	menu, targets, err := panelData(f.Repo, f.Project, target.ProjectScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := ui.NewModel("v0", menu, targets, false).
+		WithRunner(func(action string, dest int, confirm bool) ([]string, error) {
+			return runCaptured(action, f.Repo, target.Resolve(scopeOrder[dest], f.Project), confirm)
+		}).
+		SetSelectedForTest(4)
+
+	in := bytes.NewReader([]byte{0x0d, 'q'})
+	p := tea.NewProgram(model, tea.WithInput(in), tea.WithOutput(io.Discard))
+	done := make(chan tea.Model, 1)
+	go func() { m, _ := p.Run(); done <- m }()
+
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		p.Kill()
+		t.Fatal("the panel never exited")
+	}
+
+	if _, err := os.Lstat(f.projectDest("skills", "gone")); err != nil {
+		t.Fatal("a single press deleted a link")
 	}
 }

@@ -19,6 +19,12 @@ type Model struct {
 	done    bool
 	refresh Refresh
 	run     Runner
+
+	// armed remembers a destructive action that has shown its plan and is waiting
+	// for a second press. Scoped to the destination it was armed for, so tabbing
+	// away cannot carry the confirmation with it.
+	armed      string
+	armedScope int
 }
 
 // Runner performs a menu action and returns its report, one line per row.
@@ -31,7 +37,10 @@ type Model struct {
 // closed over the scope the panel opened with would send `prune` at the old
 // destination after a tab — the panel saying "project" while links vanish from the
 // global config. Destructive, silent, and entirely avoidable.
-type Runner func(action string, destination int) ([]string, error)
+// confirm is true only on the second press of a destructive action. Without it the
+// second press would repeat the dry run and the panel would promise a confirmation
+// it never delivered.
+type Runner func(action string, destination int, confirm bool) ([]string, error)
 
 // NewModel builds the model. Menu and targets are supplied by the caller so this
 // package never reads the filesystem.
@@ -67,6 +76,9 @@ func (m Model) WithRunner(r Runner) Model {
 // Results exposes the last report for tests.
 func (m Model) Results() []string { return m.panel.Results }
 
+// Armed reports the destructive action waiting for a second press, if any.
+func (m Model) Armed() string { return m.armed }
+
 func (m Model) Init() tea.Cmd { return nil }
 
 // Update handles navigation and selection. Kept free of I/O so state transitions
@@ -84,12 +96,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "up", "k":
-			m.notice = ""
+			m.notice, m.armed = "", ""
 			m.panel.Selected = wrap(m.panel.Selected-1, len(m.panel.Menu))
 			return m, nil
 
 		case "down", "j":
-			m.notice = ""
+			m.notice, m.armed = "", ""
 			m.panel.Selected = wrap(m.panel.Selected+1, len(m.panel.Menu))
 			return m, nil
 
@@ -122,6 +134,7 @@ func (m Model) nextScope() (tea.Model, tea.Cmd) {
 	}
 
 	m.panel.Menu, m.panel.Targets = menu, targets
+	m.armed = "" // a confirmation cannot follow you to another destination
 
 	// Say it out loud. The switch changes the destination, not the cursor, so the
 	// `❯` stays where it was and the only other evidence is a bullet and a path
@@ -169,12 +182,35 @@ func (m Model) selectCurrent() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	lines, err := m.run(item.Label, m.activeScope())
+	// A destructive action is asked twice, in place.
+	//
+	// The first press runs it dry and shows exactly what it would remove; the second
+	// on the same row carries it out. Moving the cursor, or switching destination,
+	// disarms it — so the confirmation can only ever apply to the plan you just read,
+	// for the destination you were looking at.
+	//
+	// The alternative was telling the user to leave the panel and type `prune --yes`,
+	// which is a confirmation step that throws away the plan it was confirming.
+	armed := m.armed == item.Label && m.armedScope == m.activeScope()
+
+	lines, err := m.run(item.Label, m.activeScope(), armed)
 	m.panel.Results = lines
+	m.armed, m.armedScope = "", 0
+
 	if err != nil {
 		// The report stays. An action that half-finished has the most to say, and
 		// hiding it behind the error is hiding the part that explains it.
 		m.notice = item.Label + " · " + err.Error()
+		return m, nil
+	}
+
+	if item.Destructive && !armed {
+		if len(lines) == 0 {
+			m.notice = item.Label + " · nothing to do"
+			return m, nil
+		}
+		m.armed, m.armedScope = item.Label, m.activeScope()
+		m.notice = item.Label + " · nothing changed. ⏎ again to go ahead"
 		return m, nil
 	}
 	m.notice = item.Label + " · done"
@@ -210,4 +246,11 @@ func wrap(i, n int) int {
 		return 0
 	}
 	return ((i % n) + n) % n
+}
+
+// SetSelectedForTest moves the cursor from outside the package. Tests in cmd need it
+// to reach a row without simulating keypresses to get there.
+func (m Model) SetSelectedForTest(i int) Model {
+	m.panel.Selected = i
+	return m
 }

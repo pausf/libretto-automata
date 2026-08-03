@@ -41,6 +41,10 @@ type MenuItem struct {
 	Label   string
 	Desc    string
 	Enabled bool // a disabled row recedes and refuses to run
+
+	// Destructive marks an action that removes things, and so must be asked twice:
+	// the first press reports what it would do, the second carries it out.
+	Destructive bool
 }
 
 // TargetRow is one line of the target strip.
@@ -234,8 +238,14 @@ func (t Theme) targets(p Panel) string {
 // something to act on, and painting it like the menu would make the panel look as
 // though it had two sets of controls.
 //
-// Lines longer than the content area are elided from the *left*, keeping the tail —
-// the item's name is the end of the line, and it is the part you are reading for.
+// Lines longer than the content area keep their **head** and mark the cut at the end.
+// A report line leads with its verb and its subject — `create skills/alpha`, `would
+// remove skills/gone` — and trails off into paths. Keeping the tail instead ate the
+// verb and left only a directory, so `would remove skills/gone → /very/long/path`
+// rendered as `…/001/skills/gone`: unreadable, and it looked like a different fact.
+//
+// Roots in the strip use the opposite rule, and correctly: there the tail is what
+// identifies the directory. Different content, different end to keep.
 func (t Theme) results(p Panel, width int) []string {
 	shown := p.Results
 	extra := 0
@@ -246,7 +256,7 @@ func (t Theme) results(p Panel, width int) []string {
 
 	out := make([]string, 0, len(shown)+1)
 	for _, line := range shown {
-		out = append(out, "  "+Fg(t.Muted).Render(elideLeft(line, width-4)))
+		out = append(out, "  "+Fg(t.Muted).Render(elideRight(line, width-4)))
 	}
 	if extra > 0 {
 		out = append(out, "  "+Fg(t.Off).Render(fmt.Sprintf("… and %d more", extra)))
@@ -254,13 +264,13 @@ func (t Theme) results(p Panel, width int) []string {
 	return out
 }
 
-// elideLeft trims a line to n columns by dropping the head, marking the cut.
-func elideLeft(s string, n int) string {
+// elideRight trims a line to n columns by dropping the tail, marking the cut.
+func elideRight(s string, n int) string {
 	r := []rune(s)
 	if n < 2 || len(r) <= n {
 		return s
 	}
-	return "…" + string(r[len(r)-n+1:])
+	return string(r[:n-1]) + "…"
 }
 
 // footerIndent is the footer's margin on both sides. Six columns is what the art

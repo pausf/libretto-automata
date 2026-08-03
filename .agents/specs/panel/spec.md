@@ -79,9 +79,26 @@ After a successful action the figures are asked for again. They described the st
 *before* it ran, and a panel whose strip contradicts its own report is worse than one
 that shows neither.
 
-`prune` from the menu is still dry. Nothing deletes on one keypress. A refused action
-runs nothing and leaves no report, and with no runner wired every action refuses — which
-is honest.
+### A destructive action is asked twice, in place
+
+The first press runs it dry and shows exactly what it would remove. The second, on the
+same row and the same destination, carries it out.
+
+**Moving the cursor or switching destination disarms it.** A confirmation can only ever
+apply to the plan just read, for the destination that was on screen — otherwise it could
+be spent on a row walked to afterwards, or on the other config entirely. That last one is
+the case that deletes from the wrong place, so it has its own test.
+
+Nothing to remove is not something to confirm: an empty plan says so and arms nothing.
+
+**Only actions marked destructive ask twice.** Asking for everything teaches people to
+press twice for everything, which is how a confirmation stops being read.
+
+The earlier behaviour told the user to leave the panel and type `prune --yes` — a
+confirmation step that throws away the plan it was confirming.
+
+A refused action runs nothing and leaves no report, and with no runner wired every action
+refuses — which is honest.
 
 An earlier version set the notice to `running install…` and ran nothing, with a test
 asserting that notice. **A panel that says it is working and is not is worse than a
@@ -253,6 +270,22 @@ The model:
   Proof: cmd/libretto/scope_test.go TestStripAndRunnerAgreeOnTheProjectRoot
 - **prune from the panel touches only the active destination**
   Proof: cmd/libretto/scope_test.go TestPanelPruneActsOnTheActiveDestinationOnly
+- **a destructive action needs a second press**, and the plan stays on screen for it
+  Proof: internal/ui/panel_test.go TestDestructiveActionNeedsASecondPress
+- moving the cursor disarms it
+  Proof: internal/ui/panel_test.go TestMovingTheCursorDisarms
+- **switching destination disarms it** — the case that would delete from the wrong place
+  Proof: internal/ui/panel_test.go TestSwitchingDestinationDisarms
+- an empty plan arms nothing
+  Proof: internal/ui/panel_test.go TestNothingToRemoveIsNotArmed
+- a non-destructive action runs on the first press
+  Proof: internal/ui/panel_test.go TestNonDestructiveActionRunsAtOnce
+- **the second press really removes, and only from the active destination**
+  Proof: cmd/libretto/panelrun_test.go TestPanelPruneConfirmsInPlace
+- **one press removes nothing**
+  Proof: cmd/libretto/panelrun_test.go TestPanelPruneOnOnePressRemovesNothing
+- report lines keep their head, so the verb survives the elision
+  Proof: internal/ui/panel_test.go TestReportLinesKeepTheirHead
 - **the rows report their own state and can differ**
   Proof: cmd/libretto/scope_test.go TestStripRowsReportTheirOwnState
 - the status row follows the active destination rather than summing both

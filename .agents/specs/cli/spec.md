@@ -41,6 +41,36 @@ not say where it wrote is a run you have to reconstruct later.
 
 A command acts on exactly one scope. Nothing iterates destinations.
 
+**Where the project is, is resolved once per invocation and threaded down.** Two
+lookups give two answers that agree only by accident, and they did disagree — the
+panel's strip read one root while the action wrote to another.
+
+### Running an action for the panel
+
+The panel needs an action's report as **lines**, not as output on the terminal it is
+drawing over. So stdout is redirected for the duration of the action and handed back
+split into lines, blanks dropped.
+
+Three properties make that safe rather than clever:
+
+- **stdout is put back afterwards**, always. Left redirected, every later print goes
+  to a dead pipe.
+- **the pipe is drained concurrently.** A report longer than the pipe's buffer would
+  otherwise block the action half-way, with the links half-written.
+- **a failing action still returns its lines.** What half-happened is the part that
+  explains the failure.
+
+The report is the command's own words. A second rendering of the same facts is a
+second thing that can disagree with the first.
+
+**Confirmation is passed in, not inferred.** `prune` is dry unless told otherwise, so
+the panel can show a plan on the first press and carry it out on the second without
+the dispatcher guessing which press it is on.
+
+`prune`'s dry report shortens the link's resolved destination. It is an absolute path
+repeating what the item name already says, and left whole it pushed the interesting
+part of the line out of view.
+
 **Exit codes carry meaning.** Non-zero whenever something was not linked or needs
 attention, so a script can gate on it. A conflict counts: an item that did not get
 linked is an incomplete install, whatever the reason.
@@ -198,6 +228,16 @@ commands that write and delete never see a real `~/.claude`.
   Proof: cmd/libretto/scope_test.go TestOutputNamesTheScopeRoot
 - **a long root is elided rather than tearing the frame**
   Proof: cmd/libretto/scope_test.go TestShortenKeepsRootsInsideTheBudget
+- **the strip and the action agree on where the project is**
+  Proof: cmd/libretto/scope_test.go TestStripAndRunnerAgreeOnTheProjectRoot
+- **the capture returns lines and puts stdout back**
+  Proof: cmd/libretto/panelrun_test.go TestRunCapturedReturnsLinesAndRestoresStdout
+- **a failing action still returns what it printed**
+  Proof: cmd/libretto/panelrun_test.go TestRunCapturedKeepsOutputOnFailure
+- every enabled menu label has a dispatch case
+  Proof: cmd/libretto/scope_test.go TestEveryMenuLabelDispatches
+- **an unconfirmed prune removes nothing**
+  Proof: cmd/libretto/scope_test.go TestDispatchedPruneIsDry
 - a root inside the budget is left alone
   Proof: cmd/libretto/scope_test.go TestShortenLeavesShortPathsAlone
 - the tally renders in a fixed order and omits zeros, so one situation gives one line

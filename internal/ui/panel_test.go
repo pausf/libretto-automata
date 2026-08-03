@@ -303,7 +303,7 @@ func TestSelectingAnEnabledActionRunsAndStays(t *testing.T) {
 	m := newDemoModel()
 	m.panel.Selected = 2 // status, enabled
 	ran := ""
-	m = m.WithRunner(func(action string, dest int) ([]string, error) {
+	m = m.WithRunner(func(action string, dest int, _ bool) ([]string, error) {
 		ran = action
 		return []string{"  linked  skills/alpha", "1 linked"}, nil
 	})
@@ -340,7 +340,7 @@ func TestTheRunnerIsToldWhichDestination(t *testing.T) {
 			out[i].Active = true
 			return demoPanel().Menu, out, nil
 		}).
-		WithRunner(func(action string, dest int) ([]string, error) {
+		WithRunner(func(action string, dest int, _ bool) ([]string, error) {
 			got = dest
 			return nil, nil
 		})
@@ -365,7 +365,7 @@ func TestSelectingADisabledActionRunsNothing(t *testing.T) {
 		}
 	}
 	called := false
-	m = m.WithRunner(func(string, int) ([]string, error) { called = true; return nil, nil })
+	m = m.WithRunner(func(string, int, bool) ([]string, error) { called = true; return nil, nil })
 
 	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	if called {
@@ -664,5 +664,150 @@ func TestNoSecondColourCompetesWithSelection(t *testing.T) {
 	// And the active row is still the only gold one.
 	if got := coloursIn(rendered[1]); len(got) != 1 || got[0] != rgbOf(theme.Gold) {
 		t.Errorf("the active row is %v, want only gold", got)
+	}
+}
+
+// ── a destructive action is asked twice, in place ─────────────────────────────
+
+func destructiveModel(t *testing.T, calls *[]bool) Model {
+	t.Helper()
+	menu := []MenuItem{
+		{Label: "install", Desc: "d", Enabled: true},
+		{Label: "prune", Desc: "d", Enabled: true, Destructive: true},
+	}
+	rows := []TargetRow{
+		{Name: "global", Configured: true, Active: true},
+		{Name: "project", Configured: true},
+	}
+	m := NewModel("v0", menu, rows, false).
+		WithRefresh(func(i int) ([]MenuItem, []TargetRow, error) {
+			out := []TargetRow{{Name: "global"}, {Name: "project"}}
+			out[i].Active = true
+			return menu, out, nil
+		}).
+		WithRunner(func(_ string, _ int, confirm bool) ([]string, error) {
+			*calls = append(*calls, confirm)
+			return []string{"  would remove  skills/gone"}, nil
+		})
+	m.panel.Selected = 1 // prune
+	return m
+}
+
+func TestDestructiveActionNeedsASecondPress(t *testing.T) {
+	var calls []bool
+	m := destructiveModel(t, &calls)
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	after := next.(Model)
+	if len(calls) != 1 || calls[0] {
+		t.Fatalf("the first press ran with confirm=%v, want a dry run", calls)
+	}
+	if after.Armed() != "prune" {
+		t.Fatalf("prune is not armed after showing its plan: %q", after.Armed())
+	}
+	if !strings.Contains(after.Notice(), "again") {
+		t.Errorf("the notice does not ask for a second press: %q", after.Notice())
+	}
+	if len(after.Results()) == 0 {
+		t.Error("the plan it wants confirming is not on screen")
+	}
+
+	next, _ = after.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if len(calls) != 2 || !calls[1] {
+		t.Fatalf("the second press ran with confirm=%v, want it carried out", calls)
+	}
+	if got := next.(Model).Armed(); got != "" {
+		t.Errorf("still armed after going ahead: %q", got)
+	}
+}
+
+// Moving the cursor disarms. Otherwise a confirmation could be spent on a row you
+// walked to afterwards.
+func TestMovingTheCursorDisarms(t *testing.T) {
+	var calls []bool
+	m := destructiveModel(t, &calls)
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyUp})
+	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyDown})
+	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+	if len(calls) != 2 || calls[1] {
+		t.Fatalf("calls=%v — a confirmation survived moving the cursor", calls)
+	}
+}
+
+// Switching destination disarms, or the confirmation would apply to a plan read for
+// somewhere else. This is the one that would delete from the wrong place.
+func TestSwitchingDestinationDisarms(t *testing.T) {
+	var calls []bool
+	m := destructiveModel(t, &calls)
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyTab})
+	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+	if len(calls) != 2 || calls[1] {
+		t.Fatalf("calls=%v — a confirmation followed the user to another destination", calls)
+	}
+}
+
+// Nothing to remove is not something to confirm.
+func TestNothingToRemoveIsNotArmed(t *testing.T) {
+	menu := []MenuItem{{Label: "prune", Desc: "d", Enabled: true, Destructive: true}}
+	m := NewModel("v0", menu, []TargetRow{{Name: "global", Active: true}}, false).
+		WithRunner(func(string, int, bool) ([]string, error) { return nil, nil })
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	after := next.(Model)
+	if after.Armed() != "" {
+		t.Errorf("armed with an empty plan: %q", after.Armed())
+	}
+	if !strings.Contains(after.Notice(), "nothing") {
+		t.Errorf("notice = %q, want it to say there was nothing to do", after.Notice())
+	}
+}
+
+// A non-destructive action runs on the first press. Asking twice for everything
+// teaches people to press twice for everything.
+func TestNonDestructiveActionRunsAtOnce(t *testing.T) {
+	var calls []bool
+	m := destructiveModel(t, &calls)
+	m.panel.Selected = 0 // install
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if len(calls) != 1 {
+		t.Fatalf("calls=%v, want one", calls)
+	}
+	if got := next.(Model).Armed(); got != "" {
+		t.Errorf("a non-destructive action armed itself: %q", got)
+	}
+	if !strings.Contains(next.(Model).Notice(), "done") {
+		t.Errorf("notice = %q, want it to say the action finished", next.(Model).Notice())
+	}
+}
+
+// A report line leads with its verb and its subject and trails off into paths, so an
+// over-long one keeps its head. Keeping the tail instead ate the verb: `would remove
+// skills/gone → /very/long/path` rendered as `…/001/skills/gone`, which is
+// unreadable and looks like a different fact altogether.
+func TestReportLinesKeepTheirHead(t *testing.T) {
+	long := "  would remove  skills/gone → /private/var/folders/gn/n55rl6v17v3g4wzhvcl/T/x/001/skills/gone"
+	got := elideRight(long, 40)
+
+	if len([]rune(got)) > 40 {
+		t.Fatalf("elided to %d columns, want at most 40: %q", len([]rune(got)), got)
+	}
+	if !strings.Contains(got, "would remove") {
+		t.Errorf("the verb did not survive: %q", got)
+	}
+	if !strings.Contains(got, "skills/gone") {
+		t.Errorf("the subject did not survive: %q", got)
+	}
+	if !strings.HasSuffix(got, "…") {
+		t.Errorf("the cut is not marked: %q", got)
+	}
+	if short := "  create  skills/alpha"; elideRight(short, 40) != short {
+		t.Errorf("a line inside the budget was altered: %q", elideRight(short, 40))
 	}
 }

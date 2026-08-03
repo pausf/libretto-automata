@@ -157,11 +157,11 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 	// the scope the panel opened with would send `prune` at the old destination after
 	// a tab — the strip reading "project" while links disappear from the global
 	// config. Destructive and silent, which is the worst pair.
-	model = model.WithRunner(func(action string, dest int) ([]string, error) {
+	model = model.WithRunner(func(action string, dest int, confirm bool) ([]string, error) {
 		if dest < 0 || dest >= len(scopeOrder) {
 			return nil, fmt.Errorf("no destination %d", dest)
 		}
-		return runCaptured(action, root, target.Resolve(scopeOrder[dest], projectDir))
+		return runCaptured(action, root, target.Resolve(scopeOrder[dest], projectDir), confirm)
 	})
 
 	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
@@ -174,7 +174,7 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 // would land on top of the panel, so it is redirected for the duration and handed
 // back as lines instead. That also means the panel shows the command's own words
 // rather than a second rendering of the same facts, which could disagree with it.
-func runCaptured(action, root string, tg target.Target) ([]string, error) {
+func runCaptured(action, root string, tg target.Target, confirm bool) ([]string, error) {
 	prev := os.Stdout
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -191,7 +191,7 @@ func runCaptured(action, root string, tg target.Target) ([]string, error) {
 		out <- buf.String()
 	}()
 
-	runErr := dispatch(action, root, tg)
+	runErr := dispatch(action, root, tg, confirm)
 
 	_ = w.Close()
 	os.Stdout = prev
@@ -209,7 +209,7 @@ func runCaptured(action, root string, tg target.Target) ([]string, error) {
 
 // dispatch runs one menu action. The panel's labels are the subcommand names, so
 // there is one list of actions and not two to keep in agreement.
-func dispatch(action, root string, tg target.Target) error {
+func dispatch(action, root string, tg target.Target, confirm bool) error {
 	switch action {
 	case "install":
 		return install(root, tg)
@@ -220,8 +220,11 @@ func dispatch(action, root string, tg target.Target) error {
 	case "doctor":
 		return doctor(root, tg)
 	case "prune":
-		// Dry, exactly as the bare subcommand is. Nothing chosen from a menu
-		// deletes anything without being asked a second time.
+		// Dry unless confirmed. Nothing chosen from a menu deletes on one keypress;
+		// the panel asks again and only then passes the confirmation through.
+		if confirm {
+			return prune(root, tg, []string{"--yes"})
+		}
 		return prune(root, tg, nil)
 	default:
 		return fmt.Errorf("unknown action %q", action)
@@ -286,7 +289,7 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 		{Label: "update", Desc: "git pull · relink · report", Enabled: true},
 		{Label: "status", Desc: summarise(overall), Enabled: true},
 		{Label: "doctor", Desc: "diagnose the orchestra", Enabled: true},
-		{Label: "prune", Desc: "drop links whose source is gone", Enabled: true},
+		{Label: "prune", Desc: "drop links whose source is gone", Enabled: true, Destructive: true},
 	}
 	return menu, rows, nil
 }
@@ -695,8 +698,11 @@ func prune(root string, tg target.Target, args []string) error {
 		case !confirmed:
 			fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
 			for _, a := range plan {
+				// The resolved destination is an absolute path that repeats what the
+				// item name already says. Shortened, so the line stays readable in a
+				// report and in the panel.
 				fmt.Printf("  would remove  %s/%s → %s\n",
-					a.Entry.Kind, a.Entry.Name, a.Entry.Actual)
+					a.Entry.Kind, a.Entry.Name, shorten(a.Entry.Actual))
 			}
 
 		default:
