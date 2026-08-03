@@ -25,6 +25,14 @@ A prompt asked once at startup would be worse: an answer given at the top of a s
 is invisible by the time you press a key, and *where did that just install?* is the
 question this strip exists to answer before it is asked.
 
+**`tab` is listed in the footer and the switch announces itself.** Both are required,
+not polish. The key changes the *destination*, not the cursor, so the `❯` stays exactly
+where it was — anybody watching it sees nothing move and reports the key as broken.
+That is not hypothetical; it is what happened the first time this shipped. A bullet
+changing from `○` to `◉` and a path changing inside a description are evidence you have
+to go looking for, and a key whose effect must be hunted for is a key that does not
+work.
+
 ## Scope boundaries
 
 **In:** the wordmark, palettes, contrast, layout, the fluid frame, the menu, the target
@@ -155,3 +163,7 @@ The model:
   Proof: internal/ui/panel_test.go TestModelKeepsStateWhenRefreshFails
 - with no refresh wired the key is inert
   Proof: internal/ui/panel_test.go TestModelScopeKeyIsInertWithoutRefresh
+- **the footer lists `tab`**, because a key that moves nothing visible reads as broken
+  Proof: internal/ui/panel_test.go TestFooterListsTheScopeKey
+- **switching names the destination it now acts on**
+  Proof: internal/ui/panel_test.go TestSwitchingScopeSaysSo

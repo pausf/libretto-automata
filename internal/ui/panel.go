@@ -190,8 +190,12 @@ func (t Theme) targets(p Panel) string {
 const footerIndent = 6
 
 // footer sits outside the border: version left, key hints right.
+//
+// `tab` is listed because it has to be. It changes the destination rather than the
+// cursor, so anybody watching the `❯` sees nothing move and concludes the key does
+// nothing — an unlisted key that appears broken is worse than no key.
 func (t Theme) footer(p Panel, width int) string {
-	const hints = "↑↓ · ⏎ select · q quit"
+	const hints = "↑↓ · ⏎ select · tab scope · q quit"
 
 	left := strings.Repeat(" ", footerIndent) + p.Version
 	gap := width - lipgloss.Width(left) - lipgloss.Width(hints) - footerIndent

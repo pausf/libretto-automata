@@ -451,3 +451,35 @@ func TestModelScopeKeyIsInertWithoutRefresh(t *testing.T) {
 		t.Fatalf("the mark moved to %d with no refresh wired", got)
 	}
 }
+
+// tab changes the destination, not the cursor. Anybody watching the `❯` sees
+// nothing move, so the key has to be listed and the switch has to announce itself
+// — otherwise it gets reported as broken, which is exactly what happened.
+func TestFooterListsTheScopeKey(t *testing.T) {
+	t.Setenv(EnvTheme, "dark")
+	out := NewTheme().Render(demoPanel())
+
+	if !strings.Contains(out, "tab") {
+		t.Error("the footer never mentions tab; an unlisted key that appears to do nothing reads as broken")
+	}
+}
+
+func TestSwitchingScopeSaysSo(t *testing.T) {
+	t.Setenv(EnvTheme, "dark")
+
+	rows := []TargetRow{
+		{Name: "global", Configured: true, Active: true},
+		{Name: "project", Configured: false},
+	}
+	m := NewModel("v0", demoPanel().Menu, rows, false).
+		WithRefresh(func(i int) ([]MenuItem, []TargetRow, error) {
+			out := []TargetRow{{Name: "global"}, {Name: "project"}}
+			out[i].Active = true
+			return demoPanel().Menu, out, nil
+		})
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	if got := next.(Model).Notice(); !strings.Contains(got, "project") {
+		t.Errorf("switching scope said %q; it has to name where it now acts", got)
+	}
+}

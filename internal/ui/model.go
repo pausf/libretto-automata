@@ -99,7 +99,12 @@ func (m Model) nextScope() (tea.Model, tea.Cmd) {
 	}
 
 	m.panel.Menu, m.panel.Targets = menu, targets
-	m.notice = ""
+
+	// Say it out loud. The switch changes the destination, not the cursor, so the
+	// `❯` stays where it was and the only other evidence is a bullet and a path
+	// that both take looking for. A key whose effect you have to hunt for is a key
+	// people report as broken.
+	m.notice = "acting on " + m.panel.Targets[next].Name
 	return m, nil
 }
 
