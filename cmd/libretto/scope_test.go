@@ -72,7 +72,7 @@ func TestPruneProjectScopeLeavesGlobalAlone(t *testing.T) {
 // ── flag parsing ─────────────────────────────────────────────────────────────
 
 func TestDefaultScopeIsGlobal(t *testing.T) {
-	scope, rest, err := scopeFlags([]string{"install"})
+	scope, _, rest, err := scopeFlags([]string{"install"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestDefaultScopeIsGlobal(t *testing.T) {
 func TestScopeFlagsAreRemovedFromTheArguments(t *testing.T) {
 	// A flag left in the arguments reaches the subcommand, and `prune --project`
 	// would be read as a confirmation that was never given.
-	scope, rest, err := scopeFlags([]string{"prune", "--project", "--yes"})
+	scope, _, rest, err := scopeFlags([]string{"prune", "--project", "--yes"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestBothScopeFlagsIsAnError(t *testing.T) {
 		{"install", "--project", "--global"},
 		{"-p", "install", "-g"},
 	} {
-		if _, _, err := scopeFlags(args); err == nil {
+		if _, _, _, err := scopeFlags(args); err == nil {
 			t.Errorf("%v was accepted; two answers to one question is a mistake, not a precedence rule", args)
 		}
 	}
@@ -113,7 +113,7 @@ func TestBothScopeFlagsIsAnError(t *testing.T) {
 
 func TestRepeatingTheSameScopeFlagIsFine(t *testing.T) {
 	// Harmless and unambiguous. Rejecting it would be pedantry.
-	scope, _, err := scopeFlags([]string{"--project", "install", "--project"})
+	scope, _, _, err := scopeFlags([]string{"--project", "install", "--project"})
 	if err != nil {
 		t.Fatalf("repeating --project was rejected: %v", err)
 	}
