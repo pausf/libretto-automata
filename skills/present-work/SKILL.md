@@ -92,11 +92,33 @@ left out — because no fragment knows.
 Sub-agents return findings; per `skills/write-spec/`, those returns are read before
 the set is accepted, and what they surfaced belongs in this report.
 
+## The saying is unconditional; the stopping is not
+
+**Normally this phase ends by stopping.** Phase 8 begins when the user says it does,
+because presenting before the commit is only a decision point if the answer can still
+be "no, not that".
+
+**One exception, and it is narrow: a change `skills/write-spec/` decided needed no
+spec.** There, the report and the commit land in the same turn, and the only question
+asked is phase 8's last one.
+
+The reason the exception is safe is that there is no contract to disagree with. A
+change too small to argue about what "done" means is a change too small for a gate
+whose whole purpose is to catch a disagreement about "done". Four stops for a typo
+teaches people to route around the flow, and they route around it for typos first.
+
+**What is never conditional is the content.** All three things still get said — what
+was done, where the evidence is, and what was left out with the condition that brings
+it back. The collapse removes a wait, never a sentence. A phase that skips the saying
+because the change was small is how the one omission that mattered goes unmentioned.
+
 ## Output
 
 Per task: what it was, in the spec's terms · its evidence · closed or stopped.
 
 Then the omissions, each with its condition.
+
+Then stop — unless there was no spec, in which case carry straight on to phase 8.
 
 Then **stop and wait**. Do not commit, do not push, do not start the next task.
 Phase 8 begins when the user says it does — presenting exists so that "no" is still

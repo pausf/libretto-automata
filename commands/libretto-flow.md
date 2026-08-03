@@ -56,6 +56,20 @@ one-line change — go straight to phase 6, then 8.
 
 Then **wait** for the go-ahead.
 
+### The trivial lane
+
+**A "no spec needed" collapses the waits too, not only the spec.** That route is
+phase 6, then 7 and 8 **in the same turn**, and exactly one question at the end: push
+and open the request.
+
+Everything still gets said. Phase 7 reports what was done, its evidence and what was
+left out; phase 8 commits per task. What disappears is the *stop* between them, and
+only because there is no contract for the user to disagree with — that is what phase 2
+just established.
+
+The four stops are for a change with a spec. Charging them to a typo is how a flow
+gets routed around, and it gets routed around for typos first.
+
 ## 5 · Plan it
 
 ```
