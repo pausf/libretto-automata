@@ -23,8 +23,33 @@ Both ship with this repository; see `THIRD-PARTY.md`.
 
 `skills/evidence/` governs everything here. Read it first.
 
-What follows is only what those do not decide: how much to test, and whether to
-isolate at all.
+What follows is only what those do not decide: where the work lands, how much to
+test, and whether to isolate at all.
+
+## Step 0 — The branch exists before the first write
+
+**Before editing a single file, look at the branch.** If it is the base branch,
+create one now.
+
+```
+git branch --show-current
+git checkout -b <type>/<description> <base>
+```
+
+Not before the first commit — before the first **write**. The two look
+interchangeable and are not: `git checkout -b` carries uncommitted work along, so
+editing on the base branch and branching at commit time appears to work, and keeps
+appearing to work until the base has moved or a file it changed is one of yours.
+Then the branch cannot be created without a stash, a merge or a loss, and the choice
+arrives at the worst moment — after the work, with the diff already in hand.
+
+This happened in the session that produced this rule. Two files were edited on
+`main`; the branch was created at phase 8. Nothing broke, which is the reason the
+habit survives.
+
+`record-work` checks the same invariant before committing. That is a backstop on a
+cheap question, **not** the place the decision belongs: by phase 8 the work already
+exists, and a check that can only say "too late" is not a check.
 
 ## How much to check
 
@@ -64,7 +89,9 @@ reproducing the setup deliberately and saying how long it took.
 
 One task at a time on one machine does not need a worktree at all.
 
-## Branch, and commit as you go
+## Commit as you go
+
+The branch already exists — step 0. What is left is how many, and when.
 
 A branch per parent task, or per subtask when subtasks are genuinely independent.
 Independent branches get chained — `chained-pr` if it is installed — never eight of

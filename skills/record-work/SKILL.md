@@ -130,30 +130,84 @@ The work is the author's.
 If `caveman-commit` is installed and the user prefers it, use it for the message —
 it produces the same shape, compressed.
 
-## Branches
+## Branches — the backstop, not the decision
 
-A branch per parent task, or per subtask when subtasks are genuinely independent.
+**`skills/build-and-check/` owns the branch**, at its step 0, before the first file is
+written. By the time this phase runs the work already exists, so what happens here is
+a second look at a cheap invariant — not a decision being made for the first time.
 
 Never commit directly to the base branch. If the current branch is the base, stop and
-create one — this is the one check worth making before every commit, because the cost
-of getting it wrong is a rewrite of shared history.
+create one, because the cost of getting it wrong is a rewrite of shared history.
 
+But say plainly that it should not have got this far: reaching phase 8 on the base
+branch means phase 6 skipped its own first step, and that is worth reporting rather
+than quietly fixing. A backstop that silently covers for the rule it backs up is how
+the rule stops being followed.
+
+A branch per parent task, or per subtask when subtasks are genuinely independent.
 Independent branches get chained rather than raced at the trunk. `chained-pr` if it is
 installed.
 
-## Pushing is the user's decision
+## Pushing is the user's decision — and it is one question
 
 **Never push unasked.** Not as a convenience, not because it seems obviously wanted,
 not because the previous task was pushed.
 
-At the very end — after everything is committed and reported — ask once: push, yes or
-no. One question, then respect the answer. A no is a complete answer and needs no
+At the very end — after everything is committed and reported — ask once: **push, and
+open the pull request?** One question, one answer. A no ends it and needs no
 follow-up.
 
-When the answer is yes, confirm it landed: the remote tip matches the local tip. A
-push that printed no error is not a push that was accepted.
+The two used to be asked separately. That bought a second round trip and no safety:
+pushing a branch and then declining to open the request for it is a state almost
+nobody wants, and the user who wants exactly that says so in the same breath. Asking
+twice about one intent is the ceremony this flow is supposed to spend elsewhere.
 
-Opening a pull request is a separate question, asked separately.
+When the answer is yes, confirm it landed: **the remote tip matches the local tip.** A
+push that printed no error is not a push that was accepted. Then read the created
+request back from the forge rather than trusting the output of the command that made
+it.
+
+### Which forge, and whether there is one
+
+Derive it. Do not assume, and do not ask what the repository can answer:
+
+```
+git remote get-url origin
+```
+
+| The URL contains | The tool |
+|---|---|
+| `github.com` | `gh pr create` |
+| `gitlab` | `glab mr create` |
+
+**No remote at all means no question.** There is nothing to push to, so the phase ends
+at the commit and says so in one line.
+
+A missing or unauthenticated CLI **stops**, with the install line and nothing else —
+the shape `skills/find-work/` already uses for `jira`:
+
+```
+brew install gh          # then: gh auth login
+brew install glab        # then: glab auth login
+```
+
+`gh auth login` and `glab auth login` are interactive. The user runs them
+themselves — and **no token ever comes through the conversation.** A credential
+pasted to an agent is in the transcript and the logs from that moment on, and
+rotating it is the only remedy.
+
+Do not offer a workaround. A hand-built API call with a token found in the
+environment is how a stop becomes an exposure, and having the other forge's CLI
+installed is not a fallback: `glab` cannot open a request on GitHub.
+
+**Ceiling named:** this is a substring test on one URL. It does not survive a
+self-hosted forge on a neutral domain, or Gitea and Forgejo. When that day comes the
+answer is an explicit setting read from the repository, not a longer list of guesses.
+
+**The description is written, not omitted.** One or three bullets of what the change
+does, the evidence that it works, and what was deliberately left out — the phase 7
+report already contains all three. `gitlab-mr-description` or an equivalent, if
+installed, may shape it.
 
 ## Before the last word
 
@@ -170,4 +224,5 @@ Then one line per task: what it was, its commit, where its evidence is.
 
 What was committed, on what branch, and whether the spec moved with it.
 
-Then the push question. Then stop.
+Then the one question — push and open the request — or, with no remote, the line that
+says there is nowhere to push. Then stop.

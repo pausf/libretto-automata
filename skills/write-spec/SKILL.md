@@ -34,6 +34,23 @@ When the task is that small, say so, hand back to the flow, and let it go straig
 to the change, its check and a commit. **Skipping this phase is a legitimate
 outcome of it.**
 
+**And the "no" collapses the ceremony with it.** A change that needed no spec does not
+get phase 7's gate either: the report and the commit land in the same turn, and the
+only question asked is the last one — push and open the request. Phase 8's question
+survives every collapse, because it is the user's decision and not ceremony.
+
+The reason is that the gate exists to catch a disagreement about "done", and this
+phase just established there is nothing to disagree about. Keeping the stop anyway
+charges a typo the price of a feature, and a flow that costs four round trips for a
+typo gets routed around — for typos first, then for small features, until what is
+left is a ritual reserved for work important enough to deserve it.
+
+**Say the "no" out loud, in one line.** A phase that declines and reports it is not
+the same as a phase nobody ran, and from outside they look identical. That is a real
+failure with a history: a session skipped this phase and phase 6 entirely, made the
+same judgment this phase would have made, and the user could not tell the difference
+between a considered skip and a forgotten one.
+
 The test is not the diff size — it is whether anyone could reasonably disagree about
 what "done" means. If they could, write the spec. If they could not, do not.
 

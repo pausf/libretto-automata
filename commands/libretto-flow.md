@@ -19,6 +19,25 @@ with their output read.
 If `ponytail` is installed it applies throughout too — how much gets built is its
 question, and phase 2 is where it earns the most.
 
+### A phase is invoked even when it has nothing to do
+
+**Never pre-empt a phase's own judgment.** `write-spec` decides whether a spec is
+needed; `build-and-check` decides how much to check and where the work lands. Those
+decisions belong to those skills, and an orchestrator that makes them itself and
+proceeds has not saved a step — it has moved a decision somewhere nobody can see it.
+
+So invoke every phase the work reaches, **including the ones whose answer is "nothing
+here"**, and report the declining in one line: *phase 2: no spec — a two-line
+documentation edit, nothing to disagree about.*
+
+The cost is one line. What it buys is the difference between a skip and an omission,
+which from outside are identical. That is not hypothetical: a session made exactly the
+right call about a small change, never invoked phases 2 or 6 to make it, and the user
+asked why the flow had not run. It had, in substance. Nothing said so.
+
+Invoking is not gating. A phase that declines does not add a wait — see the trivial
+lane below.
+
 ## 1 · Find the work
 
 ```
@@ -55,6 +74,20 @@ asks what it cannot settle, and writes the six pillars.
 one-line change — go straight to phase 6, then 8.
 
 Then **wait** for the go-ahead.
+
+### The trivial lane
+
+**A "no spec needed" collapses the waits too, not only the spec.** That route is
+phase 6, then 7 and 8 **in the same turn**, and exactly one question at the end: push
+and open the request.
+
+Everything still gets said. Phase 7 reports what was done, its evidence and what was
+left out; phase 8 commits per task. What disappears is the *stop* between them, and
+only because there is no contract for the user to disagree with — that is what phase 2
+just established.
+
+The four stops are for a change with a spec. Charging them to a typo is how a flow
+gets routed around, and it gets routed around for typos first.
 
 ## 5 · Plan it
 
