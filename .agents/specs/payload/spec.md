@@ -15,6 +15,8 @@ Installing this repository gives a working flow on a machine that has nothing el
 - `libretto-status`, read-only, reporting what is in flight
 - one skill per phase, each of which stops where its phase stops
 - three standing rules that hold at every phase: **ask**, **commit**, **evidence**
+- **ceremony proportional to the change** — four stops for a change with a contract, one
+  for a change too small to have one
 - the vendored delegates the thin skills depend on, so a thin skill is never a broken
   one
 - drift detection that ships with the skill that uses it
@@ -36,6 +38,49 @@ third-party items and their attribution.
 - accepting a secret. No skill asks for a token, and any skill that is handed one says
   it is now exposed and continues without it.
 - pushing, or committing from a sub-agent.
+- **a flag, profile or setting for how big a change is.** It is knowable from the change.
+  Asking the user to declare it invents a second source of truth about a fact already on
+  disk, and the two will disagree exactly when it matters.
+- **a second flow for small work.** One flow with a proportionate gear, not two to keep
+  in sync.
+
+### Ceremony is proportional to the change
+
+**Four waits are the price of a contract, not the price of the flow.** Phase 1 reports and
+waits, phase 2 waits for the go-ahead, phase 5 waits, phase 7 waits — and every one of
+those exists so the user can say "no, not that" about something they might disagree with.
+
+When phase 2 answers **no spec needed**, there is nothing to disagree about, so the waits
+go with the spec: phases 6, 7 and 8 run in one turn and exactly one question is asked at
+the end. **That question is phase 8's, and it survives every collapse** — pushing is the
+user's decision, not ceremony.
+
+**What collapses is the wait, never the saying.** Phase 7 still reports what was done, its
+evidence, and what was left out with the condition that brings it back. A phase that skips
+the report because the change looked small is how the one omission that mattered goes
+unmentioned.
+
+The cost of getting this wrong is measured, not theoretical: a session spent four round
+trips updating two documentation files, and every one of the four was mandated by this
+payload. A flow that charges a typo the price of a feature gets routed around — for typos
+first, then for small features, until what is left is a ritual reserved for work important
+enough to deserve it.
+
+### A phase is invoked even when it has nothing to do
+
+**A decision belongs to the phase that owns it.** `write-spec` decides whether a spec is
+needed; `build-and-check` decides where the work lands and how much to check. An
+orchestrator that makes those calls itself and proceeds has not saved a step — it has
+moved a decision somewhere nobody can audit.
+
+So every phase the work reaches is invoked, **including the ones whose answer is "nothing
+here"**, and the declining is reported in one line. Invoking is not gating: a phase that
+declines adds no wait.
+
+The cost is one line. What it buys is the difference between a skip and an omission, which
+from outside are identical — a session made exactly the right call about a small change,
+never invoked phases 2 or 6 to make it, and the user asked why the flow had not run. It
+had, in substance. Nothing said so.
 
 ### Work is found, not fetched
 
@@ -106,9 +151,31 @@ the copy stays comparable with upstream.
 - Drift detection **warns and never blocks**. A check that stops a commit in someone
   else's project is a check that gets deleted.
 - Phase 2 may decide no spec is needed. Skipping the phase is a legitimate outcome of
-  it.
+  it, and the "no" collapses phase 7's gate with it.
 - Phase 6 does not fan out. Parallel implementation needs isolation, a serial merge
   queue and a conflict protocol; without those three, concurrency manufactures races.
+- **Phase 6 owns the branch, at step 0, before the first file is written** — not before
+  the first commit. `git checkout -b` carries uncommitted work, so editing on the base
+  branch and branching at commit time succeeds until the base has moved or touches one
+  of your files. Phase 8 keeps the same check as a backstop, names phase 6 as its owner,
+  and reports rather than silently fixes: a backstop that covers for the rule it backs up
+  is how the rule stops being followed.
+- **Push and the pull request are one question.** Asked separately they bought a second
+  round trip and no safety — a pushed branch with no request opened is a state almost
+  nobody wants, and whoever wants it says so in the same breath.
+- **The forge is derived, never assumed:** `git remote get-url origin`, `github.com` →
+  `gh`, `gitlab` → `glab`. No remote means no question. **Ceiling named:** a substring
+  test on one URL, which does not survive a self-hosted forge on a neutral domain, or
+  Gitea and Forgejo. The replacement that day is an explicit setting read from the
+  repository, not a longer list of guesses in a prompt.
+- **A missing forge CLI stops**, with its install line and nothing else — the shape phase
+  1 already uses for `jira`. Never a hand-built API call using a token found in the
+  environment: that turns a stop into an exposure. The other forge's CLI is not a
+  fallback.
+- **Whether a change needs a spec stays a judgment, with no heuristic behind it** — not a
+  diff-size threshold, not a file count. The real test is whether two people could
+  reasonably disagree about what "done" means. A number would be wrong in both directions
+  and trusted anyway.
 
 ## Task breakdown
 
@@ -123,7 +190,13 @@ the copy stays comparable with upstream.
 - [x] `libretto-flow` — the routing command
 - [x] vendored delegates with attribution
 - [x] `spec-drift` and `check-payload`
-- [ ] **run the flow end to end against a real task.** Nothing here has been executed.
+- [x] **the flow run end to end against a real task.** `right-size-the-flow` — phase 1
+      found it in flight, 2 wrote the delta, 5 the plan, 6 closed six tasks with a commit
+      each, 7 reported, 8 consolidated. The forge stop was exercised for real, not
+      simulated: `gh` was absent, phase 8 stopped with the install line.
+- [ ] **the failure paths.** Still written and never run: an unconfigured tracker, a board
+      URL where a key was expected, the trivial lane actually collapsing on a one-line
+      change, and a sub-agent hitting a question it must not answer itself.
 - [ ] an independent verifier: check the implementation against the spec's criteria,
       never run by whoever wrote the code
 
@@ -166,3 +239,19 @@ The failure paths are the ones worth exercising first, because they are the ones
 and never run: an unconfigured tracker, a board URL where a key was expected, a trivial
 task that should skip phase 2, and a sub-agent that hits a question it must not answer
 itself.
+
+**What the first real run observed**, stated as observations rather than citations, because
+a criterion citing a test that cannot exist is the fabrication the anchor exists to
+prevent:
+
+- phase 6 created the branch before the first edit; nothing landed on `main`
+- the missing-CLI stop fired for real — `gh` absent, install line given, no workaround
+  offered and no token asked for
+- a phase declining was reported in one line, and cost no wait
+- the four stops still happened, because this change had a spec — the gear is
+  proportionate, not removed
+- `prune` removed exactly the one stale link it planned to and left the other thirteen,
+  the first exercise of that path outside a temporary directory
+
+Still unobserved, and therefore still claims rather than facts: the collapsed lane on a
+change that needs no spec, and every remaining failure path above.
