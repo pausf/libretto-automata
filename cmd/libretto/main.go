@@ -1,0 +1,662 @@
+// Command lib is the Libretto Automata CLI.
+//
+// With a TTY and no subcommand it shows the panel. Otherwise it behaves as a
+// plain command, so scripts and CI can use it — see docs/SPEC.md R8.
+package main
+
+import (
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/term"
+	"github.com/mattn/go-isatty"
+	"github.com/muesli/termenv"
+
+	"github.com/pausf/libretto-automata/internal/link"
+	"github.com/pausf/libretto-automata/internal/repo"
+	"github.com/pausf/libretto-automata/internal/target"
+	"github.com/pausf/libretto-automata/internal/ui"
+)
+
+const version = "v0.1.0"
+
+// EnvASCIISafe swaps the clef's quadrant glyphs for half blocks, for fonts that
+// lack them. See docs/DESIGN.md.
+const EnvASCIISafe = "LIBRETTO_ASCII"
+
+func main() {
+	if err := run(os.Args[1:]); err != nil {
+		fmt.Fprintln(os.Stderr, "lib:", err)
+		os.Exit(1)
+	}
+}
+
+func run(args []string) error {
+	root, err := repoRoot()
+	if err != nil {
+		return err
+	}
+
+	if len(args) == 0 {
+		if !isatty.IsTerminal(os.Stdout.Fd()) {
+			usage()
+			os.Exit(2)
+		}
+		return panelUI(root)
+	}
+
+	switch args[0] {
+	case "status":
+		return status(root)
+	case "preview":
+		return preview(root)
+	case "install":
+		return install(root)
+	case "doctor":
+		return doctor(root)
+	case "prune":
+		return prune(root, args[1:])
+	case "update":
+		return update(root)
+	case "version", "-v", "--version":
+		fmt.Println("libretto-automata", version)
+		return nil
+	case "help", "-h", "--help":
+		usage()
+		return nil
+	default:
+		usage()
+		return fmt.Errorf("unknown command %q", args[0])
+	}
+}
+
+func panelUI(root string) error {
+	menu, targets, err := panelData(root)
+	if err != nil {
+		return err
+	}
+
+	model := ui.NewModel(version, menu, targets, asciiSafe())
+	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
+	return err
+}
+
+// panelData assembles the menu and target strip. Everything but update is wired
+// up; update stays visibly disabled rather than hidden, so the panel does not
+// promise what it cannot do.
+func panelData(root string) ([]ui.MenuItem, []ui.TargetRow, error) {
+	var rows []ui.TargetRow
+	var overall = map[link.State]int{}
+
+	for _, tg := range target.All() {
+		counts, err := link.Counts(root, tg)
+		if err != nil {
+			return nil, nil, err
+		}
+		entries, err := link.Scan(root, tg)
+		if err != nil {
+			return nil, nil, err
+		}
+		for state, n := range link.Tally(entries) {
+			overall[state] += n
+		}
+
+		rows = append(rows, ui.TargetRow{
+			Name:       tg.Name(),
+			Info:       describe(tg, counts),
+			Configured: configured(tg),
+		})
+	}
+
+	// The status row carries the live tally, exactly as the design mocks it.
+	menu := []ui.MenuItem{
+		{Label: "install", Desc: "link the score into ~/.claude", Enabled: true},
+		{Label: "update", Desc: "git pull · relink · report", Enabled: true},
+		{Label: "status", Desc: summarise(overall), Enabled: true},
+		{Label: "doctor", Desc: "diagnose the orchestra", Enabled: true},
+		{Label: "prune", Desc: "drop links whose source is gone", Enabled: true},
+	}
+	return menu, rows, nil
+}
+
+// describe renders "12 skills · 8 agents · 4 commands" in the target's own kind
+// order.
+func describe(tg target.Target, counts map[target.Kind]int) string {
+	parts := make([]string, 0, len(tg.Kinds()))
+	for _, k := range tg.Kinds() {
+		parts = append(parts, fmt.Sprintf("%d %s", counts[k], plural(string(k), counts[k])))
+	}
+	return strings.Join(parts, " · ")
+}
+
+// plural singularises a kind name for a count of one. Every kind is named in the
+// plural, so trimming the trailing "s" is enough — no irregulars to handle.
+func plural(kind string, n int) string {
+	if n == 1 {
+		return strings.TrimSuffix(kind, "s")
+	}
+	return kind
+}
+
+// configured reports whether the target is present on disk. Only Claude
+// implements Exists today; anything else is assumed present.
+func configured(tg target.Target) bool {
+	if c, ok := tg.(interface{ Exists() bool }); ok {
+		return c.Exists()
+	}
+	return true
+}
+
+// preview prints the panel once and exits, without starting the TUI.
+//
+// It forces truecolor so the output is identical whether stdout is a terminal or
+// a pipe. That is what makes it usable for screenshots, golden files, and eyeing
+// the LIBRETTO_ASCII fallback.
+func preview(root string) error {
+	menu, targets, err := panelData(root)
+	if err != nil {
+		return err
+	}
+
+	lipgloss.SetColorProfile(termenv.TrueColor)
+	theme := ui.NewTheme()
+
+	fmt.Println()
+	fmt.Println(theme.Render(ui.Panel{
+		Version:   version,
+		Menu:      menu,
+		Selected:  indexOf(menu, "status"),
+		Targets:   targets,
+		Width:     terminalWidth(),
+		ASCIISafe: asciiSafe(),
+	}))
+	return nil
+}
+
+// terminalWidth reports the width to lay out against, or 0 when it is unknown.
+//
+// COLUMNS is honoured as a fallback so a piped preview can still be rendered at
+// a chosen width — otherwise centring would be impossible to check without a
+// terminal.
+func terminalWidth() int {
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		if w, _, err := term.GetSize(os.Stdout.Fd()); err == nil {
+			return w
+		}
+	}
+	if w, err := strconv.Atoi(os.Getenv("COLUMNS")); err == nil && w > 0 {
+		return w
+	}
+	return 0
+}
+
+func indexOf(menu []ui.MenuItem, label string) int {
+	for i, item := range menu {
+		if item.Label == label {
+			return i
+		}
+	}
+	return 0
+}
+
+// status reports every item's state in every target. Read-only, per SPEC R4.
+func status(root string) error {
+	for _, tg := range target.All() {
+		where := "not configured"
+		if configured(tg) {
+			where = tg.Root()
+		}
+		fmt.Printf("%s  %s\n", tg.Name(), where)
+
+		entries, err := link.Scan(root, tg)
+		if err != nil {
+			return err
+		}
+		if len(entries) == 0 {
+			fmt.Println("  nothing to link")
+			continue
+		}
+
+		for _, e := range entries {
+			fmt.Printf("  %-12s %s/%s\n", e.State, e.Kind, e.Name)
+		}
+		fmt.Printf("  %s\n", summarise(link.Tally(entries)))
+	}
+	return nil
+}
+
+// install links every item into every target.
+//
+// Idempotent by construction: an already-correct tree produces an empty plan, so
+// running it twice is not a special case that needed handling (SPEC R9).
+//
+// Conflicts are reported and never touched, and they make the exit code non-zero:
+// an item that did not get linked is an incomplete install, whatever the reason.
+func install(root string) error {
+	var wrote, refused, failed, conflicts int
+
+	for _, tg := range target.All() {
+		entries, err := link.Scan(root, tg)
+		if err != nil {
+			return err
+		}
+
+		plan := link.Plan(entries)
+		fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
+		if len(plan) == 0 {
+			fmt.Println("  already correct")
+			continue
+		}
+
+		for _, r := range link.Apply(root, plan) {
+			e := r.Action.Entry
+			switch {
+			case r.Action.Act == link.Skip:
+				fmt.Printf("  skip     %s/%s (%s)\n", e.Kind, e.Name, e.State)
+				conflicts++
+			case r.Refused:
+				fmt.Printf("  refused  %s/%s — %v\n", e.Kind, e.Name, r.Err)
+				refused++
+			case r.Err != nil:
+				fmt.Printf("  FAILED   %s/%s — %v\n", e.Kind, e.Name, r.Err)
+				failed++
+			default:
+				fmt.Printf("  %-8s %s/%s\n", r.Action.Act, e.Kind, e.Name)
+				wrote++
+			}
+		}
+	}
+
+	fmt.Printf("\n%d linked · %d skipped · %d refused · %d failed\n",
+		wrote, conflicts, refused, failed)
+
+	if failed+refused+conflicts > 0 {
+		return fmt.Errorf("%d item(s) were not linked", failed+refused+conflicts)
+	}
+	return nil
+}
+
+// update refreshes the repo, rebuilds the binary when the Go source moved, and
+// relinks. SPEC R3.
+//
+// The order matters. Nothing is pulled over uncommitted work, and nothing is
+// relinked from source that has not been compiled — a payload from the new commit
+// linked by a binary from the old one is a state nobody asked for and nobody can
+// reason about.
+func update(root string) error {
+	git := repo.Shell{Root: root}
+
+	dirty, err := git.Dirty()
+	if err != nil {
+		return fmt.Errorf("cannot read the repo state: %w", err)
+	}
+	if dirty {
+		fmt.Println("the working tree has uncommitted changes")
+		fmt.Println("nothing was pulled and no link was touched — commit or stash first")
+		return fmt.Errorf("refusing to pull over uncommitted work")
+	}
+
+	before, err := git.Head()
+	if err != nil {
+		return err
+	}
+
+	// No remote is not a failure. There is nothing to pull from, and relinking is
+	// still worth doing — the items on disk may have moved since the last install.
+	remote, err := git.HasRemote()
+	if err != nil {
+		return err
+	}
+	if !remote {
+		fmt.Println("no remote configured — skipping the pull, relinking anyway")
+	} else {
+		if err := git.Pull(); err != nil {
+			return fmt.Errorf("pull failed: %w", err)
+		}
+		after, _ := git.Head()
+		switch {
+		case before == "" || after == "":
+			fmt.Println("pulled")
+		case before == after:
+			fmt.Println("already up to date")
+		default:
+			fmt.Printf("pulled  %s → %s\n", short(before), short(after))
+		}
+	}
+
+	changed, err := git.ChangedSince(before)
+	if err != nil {
+		return err
+	}
+	if repo.NeedsRebuild(changed) {
+		if err := rebuild(root); err != nil {
+			return fmt.Errorf("the pull landed but the rebuild failed: %w", err)
+		}
+		fmt.Println("rebuilt  bin/libretto")
+		fmt.Println("         this process is still the old binary — run it again to use the new one")
+	}
+
+	fmt.Println()
+	return install(root)
+}
+
+// rebuild compiles the CLI to a temporary file and renames it into place.
+//
+// Writing straight over the running executable is what produces "text file busy",
+// and a half-written binary is worse than a stale one. Rename is atomic, and the
+// process already running keeps the inode it started from — which is why the
+// caller has to say so rather than pretend the upgrade took effect mid-run.
+func rebuild(root string) error {
+	dest := filepath.Join(root, "bin", "libretto")
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return err
+	}
+
+	tmp := dest + ".new"
+	cmd := exec.Command("go", "build", "-o", tmp, "./cmd/libretto")
+	cmd.Dir = root
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.Remove(tmp)
+		if text := strings.TrimSpace(string(out)); text != "" {
+			return fmt.Errorf("%s", text)
+		}
+		return err
+	}
+
+	if err := os.Rename(tmp, dest); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
+}
+
+func short(rev string) string {
+	if len(rev) > 7 {
+		return rev[:7]
+	}
+	return rev
+}
+
+// doctor reports what needs attention and what the flow expects to find. It never
+// writes.
+//
+// Two sections with different authority: link problems are this tool's business
+// and set the exit code; prerequisites are informational, because the flow works
+// without the optional ones and saying otherwise would be a lie.
+func doctor(root string) error {
+	problems := 0
+
+	for _, tg := range target.All() {
+		fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
+
+		entries, err := link.Scan(root, tg)
+		if err != nil {
+			return err
+		}
+
+		clean := true
+		for _, e := range entries {
+			if !e.State.NeedsAttention() {
+				continue
+			}
+			clean = false
+			problems++
+			fmt.Printf("  %-12s %s/%s  %s\n", e.State, e.Kind, e.Name, remedy(e.State))
+		}
+		if clean {
+			fmt.Println("  no problems")
+		}
+	}
+
+	fmt.Println("\nprerequisites")
+	for _, p := range prerequisites() {
+		mark := "—"
+		if p.Found {
+			mark = "ok"
+		}
+		fmt.Printf("  %-4s %-22s %s\n", mark, p.Name, p.Note)
+	}
+
+	if problems > 0 {
+		return fmt.Errorf("%d item(s) need attention", problems)
+	}
+	return nil
+}
+
+// remedy names the command that fixes a state, so the report says what to do
+// rather than only what is wrong.
+func remedy(s link.State) string {
+	switch s {
+	case link.Missing, link.WrongTarget:
+		return "→ lib install"
+	case link.Stale:
+		return "→ lib prune"
+	case link.Conflict:
+		return "→ yours, not ours; move it or rename it"
+	default:
+		return ""
+	}
+}
+
+// prune drops owned links with no item behind them.
+//
+// Dry by default. It deletes things, and a destructive command that acts before
+// being asked twice is a command that eventually deletes the wrong thing. Without
+// --yes it prints the plan and changes nothing.
+func prune(root string, args []string) error {
+	confirmed := len(args) > 0 && (args[0] == "--yes" || args[0] == "-y")
+
+	var planned, wrote, refused, failed int
+
+	for _, tg := range target.All() {
+		entries, err := link.Scan(root, tg)
+		if err != nil {
+			return err
+		}
+
+		plan := link.PrunePlan(entries)
+		if len(plan) == 0 {
+			continue
+		}
+		planned += len(plan)
+
+		fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
+
+		if !confirmed {
+			for _, a := range plan {
+				fmt.Printf("  would remove  %s/%s → %s\n",
+					a.Entry.Kind, a.Entry.Name, a.Entry.Actual)
+			}
+			continue
+		}
+
+		for _, r := range link.Apply(root, plan) {
+			e := r.Action.Entry
+			switch {
+			case r.Refused:
+				fmt.Printf("  refused  %s/%s — %v\n", e.Kind, e.Name, r.Err)
+				refused++
+			case r.Err != nil:
+				fmt.Printf("  FAILED   %s/%s — %v\n", e.Kind, e.Name, r.Err)
+				failed++
+			default:
+				fmt.Printf("  removed  %s/%s\n", e.Kind, e.Name)
+				wrote++
+			}
+		}
+	}
+
+	if planned == 0 {
+		fmt.Println("nothing to prune")
+		return nil
+	}
+	if !confirmed {
+		fmt.Printf("\n%d link(s) to remove. Nothing has been changed.\n", planned)
+		fmt.Println("Run `lib prune --yes` to go ahead.")
+		return nil
+	}
+
+	fmt.Printf("\n%d removed · %d refused · %d failed\n", wrote, refused, failed)
+	if failed+refused > 0 {
+		return fmt.Errorf("%d link(s) were not removed", failed+refused)
+	}
+	return nil
+}
+
+// Prereq is one thing the flow looks for on this machine.
+type Prereq struct {
+	Name  string
+	Found bool
+	Note  string
+}
+
+// prerequisites reports what the payload's own skills expect to find.
+//
+// Nothing here is required. `read-task-jira` needs the jira CLI, `record-work`
+// needs a git host, and ponytail and caveman are companions the flow calls when
+// present. Reporting a missing optional as a problem would train people to ignore
+// this section.
+func prerequisites() []Prereq {
+	home, _ := os.UserHomeDir()
+
+	jira := onPath("jira")
+	jiraNote := "read-task-jira — brew install ankitpokhrel/jira-cli/jira-cli"
+	if jira {
+		cfg := os.Getenv("JIRA_CONFIG_FILE")
+		if cfg == "" {
+			cfg = filepath.Join(home, ".config", ".jira", ".config.yml")
+		}
+		if _, err := os.Stat(cfg); err == nil {
+			jiraNote = "read-task-jira — configured"
+		} else {
+			jiraNote = "read-task-jira — installed, run `jira init` yourself"
+			jira = false
+		}
+	}
+
+	host := "record-work — install gh or glab"
+	gh, gl := onPath("gh"), onPath("glab")
+	switch {
+	case gh && gl:
+		host = "record-work — gh and glab"
+	case gh:
+		host = "record-work — gh"
+	case gl:
+		host = "record-work — glab"
+	}
+
+	return []Prereq{
+		{"jira", jira, jiraNote},
+		{"git host", gh || gl, host},
+		{"ponytail", companion(home, "ponytail"), "optional — how much gets built"},
+		{"caveman", companion(home, "caveman"), "optional — how much gets said"},
+	}
+}
+
+func onPath(name string) bool {
+	_, err := exec.LookPath(name)
+	return err == nil
+}
+
+// companion reports whether an optional tool is installed anywhere it can
+// legitimately live.
+//
+// All four places are real and in use: ponytail arrives as a plugin, caveman as
+// plain commands. Checking only the plugin tree reports an installed companion as
+// missing, which is worse than not checking at all — it sends people to install
+// something they already have.
+func companion(home, name string) bool {
+	claude := filepath.Join(home, ".claude")
+	for _, pattern := range []string{
+		filepath.Join(claude, "plugins", "*", "*"+name+"*"),
+		filepath.Join(claude, "plugins", "*", "*", "*"+name+"*"),
+		filepath.Join(claude, "skills", "*"+name+"*"),
+		filepath.Join(claude, "commands", "*"+name+"*"),
+	} {
+		if hits, _ := filepath.Glob(pattern); len(hits) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// summarise renders a tally in a fixed state order, omitting zeros, so two runs
+// with the same situation produce the same line.
+func summarise(counts map[link.State]int) string {
+	order := []link.State{link.Linked, link.Missing, link.WrongTarget, link.Conflict, link.Stale}
+
+	var parts []string
+	for _, s := range order {
+		if n := counts[s]; n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", n, s))
+		}
+	}
+	if len(parts) == 0 {
+		return "nothing to link"
+	}
+	return strings.Join(parts, " · ")
+}
+
+// repoRoot locates the repository this binary belongs to.
+//
+// The binary is expected to live under the repo (bin/libretto after `make build`), so
+// the source file's compile-time location is the reliable anchor during
+// development. LIBRETTO_ROOT overrides it.
+func repoRoot() (string, error) {
+	if r := os.Getenv("LIBRETTO_ROOT"); r != "" {
+		return r, nil
+	}
+	if _, file, _, ok := runtime.Caller(0); ok {
+		// cmd/libretto/main.go -> repo root
+		root := filepath.Dir(filepath.Dir(filepath.Dir(file)))
+		if _, err := os.Stat(filepath.Join(root, "go.mod")); err == nil {
+			return root, nil
+		}
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("cannot locate the repo: %w", err)
+	}
+	return wd, nil
+}
+
+func asciiSafe() bool { return os.Getenv(EnvASCIISafe) == "safe" }
+
+// invokedAs reports the name this binary was called by.
+//
+// The command can be linked under any name — `libretto-automata`, a shorter alias,
+// whatever the user prefers — so help that hardcodes one name is help that lies to
+// everyone using another.
+func invokedAs() string {
+	if len(os.Args) == 0 || os.Args[0] == "" {
+		return "libretto-automata"
+	}
+	return filepath.Base(os.Args[0])
+}
+
+func usage() {
+	n := invokedAs()
+	fmt.Fprintf(os.Stderr, `libretto-automata %s
+
+  %[2]s               show the panel (requires a terminal)
+  %[2]s install       link every item into each target
+  %[2]s update        pull, relink, report
+  %[2]s status        what is linked
+  %[2]s doctor        diagnose links and repo state
+  %[2]s prune         show links whose source is gone, change nothing
+  %[2]s prune --yes   remove them
+  %[2]s preview       print the panel once, no TUI
+
+  LIBRETTO_ASCII=safe   swap quadrant glyphs for half blocks
+  LIBRETTO_THEME=dark|light  force a palette instead of detecting
+  LIBRETTO_ROOT=<path>  override repo location
+  CLAUDE_HOME=<path>    override Claude Code's root
+`, version, n)
+}
