@@ -82,9 +82,23 @@ change_files() { md_under "$CHANGE_ROOTS" | sort -u; }
 # bullet it belongs to is ordinary markdown, and a tool that silently ignores it
 # reports "all citations resolve" while having read none of them. That false green
 # happened here: sixty citations were invisible and the run passed.
-governs_of() { rg -N -o '^[[:space:]]*Governs:.*' "$1" 2>/dev/null | sed 's/^[[:space:]]*Governs:[[:space:]]*//'; }
-targets_of() { rg -N -o '^[[:space:]]*Targets:.*' "$1" 2>/dev/null | sed 's/^[[:space:]]*Targets:[[:space:]]*//'; }
-proofs_of()  { rg -N -o '^[[:space:]]*Proof:.*'   "$1" 2>/dev/null | sed 's/^[[:space:]]*Proof:[[:space:]]*//'; }
+# defenced drops fenced code blocks.
+#
+# A spec that documents this very convention shows it in a fence:
+#
+#     ```
+#     Governs: internal/link/plan.go
+#     ```
+#
+# Read literally, the index page claimed to govern the linking package — an example
+# mistaken for a declaration. Every document explaining the anchors hits this, so it
+# is the extractor's job to know the difference, not the author's job to avoid
+# illustrating.
+defenced() { awk '/^[[:space:]]*```/ { f = !f; next } !f { print }' "$1" 2>/dev/null; }
+
+governs_of() { defenced "$1" | rg -N -o '^[[:space:]]*Governs:.*' | sed 's/^[[:space:]]*Governs:[[:space:]]*//'; }
+targets_of() { defenced "$1" | rg -N -o '^[[:space:]]*Targets:.*' | sed 's/^[[:space:]]*Targets:[[:space:]]*//'; }
+proofs_of()  { defenced "$1" | rg -N -o '^[[:space:]]*Proof:.*'   | sed 's/^[[:space:]]*Proof:[[:space:]]*//'; }
 
 # capability_of <spec_file> — the capability a consolidated spec describes.
 # .agents/specs/bundle-products/spec.md → bundle-products
@@ -275,10 +289,12 @@ self_test() {
   want 'capability from a single file'  SPEC           "$(capability_of 'docs/SPEC.md')"
 
   tmp=$(mktemp)
-  printf 'Governs: a/** b/*\nTargets: bundle-products\nProof: t.go does a thing\n' > "$tmp"
+  # An example inside a fence is an illustration, not a declaration.
+  printf 'Governs: a/** b/*\nTargets: bundle-products\nProof: t.go does a thing\n\x60\x60\x60\nGoverns: never/**\nProof: never.go NeverRun\n\x60\x60\x60\n' > "$tmp"
   want 'Governs: extracted'  'a/** b/*'        "$(governs_of "$tmp")"
   want 'Targets: extracted'  'bundle-products' "$(targets_of "$tmp")"
   want 'Proof: keeps path and name' 't.go does a thing' "$(proofs_of "$tmp")"
+  want 'a fenced example is not a declaration' 'a/** b/*' "$(governs_of "$tmp")"
 
   printf 'func TestReal(t *testing.T) {}\nit("does a thing", () => {})\n' > "$tmp"
   symbol_exists "$tmp" 'TestReal'     && want 'a real Go test is found'   yes yes || want 'a real Go test is found' yes no

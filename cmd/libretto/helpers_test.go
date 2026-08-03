@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/pausf/libretto-automata/internal/target"
+	"github.com/pausf/libretto-automata/internal/ui"
 )
 
 // The fixtures every test in this package builds on.
@@ -165,4 +166,20 @@ func isSymlinkTo(t *testing.T, path, want string) bool {
 func exists(path string) bool {
 	_, err := os.Lstat(path)
 	return err == nil
+}
+
+// rowOf finds a menu row by label.
+//
+// Tests used to hardcode the index, and adding `uninstall` to the menu broke one of
+// them — a test keyed to a position fails when the position changes, which says
+// nothing about the behaviour it was meant to protect.
+func rowOf(t *testing.T, menu []ui.MenuItem, label string) int {
+	t.Helper()
+	for i, m := range menu {
+		if m.Label == label {
+			return i
+		}
+	}
+	t.Fatalf("the menu has no %q row", label)
+	return 0
 }

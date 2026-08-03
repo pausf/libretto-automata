@@ -65,6 +65,8 @@ libretto install   # symlink every item into ~/.claude
 | `libretto` | the panel — needs a terminal |
 | `libretto status` | every item's state. Read-only, always. |
 | `libretto install` | link everything. Idempotent; non-zero exit if anything was skipped. |
+| `libretto uninstall` | show what this repo installed here — **changes nothing** |
+| `libretto uninstall --yes` | take it back out |
 | `libretto update` | pull, relink, rebuild when Go changed |
 | `libretto doctor` | what needs attention, plus what the payload expects here |
 | `libretto prune` | show links whose source is gone — **changes nothing** |
@@ -86,8 +88,16 @@ destinations and `tab` switches which one the keys act on — the active one is 
 Passing both flags is an error. Two answers to one question is a mistake worth
 reporting, not one worth resolving by guessing.
 
-`prune` is dry by default. A destructive command that acts before being asked twice
-eventually deletes the wrong thing, and a pipe is no reason to be less careful.
+`prune` and `uninstall` are both dry by default. A destructive command that acts before
+being asked twice eventually deletes the wrong thing, and a pipe is no reason to be less
+careful. In the panel they take two presses, and moving the cursor or switching
+destination disarms them.
+
+**`prune` and `uninstall` are not the same thing.** Prune cleans up after *the repo*
+changed — rename an item and the old link points at nothing, which is `stale`. Uninstall
+removes links that are **working**, because you changed your mind. Prune deliberately
+spares correct links, and that is what makes it safe to run: you clean one broken link
+without risking a whole installation.
 
 ### The five states
 

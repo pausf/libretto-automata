@@ -126,7 +126,7 @@ func TestPanelPruneConfirmsInPlace(t *testing.T) {
 		WithRunner(func(action string, dest int, confirm bool) ([]string, error) {
 			return runCaptured(action, f.Repo, target.Resolve(scopeOrder[dest], f.Project), confirm)
 		}).
-		SetSelectedForTest(4) // prune
+		SetSelectedForTest(rowOf(t, menu, "prune"))
 
 	// enter → plan, enter → go ahead, q → leave.
 	in := bytes.NewReader([]byte{0x0d, 0x0d, 'q'})
@@ -167,7 +167,7 @@ func TestPanelPruneOnOnePressRemovesNothing(t *testing.T) {
 		WithRunner(func(action string, dest int, confirm bool) ([]string, error) {
 			return runCaptured(action, f.Repo, target.Resolve(scopeOrder[dest], f.Project), confirm)
 		}).
-		SetSelectedForTest(4)
+		SetSelectedForTest(rowOf(t, menu, "prune"))
 
 	in := bytes.NewReader([]byte{0x0d, 'q'})
 	p := tea.NewProgram(model, tea.WithInput(in), tea.WithOutput(io.Discard))

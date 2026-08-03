@@ -141,3 +141,60 @@ func TestPlanIsPure(t *testing.T) {
 		t.Fatalf("planning consulted the filesystem: %v", plan)
 	}
 }
+
+// ── uninstall ────────────────────────────────────────────────────────────────
+
+func TestUninstallPlan(t *testing.T) {
+	cases := []struct {
+		name    string
+		entries []Entry
+		want    []Act
+	}{
+		{"a working link is removed", []Entry{entry(Linked, "a")}, []Act{Remove}},
+		{"a misaimed one too, without repairing it first", []Entry{entry(WrongTarget, "a")}, []Act{Remove}},
+		{"an orphaned one too", []Entry{entry(Stale, "a")}, []Act{Remove}},
+		{"a conflict is skipped, and said so", []Entry{entry(Conflict, "a")}, []Act{Skip}},
+		{"nothing there is nothing to undo", []Entry{entry(Missing, "a")}, nil},
+		{
+			"order follows the scan",
+			[]Entry{entry(Linked, "a"), entry(Missing, "b"), entry(Conflict, "c"), entry(Stale, "d")},
+			[]Act{Remove, Skip, Remove},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := acts(UninstallPlan(c.entries)); !sameActs(got, c.want) {
+				t.Fatalf("got %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
+// The difference from install, stated as a test: a tree with nothing wrong in it has
+// nothing for `install` to do and everything for `uninstall` to do.
+func TestUninstallPlanRemovesWorkingLinks(t *testing.T) {
+	correct := []Entry{entry(Linked, "a"), entry(Linked, "b"), entry(Linked, "c")}
+
+	if got := Plan(correct); len(got) != 0 {
+		t.Fatalf("install planned %d actions for a correct tree", len(got))
+	}
+	got := UninstallPlan(correct)
+	if len(got) != 3 {
+		t.Fatalf("uninstall planned %d actions for three working links, want 3", len(got))
+	}
+	for _, a := range got {
+		if a.Act != Remove {
+			t.Errorf("planned %s for a working link, want remove", a.Act)
+		}
+	}
+}
+
+// And it never plans to touch what it did not create.
+func TestUninstallPlanNeverPlansAConflict(t *testing.T) {
+	for _, a := range UninstallPlan([]Entry{entry(Conflict, "theirs")}) {
+		if a.Writes() {
+			t.Fatalf("uninstall planned %s against a conflict", a.Act)
+		}
+	}
+}

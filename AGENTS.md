@@ -46,8 +46,10 @@ libretto                # the panel (needs a TTY)
 libretto status         # every item's state, read-only
 libretto install        # link everything; idempotent; non-zero if anything was skipped
 libretto doctor         # what needs attention + what the payload expects on this machine
-libretto prune          # show removable links, change nothing
+libretto prune          # links whose source is gone; change nothing
 libretto prune --yes    # remove them
+libretto uninstall      # what this repo installed here; change nothing
+libretto uninstall --yes # take it back out
 libretto preview
 
 libretto install --project   # <cwd>/.claude instead of ~/.claude

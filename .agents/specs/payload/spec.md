@@ -105,6 +105,16 @@ the copy stays comparable with upstream.
   Proof: scripts/check-payload
 - glob matching, capability derivation and citation extraction behave
   Proof: skills/record-work/spec-drift --self-test
+- **an anchor inside a fenced code block is an illustration, not a declaration.** Any
+  document explaining the convention shows it in a fence; reading that literally made
+  the index page claim to govern the linking package. Knowing the difference is the
+  extractor's job, not the author's job to avoid illustrating.
+  Proof: skills/record-work/spec-drift --self-test
+- **a glob that matches real directories is still a pattern.** Unquoted, the shell
+  path-expands it before it is ever compared, so every glob matching real files
+  silently stopped working and the check reported drift nowhere. `set -f` off, and a
+  false negative in a checker is worse than no checker.
+  Proof: skills/record-work/spec-drift --self-test
 - **an invented test name is rejected rather than accepted**
   Proof: skills/record-work/spec-drift --self-test
 - every `Proof:` citation in every spec resolves, file and test name

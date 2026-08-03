@@ -119,6 +119,8 @@ func run(args []string) error {
 		return doctor(root, tg)
 	case "prune":
 		return prune(root, tg, args[1:])
+	case "uninstall":
+		return uninstall(root, tg, args[1:])
 	case "update":
 		return update(root, tg)
 	case "version", "-v", "--version":
@@ -219,6 +221,11 @@ func dispatch(action, root string, tg target.Target, confirm bool) error {
 		return status(root, tg)
 	case "doctor":
 		return doctor(root, tg)
+	case "uninstall":
+		if confirm {
+			return uninstall(root, tg, []string{"--yes"})
+		}
+		return uninstall(root, tg, nil)
 	case "prune":
 		// Dry unless confirmed. Nothing chosen from a menu deletes on one keypress;
 		// the panel asks again and only then passes the confirmation through.
@@ -286,6 +293,7 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 	// The status row carries the live tally, exactly as the design mocks it.
 	menu := []ui.MenuItem{
 		{Label: "install", Desc: "link the score into " + shorten(active.Root()), Enabled: true},
+		{Label: "uninstall", Desc: "take it back out of " + shorten(active.Root()), Enabled: true, Destructive: true},
 		{Label: "update", Desc: "git pull · relink · report", Enabled: true},
 		{Label: "status", Desc: summarise(overall), Enabled: true},
 		{Label: "doctor", Desc: "diagnose the orchestra", Enabled: true},
@@ -741,6 +749,78 @@ func prune(root string, tg target.Target, args []string) error {
 	return nil
 }
 
+// uninstall undoes this repository's work at one destination.
+//
+// The pair of install, not of prune. Prune cleans up after the repo changed and
+// deliberately spares links that are correct; this removes links that are working,
+// because the user changed their mind rather than because the repo did.
+//
+// Dry by default for the same reason prune is: a destructive command that acts before
+// being asked twice eventually acts on the wrong thing, and a pipe is no reason to be
+// less careful.
+func uninstall(root string, tg target.Target, args []string) error {
+	confirmed := len(args) > 0 && (args[0] == "--yes" || args[0] == "-y")
+
+	entries, err := link.Scan(root, tg)
+	if err != nil {
+		return err
+	}
+	plan := link.UninstallPlan(entries)
+	writes := link.Writes(plan)
+
+	if len(writes) == 0 {
+		fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
+		fmt.Println("  nothing of ours is installed here")
+		return nil
+	}
+
+	fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
+
+	var removed, refused, failed, conflicts int
+	if !confirmed {
+		for _, a := range plan {
+			if a.Act == link.Skip {
+				fmt.Printf("  keep          %s/%s (%s — not ours)\n",
+					a.Entry.Kind, a.Entry.Name, a.Entry.State)
+				conflicts++
+				continue
+			}
+			fmt.Printf("  would remove  %s/%s\n", a.Entry.Kind, a.Entry.Name)
+		}
+		fmt.Printf("\n%d link(s) to remove. Nothing has been changed.\n", len(writes))
+		fmt.Printf("Run `%s uninstall --yes` to go ahead.\n", invokedAs())
+		return nil
+	}
+
+	for _, r := range link.Apply(root, plan) {
+		e := r.Action.Entry
+		switch {
+		case r.Action.Act == link.Skip:
+			fmt.Printf("  keep     %s/%s (%s — not ours)\n", e.Kind, e.Name, e.State)
+			conflicts++
+		case r.Refused:
+			fmt.Printf("  refused  %s/%s — %v\n", e.Kind, e.Name, r.Err)
+			refused++
+		case r.Err != nil:
+			fmt.Printf("  FAILED   %s/%s — %v\n", e.Kind, e.Name, r.Err)
+			failed++
+		default:
+			fmt.Printf("  removed  %s/%s\n", e.Kind, e.Name)
+			removed++
+		}
+	}
+
+	fmt.Printf("\n%d removed · %d kept · %d refused · %d failed\n",
+		removed, conflicts, refused, failed)
+
+	// Anything that survived means the destination is not in the state the report
+	// implies, so a script has to be able to tell.
+	if refused+failed > 0 {
+		return fmt.Errorf("%d link(s) were not removed", refused+failed)
+	}
+	return nil
+}
+
 // Prereq is one thing the flow looks for on this machine.
 type Prereq struct {
 	Name  string
@@ -883,6 +963,8 @@ func usage() {
   %[2]s doctor        diagnose links and repo state
   %[2]s prune         show links whose source is gone, change nothing
   %[2]s prune --yes   remove them
+  %[2]s uninstall     show what this repo installed here, change nothing
+  %[2]s uninstall --yes  remove it
   %[2]s preview       print the panel once, no TUI
 
   --global, -g          act on ~/.claude (the default)

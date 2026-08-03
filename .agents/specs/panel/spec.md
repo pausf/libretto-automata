@@ -91,6 +91,9 @@ the case that deletes from the wrong place, so it has its own test.
 
 Nothing to remove is not something to confirm: an empty plan says so and arms nothing.
 
+`install` and `uninstall` sit together at the top so the pair reads as a pair, and
+`uninstall`'s row names the destination the same way `install`'s does.
+
 **Only actions marked destructive ask twice.** Asking for everything teaches people to
 press twice for everything, which is how a confirmation stops being read.
 
@@ -284,6 +287,10 @@ The model:
   Proof: cmd/libretto/panelrun_test.go TestPanelPruneConfirmsInPlace
 - **one press removes nothing**
   Proof: cmd/libretto/panelrun_test.go TestPanelPruneOnOnePressRemovesNothing
+- **uninstall is offered, enabled, marked destructive, and names its destination**
+  Proof: cmd/libretto/uninstall_test.go TestPanelOffersUninstallAsDestructive
+- **one press of uninstall removes nothing; the second does**
+  Proof: cmd/libretto/uninstall_test.go TestPanelUninstallNeedsTwoPresses
 - report lines keep their head, so the verb survives the elision
   Proof: internal/ui/panel_test.go TestReportLinesKeepTheirHead
 - **the rows report their own state and can differ**

@@ -16,7 +16,8 @@ plain command.
 | `update` | pull, relink, rebuild when Go changed, report |
 | `status` | every item's state, read-only |
 | `doctor` | what needs attention, plus what the payload expects on this machine |
-| `prune` | show removable links; `--yes` removes them |
+| `prune` | show links whose source is gone; `--yes` removes them |
+| `uninstall` | show what this repo installed here; `--yes` removes it |
 | `preview` | print the panel once, no TUI |
 | `version`, `help` | say so |
 
@@ -96,6 +97,11 @@ variables, repo-root discovery, the prerequisite report.
 - configuration files. There are none, deliberately.
 
 ## Constraints
+
+**`uninstall` is dry by default too**, and exits non-zero when anything it meant to
+remove survived — a refusal or a failure means the destination is not in the state the
+report implies. A kept conflict is not a failure: it was never ours, and saying so is
+the correct outcome.
 
 **`prune` is dry by default.** With no flag it prints what it would remove and changes
 nothing; `--yes` carries it out. This is stricter than confirming only when
@@ -238,6 +244,18 @@ commands that write and delete never see a real `~/.claude`.
   Proof: cmd/libretto/scope_test.go TestEveryMenuLabelDispatches
 - **an unconfirmed prune removes nothing**
   Proof: cmd/libretto/scope_test.go TestDispatchedPruneIsDry
+- **an unconfirmed uninstall removes nothing**
+  Proof: cmd/libretto/uninstall_test.go TestUninstallWithoutYesChangesNothing
+- `uninstall --yes` removes what the plan named
+  Proof: cmd/libretto/uninstall_test.go TestUninstallYesRemovesOurLinks
+- **it acts on one destination only**
+  Proof: cmd/libretto/uninstall_test.go TestUninstallProjectScopeLeavesGlobalAlone
+- **a conflict is kept, reported, and not an error on its own**
+  Proof: cmd/libretto/uninstall_test.go TestUninstallReportsConflicts
+- nothing of ours installed is a state, not an error
+  Proof: cmd/libretto/uninstall_test.go TestUninstallOnACleanDestinationSaysSo
+- **install then uninstall is a round trip**
+  Proof: cmd/libretto/uninstall_test.go TestInstallThenUninstallIsARoundTrip
 - a root inside the budget is left alone
   Proof: cmd/libretto/scope_test.go TestShortenLeavesShortPathsAlone
 - the tally renders in a fixed order and omits zeros, so one situation gives one line

@@ -30,6 +30,32 @@ An already-correct tree produces an empty plan and therefore performs no writes.
 is what makes the command safe to run repeatedly rather than something to be careful
 with.
 
+### Three plans, one set of actions
+
+| State | `install` | `prune` | `uninstall` |
+|---|---|---|---|
+| `missing` | `create` | — | — |
+| `linked` | — | — | `remove` |
+| `wrong target` | `repoint` | — | `remove` |
+| `stale` | — | `remove` | `remove` |
+| `conflict` | `skip` | — | `skip` |
+
+**`uninstall` is the pair of `install`, not of `prune`.** Prune cleans up after the
+*repo* changed — a renamed item leaves a link pointing at nothing — and deliberately
+spares links that are correct. That sparing is the guarantee that makes it safe to run:
+you clean one broken link without risking a whole installation. Uninstall removes links
+that are **working**, because the user changed their mind rather than because the repo
+did.
+
+Merging the two would turn a cleanup command into a delete command, and the day somebody
+runs it expecting to tidy one broken link and loses their installation is the day this
+tool stops being trustworthy.
+
+**No new applying logic for any of them.** All three produce the same actions over the
+same `Apply`, which already re-checks ownership at write time and already removes a link
+without following it. A new plan is a new question about *which* entries, answered by a
+pure function over machinery that is already proven.
+
 ## Scope boundaries
 
 **In:** planning, creating links, repointing our own, removing our own stale ones,
@@ -55,6 +81,10 @@ the plan, the action is refused and reported.
 **One failure does not abandon the rest.** A plan of ten with one impossible item
 performs the nine and reports the one. An early exit tells the user about neither.
 
+**An emptied destination directory is left in place.** `~/.claude/skills/` is shared
+with other tooling; removing it because our last item left would be deleting something
+we did not create.
+
 **A stale link's destination is never followed.** `os.Remove` on a symlink removes the
 link; the ownership re-check keeps a real directory from ever reaching that call.
 
@@ -73,7 +103,7 @@ memory.
 
 ## Task breakdown
 
-Complete. Phase 3.1 planning, 3.2 applying, 3.3 prune.
+Complete. Phase 3.1 planning, 3.2 applying, 3.3 prune, and `uninstall` after it.
 
 ## Verification criteria
 
@@ -103,3 +133,17 @@ Complete. Phase 3.1 planning, 3.2 applying, 3.3 prune.
   Proof: internal/link/apply_test.go TestPruneRemovesTheLinkAndNotItsDestination
 - one impossible action does not abandon the others
   Proof: internal/link/apply_test.go TestApplyContinuesAfterAFailure
+- every owned state becomes `remove` for uninstall, and a conflict becomes `skip`
+  Proof: internal/link/plan_test.go TestUninstallPlan
+- **a correct tree still gives uninstall a full plan** — nothing wrong is not nothing to do
+  Proof: internal/link/plan_test.go TestUninstallPlanRemovesWorkingLinks
+- uninstall never plans a write against a conflict
+  Proof: internal/link/plan_test.go TestUninstallPlanNeverPlansAConflict
+- **a real foreign directory and a foreign symlink both survive an uninstall**
+  Proof: internal/link/apply_test.go TestUninstallLeavesForeignEntriesAlone
+- **uninstall removes the link and not the item in the repo**
+  Proof: internal/link/apply_test.go TestUninstallRemovesLinksNotSources
+- an emptied destination directory survives
+  Proof: internal/link/apply_test.go TestUninstallLeavesTheDirectoryInPlace
+- a link that stopped being ours is refused here too
+  Proof: internal/link/apply_test.go TestUninstallRefusesALinkThatStoppedBeingOurs
