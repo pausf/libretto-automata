@@ -130,14 +130,21 @@ The work is the author's.
 If `caveman-commit` is installed and the user prefers it, use it for the message —
 it produces the same shape, compressed.
 
-## Branches
+## Branches — the backstop, not the decision
 
-A branch per parent task, or per subtask when subtasks are genuinely independent.
+**`skills/build-and-check/` owns the branch**, at its step 0, before the first file is
+written. By the time this phase runs the work already exists, so what happens here is
+a second look at a cheap invariant — not a decision being made for the first time.
 
 Never commit directly to the base branch. If the current branch is the base, stop and
-create one — this is the one check worth making before every commit, because the cost
-of getting it wrong is a rewrite of shared history.
+create one, because the cost of getting it wrong is a rewrite of shared history.
 
+But say plainly that it should not have got this far: reaching phase 8 on the base
+branch means phase 6 skipped its own first step, and that is worth reporting rather
+than quietly fixing. A backstop that silently covers for the rule it backs up is how
+the rule stops being followed.
+
+A branch per parent task, or per subtask when subtasks are genuinely independent.
 Independent branches get chained rather than raced at the trunk. `chained-pr` if it is
 installed.
 
