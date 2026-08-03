@@ -166,7 +166,7 @@ default nobody chose.
 - [x] menu rendering and selection
 - [x] the Bubbletea model and navigation
 - [x] the active destination, visible and switchable
-- [ ] 6.5 confirmation form for destructive actions
+- [x] 6.5 confirmation for destructive actions — in the model, not a Huh form
 - [ ] 6.6 target-strip golden files
 - [ ] 6.7 `teatest` end-to-end flow
 
