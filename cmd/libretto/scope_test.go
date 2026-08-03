@@ -259,3 +259,64 @@ func descOf(menu []ui.MenuItem, label string) string {
 	}
 	return ""
 }
+
+// ── the panel's actions actually run ─────────────────────────────────────────
+
+// The bug: selecting `install` set a notice reading "running install…" and ran
+// nothing at all. The panel promised work it never did, which is worse than a panel
+// with no actions — and there was a test asserting the notice, so the lie looked
+// verified.
+func TestDispatchRunsTheAction(t *testing.T) {
+	f := newFixture(t)
+	item := f.skill(t, "alpha")
+
+	if _, _, err := capture(t, func() error {
+		return dispatch("install", f.Repo, f.project())
+	}); err != nil {
+		t.Fatalf("dispatch install failed: %v", err)
+	}
+
+	if !isSymlinkTo(t, f.projectDest("skills", "alpha"), item) {
+		t.Fatal("dispatch reported no error and installed nothing")
+	}
+}
+
+// Every menu label must dispatch. A label with no case behind it is a row that does
+// nothing, which is the bug this pins down, one action at a time.
+func TestEveryMenuLabelDispatches(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	menu, _, err := panelData(f.Repo, target.GlobalScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, item := range menu {
+		if !item.Enabled {
+			continue
+		}
+		_, _, err := capture(t, func() error { return dispatch(item.Label, f.Repo, f.global()) })
+		if err != nil && strings.Contains(err.Error(), "unknown action") {
+			t.Errorf("menu offers %q and dispatch has no case for it", item.Label)
+		}
+	}
+}
+
+// Chosen from a menu, prune must still be dry. Nothing deletes on one keypress.
+func TestDispatchedPruneIsDry(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	f.link(t, f.Repo+"/skills/gone", f.dest("skills", "gone"))
+
+	out, _, err := capture(t, func() error { return dispatch("prune", f.Repo, f.global()) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(f.dest("skills", "gone")); os.IsNotExist(err) {
+		t.Fatal("prune chosen from the menu deleted a link without being asked twice")
+	}
+	if !strings.Contains(out, "would remove") {
+		t.Errorf("prune did not say what it would do:\n%s", out)
+	}
+}

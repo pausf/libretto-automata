@@ -52,6 +52,24 @@ changing from `○` to `◉` and a path changing inside a description are eviden
 to go looking for, and a key whose effect must be hunted for is a key that does not
 work.
 
+### Selecting an action chooses it; the caller runs it
+
+`enter` records the action and quits. The panel does not execute anything, and
+deliberately does not try: an action's output is many lines of report, and a
+full-screen TUI would have to capture, buffer and scroll what the plain command
+already prints perfectly well. The caller dispatches exactly as if the subcommand had
+been typed, on the destination the strip was pointing at.
+
+**Quitting is not choosing**, or `q` would run whatever the cursor was resting on. A
+refused action chooses nothing either.
+
+`prune` chosen from the menu is still dry. Nothing deletes on one keypress.
+
+An earlier version set the notice to `running install…` and ran nothing, and there was
+a test asserting that notice — so the lie looked verified. **A panel that says it is
+working and is not is worse than a panel with no actions at all**, and a test that pins
+a placeholder in place is worse than no test.
+
 ## Scope boundaries
 
 **In:** the wordmark, palettes, contrast, layout, the fluid frame, the menu, the target
@@ -59,7 +77,7 @@ strip, the Bubbletea model and its navigation.
 
 **Out:**
 
-- performing any action. The model dispatches; `cli` and `linking` do the work.
+- **performing an action.** The model reports the choice; `cli` runs it.
 - **dimming disabled rows.** Colour carries selection and nothing else, so a disabled
   row keeps full contrast and reads as available-but-inert rather than as noise.
 - images, sixel, mouse. A symlink installer does not need them.
@@ -192,6 +210,18 @@ The model:
   Proof: internal/ui/panel_test.go TestActiveDestinationIsMarkedWithoutColour
 - **no second colour competes with gold for meaning**
   Proof: internal/ui/panel_test.go TestNoSecondColourCompetesWithSelection
+- **selecting an action reports the choice and quits**
+  Proof: internal/ui/panel_test.go TestModelSelectingAnEnabledActionReportsTheChoice
+- quitting chooses nothing
+  Proof: internal/ui/panel_test.go TestQuittingChoosesNothing
+- a refused action chooses nothing
+  Proof: internal/ui/panel_test.go TestSelectingADisabledActionChoosesNothing
+- **the choice actually runs**
+  Proof: cmd/libretto/scope_test.go TestDispatchRunsTheAction
+- **every enabled menu label has a dispatch case**
+  Proof: cmd/libretto/scope_test.go TestEveryMenuLabelDispatches
+- prune chosen from the menu is still dry
+  Proof: cmd/libretto/scope_test.go TestDispatchedPruneIsDry
 - **the rows report their own state and can differ**
   Proof: cmd/libretto/scope_test.go TestStripRowsReportTheirOwnState
 - the status row follows the active destination rather than summing both

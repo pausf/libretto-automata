@@ -17,6 +17,7 @@ type Model struct {
 	panel   Panel
 	notice  string // one-line feedback under the panel
 	done    bool
+	chosen  string // the action selected on the way out, "" if the user just quit
 	refresh Refresh
 }
 
@@ -121,7 +122,19 @@ func (m Model) activeScope() int {
 // ActiveScope exposes the marked destination for tests.
 func (m Model) ActiveScope() int { return m.activeScope() }
 
-// selectCurrent runs — or refuses to run — the highlighted action.
+// selectCurrent records the chosen action and leaves.
+//
+// **The panel chooses; the caller runs.** It does not execute anything itself, and
+// it deliberately does not try: an action's output is many lines of report, and a
+// full-screen TUI would have to capture, buffer and scroll it to show what the plain
+// command already prints perfectly well.
+//
+// So selection quits, and the caller dispatches exactly as if the subcommand had
+// been typed. The user sees the ordinary output on the ordinary terminal.
+//
+// This replaces a placeholder that set the notice to "running install…" and then
+// returned, having run nothing. A panel that says it is working and is not is worse
+// than a panel with no actions at all.
 func (m Model) selectCurrent() (tea.Model, tea.Cmd) {
 	if len(m.panel.Menu) == 0 {
 		return m, nil
@@ -132,9 +145,14 @@ func (m Model) selectCurrent() (tea.Model, tea.Cmd) {
 		m.notice = item.Label + " is not wired up yet"
 		return m, nil
 	}
-	m.notice = "running " + item.Label + "…"
-	return m, nil
+
+	m.chosen = item.Label
+	m.done = true
+	return m, tea.Quit
 }
+
+// Chosen is the action the user selected, or "" if they quit without choosing.
+func (m Model) Chosen() string { return m.chosen }
 
 func (m Model) View() string {
 	if m.done {

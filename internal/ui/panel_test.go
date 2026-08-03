@@ -294,13 +294,52 @@ func TestModelSelectingADisabledActionRefuses(t *testing.T) {
 	}
 }
 
-func TestModelSelectingAnEnabledActionRuns(t *testing.T) {
+// Selecting an action records it and quits, so the caller can run it and let its
+// report land on the ordinary terminal.
+//
+// This test used to assert that the notice read "running status…" — and it passed,
+// while nothing ran. A test that pins a placeholder in place is worse than no test:
+// it makes the lie look verified. What matters is that the choice comes back out.
+func TestModelSelectingAnEnabledActionReportsTheChoice(t *testing.T) {
 	m := newDemoModel()
 	m.panel.Selected = 2 // status, enabled
 
+	next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	after := next.(Model)
+
+	if got := after.Chosen(); got != "status" {
+		t.Errorf("Chosen() = %q, want %q", got, "status")
+	}
+	if cmd == nil {
+		t.Error("selecting an action did not quit; the caller never gets to run it")
+	}
+}
+
+// Quitting is not choosing. Otherwise `q` would run whatever the cursor happened to
+// be sitting on.
+func TestQuittingChoosesNothing(t *testing.T) {
+	m := newDemoModel()
+	m.panel.Selected = 2
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	if got := next.(Model).Chosen(); got != "" {
+		t.Errorf("quitting reported %q as chosen", got)
+	}
+}
+
+// A disabled action is still refused, and refusing is not choosing.
+func TestSelectingADisabledActionChoosesNothing(t *testing.T) {
+	m := newDemoModel()
+	for i, item := range m.panel.Menu {
+		if !item.Enabled {
+			m.panel.Selected = i
+			break
+		}
+	}
+
 	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	if notice := next.(Model).Notice(); !strings.Contains(notice, "status") {
-		t.Errorf("notice = %q, want it to mention the action", notice)
+	if got := next.(Model).Chosen(); got != "" {
+		t.Errorf("a disabled action was reported as chosen: %q", got)
 	}
 }
 

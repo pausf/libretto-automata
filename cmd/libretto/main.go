@@ -140,8 +140,47 @@ func panelUI(root string, scope target.Scope) error {
 			return panelData(root, scopeOrder[i])
 		})
 
-	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
-	return err
+	final, err := tea.NewProgram(model, tea.WithAltScreen()).Run()
+	if err != nil {
+		return err
+	}
+
+	// The panel chose; now run it, on the destination it was pointing at.
+	//
+	// Dispatching out here rather than inside the TUI is what lets the action print
+	// its ordinary report to the ordinary terminal. The alternative is capturing many
+	// lines of output into a scrolling view nobody asked for.
+	m, ok := final.(ui.Model)
+	if !ok || m.Chosen() == "" {
+		return nil
+	}
+
+	chosenScope := scope
+	if i := m.ActiveScope(); i >= 0 && i < len(scopeOrder) {
+		chosenScope = scopeOrder[i]
+	}
+	return dispatch(m.Chosen(), root, target.Resolve(chosenScope, ""))
+}
+
+// dispatch runs one menu action. The panel's labels are the subcommand names, so
+// there is one list of actions and not two to keep in agreement.
+func dispatch(action, root string, tg target.Target) error {
+	switch action {
+	case "install":
+		return install(root, tg)
+	case "update":
+		return update(root, tg)
+	case "status":
+		return status(root, tg)
+	case "doctor":
+		return doctor(root, tg)
+	case "prune":
+		// Dry, exactly as the bare subcommand is. Nothing chosen from a menu
+		// deletes anything without being asked a second time.
+		return prune(root, tg, nil)
+	default:
+		return fmt.Errorf("unknown action %q", action)
+	}
 }
 
 // scopeOrder is the order destinations appear in the strip, and the order tab
