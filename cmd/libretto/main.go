@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -88,14 +89,23 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	tg := target.Resolve(scope, "")
+	// Where "the project" is, decided once.
+	//
+	// Resolving it separately in each place that needs it means two answers that
+	// agree only by accident — and they did disagree: the strip read one root while
+	// an action wrote to another. One lookup, threaded down.
+	projectDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	tg := target.Resolve(scope, projectDir)
 
 	if len(args) == 0 {
 		if !isatty.IsTerminal(os.Stdout.Fd()) {
 			usage()
 			os.Exit(2)
 		}
-		return panelUI(root, scope)
+		return panelUI(root, projectDir, scope)
 	}
 
 	switch args[0] {
@@ -123,8 +133,8 @@ func run(args []string) error {
 	}
 }
 
-func panelUI(root string, scope target.Scope) error {
-	menu, targets, err := panelData(root, scope)
+func panelUI(root, projectDir string, scope target.Scope) error {
+	menu, targets, err := panelData(root, projectDir, scope)
 	if err != nil {
 		return err
 	}
@@ -137,29 +147,64 @@ func panelUI(root string, scope target.Scope) error {
 			if i < 0 || i >= len(scopeOrder) {
 				return nil, nil, fmt.Errorf("no destination %d", i)
 			}
-			return panelData(root, scopeOrder[i])
+			return panelData(root, projectDir, scopeOrder[i])
 		})
 
-	final, err := tea.NewProgram(model, tea.WithAltScreen()).Run()
-	if err != nil {
-		return err
-	}
-
-	// The panel chose; now run it, on the destination it was pointing at.
+	// Actions run inside the panel and report there, so the destination, the state
+	// and the last report stay on screen together.
 	//
-	// Dispatching out here rather than inside the TUI is what lets the action print
-	// its ordinary report to the ordinary terminal. The alternative is capturing many
-	// lines of output into a scrolling view nobody asked for.
-	m, ok := final.(ui.Model)
-	if !ok || m.Chosen() == "" {
-		return nil
-	}
+	// The destination comes in as an argument, never captured here: a closure over
+	// the scope the panel opened with would send `prune` at the old destination after
+	// a tab — the strip reading "project" while links disappear from the global
+	// config. Destructive and silent, which is the worst pair.
+	model = model.WithRunner(func(action string, dest int) ([]string, error) {
+		if dest < 0 || dest >= len(scopeOrder) {
+			return nil, fmt.Errorf("no destination %d", dest)
+		}
+		return runCaptured(action, root, target.Resolve(scopeOrder[dest], projectDir))
+	})
 
-	chosenScope := scope
-	if i := m.ActiveScope(); i >= 0 && i < len(scopeOrder) {
-		chosenScope = scopeOrder[i]
+	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
+	return err
+}
+
+// runCaptured performs an action and returns what it printed, line by line.
+//
+// The commands write their reports to stdout. Inside a full-screen TUI that output
+// would land on top of the panel, so it is redirected for the duration and handed
+// back as lines instead. That also means the panel shows the command's own words
+// rather than a second rendering of the same facts, which could disagree with it.
+func runCaptured(action, root string, tg target.Target) ([]string, error) {
+	prev := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		return nil, err
 	}
-	return dispatch(m.Chosen(), root, target.Resolve(chosenScope, ""))
+	os.Stdout = w
+
+	// Drain concurrently: a report longer than the pipe buffer would otherwise block
+	// the action half-way through, with the links half-written.
+	out := make(chan string, 1)
+	go func() {
+		var buf strings.Builder
+		_, _ = io.Copy(&buf, r)
+		out <- buf.String()
+	}()
+
+	runErr := dispatch(action, root, tg)
+
+	_ = w.Close()
+	os.Stdout = prev
+	text := <-out
+	_ = r.Close()
+
+	var lines []string
+	for _, l := range strings.Split(strings.TrimRight(text, "\n"), "\n") {
+		if strings.TrimSpace(l) != "" {
+			lines = append(lines, strings.TrimRight(l, " "))
+		}
+	}
+	return lines, runErr
 }
 
 // dispatch runs one menu action. The panel's labels are the subcommand names, so
@@ -196,8 +241,8 @@ var scopeOrder = []target.Scope{target.GlobalScope, target.ProjectScope}
 //
 // The install row names the active root, so the destination is legible without
 // counting bullets.
-func panelData(root string, scope target.Scope) ([]ui.MenuItem, []ui.TargetRow, error) {
-	active := target.Resolve(scope, "")
+func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui.TargetRow, error) {
+	active := target.Resolve(scope, projectDir)
 
 	rows := make([]ui.TargetRow, 0, len(scopeOrder))
 	overall := map[link.State]int{}
@@ -213,7 +258,7 @@ func panelData(root string, scope target.Scope) ([]ui.MenuItem, []ui.TargetRow, 
 	// Scanning both costs a second read-only pass, which is the correct price for a
 	// strip that distinguishes its destinations.
 	for _, sc := range scopeOrder {
-		tg := target.Resolve(sc, "")
+		tg := target.Resolve(sc, projectDir)
 
 		entries, err := link.Scan(root, tg)
 		if err != nil {
@@ -331,7 +376,11 @@ func configured(tg target.Target) bool {
 // a pipe. That is what makes it usable for screenshots, golden files, and eyeing
 // the LIBRETTO_ASCII fallback.
 func preview(root string, tg target.Target) error {
-	menu, targets, err := panelData(root, target.GlobalScope)
+	projectDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	menu, targets, err := panelData(root, projectDir, target.GlobalScope)
 	if err != nil {
 		return err
 	}

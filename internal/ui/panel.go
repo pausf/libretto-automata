@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
@@ -59,15 +60,33 @@ type TargetRow struct {
 
 // Panel is everything the view needs to render.
 type Panel struct {
-	Version   string
-	Menu      []MenuItem
-	Selected  int
-	Targets   []TargetRow
+	Version  string
+	Menu     []MenuItem
+	Selected int
+	Targets  []TargetRow
+
+	// Results is the last action's report, one line per row, shown inside the frame
+	// below the strip. Empty until something has run.
+	//
+	// It lives in the panel rather than being printed after quitting so the loop
+	// stays closed: install, read what happened, tab to the other destination,
+	// install again — without relaunching between each step.
+	Results []string
+
 	Notice    string // one-line feedback under the panel
 	Width     int    // terminal width; 0 means lay out at the minimum
 	Height    int    // terminal height; 0 means do not centre vertically
 	ASCIISafe bool
 }
+
+// MaxResultRows bounds the report shown in the panel.
+//
+// ponytail: a constant, not a function of the terminal height. Twelve items is the
+// current payload and fits; a hundred would push the frame off a short screen, which
+// is the same tearing the path budget exists to prevent. Anything past the cap is
+// counted rather than dropped silently — a truncated list that does not say it was
+// truncated is a list that lies.
+const MaxResultRows = 14
 
 // ContentWidth is the width the panel's interior will use for a given terminal
 // width, clamped between the bounds above.
@@ -99,6 +118,11 @@ func (t Theme) Render(p Panel) string {
 	rows = append(rows, strings.Split(t.menu(p), "\n")...)
 	rows = append(rows, "", separator)
 	rows = append(rows, strings.Split(t.targets(p), "\n")...)
+
+	if len(p.Results) > 0 {
+		rows = append(rows, separator)
+		rows = append(rows, t.results(p, cw)...)
+	}
 
 	parts := []string{t.frame(rows, cw), t.footer(p, cw+2)}
 	if p.Notice != "" {
@@ -202,6 +226,41 @@ func (t Theme) targets(p Panel) string {
 		}
 	}
 	return strings.Join(rows, "\n")
+}
+
+// results renders the last action's report inside the frame.
+//
+// Every line recedes to the muted colour: this is a record of what happened, not
+// something to act on, and painting it like the menu would make the panel look as
+// though it had two sets of controls.
+//
+// Lines longer than the content area are elided from the *left*, keeping the tail —
+// the item's name is the end of the line, and it is the part you are reading for.
+func (t Theme) results(p Panel, width int) []string {
+	shown := p.Results
+	extra := 0
+	if len(shown) > MaxResultRows {
+		extra = len(shown) - MaxResultRows
+		shown = shown[:MaxResultRows]
+	}
+
+	out := make([]string, 0, len(shown)+1)
+	for _, line := range shown {
+		out = append(out, "  "+Fg(t.Muted).Render(elideLeft(line, width-4)))
+	}
+	if extra > 0 {
+		out = append(out, "  "+Fg(t.Off).Render(fmt.Sprintf("… and %d more", extra)))
+	}
+	return out
+}
+
+// elideLeft trims a line to n columns by dropping the head, marking the cut.
+func elideLeft(s string, n int) string {
+	r := []rune(s)
+	if n < 2 || len(r) <= n {
+		return s
+	}
+	return "…" + string(r[len(r)-n+1:])
 }
 
 // footerIndent is the footer's margin on both sides. Six columns is what the art

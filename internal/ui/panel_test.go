@@ -294,41 +294,69 @@ func TestModelSelectingADisabledActionRefuses(t *testing.T) {
 	}
 }
 
-// Selecting an action records it and quits, so the caller can run it and let its
-// report land on the ordinary terminal.
+// Selecting an action runs it and shows the report, without leaving. Staying is the
+// point: the destination, the state and the last report end up on screen together.
 //
-// This test used to assert that the notice read "running status…" — and it passed,
-// while nothing ran. A test that pins a placeholder in place is worse than no test:
-// it makes the lie look verified. What matters is that the choice comes back out.
-func TestModelSelectingAnEnabledActionReportsTheChoice(t *testing.T) {
+// An earlier version asserted the notice read "running status…" and passed while
+// nothing ran. A test that pins a placeholder in place makes the lie look verified.
+func TestSelectingAnEnabledActionRunsAndStays(t *testing.T) {
 	m := newDemoModel()
 	m.panel.Selected = 2 // status, enabled
+	ran := ""
+	m = m.WithRunner(func(action string, dest int) ([]string, error) {
+		ran = action
+		return []string{"  linked  skills/alpha", "1 linked"}, nil
+	})
 
 	next, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	after := next.(Model)
 
-	if got := after.Chosen(); got != "status" {
-		t.Errorf("Chosen() = %q, want %q", got, "status")
+	if ran != "status" {
+		t.Errorf("the runner was asked for %q, want status", ran)
 	}
-	if cmd == nil {
-		t.Error("selecting an action did not quit; the caller never gets to run it")
+	if cmd != nil {
+		t.Error("selecting an action quit the panel; the report is meant to be read in place")
+	}
+	if got := after.Results(); len(got) != 2 {
+		t.Errorf("the report is %v, want the runner's two lines", got)
+	}
+	if !strings.Contains(after.Notice(), "status") {
+		t.Errorf("the notice does not name the action: %q", after.Notice())
 	}
 }
 
-// Quitting is not choosing. Otherwise `q` would run whatever the cursor happened to
-// be sitting on.
-func TestQuittingChoosesNothing(t *testing.T) {
-	m := newDemoModel()
+// The destination is passed in, never captured. A runner closing over the scope the
+// panel opened with would send prune at the old destination after a tab — the strip
+// reading "project" while links vanish from the global config.
+func TestTheRunnerIsToldWhichDestination(t *testing.T) {
+	rows := []TargetRow{
+		{Name: "global", Configured: true, Active: true},
+		{Name: "project", Configured: true},
+	}
+	got := -1
+	m := NewModel("v0", demoPanel().Menu, rows, false).
+		WithRefresh(func(i int) ([]MenuItem, []TargetRow, error) {
+			out := []TargetRow{{Name: "global"}, {Name: "project"}}
+			out[i].Active = true
+			return demoPanel().Menu, out, nil
+		}).
+		WithRunner(func(action string, dest int) ([]string, error) {
+			got = dest
+			return nil, nil
+		})
 	m.panel.Selected = 2
 
-	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
-	if got := next.(Model).Chosen(); got != "" {
-		t.Errorf("quitting reported %q as chosen", got)
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	next, _ = next.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+	_ = next
+
+	if got != 1 {
+		t.Fatalf("the runner was told destination %d after a tab, want 1", got)
 	}
 }
 
-// A disabled action is still refused, and refusing is not choosing.
-func TestSelectingADisabledActionChoosesNothing(t *testing.T) {
+// A refused action runs nothing and leaves no report behind.
+func TestSelectingADisabledActionRunsNothing(t *testing.T) {
 	m := newDemoModel()
 	for i, item := range m.panel.Menu {
 		if !item.Enabled {
@@ -336,10 +364,26 @@ func TestSelectingADisabledActionChoosesNothing(t *testing.T) {
 			break
 		}
 	}
+	called := false
+	m = m.WithRunner(func(string, int) ([]string, error) { called = true; return nil, nil })
 
 	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	if got := next.(Model).Chosen(); got != "" {
-		t.Errorf("a disabled action was reported as chosen: %q", got)
+	if called {
+		t.Error("a disabled action was run")
+	}
+	if got := next.(Model).Results(); got != nil {
+		t.Errorf("a refused action left a report: %v", got)
+	}
+}
+
+// With no runner wired every action refuses, which is honest.
+func TestNoRunnerMeansEveryActionRefuses(t *testing.T) {
+	m := newDemoModel()
+	m.panel.Selected = 2
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if got := next.(Model).Notice(); !strings.Contains(got, "not wired up") {
+		t.Errorf("notice = %q, want it to say the action is unavailable", got)
 	}
 }
 

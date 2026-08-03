@@ -1,0 +1,1 @@
+/Users/pau.sanchez/gitrepos/libretto-automata/agents/spec-writer.md

@@ -206,7 +206,7 @@ func TestStripRowsReportTheirOwnState(t *testing.T) {
 	// One of the two is linked globally. Nothing is linked in the project.
 	f.link(t, f.Repo+"/skills/alpha", f.dest("skills", "alpha"))
 
-	_, rows, err := panelData(f.Repo, target.GlobalScope)
+	_, rows, err := panelData(f.Repo, f.Project, target.GlobalScope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,11 +233,11 @@ func TestStatusRowFollowsTheActiveScope(t *testing.T) {
 	f.skill(t, "alpha")
 	f.link(t, f.Repo+"/skills/alpha", f.dest("skills", "alpha"))
 
-	g, _, err := panelData(f.Repo, target.GlobalScope)
+	g, _, err := panelData(f.Repo, f.Project, target.GlobalScope)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, _, err := panelData(f.Repo, target.ProjectScope)
+	p, _, err := panelData(f.Repo, f.Project, target.ProjectScope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +287,7 @@ func TestEveryMenuLabelDispatches(t *testing.T) {
 	f := newFixture(t)
 	f.skill(t, "alpha")
 
-	menu, _, err := panelData(f.Repo, target.GlobalScope)
+	menu, _, err := panelData(f.Repo, f.Project, target.GlobalScope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -318,5 +318,69 @@ func TestDispatchedPruneIsDry(t *testing.T) {
 	}
 	if !strings.Contains(out, "would remove") {
 		t.Errorf("prune did not say what it would do:\n%s", out)
+	}
+}
+
+// One lookup for "where is the project", threaded down. Resolving it separately in
+// the strip and in the runner gave two answers that agreed only by accident — and
+// they disagreed: the strip read one root while the action wrote to another.
+func TestStripAndRunnerAgreeOnTheProjectRoot(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	_, rows, err := panelData(f.Repo, f.Project, target.ProjectScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := f.project().Root()
+	if !strings.Contains(rows[1].Info, shorten(want)) {
+		t.Fatalf("the strip names %q, the runner would write to %q", rows[1].Info, want)
+	}
+
+	// Install through the same door the panel uses, then the strip must notice.
+	if _, err := runCaptured("install", f.Repo, target.Resolve(scopeOrder[1], f.Project)); err != nil {
+		t.Fatal(err)
+	}
+	_, rows, err = panelData(f.Repo, f.Project, target.ProjectScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rows[1].Info, "linked") {
+		t.Fatalf("the strip still reports %q after installing into that very destination", rows[1].Info)
+	}
+}
+
+// prune from the panel acts on the destination the strip is pointing at, and on no
+// other. This is the destructive path, so it gets its own test rather than resting
+// on the one that covers install.
+func TestPanelPruneActsOnTheActiveDestinationOnly(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	// One of ours, orphaned, in each destination.
+	gone := f.Repo + "/skills/gone"
+	f.link(t, gone, f.dest("skills", "gone"))
+	f.link(t, gone, f.projectDest("skills", "gone"))
+
+	// The panel's prune is dry, so it must remove nothing anywhere.
+	if _, err := runCaptured("prune", f.Repo, target.Resolve(scopeOrder[1], f.Project)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(f.projectDest("skills", "gone")); err != nil {
+		t.Fatal("prune from the panel deleted without being asked twice")
+	}
+
+	// And with confirmation, only the active destination loses its link.
+	if _, _, err := capture(t, func() error {
+		return prune(f.Repo, target.Resolve(scopeOrder[1], f.Project), []string{"--yes"})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(f.projectDest("skills", "gone")); !os.IsNotExist(err) {
+		t.Error("the project's stale link survived")
+	}
+	if _, err := os.Lstat(f.dest("skills", "gone")); err != nil {
+		t.Fatal("pruning the project removed a link from the global config")
 	}
 }

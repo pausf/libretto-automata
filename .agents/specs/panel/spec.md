@@ -52,23 +52,44 @@ changing from `○` to `◉` and a path changing inside a description are eviden
 to go looking for, and a key whose effect must be hunted for is a key that does not
 work.
 
-### Selecting an action chooses it; the caller runs it
+### Actions run in place and report inside the frame
 
-`enter` records the action and quits. The panel does not execute anything, and
-deliberately does not try: an action's output is many lines of report, and a
-full-screen TUI would have to capture, buffer and scroll what the plain command
-already prints perfectly well. The caller dispatches exactly as if the subcommand had
-been typed, on the destination the strip was pointing at.
+`enter` carries the action out and shows what it did, in a section below the strip.
+The panel does not close.
 
-**Quitting is not choosing**, or `q` would run whatever the cursor was resting on. A
-refused action chooses nothing either.
+Staying is the point. Quitting to print the report closes the loop on the terminal and
+reopens it in the reader's head — install, relaunch, tab, install again. Keeping the
+panel up puts the destination, its state and the last report on screen together, which
+is the only arrangement where *did that go where I meant?* has an answer you can see
+rather than remember.
 
-`prune` chosen from the menu is still dry. Nothing deletes on one keypress.
+The report is **the command's own output**, captured rather than re-rendered. A second
+rendering of the same facts is a second thing that can disagree with the first.
 
-An earlier version set the notice to `running install…` and ran nothing, and there was
-a test asserting that notice — so the lie looked verified. **A panel that says it is
-working and is not is worse than a panel with no actions at all**, and a test that pins
-a placeholder in place is worse than no test.
+**The destination is passed to the action, never captured when the panel opened.** A
+closure over the starting scope would send `prune` at the old destination after a tab —
+the strip reading `project` while links vanish from the global config. Destructive and
+silent, the worst pair.
+
+**Where the project is, is decided once and threaded down.** Resolving it separately in
+the strip and in the action gave two answers that agreed only by accident, and they did
+disagree: the strip read one root while the action wrote to another.
+
+After a successful action the figures are asked for again. They described the state
+*before* it ran, and a panel whose strip contradicts its own report is worse than one
+that shows neither.
+
+`prune` from the menu is still dry. Nothing deletes on one keypress. A refused action
+runs nothing and leaves no report, and with no runner wired every action refuses — which
+is honest.
+
+An earlier version set the notice to `running install…` and ran nothing, with a test
+asserting that notice. **A panel that says it is working and is not is worse than a
+panel with no actions at all**, and a test that pins a placeholder in place is worse
+than no test: it makes the lie look checked.
+
+The report is bounded at `MaxResultRows` and says how many lines it dropped. A
+truncated list that does not admit it is a list that lies.
 
 ## Scope boundaries
 
@@ -210,23 +231,28 @@ The model:
   Proof: internal/ui/panel_test.go TestActiveDestinationIsMarkedWithoutColour
 - **no second colour competes with gold for meaning**
   Proof: internal/ui/panel_test.go TestNoSecondColourCompetesWithSelection
-- **selecting an action reports the choice and quits**
-  Proof: internal/ui/panel_test.go TestModelSelectingAnEnabledActionReportsTheChoice
-- quitting chooses nothing
-  Proof: internal/ui/panel_test.go TestQuittingChoosesNothing
-- a refused action chooses nothing
-  Proof: internal/ui/panel_test.go TestSelectingADisabledActionChoosesNothing
-- **the choice actually runs**
-  Proof: cmd/libretto/scope_test.go TestDispatchRunsTheAction
+- **selecting an action runs it and stays**, with the report on screen
+  Proof: internal/ui/panel_test.go TestSelectingAnEnabledActionRunsAndStays
+- **the action is told which destination**, after a tab
+  Proof: internal/ui/panel_test.go TestTheRunnerIsToldWhichDestination
+- a refused action runs nothing and leaves no report
+  Proof: internal/ui/panel_test.go TestSelectingADisabledActionRunsNothing
+- with no runner wired every action refuses
+  Proof: internal/ui/panel_test.go TestNoRunnerMeansEveryActionRefuses
 - **every enabled menu label has a dispatch case**
   Proof: cmd/libretto/scope_test.go TestEveryMenuLabelDispatches
 - prune chosen from the menu is still dry
   Proof: cmd/libretto/scope_test.go TestDispatchedPruneIsDry
-- **a real program run returns the choice and the destination** — the glue between
-  quitting and dispatching, driven through `tea.WithInput`
-  Proof: cmd/libretto/panelrun_test.go TestPanelRunReturnsTheChoiceAndScope
-- and that choice installs where the strip pointed
-  Proof: cmd/libretto/panelrun_test.go TestPanelChoiceInstallsIntoTheChosenScope
+- **a real program run installs and reports in place** — driven through `tea.WithInput`
+  Proof: cmd/libretto/panelrun_test.go TestPanelRunsInstallAndReportsInPlace
+- the capture returns lines and puts stdout back
+  Proof: cmd/libretto/panelrun_test.go TestRunCapturedReturnsLinesAndRestoresStdout
+- **a failing action still reports** what half-happened
+  Proof: cmd/libretto/panelrun_test.go TestRunCapturedKeepsOutputOnFailure
+- **the strip and the action agree on where the project is**
+  Proof: cmd/libretto/scope_test.go TestStripAndRunnerAgreeOnTheProjectRoot
+- **prune from the panel touches only the active destination**
+  Proof: cmd/libretto/scope_test.go TestPanelPruneActsOnTheActiveDestinationOnly
 - **the rows report their own state and can differ**
   Proof: cmd/libretto/scope_test.go TestStripRowsReportTheirOwnState
 - the status row follows the active destination rather than summing both
