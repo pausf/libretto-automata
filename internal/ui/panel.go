@@ -47,6 +47,14 @@ type TargetRow struct {
 	Name       string
 	Info       string
 	Configured bool
+
+	// Active marks the scope the menu's actions will write to.
+	//
+	// The strip lists every destination; exactly one of them is where `install`
+	// would go. A menu whose actions write somewhere the user cannot see is a menu
+	// that surprises them, and a surprise about which config just changed is an
+	// expensive one.
+	Active bool
 }
 
 // Panel is everything the view needs to render.
@@ -152,14 +160,25 @@ func (t Theme) menu(p Panel) string {
 func (t Theme) targets(p Panel) string {
 	rows := make([]string, len(p.Targets))
 	for i, tg := range p.Targets {
+		// The active scope is named in gold, the same colour selection uses
+		// everywhere else. One colour, one meaning: this is what the keys act on.
+		name := pad(tg.Name, targetInfoCol-targetNameCol)
 		if !tg.Configured {
 			// An unconfigured target is grey end to end — the whole row
 			// recedes, not just its bullet.
-			rows[i] = Fg(t.Off).Render("  ○ " + pad(tg.Name, targetInfoCol-targetNameCol) + tg.Info)
+			row := Fg(t.Off).Render("  ○ " + name + tg.Info)
+			if tg.Active {
+				row = "  " + Fg(t.Gold).Render("◉ "+name) + Fg(t.Off).Render(tg.Info)
+			}
+			rows[i] = row
+			continue
+		}
+		if tg.Active {
+			rows[i] = "  " + Fg(t.Gold).Render("◉ "+name) + Fg(t.Muted).Render(tg.Info)
 			continue
 		}
 		rows[i] = "  " + Fg(t.Green).Render("●") + " " +
-			Fg(t.Steel).Render(pad(tg.Name, targetInfoCol-targetNameCol)) +
+			Fg(t.Steel).Render(name) +
 			Fg(t.Muted).Render(tg.Info)
 	}
 	return strings.Join(rows, "\n")

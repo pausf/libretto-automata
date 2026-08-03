@@ -17,6 +17,14 @@ and a plain title rather than tearing.
 
 Selection is unmistakable: the selected row is gold end to end, description included.
 
+**The destination is always visible.** The strip lists every place items can be
+installed, and marks the one the keys will act on with `◉` in the same gold selection
+uses everywhere else. `tab` moves it.
+
+A prompt asked once at startup would be worse: an answer given at the top of a session
+is invisible by the time you press a key, and *where did that just install?* is the
+question this strip exists to answer before it is asked.
+
 ## Scope boundaries
 
 **In:** the wordmark, palettes, contrast, layout, the fluid frame, the menu, the target
@@ -71,6 +79,7 @@ default nobody chose.
 - [x] fluid panel, centring, degradation
 - [x] menu rendering and selection
 - [x] the Bubbletea model and navigation
+- [x] the active destination, visible and switchable
 - [ ] 6.5 confirmation form for destructive actions
 - [ ] 6.6 target-strip golden files
 - [ ] 6.7 `teatest` end-to-end flow
@@ -137,3 +146,12 @@ The model:
   Proof: internal/ui/panel_test.go TestModelSelectingADisabledActionRefuses
 - a resize reaches the panel
   Proof: internal/ui/panel_test.go TestModelWindowSizeReachesThePanel
+- **the active destination renders differently from the others**
+  Proof: internal/ui/panel_test.go TestPanelShowsTheActiveScope
+- **`tab` moves it, wraps, and asks for figures that match**
+  Proof: internal/ui/panel_test.go TestModelSwitchesScope
+- **a failed refresh leaves the panel as it was** rather than showing one
+  destination's counts under another's name
+  Proof: internal/ui/panel_test.go TestModelKeepsStateWhenRefreshFails
+- with no refresh wired the key is inert
+  Proof: internal/ui/panel_test.go TestModelScopeKeyIsInertWithoutRefresh

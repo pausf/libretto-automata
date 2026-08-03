@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -340,5 +341,113 @@ func keyMsg(s string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyCtrlC}
 	default:
 		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
+	}
+}
+
+// The active scope must be visible, and visibly different from the other one.
+// A strip that lists both destinations identically is a strip that answers
+// "where would install go?" with a shrug.
+func TestPanelShowsTheActiveScope(t *testing.T) {
+	t.Setenv(EnvTheme, "dark")
+	theme := NewTheme()
+
+	rows := []TargetRow{
+		{Name: "global", Info: "10 skills", Configured: true, Active: true},
+		{Name: "project", Info: "0 skills", Configured: false},
+	}
+	p := demoPanel()
+	p.Targets, p.Width = rows, 90
+	out := theme.Render(p)
+
+	if !strings.Contains(out, "global") || !strings.Contains(out, "project") {
+		t.Fatal("the strip does not list both scopes")
+	}
+
+	// Swapping which one is active must change the render. If it does not, the
+	// flag is decorative.
+	rows[0].Active, rows[1].Active = false, true
+	p.Targets = rows
+	other := theme.Render(p)
+
+	if out == other {
+		t.Fatal("marking a different scope active rendered identically")
+	}
+}
+
+// Without this the panel is half a feature: you could see the other destination
+// and never choose it.
+func TestModelSwitchesScope(t *testing.T) {
+	t.Setenv(EnvTheme, "dark")
+
+	rows := []TargetRow{
+		{Name: "global", Info: "a", Configured: true, Active: true},
+		{Name: "project", Info: "b", Configured: true},
+	}
+	calls := 0
+	m := NewModel("v0", demoPanel().Menu, rows, false).
+		WithRefresh(func(i int) ([]MenuItem, []TargetRow, error) {
+			calls++
+			out := []TargetRow{
+				{Name: "global", Info: "a", Configured: true},
+				{Name: "project", Info: "b", Configured: true},
+			}
+			out[i].Active = true
+			return demoPanel().Menu, out, nil
+		})
+
+	if got := m.ActiveScope(); got != 0 {
+		t.Fatalf("starts on %d, want 0", got)
+	}
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = next.(Model)
+	if got := m.ActiveScope(); got != 1 {
+		t.Fatalf("tab moved to %d, want 1", got)
+	}
+	if calls != 1 {
+		t.Fatalf("refresh called %d times, want 1 — figures must match the new destination", calls)
+	}
+
+	// And it wraps, so two destinations are reachable with one key.
+	next, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	if got := next.(Model).ActiveScope(); got != 0 {
+		t.Fatalf("tab did not wrap: landed on %d", got)
+	}
+}
+
+// A refresh that fails must leave the panel as it was. Showing one destination's
+// counts under another's name would be a panel that lies about where install goes.
+func TestModelKeepsStateWhenRefreshFails(t *testing.T) {
+	t.Setenv(EnvTheme, "dark")
+
+	rows := []TargetRow{
+		{Name: "global", Info: "a", Configured: true, Active: true},
+		{Name: "project", Info: "b", Configured: true},
+	}
+	m := NewModel("v0", demoPanel().Menu, rows, false).
+		WithRefresh(func(int) ([]MenuItem, []TargetRow, error) {
+			return nil, nil, errors.New("permission denied")
+		})
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = next.(Model)
+
+	if got := m.ActiveScope(); got != 0 {
+		t.Fatalf("a failed refresh moved the active scope to %d", got)
+	}
+	if !strings.Contains(m.Notice(), "permission denied") {
+		t.Errorf("the failure is not reported: %q", m.Notice())
+	}
+}
+
+// With no refresh wired the key is inert rather than moving the mark to a
+// destination whose figures nobody recomputed.
+func TestModelScopeKeyIsInertWithoutRefresh(t *testing.T) {
+	rows := []TargetRow{{Name: "global", Active: true}, {Name: "project"}}
+	m := NewModel("v0", demoPanel().Menu, rows, false)
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	if got := next.(Model).ActiveScope(); got != 0 {
+		t.Fatalf("the mark moved to %d with no refresh wired", got)
 	}
 }

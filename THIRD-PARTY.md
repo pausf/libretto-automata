@@ -48,7 +48,7 @@ Referenced when present, never required. The flow works without them.
 
 These install themselves as plugins and namespace their own skills, so vendoring
 them would create a second copy of something the user may already have chosen a
-version of. `lib doctor` reports whether they are present.
+version of. `libretto doctor` reports whether they are present.
 
 ## Naming
 

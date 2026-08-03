@@ -20,6 +20,27 @@ plain command.
 | `preview` | print the panel once, no TUI |
 | `version`, `help` | say so |
 
+### Scope: where it writes
+
+| Invocation | Acts on |
+|---|---|
+| `--project` / `-p` | `<cwd>/.claude` |
+| `--global` / `-g` | `~/.claude` |
+| neither | **global** — what every invocation meant before scopes existed |
+
+Both flags at once is an **error**, not a precedence rule. Two answers to one question
+is a mistake worth reporting rather than resolving by picking the last one and hoping.
+
+Repeating the same flag is fine. It is unambiguous, and rejecting it would be pedantry.
+
+**Scope flags are removed from the arguments before the subcommand sees them.** A flag
+left in place would reach `prune` and be read as a confirmation nobody gave.
+
+**Every command names the root it acted on, before acting.** A run whose output does
+not say where it wrote is a run you have to reconstruct later.
+
+A command acts on exactly one scope. Nothing iterates destinations.
+
 **Exit codes carry meaning.** Non-zero whenever something was not linked or needs
 attention, so a script can gate on it. A conflict counts: an item that did not get
 linked is an incomplete install, whatever the reason.
@@ -68,6 +89,12 @@ which is worse than not checking, because it sends people to install what they h
 | `LIBRETTO_THEME` | `dark` or `light`, instead of detecting |
 | `COLUMNS` | layout width when stdout is not a terminal |
 
+A root too long for the panel is elided from the left with `…`, keeping whole trailing
+segments — the tail says *which* directory this is, and the marker says plainly that
+something was removed. Left unbounded it pushes the frame's right border out of
+alignment, which `panel` forbids at every width; a temporary directory is long enough
+to do it, and it took looking at a render to notice.
+
 A value that never varies is not configuration, so nothing else is exposed.
 
 **The version is stamped from git at build time, never held in a source constant.**
@@ -106,8 +133,9 @@ equivalent. It goes when `libretto install` has been verified against a real
 - [x] dispatch, `status`, `preview`, `version`, `help`
 - [x] `install`, `doctor`, `prune --yes`
 - [x] `update` composed over `repo-sync`
+- [x] tests for the composition — exit codes, dispatch, flags, prerequisites
 - [ ] 5.2 `--json` for `status` and `doctor`
-- [ ] 5.3 TTY-detection tests
+- [ ] 5.3 the panel path under a real TTY
 - [ ] `doctor`: target directory missing or unwritable
 - [ ] `doctor`: repo state — uncommitted changes, behind the remote
 - [ ] `install`: present the plan before applying, as `prune` already does
@@ -116,25 +144,72 @@ equivalent. It goes when `libretto install` has been verified against a real
 
 ## Verification criteria
 
-**This capability has no tests of its own.** `cmd/libretto` is 662 lines and the suite
-reports `no test files`. The logic it composes is covered — `linking`, `link-state`,
-`targets` and `panel` carry 79 tests between them — but the composition is not: exit
-codes, dispatch, flag handling and the prerequisite report are held up by nothing but
-manual runs.
+These cover the **composition**, not the logic composed. `linking`, `link-state`,
+`targets` and `panel` prove the pieces behave; these prove the CLI wires them to the
+right exit codes and refuses what it promised to refuse.
 
-The gap is stated rather than hidden, and it is the largest one in the project.
+`CLAUDE_HOME` is what makes them safe: every one runs against `t.TempDir()`, so
+commands that write and delete never see a real `~/.claude`.
 
-Criteria owed a test:
+- **a conflict makes `install` exit non-zero, and the foreign file is unchanged**
+  Proof: cmd/libretto/main_test.go TestInstallExitsNonZeroOnConflict
+- everything linking exits zero, and the link is really there
+  Proof: cmd/libretto/main_test.go TestInstallExitsZeroWhenEverythingLinks
+- a second install reports an empty plan rather than doing the work again
+  Proof: cmd/libretto/main_test.go TestInstallIsIdempotent
+- anything needing attention makes `doctor` exit non-zero
+  Proof: cmd/libretto/main_test.go TestDoctorExitsNonZeroWhenSomethingNeedsAttention
+- **`prune` without `--yes` changes nothing, and says what it would do**
+  Proof: cmd/libretto/main_test.go TestPruneWithoutYesChangesNothing
+- **`prune --yes` removes only what the plan named** — a live item's link and a foreign
+  entry both survive
+  Proof: cmd/libretto/main_test.go TestPruneYesRemovesOnlyWhatThePlanNamed
+- `version` and `help` succeed; an unknown command fails
+  Proof: cmd/libretto/main_test.go TestRunDispatch
+- **no TTY and no subcommand prints usage and exits 2** — checked by re-executing the
+  test binary, because `os.Exit` cannot be observed in-process
+  Proof: cmd/libretto/main_test.go TestNoTTYAndNoSubcommandExitsNonZero
+- piped `status` carries no escape codes
+  Proof: cmd/libretto/main_test.go TestStatusOutputHasNoEscapeCodes
+- **help and remedies name the command they were invoked as**, not a fixed string
+  Proof: cmd/libretto/main_test.go TestOutputNamesTheInvokedCommand
+- **the prerequisite report never changes the exit code** — with an empty `PATH` and an
+  empty home, `doctor` still exits zero on a correct tree
+  Proof: cmd/libretto/main_test.go TestPrerequisitesDoNotAffectTheExitCode
+- a companion counts as present in all four places it can legitimately live
+  Proof: cmd/libretto/main_test.go TestCompanionFoundWhereverItLegitimatelyLives
+- an absent companion is reported absent
+  Proof: cmd/libretto/main_test.go TestCompanionAbsentIsAbsent
+- **a project install leaves the global config untouched**
+  Proof: cmd/libretto/scope_test.go TestInstallProjectScopeLeavesGlobalAlone
+- **a global install leaves the project untouched**
+  Proof: cmd/libretto/scope_test.go TestInstallGlobalScopeLeavesProjectAlone
+- **`prune --project --yes` removes from the project only**
+  Proof: cmd/libretto/scope_test.go TestPruneProjectScopeLeavesGlobalAlone
+- no flag means global
+  Proof: cmd/libretto/scope_test.go TestDefaultScopeIsGlobal
+- scope flags never reach the subcommand
+  Proof: cmd/libretto/scope_test.go TestScopeFlagsAreRemovedFromTheArguments
+- both flags at once is an error
+  Proof: cmd/libretto/scope_test.go TestBothScopeFlagsIsAnError
+- repeating one flag is accepted
+  Proof: cmd/libretto/scope_test.go TestRepeatingTheSameScopeFlagIsFine
+- the output names the root it acted on
+  Proof: cmd/libretto/scope_test.go TestOutputNamesTheScopeRoot
+- **a long root is elided rather than tearing the frame**
+  Proof: cmd/libretto/scope_test.go TestShortenKeepsRootsInsideTheBudget
+- a root inside the budget is left alone
+  Proof: cmd/libretto/scope_test.go TestShortenLeavesShortPathsAlone
+- the tally renders in a fixed order and omits zeros, so one situation gives one line
+  Proof: cmd/libretto/main_test.go TestSummarise
 
-- a conflict makes `install` exit non-zero
-- `prune` without `--yes` changes nothing
-- `prune --yes` removes only what the plan named
-- no TTY and no subcommand prints usage and exits non-zero
-- `status` output is plain, with no escape codes, when piped
-- help names the invoked command rather than a fixed string
-- the prerequisite report never changes the exit code
-- a companion installed as a command, not a plugin, is found
-
-The one thing verified mechanically today is the payload the CLI installs:
+And the payload the CLI installs is checked statically:
 
   Proof: scripts/check-payload
+
+**Two of these were mutation-checked rather than trusted.** Making `prune` always
+confirm, and dropping conflicts from the exit-code sum, each turned the matching test
+red. A test that has never been seen to fail is a test nobody has reason to believe.
+
+**Still not covered:** the panel itself under a TTY, and `update`'s three git paths —
+those are `repo-sync`'s to prove, and its `Git` interface still has no fake.

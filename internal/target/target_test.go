@@ -131,13 +131,3 @@ func TestUnresolvableRootYieldsEmptyDirs(t *testing.T) {
 		}
 	}
 }
-
-func TestAllReturnsClaude(t *testing.T) {
-	all := All()
-	if len(all) != 1 {
-		t.Fatalf("All() returned %d targets, want 1", len(all))
-	}
-	if all[0].Name() != "claude" {
-		t.Errorf("All()[0].Name() = %q, want %q", all[0].Name(), "claude")
-	}
-}

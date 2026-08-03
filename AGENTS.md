@@ -49,6 +49,9 @@ libretto doctor         # what needs attention + what the payload expects on thi
 libretto prune          # show removable links, change nothing
 libretto prune --yes    # remove them
 libretto preview
+
+libretto install --project   # <cwd>/.claude instead of ~/.claude
+libretto install --global    # the default; both flags at once is an error
 ```
 
 ## Gates — all six pass before any commit
@@ -56,10 +59,10 @@ libretto preview
 ```bash
 gofmt -l .                                       # must print nothing
 go vet ./...
-go test ./... -count=1                           # 79 tests
+go test ./... -count=1                           # 117 tests
 scripts/check-payload                            # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test        # 17 checks
-skills/record-work/spec-drift --anchors          # 72 citations must resolve
+skills/record-work/spec-drift --anchors          # 105 citations must resolve
 ```
 
 `spec-drift` with no flag warns about staged code whose spec did not move. It never
@@ -72,10 +75,10 @@ the file.
 ## Structure
 
 ```
-cmd/libretto/           the CLI. 662 lines, NO TESTS — the largest gap in the project
+cmd/libretto/           the CLI, dispatch and the scope flags
 internal/target/        what an installable destination is
 internal/link/          own.go (ownership) · scan.go state.go (read) · plan.go apply.go (write)
-internal/repo/          git, and when the binary is invalidated. One test for 155 lines.
+internal/repo/          git, and the rebuild decision. ONE test for 155 lines — the largest gap.
 internal/ui/            logo, theme, panel, model
 skills/ agents/ commands/   THE PAYLOAD — what gets symlinked
 scripts/check-payload   repo-only tooling. Never referenced from a skill.

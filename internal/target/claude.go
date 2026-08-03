@@ -52,9 +52,3 @@ func (c Claude) Exists() bool {
 	fi, err := os.Stat(c.root)
 	return err == nil && fi.IsDir()
 }
-
-// All returns every known target, in display order.
-//
-// One entry today. The slice is what makes adding Codex a new file instead of a
-// refactor — see docs/DESIGN.md.
-func All() []Target { return []Target{NewClaude()} }

@@ -10,7 +10,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-payload-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
 [![Jira CLI](https://img.shields.io/badge/Jira%20CLI-tracker-0052CC?logo=jira&logoColor=white)](https://github.com/ankitpokhrel/jira-cli)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-79%20passing-brightgreen.svg)](#gates)
+[![Tests](https://img.shields.io/badge/tests-117%20passing-brightgreen.svg)](#gates)
 
 </div>
 
@@ -70,6 +70,21 @@ libretto install   # symlink every item into ~/.claude
 | `libretto prune` | show links whose source is gone — **changes nothing** |
 | `libretto prune --yes` | remove them |
 | `libretto preview` | print the panel once, no TUI |
+
+### Where it installs
+
+| | |
+|---|---|
+| `--global`, `-g` | `~/.claude` — **the default** |
+| `--project`, `-p` | `<this directory>/.claude` |
+
+A project-local install keeps a flow scoped to one repository without editing the
+configuration every other project shares. In the panel, the strip shows both
+destinations and `tab` switches which one the keys act on — the active one is marked
+`◉` in gold.
+
+Passing both flags is an error. Two answers to one question is a mistake worth
+reporting, not one worth resolving by guessing.
 
 `prune` is dry by default. A destructive command that acts before being asked twice
 eventually deletes the wrong thing, and a pipe is no reason to be less careful.
@@ -152,10 +167,10 @@ All six pass before any commit.
 ```bash
 gofmt -l .                                  # must print nothing
 go vet ./...
-go test ./... -count=1                      # 79 tests
+go test ./... -count=1                      # 117 tests
 scripts/check-payload                       # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test   # 17 checks
-skills/record-work/spec-drift --anchors     # 72 citations
+skills/record-work/spec-drift --anchors     # 105 citations
 ```
 
 ## Built with

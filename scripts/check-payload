@@ -94,7 +94,7 @@ else
 fi
 
 printf '\n── skills never point at an executable that is not installed ──\n'
-# `lib install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
+# `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
 # telling the user to run scripts/foo is broken for everyone who installed it:
 # scripts/ never reaches their machine, so it only ever worked in the repo it came
 # from. A tool a skill needs ships inside the skill's own directory.

@@ -16,7 +16,30 @@ A target declares three things and nothing else is asked of it:
 A kind knows its own shape: whether its items are directories or files, and which file
 extension counts. Callers ask the kind rather than deciding for themselves.
 
-`All()` lists the targets that exist. Today that is exactly one: Claude Code.
+### Two scopes, never both at once
+
+A command acts on **one** destination, chosen rather than assumed:
+
+| Scope | Root |
+|---|---|
+| `GlobalScope` | `~/.claude`, honouring `CLAUDE_HOME` |
+| `ProjectScope` | `<dir>/.claude`, where `dir` is the working directory |
+
+`Resolve(scope, dir)` returns the target for a scope. An unrecognised scope resolves
+to **global**, not to nothing — a typo must not silently produce a rootless target
+that writes nowhere and reports success.
+
+The project target reports **configured** only once its root exists. A project with
+no `.claude/` has not opted in, which is a state and not an error; install creates
+the directory rather than demanding it.
+
+Both scopes accept the same three kinds. Accepting different sets would mean an item
+that installs in one scope and silently vanishes in the other, which is
+indistinguishable from a bug.
+
+**There is no `All()`.** It listed every known target so callers could iterate, and
+every caller did — which with two destinations would write to both on every run,
+the exact surprise scopes exist to remove. The extensibility seam is `Resolve`.
 
 ## Scope boundaries
 
@@ -56,10 +79,13 @@ target that cannot say where it lives is a target nothing should be written to.
   plugin mechanism, no configuration.
 - `Exists()` is discovered by interface assertion rather than required of every target,
   so a target that cannot answer is assumed present instead of blocking.
+- **Project scope is the working directory, never the repo root.** `repoRoot()` finds
+  *libretto's own* repository — the source of the items. Conflating the two would
+  install the payload into libretto's own `.claude/` no matter where it was run.
 
 ## Task breakdown
 
-Complete. Shipped in phase 1.
+Complete. Shipped in phase 1; scopes added later.
 
 ## Verification criteria
 
@@ -75,5 +101,15 @@ Complete. Shipped in phase 1.
   Proof: internal/target/target_test.go TestClaudeExists
 - an unresolvable root yields empty directories rather than a bad path
   Proof: internal/target/target_test.go TestUnresolvableRootYieldsEmptyDirs
-- the target list is exactly what ships
-  Proof: internal/target/target_test.go TestAllReturnsClaude
+- the project target roots at `<dir>/.claude` and accepts the same three kinds
+  Proof: internal/target/scope_test.go TestProjectRoot
+- it reports configured only once its root exists
+  Proof: internal/target/scope_test.go TestProjectExists
+- an unrooted project is inert rather than resolving to `/.claude`
+  Proof: internal/target/scope_test.go TestProjectWithNoDirectoryIsInert
+- each scope resolves to its own root
+  Proof: internal/target/scope_test.go TestResolveScope
+- **the two scopes never share a root**, or isolation is a claim with nothing behind it
+  Proof: internal/target/scope_test.go TestScopesNeverShareARoot
+- an unknown scope falls back to global rather than to nothing
+  Proof: internal/target/scope_test.go TestUnknownScopeFallsBackToGlobal

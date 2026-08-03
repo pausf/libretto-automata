@@ -41,9 +41,41 @@ const EnvASCIISafe = "LIBRETTO_ASCII"
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "lib:", err)
+		fmt.Fprintf(os.Stderr, "%s: %v\n", invokedAs(), err)
 		os.Exit(1)
 	}
+}
+
+// scopeFlags pulls --global / --project out of the arguments and returns the rest.
+//
+// Both at once is an error rather than a precedence rule. Two answers to "where
+// should this go" is a mistake worth reporting, not one worth resolving quietly by
+// picking the last flag and hoping it was meant.
+//
+// Neither means global, which is what every invocation meant before this existed.
+// Changing what an existing command does is worse than making people type a flag
+// for the new thing.
+func scopeFlags(args []string) (target.Scope, []string, error) {
+	scope, chosen := target.GlobalScope, ""
+	rest := make([]string, 0, len(args))
+
+	for _, a := range args {
+		switch a {
+		case "--global", "-g":
+			if chosen == "project" {
+				return scope, nil, fmt.Errorf("--global and --project are two answers to one question; pick one")
+			}
+			scope, chosen = target.GlobalScope, "global"
+		case "--project", "-p":
+			if chosen == "global" {
+				return scope, nil, fmt.Errorf("--global and --project are two answers to one question; pick one")
+			}
+			scope, chosen = target.ProjectScope, "project"
+		default:
+			rest = append(rest, a)
+		}
+	}
+	return scope, rest, nil
 }
 
 func run(args []string) error {
@@ -52,27 +84,33 @@ func run(args []string) error {
 		return err
 	}
 
+	scope, args, err := scopeFlags(args)
+	if err != nil {
+		return err
+	}
+	tg := target.Resolve(scope, "")
+
 	if len(args) == 0 {
 		if !isatty.IsTerminal(os.Stdout.Fd()) {
 			usage()
 			os.Exit(2)
 		}
-		return panelUI(root)
+		return panelUI(root, scope)
 	}
 
 	switch args[0] {
 	case "status":
-		return status(root)
+		return status(root, tg)
 	case "preview":
-		return preview(root)
+		return preview(root, tg)
 	case "install":
-		return install(root)
+		return install(root, tg)
 	case "doctor":
-		return doctor(root)
+		return doctor(root, tg)
 	case "prune":
-		return prune(root, args[1:])
+		return prune(root, tg, args[1:])
 	case "update":
-		return update(root)
+		return update(root, tg)
 	case "version", "-v", "--version":
 		fmt.Println("libretto-automata", version)
 		return nil
@@ -85,53 +123,134 @@ func run(args []string) error {
 	}
 }
 
-func panelUI(root string) error {
-	menu, targets, err := panelData(root)
+func panelUI(root string, scope target.Scope) error {
+	menu, targets, err := panelData(root, scope)
 	if err != nil {
 		return err
 	}
 
-	model := ui.NewModel(version, menu, targets, asciiSafe())
+	// The panel changes which destination is active by asking for a fresh view of
+	// the one at index i. scopeOrder is the single place that maps a row back to a
+	// scope, so the strip and the refresh can never disagree about the order.
+	model := ui.NewModel(version, menu, targets, asciiSafe()).
+		WithRefresh(func(i int) ([]ui.MenuItem, []ui.TargetRow, error) {
+			if i < 0 || i >= len(scopeOrder) {
+				return nil, nil, fmt.Errorf("no destination %d", i)
+			}
+			return panelData(root, scopeOrder[i])
+		})
+
 	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
 	return err
 }
 
-// panelData assembles the menu and target strip. Everything but update is wired
-// up; update stays visibly disabled rather than hidden, so the panel does not
-// promise what it cannot do.
-func panelData(root string) ([]ui.MenuItem, []ui.TargetRow, error) {
-	var rows []ui.TargetRow
-	var overall = map[link.State]int{}
+// scopeOrder is the order destinations appear in the strip, and the order tab
+// cycles through them. Global first: it is the default everywhere else.
+var scopeOrder = []target.Scope{target.GlobalScope, target.ProjectScope}
 
-	for _, tg := range target.All() {
+// panelData assembles the menu and the target strip for the active scope.
+//
+// **Both scopes are listed, one is marked active.** The alternative — asking once,
+// at startup, which one to use — is worse: an answer given at the top of a session
+// is invisible by the time you press a key, and "where did that just install?" is
+// the question this whole strip exists to answer before it is asked.
+//
+// The install row names the active root, so the destination is legible without
+// counting bullets.
+func panelData(root string, scope target.Scope) ([]ui.MenuItem, []ui.TargetRow, error) {
+	active := target.Resolve(scope, "")
+
+	rows := make([]ui.TargetRow, 0, len(scopeOrder))
+	overall := map[link.State]int{}
+
+	for _, sc := range scopeOrder {
+		tg := target.Resolve(sc, "")
 		counts, err := link.Counts(root, tg)
 		if err != nil {
 			return nil, nil, err
 		}
-		entries, err := link.Scan(root, tg)
-		if err != nil {
-			return nil, nil, err
-		}
-		for state, n := range link.Tally(entries) {
-			overall[state] += n
+
+		// Only the active scope contributes to the tally. A count that mixed both
+		// would answer a question nobody asked.
+		if sc == scope {
+			entries, err := link.Scan(root, tg)
+			if err != nil {
+				return nil, nil, err
+			}
+			for state, n := range link.Tally(entries) {
+				overall[state] += n
+			}
 		}
 
 		rows = append(rows, ui.TargetRow{
-			Name:       tg.Name(),
-			Info:       describe(tg, counts),
+			Name:       string(sc),
+			Info:       describe(tg, counts) + "  " + shorten(tg.Root()),
 			Configured: configured(tg),
+			Active:     sc == scope,
 		})
 	}
 
 	// The status row carries the live tally, exactly as the design mocks it.
 	menu := []ui.MenuItem{
-		{Label: "install", Desc: "link the score into ~/.claude", Enabled: true},
+		{Label: "install", Desc: "link the score into " + shorten(active.Root()), Enabled: true},
 		{Label: "update", Desc: "git pull · relink · report", Enabled: true},
 		{Label: "status", Desc: summarise(overall), Enabled: true},
 		{Label: "doctor", Desc: "diagnose the orchestra", Enabled: true},
 		{Label: "prune", Desc: "drop links whose source is gone", Enabled: true},
 	}
 	return menu, rows, nil
+}
+
+// pathBudget is how many columns a root may occupy in the panel.
+//
+// ponytail: a fixed budget, not a computed one. The panel's content is 58–98
+// columns and the label and counts take the rest, so 34 fits the narrow case with
+// room. If the layout ever needs it exact, the width is known in internal/ui and
+// the eliding belongs there instead.
+const pathBudget = 34
+
+// shorten makes a root fit the panel without tearing it.
+//
+// Two problems, and the second one is why this exists at all. A path under the home
+// directory reads better as `~/...` — cosmetic. But an arbitrarily long path
+// overflows the frame and pushes the right border out of alignment, which the panel
+// spec forbids at every width. A temporary directory is enough to do it.
+//
+// So the tail is kept and the head is replaced with an ellipsis: the last segments
+// are what tell you *which* directory this is, and the marker says plainly that
+// something was removed. Silently cutting the end would leave a path that looks
+// complete and is not.
+func shorten(path string) string {
+	if path == "" {
+		return "not configured"
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" && strings.HasPrefix(path, home) {
+		path = "~" + strings.TrimPrefix(path, home)
+	}
+	if len([]rune(path)) <= pathBudget {
+		return path
+	}
+
+	// Keep whole segments from the right, so the result is still a readable path
+	// rather than a string chopped mid-name.
+	parts := strings.Split(path, string(filepath.Separator))
+	out := ""
+	for i := len(parts) - 1; i >= 0; i-- {
+		if parts[i] == "" {
+			continue
+		}
+		next := string(filepath.Separator) + parts[i] + out
+		if len([]rune(next))+1 > pathBudget {
+			break
+		}
+		out = next
+	}
+	if out == "" {
+		// One segment longer than the whole budget. Cut it, and say so.
+		r := []rune(path)
+		return "…" + string(r[len(r)-pathBudget+1:])
+	}
+	return "…" + out
 }
 
 // describe renders "12 skills · 8 agents · 4 commands" in the target's own kind
@@ -167,8 +286,8 @@ func configured(tg target.Target) bool {
 // It forces truecolor so the output is identical whether stdout is a terminal or
 // a pipe. That is what makes it usable for screenshots, golden files, and eyeing
 // the LIBRETTO_ASCII fallback.
-func preview(root string) error {
-	menu, targets, err := panelData(root)
+func preview(root string, tg target.Target) error {
+	menu, targets, err := panelData(root, target.GlobalScope)
 	if err != nil {
 		return err
 	}
@@ -215,8 +334,8 @@ func indexOf(menu []ui.MenuItem, label string) int {
 }
 
 // status reports every item's state in every target. Read-only, per SPEC R4.
-func status(root string) error {
-	for _, tg := range target.All() {
+func status(root string, tg target.Target) error {
+	{
 		where := "not configured"
 		if configured(tg) {
 			where = tg.Root()
@@ -229,7 +348,7 @@ func status(root string) error {
 		}
 		if len(entries) == 0 {
 			fmt.Println("  nothing to link")
-			continue
+			return nil
 		}
 
 		for _, e := range entries {
@@ -247,10 +366,10 @@ func status(root string) error {
 //
 // Conflicts are reported and never touched, and they make the exit code non-zero:
 // an item that did not get linked is an incomplete install, whatever the reason.
-func install(root string) error {
+func install(root string, tg target.Target) error {
 	var wrote, refused, failed, conflicts int
 
-	for _, tg := range target.All() {
+	{
 		entries, err := link.Scan(root, tg)
 		if err != nil {
 			return err
@@ -260,7 +379,6 @@ func install(root string) error {
 		fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
 		if len(plan) == 0 {
 			fmt.Println("  already correct")
-			continue
 		}
 
 		for _, r := range link.Apply(root, plan) {
@@ -298,7 +416,7 @@ func install(root string) error {
 // relinked from source that has not been compiled — a payload from the new commit
 // linked by a binary from the old one is a state nobody asked for and nobody can
 // reason about.
-func update(root string) error {
+func update(root string, tg target.Target) error {
 	git := repo.Shell{Root: root}
 
 	dirty, err := git.Dirty()
@@ -352,7 +470,7 @@ func update(root string) error {
 	}
 
 	fmt.Println()
-	return install(root)
+	return install(root, tg)
 }
 
 // rebuild compiles the CLI to a temporary file and renames it into place.
@@ -398,10 +516,10 @@ func short(rev string) string {
 // Two sections with different authority: link problems are this tool's business
 // and set the exit code; prerequisites are informational, because the flow works
 // without the optional ones and saying otherwise would be a lie.
-func doctor(root string) error {
+func doctor(root string, tg target.Target) error {
 	problems := 0
 
-	for _, tg := range target.All() {
+	{
 		fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
 
 		entries, err := link.Scan(root, tg)
@@ -440,12 +558,17 @@ func doctor(root string) error {
 
 // remedy names the command that fixes a state, so the report says what to do
 // rather than only what is wrong.
+//
+// The command names itself with invokedAs, for the same reason usage does: this
+// binary is linked under more than one name, and a remedy naming a command the
+// reader does not have is a remedy they cannot run.
 func remedy(s link.State) string {
+	n := invokedAs()
 	switch s {
 	case link.Missing, link.WrongTarget:
-		return "→ lib install"
+		return "→ " + n + " install"
 	case link.Stale:
-		return "→ lib prune"
+		return "→ " + n + " prune"
 	case link.Conflict:
 		return "→ yours, not ours; move it or rename it"
 	default:
@@ -458,45 +581,46 @@ func remedy(s link.State) string {
 // Dry by default. It deletes things, and a destructive command that acts before
 // being asked twice is a command that eventually deletes the wrong thing. Without
 // --yes it prints the plan and changes nothing.
-func prune(root string, args []string) error {
+func prune(root string, tg target.Target, args []string) error {
 	confirmed := len(args) > 0 && (args[0] == "--yes" || args[0] == "-y")
 
 	var planned, wrote, refused, failed int
 
-	for _, tg := range target.All() {
+	{
 		entries, err := link.Scan(root, tg)
 		if err != nil {
 			return err
 		}
 
 		plan := link.PrunePlan(entries)
-		if len(plan) == 0 {
-			continue
-		}
-		planned += len(plan)
+		planned = len(plan)
 
-		fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
+		switch {
+		case planned == 0:
+			// Nothing to remove. The report below says so.
 
-		if !confirmed {
+		case !confirmed:
+			fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
 			for _, a := range plan {
 				fmt.Printf("  would remove  %s/%s → %s\n",
 					a.Entry.Kind, a.Entry.Name, a.Entry.Actual)
 			}
-			continue
-		}
 
-		for _, r := range link.Apply(root, plan) {
-			e := r.Action.Entry
-			switch {
-			case r.Refused:
-				fmt.Printf("  refused  %s/%s — %v\n", e.Kind, e.Name, r.Err)
-				refused++
-			case r.Err != nil:
-				fmt.Printf("  FAILED   %s/%s — %v\n", e.Kind, e.Name, r.Err)
-				failed++
-			default:
-				fmt.Printf("  removed  %s/%s\n", e.Kind, e.Name)
-				wrote++
+		default:
+			fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
+			for _, r := range link.Apply(root, plan) {
+				e := r.Action.Entry
+				switch {
+				case r.Refused:
+					fmt.Printf("  refused  %s/%s — %v\n", e.Kind, e.Name, r.Err)
+					refused++
+				case r.Err != nil:
+					fmt.Printf("  FAILED   %s/%s — %v\n", e.Kind, e.Name, r.Err)
+					failed++
+				default:
+					fmt.Printf("  removed  %s/%s\n", e.Kind, e.Name)
+					wrote++
+				}
 			}
 		}
 	}
@@ -507,7 +631,7 @@ func prune(root string, args []string) error {
 	}
 	if !confirmed {
 		fmt.Printf("\n%d link(s) to remove. Nothing has been changed.\n", planned)
-		fmt.Println("Run `lib prune --yes` to go ahead.")
+		fmt.Printf("Run `%s prune --yes` to go ahead.\n", invokedAs())
 		return nil
 	}
 
@@ -661,6 +785,9 @@ func usage() {
   %[2]s prune         show links whose source is gone, change nothing
   %[2]s prune --yes   remove them
   %[2]s preview       print the panel once, no TUI
+
+  --global, -g          act on ~/.claude (the default)
+  --project, -p         act on <this directory>/.claude
 
   LIBRETTO_ASCII=safe   swap quadrant glyphs for half blocks
   LIBRETTO_THEME=dark|light  force a palette instead of detecting
