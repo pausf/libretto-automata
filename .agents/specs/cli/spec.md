@@ -70,6 +70,19 @@ which is worse than not checking, because it sends people to install what they h
 
 A value that never varies is not configuration, so nothing else is exposed.
 
+**The version is stamped from git at build time, never held in a source constant.**
+`make build` passes `-ldflags "-X main.version=$(git describe --tags --always --dirty)"`,
+so the binary reports `v0.2.0`, or `v0.2.0-3-gabc123` past a tag, or `v0.2.0-dirty` over
+uncommitted changes.
+
+A constant drifts from the tag the moment someone forgets to bump it, and it drifts
+**silently** — the binary keeps announcing a version nobody released. Asking git means
+the answer cannot be wrong.
+
+A build without those flags reports `dev`, not a version number. **A binary that cannot
+prove its version says so rather than claiming one**, which is the same rule as
+everywhere else here: nothing is asserted that was not observed.
+
 **`install.sh` still exists** as the bootstrap for a machine without Go. It is a
 prototype and it lacks the ownership re-check, so it must not be presented as
 equivalent. It goes when `libretto install` has been verified against a real

@@ -25,7 +25,15 @@ import (
 	"github.com/pausf/libretto-automata/internal/ui"
 )
 
-const version = "v0.1.0"
+// version is stamped at build time from the nearest git tag:
+//
+//	go build -ldflags "-X main.version=$(git describe --tags --always --dirty)"
+//
+// `make build` does that. The fallback matters when someone builds with a plain
+// `go build` or `go install`, and it is deliberately not a version number —
+// claiming to be v0.1.0 when nothing said so is the drift this replaces. A binary
+// that cannot prove its version says so instead of guessing.
+var version = "dev"
 
 // EnvASCIISafe swaps the clef's quadrant glyphs for half blocks, for fonts that
 // lack them. See docs/DESIGN.md.

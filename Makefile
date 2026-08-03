@@ -1,6 +1,18 @@
 BIN := bin/libretto
 PKG := ./cmd/libretto
 
+# The version the binary reports, taken from git rather than kept in a source file.
+#
+# A hardcoded constant drifts from the tag the moment you forget to bump it, and it
+# drifts silently — the binary keeps claiming a version nobody released. Asking git
+# means the answer cannot be wrong.
+#
+#   v0.2.0            exactly on a tag, clean tree
+#   v0.2.0-3-gabc123  three commits past it
+#   v0.2.0-3-gabc123-dirty   with uncommitted changes, which is worth seeing
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS := -X main.version=$(VERSION)
+
 # Where `make link` puts the command, and under which names.
 #
 # `libretto` is the one to type. The long form is linked too because it is what the
@@ -15,7 +27,7 @@ NAMES  ?= libretto libretto-automata
 .PHONY: build test fmt vet preview clean link unlink
 
 build:
-	go build -o $(BIN) $(PKG)
+	go build -ldflags "$(LDFLAGS)" -o $(BIN) $(PKG)
 
 test:
 	go test ./...
