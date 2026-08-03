@@ -12,6 +12,7 @@ This spec is the contract the payload's *artifacts* have to satisfy.
 Installing this repository gives a working flow on a machine that has nothing else.
 
 - one command, `libretto-flow`, that routes and never implements
+- `libretto-status`, read-only, reporting what is in flight
 - one skill per phase, each of which stops where its phase stops
 - three standing rules that hold at every phase: **ask**, **commit**, **evidence**
 - the vendored delegates the thin skills depend on, so a thin skill is never a broken
@@ -35,6 +36,38 @@ third-party items and their attribution.
 - accepting a secret. No skill asks for a token, and any skill that is handed one says
   it is now exposed and continues without it.
 - pushing, or committing from a sub-agent.
+
+### Work is found, not fetched
+
+**The flow does not begin at a tracker.** Phase 1 asks three sources, in this order:
+
+| Source | When |
+|---|---|
+| a change already in flight | unchecked boxes in `.agents/changes/*/plan.md` |
+| a tracker key or URL | one was given |
+| what the user said | anything else — the request *is* the input |
+
+Home first, and the order carries the reason: starting something new while a change sits
+half-finished is how the half-finished thing gets abandoned, and the cost is not the lost
+work but a `.agents/changes/` directory nobody trusts.
+
+**A request in conversation is a legitimate input.** Every change in this repository so
+far arrived that way, and the phase used to treat it as a fallback in a table. With no key
+the change is named from the request, verb-led, and `proposal.md` records `Tracker: none`
+plus what was asked in the words it was asked in — a fake key would imply a tracker
+somebody could consult.
+
+Two other implementations agree that the tracker is not the door. gentle-ai mentions none
+at all in its propose or explore phases; CodelyTV/agent-harness takes the task as an
+argument and offers GitHub Issues as an optional variant.
+
+**Reporting and choosing are one skill.** `/libretto-status` invokes phase 1 in reporting
+mode rather than scanning the same directories its own way. Two answers to "what work
+exists" is one too many, and the one that disagrees is always the one nobody is reading.
+
+**Landed changes are deleted, not archived.** gentle-ai moves them to `changes/archive/`;
+git history is the archive here, and a directory nobody reopens is growth. A decision,
+not an oversight.
 
 ## Constraints
 
@@ -79,7 +112,8 @@ the copy stays comparable with upstream.
 
 ## Task breakdown
 
-- [x] `read-task-jira` — phase 1
+- [x] `find-work` — phase 1, three sources
+- [x] `libretto-status` — read-only, what is in flight
 - [x] `write-spec` — phases 0, 2, 3, including the fan-out and its brief
 - [x] `write-plan` — phase 5
 - [x] `build-and-check` — phase 6
@@ -119,6 +153,9 @@ the copy stays comparable with upstream.
   Proof: skills/record-work/spec-drift --self-test
 - every `Proof:` citation in every spec resolves, file and test name
   Proof: skills/record-work/spec-drift --anchors
+- **the status command delegates rather than restating the scan**, and every referenced
+  skill survived the rename
+  Proof: scripts/check-payload
 
 **What none of this verifies is behaviour.** A skill is a prompt, and a prompt is
 checked by running it. The static checks above catch what silently degrades one — a

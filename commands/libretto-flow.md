@@ -19,18 +19,27 @@ with their output read.
 If `ponytail` is installed it applies throughout too — how much gets built is its
 question, and phase 2 is where it earns the most.
 
-## 1 · Read the task
+## 1 · Find the work
 
 ```
-Skill(skill="read-task-jira")
+Skill(skill="find-work")
 ```
 
-Preflights the tracker, authenticates, loads one task and its subtasks. If it stops —
-CLI missing, not configured, token unusable — stop here. Nothing downstream works
-without a task.
+Three sources, in order: **a change already in flight**, then a tracker key or URL, then
+what the user said. Home first — starting something new while a change sits half-finished
+is how the half-finished thing gets abandoned.
 
-Report the task, then **wait**. The user may want to look at it before a contract
-gets written.
+A request in conversation is a legitimate input, not a fallback. It is how most work
+arrives.
+
+If it stops — a tracker was named and its CLI is missing, unconfigured or unauthorised —
+stop here. Nothing downstream works without knowing what the work is.
+
+Report what was found, then **wait**. The user may want to look before a contract gets
+written, and if something was already in flight they choose whether to continue it.
+
+`/libretto-status` runs the same source 1 and stops there, for when the question is only
+"what is open?"
 
 ## 2–3 · Spec it
 
