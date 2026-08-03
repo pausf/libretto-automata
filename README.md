@@ -1,53 +1,203 @@
+<div align="center">
+
 # 𝄞 Libretto Automata
 
-> The libretto is written first. The automaton performs it.
+**The libretto is written first. The automaton performs it.**
 
-An 18th-century automaton was a machine that played music by reading a score. A
-human wrote the notes; the machine executed them. It never improvised — it did
-exactly what the paper said. If the performance was wrong, the paper was wrong.
+[![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![Bubble Tea](https://img.shields.io/badge/Bubble%20Tea-1.3-FF6AC1?logo=charm&logoColor=white)](https://github.com/charmbracelet/bubbletea)
+[![Lip Gloss](https://img.shields.io/badge/Lip%20Gloss-1.1-FFB3E8?logo=charm&logoColor=white)](https://github.com/charmbracelet/lipgloss)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-payload-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
+[![Jira CLI](https://img.shields.io/badge/Jira%20CLI-tracker-0052CC?logo=jira&logoColor=white)](https://github.com/ankitpokhrel/jira-cli)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-79%20passing-brightgreen.svg)](#gates)
 
-That is how this works. You write the spec. The agent performs it. When the
-output is bad, you fix the libretto, not the automaton.
+</div>
 
-## What this is
+---
 
-My own Claude Code setup — skills, agents, commands — kept in git instead of
-living loose inside `~/.claude` where a sync can overwrite it.
+An 18th-century automaton was a machine that played music by reading a score. A human
+wrote the notes; the machine executed them. It never improvised — it did exactly what
+the paper said. **If the performance was wrong, the paper was wrong.**
 
-It installs by **symlink**, not by copy. Edit here, it's live immediately.
-`git pull` updates everything.
+That is how this works. You write the spec. The agent performs it. When the output is
+bad, you fix the libretto, not the automaton.
+
+## Two things in one repository
+
+| | |
+|---|---|
+| **The payload** | an eight-phase spec-driven flow, as skills and commands. **This is the point.** |
+| **The CLI** | a Go binary that symlinks the payload into `~/.claude`. This is delivery. |
+
+Links are made **per item, never per directory**, so this coexists with anything else
+installed into the same folders. Anything already there that this tool did not create is
+left untouched and reported — there is no `--force`, by design.
 
 ## Install
 
+Requires [Go 1.26+](https://go.dev/dl/).
+
 ```bash
-git clone <this repo> ~/gitrepos/libretto-automata
+git clone git@github.com:pausf/libretto-automata.git ~/gitrepos/libretto-automata
 cd ~/gitrepos/libretto-automata
-./install.sh
+
+make build      # stamps the version from git describe
+make link       # puts `libretto` on your PATH via ~/.local/bin
+libretto        # the panel
+```
+
+`make link` symlinks rather than copies, so `make build` updates the installed command
+and no stale binary can pretend to be current. It refuses to overwrite a `libretto` it
+did not create.
+
+Then install the payload:
+
+```bash
+libretto doctor    # what is missing, and what the flow expects on this machine
+libretto install   # symlink every item into ~/.claude
 ```
 
 ## Commands
 
 | | |
 |---|---|
-| `./install.sh` | symlink every item into `~/.claude` |
-| `./install.sh status` | what's linked, what's missing |
-| `./install.sh doctor` | find broken links |
+| `libretto` | the panel — needs a terminal |
+| `libretto status` | every item's state. Read-only, always. |
+| `libretto install` | link everything. Idempotent; non-zero exit if anything was skipped. |
+| `libretto update` | pull, relink, rebuild when Go changed |
+| `libretto doctor` | what needs attention, plus what the payload expects here |
+| `libretto prune` | show links whose source is gone — **changes nothing** |
+| `libretto prune --yes` | remove them |
+| `libretto preview` | print the panel once, no TUI |
 
-Links are made **per item**, never per directory — so this coexists with
-anything else installed into the same folders. Anything already there that
-isn't a symlink is left untouched.
+`prune` is dry by default. A destructive command that acts before being asked twice
+eventually deletes the wrong thing, and a pipe is no reason to be less careful.
 
-## Layout
+### The five states
+
+`status` reports one of these per item, per target:
+
+| State | Meaning | Remedy |
+|---|---|---|
+| `linked` | our symlink, right destination | none |
+| `missing` | in the repo, absent from the target | `install` |
+| `wrong target` | our symlink, wrong destination | `install` repoints it |
+| `conflict` | something foreign in the way | **none** — reported, never touched |
+| `stale` | our symlink with no item behind it | `prune` |
+
+### Environment
+
+| | |
+|---|---|
+| `CLAUDE_HOME` | Claude Code's root instead of `~/.claude`. What makes the test suite safe. |
+| `LIBRETTO_ROOT` | the repo location, instead of deriving it from the binary |
+| `LIBRETTO_ASCII=safe` | swap the clef's quadrant glyphs for half blocks |
+| `LIBRETTO_THEME` | `dark` or `light`, instead of detecting |
+| `COLUMNS` | layout width when stdout is not a terminal |
+
+There is no configuration file. A value that never varies is not configuration.
+
+## The flow
+
+Eight phases, installed as skills. Start it with `/libretto-flow EUCAR-1234`.
+
+| | Phase | Skill |
+|---|---|---|
+| 1 | read the task from the tracker | `read-task-jira` |
+| 0·2·3 | does a spec even need to exist · the six pillars · one per subtask | `write-spec` |
+| 5 | the plan — live state, one writer | `write-plan` |
+| 6 | build, with proportionate checks | `build-and-check` |
+| 7 | present, including what was left out | `present-work` |
+| 8 | commit, and make the spec true again | `record-work` |
+
+Three rules hold at **every** phase, not one of them:
+
+- **ask** — with a recommended option, real alternatives, and room to answer otherwise
+- **commit** — per task, so a bisect lands somewhere meaningful
+- **evidence** — nothing is true until it has been observed
+
+Details and reasoning: [docs/FLOW.md](docs/FLOW.md).
+
+## Specs
+
+Per **capability**, never per ticket, under [`.agents/specs/`](.agents/specs/). A
+capability spec accumulates and stays true; a spec named after a ticket is dead the day
+the ticket closes.
+
+Each declares what it owns and cites the test behind every criterion:
 
 ```
-skills/      one directory per skill
-agents/      one .md per agent
-commands/    one .md per slash command
+Governs: internal/link/plan.go internal/link/apply.go
+Proof:   internal/link/apply_test.go TestApplyIsIdempotent
 ```
 
-Drop something in, run `./install.sh`, it's live.
+Two anchors, checked mechanically:
+
+```bash
+skills/record-work/spec-drift --anchors   # every citation resolves, test name included
+skills/record-work/spec-drift             # staged code whose owning spec did not move
+```
+
+It warns; it never blocks. A check that stops a commit in someone else's project is a
+check that gets deleted, and a deleted check finds nothing.
+
+Work in flight lives in `.agents/changes/<change>/` and lands by applying its delta onto
+the capability spec and deleting the change folder — in the same commit as the code.
+
+## Gates
+
+All six pass before any commit.
+
+```bash
+gofmt -l .                                  # must print nothing
+go vet ./...
+go test ./... -count=1                      # 79 tests
+scripts/check-payload                       # frontmatter, references, reachability
+skills/record-work/spec-drift --self-test   # 17 checks
+skills/record-work/spec-drift --anchors     # 72 citations
+```
+
+## Built with
+
+| | |
+|---|---|
+| [Go](https://go.dev) | 1.26 |
+| [Bubble Tea](https://github.com/charmbracelet/bubbletea) · [Lip Gloss](https://github.com/charmbracelet/lipgloss) · [termenv](https://github.com/muesli/termenv) | the panel |
+| [jira-cli](https://github.com/ankitpokhrel/jira-cli) | the tracker, by CLI — never MCP, never the REST API |
+
+## Standing on other people's work
+
+Three skills **ship with this repository**, so the flow works on a machine that has
+nothing else installed. Copied unmodified, licence and version recorded in
+[THIRD-PARTY.md](THIRD-PARTY.md):
+
+- [**obra/superpowers**](https://github.com/obra/superpowers) — `writing-plans`,
+  `test-driven-development`, `using-git-worktrees`. The flow's own skills are thin
+  because they delegate to these, and a thin skill whose delegate is missing is not
+  thin, it is broken.
+
+Called when present, never required. `libretto doctor` reports them:
+
+- [**ponytail**](https://github.com/DietrichGebert/ponytail) — decides how much gets
+  built. Its ladder runs from *does this need to exist at all?* down to *only then, the
+  minimum that works*, and it carries the list of things that are never trimmed: trust
+  boundaries, data loss, security, accessibility. This flow invokes it in phase 2, on
+  requirements, because that is where removing work is cheapest.
+- **caveman** — decides how much gets said. Compresses prose; ponytail compresses what
+  gets built. No overlap.
+
+The eight-phase shape also owes a debt to reading
+[**odelrio/autopilot**](https://github.com/odelrio/autopilot) closely. Its discipline
+layer was better than anything here had: *verify before you claim*, *never weaken a
+failing test*, *capture output to a file because a pipe hides the exit code*. Those ideas
+are reimplemented in [`skills/evidence/`](skills/evidence/) in our own terms, not copied.
 
 ## Not managed here
 
-`CLAUDE.md` and `settings.json` — those get rewritten by other tooling, so
-they stay hand-managed.
+`CLAUDE.md` and `settings.json`. Other tooling rewrites regions of those files, so they
+stay hand-managed. Linking them would start a fight this tool cannot win.
+
+## Licence
+
+[MIT](LICENSE). Vendored items keep their own — see [THIRD-PARTY.md](THIRD-PARTY.md).
