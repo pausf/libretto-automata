@@ -11,7 +11,34 @@ metadata:
 
 Phase 1 of the Libretto flow: **find the work**, and load exactly one piece of it.
 
-It stops there. It does not write specs, plan, branch, code or commit.
+It stops there. It does not write a spec, a plan, or any code.
+
+## Phase 1 does not end until its artifact exists
+
+**Reporting what was found is not finishing.** A source-3 request leaves
+`.agents/changes/<name>/proposal.md` **on disk** before this phase reports, and a phase
+that only described the work has not run.
+
+The rule was written below, in prose, under source 3. It read as a description of what a
+proposal contains rather than as a step that must happen, and it was skipped — the ask
+was reported, confirmation was requested, and no file existed. The user had to ask where
+the change was. **A step stated as prose is a step that gets read and not done**, so it
+is stated here as an output instead:
+
+| Source | Phase 1 has not finished until |
+|---|---|
+| 1 · in flight | the open boxes and what can start now have been read off the plan |
+| 2 · tracker | the issue was fetched and its description read — not just its header |
+| 3 · what the user said | **`proposal.md` exists**, with `Tracker: none` and the ask verbatim |
+
+Writing that file means committing it, and committing means a branch. **So phase 1
+creates the branch when it writes the proposal** — the same rule as
+`skills/build-and-check/` step 0, arriving earlier because the first write does. Phase 6
+then *ensures* a branch rather than creating one, and finds the work already on it.
+
+Then confirm the reading, and stop. Confirming comes after the file, not instead of it: a
+reading confirmed in conversation and recorded nowhere is re-derived next session, and it
+will not come out the same.
 
 The flow does not begin at a tracker. A tracker is one of three places work comes
 from, and in practice the least common:
@@ -47,6 +74,31 @@ half-finished work without asking is a decision about their priorities.
 
 No `.agents/changes/` directory, or none with open boxes, means nothing is in flight.
 That is a state, not an error — say it in one line and move on.
+
+### A branch is also work in flight
+
+**The scan above cannot see the trivial lane.** A change that needed no spec never creates
+a `changes/` directory — by definition it has no spec and no plan — so it lives only as
+commits on a branch, and `rg` over `plan.md` reports nothing in flight while the work sits
+there unmerged.
+
+That is not hypothetical: the lane's own first run produced a commit on a local branch,
+and the next phase 1 reported an empty house.
+
+So look at the branches too, and read the result rather than assuming it:
+
+```
+git branch --format='%(refname:short)' --no-merged main
+git log --oneline main..<branch>
+gh pr list --json number,headRefName,state      # or glab mr list
+```
+
+Report each unmerged branch with its commits and whether a request is open for it.
+**Unpushed and un-requested is the state worth naming** — that is work nobody but this
+machine has.
+
+`main` here means whatever the base branch actually is. Do not hardcode it if the
+repository says otherwise.
 
 ## Source 3 — what the user said
 

@@ -26,10 +26,15 @@ Both ship with this repository; see `THIRD-PARTY.md`.
 What follows is only what those do not decide: where the work lands, how much to
 test, and whether to isolate at all.
 
-## Step 0 — The branch exists before the first write
+## Step 0 — Ensure the branch, before the first write
 
 **Before editing a single file, look at the branch.** If it is the base branch,
 create one now.
+
+Often it already exists: phase 1 branches when it writes a proposal, because that file
+has to be committed too. Then this step confirms and moves on. **Ensure, not create** —
+a step that assumes it is first will make a second branch and split one change across
+two.
 
 ```
 git branch --show-current
