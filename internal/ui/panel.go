@@ -158,28 +158,44 @@ func (t Theme) menu(p Panel) string {
 }
 
 func (t Theme) targets(p Panel) string {
+	// Two facts about a destination, on two separate channels, because putting them
+	// both on the bullet is what made the panel unreadable:
+	//
+	//   the bullet  ● configured · ○ not yet
+	//   the colour  gold end to end = this is what the keys act on
+	//
+	// Selection is the menu's idiom, used verbatim: a `❯` cursor **and** a sweep of
+	// gold. Both, not either.
+	//
+	// Colour alone is not enough — strip it and the rows become identical, which is
+	// what a non-colour terminal and a colour-blind reader both get. Encoding it in
+	// the *bullet* instead was worse still: a green ● (configured) reads as "on"
+	// more strongly than a gold ◉ ring, which reads as an unticked radio button, so
+	// the inactive destination looked selected and correct behaviour got reported as
+	// a bug. The bullet now means one thing only.
 	rows := make([]string, len(p.Targets))
 	for i, tg := range p.Targets {
-		// The active scope is named in gold, the same colour selection uses
-		// everywhere else. One colour, one meaning: this is what the keys act on.
-		name := pad(tg.Name, targetInfoCol-targetNameCol)
-		if !tg.Configured {
-			// An unconfigured target is grey end to end — the whole row
-			// recedes, not just its bullet.
-			row := Fg(t.Off).Render("  ○ " + name + tg.Info)
-			if tg.Active {
-				row = "  " + Fg(t.Gold).Render("◉ "+name) + Fg(t.Off).Render(tg.Info)
-			}
-			rows[i] = row
-			continue
+		bullet, cursor := "○", " "
+		if tg.Configured {
+			bullet = "●"
 		}
 		if tg.Active {
-			rows[i] = "  " + Fg(t.Gold).Render("◉ "+name) + Fg(t.Muted).Render(tg.Info)
-			continue
+			cursor = "❯"
 		}
-		rows[i] = "  " + Fg(t.Green).Render("●") + " " +
-			Fg(t.Steel).Render(name) +
-			Fg(t.Muted).Render(tg.Info)
+		line := cursor + " " + bullet + " " + pad(tg.Name, targetInfoCol-targetNameCol) + tg.Info
+
+		switch {
+		case tg.Active:
+			rows[i] = "  " + Fg(t.Gold).Render(line)
+		case !tg.Configured:
+			// Recedes end to end — the whole row, not just its bullet.
+			rows[i] = "  " + Fg(t.Off).Render(line)
+		default:
+			rows[i] = "  " + Fg(t.Steel).Render(cursor) + " " +
+				Fg(t.Green).Render(bullet) + " " +
+				Fg(t.Steel).Render(pad(tg.Name, targetInfoCol-targetNameCol)) +
+				Fg(t.Muted).Render(tg.Info)
+		}
 	}
 	return strings.Join(rows, "\n")
 }

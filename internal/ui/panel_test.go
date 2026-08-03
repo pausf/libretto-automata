@@ -483,3 +483,74 @@ func TestSwitchingScopeSaysSo(t *testing.T) {
 		t.Errorf("switching scope said %q; it has to name where it now acts", got)
 	}
 }
+
+// Selection is carried by colour, not by a glyph — the project's own rule, and the
+// menu's. Encoding it in the bullet put two meanings on one channel: a green ●
+// (configured) read as "selected" more strongly than a gold ◉ ring, so the inactive
+// destination looked active and the correct behaviour got reported as a bug.
+func TestActiveDestinationIsGoldEndToEnd(t *testing.T) {
+	forceTrueColor(t)
+	theme := darkTheme()
+
+	rows := []TargetRow{
+		{Name: "global", Info: "12 missing", Configured: true},
+		{Name: "project", Info: "3 linked", Configured: true, Active: true},
+	}
+	p := demoPanel()
+	p.Targets = rows
+
+	rendered := strings.Split(theme.targets(p), "\n")
+	if len(rendered) != 2 {
+		t.Fatalf("rendered %d rows, want 2", len(rendered))
+	}
+
+	// One row, one colour — the whole active row is gold, bullet and figures too.
+	if got := coloursIn(rendered[1]); len(got) != 1 || got[0] != rgbOf(theme.Gold) {
+		t.Errorf("the active row is %v, want one colour rgb(%s)", got, rgbOf(theme.Gold))
+	}
+	if got := coloursIn(rendered[0]); slicesContain(got, rgbOf(theme.Gold)) {
+		t.Errorf("an inactive row carries gold, so selection is ambiguous: %v", got)
+	}
+
+	// And the bullet is free to mean one thing only.
+	if strings.Contains(theme.targets(p), "◉") {
+		t.Error("the ring glyph is back; the bullet means configured-ness, nothing else")
+	}
+}
+
+// Colour cannot be the only signal. Strip it and the rows must still be told apart,
+// which is what a non-colour terminal and a colour-blind reader both get.
+func TestActiveDestinationIsMarkedWithoutColour(t *testing.T) {
+	theme := darkTheme()
+	rows := []TargetRow{
+		{Name: "global", Info: "12 missing", Configured: true},
+		{Name: "project", Info: "3 linked", Configured: true, Active: true},
+	}
+	p := demoPanel()
+	p.Targets = rows
+
+	rendered := strings.Split(stripANSI(theme.targets(p)), "\n")
+	if len(rendered) != 2 {
+		t.Fatalf("rendered %d rows, want 2", len(rendered))
+	}
+	if strings.Contains(rendered[0], "❯") {
+		t.Errorf("the inactive row carries the cursor: %q", rendered[0])
+	}
+	if !strings.Contains(rendered[1], "❯") {
+		t.Errorf("with colour removed the active row is unmarked: %q", rendered[1])
+	}
+}
+
+func slicesContain(hay []string, needle string) bool {
+	for _, h := range hay {
+		if h == needle {
+			return true
+		}
+	}
+	return false
+}
+
+// stripANSI removes colour so a test can ask what survives without it.
+func stripANSI(s string) string {
+	return escapes.ReplaceAllString(s, "")
+}

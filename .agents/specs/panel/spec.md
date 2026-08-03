@@ -18,8 +18,15 @@ and a plain title rather than tearing.
 Selection is unmistakable: the selected row is gold end to end, description included.
 
 **The destination is always visible.** The strip lists every place items can be
-installed, and marks the one the keys will act on with `◉` in the same gold selection
-uses everywhere else. `tab` moves it.
+installed and marks the active one the way the menu marks its selection: a `❯` cursor
+in the same column, **and** gold end to end. `tab` moves it.
+
+**Both signals, not either.** Colour alone fails a non-colour terminal and a
+colour-blind reader — strip it and the rows are identical. And encoding selection in
+the *bullet* instead is worse: `●` and `○` already mean configured and not-yet, and a
+green `●` reads as "on" more strongly than a gold `◉` ring, which reads as an unticked
+radio button. That version shipped, made the inactive destination look selected, and
+got correct behaviour reported as a bug. One channel, one meaning.
 
 A prompt asked once at startup would be worse: an answer given at the top of a session
 is invisible by the time you press a key, and *where did that just install?* is the
@@ -173,6 +180,10 @@ The model:
   Proof: internal/ui/panel_test.go TestFooterListsTheScopeKey
 - **switching names the destination it now acts on**
   Proof: internal/ui/panel_test.go TestSwitchingScopeSaysSo
+- **the active destination is gold end to end**, and no inactive row carries gold
+  Proof: internal/ui/panel_test.go TestActiveDestinationIsGoldEndToEnd
+- **with colour removed it is still marked** — the cursor survives
+  Proof: internal/ui/panel_test.go TestActiveDestinationIsMarkedWithoutColour
 - **the rows report their own state and can differ**
   Proof: cmd/libretto/scope_test.go TestStripRowsReportTheirOwnState
 - the status row follows the active destination rather than summing both
