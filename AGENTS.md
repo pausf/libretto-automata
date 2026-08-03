@@ -125,6 +125,15 @@ cannot prove its version says so rather than claiming one.
 | minor | a new capability, or a new promise in an existing spec |
 | major | a promise removed or reversed |
 
+**A tag is a release, not a commit marker.** Tag when the work goes out, not on the way
+there. Four tags for one unpushed feature and three fixes to it is four releases nobody
+could install — the fixes were to code that had never existed for anyone, so they need
+no patch numbers of their own. Move the tag to the tip and let it describe what actually
+shipped.
+
+Retagging is only safe while the tag is unpublished. Once it is on the remote it is
+somebody's reference point and it stays where it is.
+
 **Skill frontmatter `version:` is separate** and tracks that skill's own contract. A
 skill whose instructions change meaningfully gets a bump; the repo tag does not force
 one.

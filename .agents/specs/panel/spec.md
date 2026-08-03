@@ -28,6 +28,12 @@ green `●` reads as "on" more strongly than a gold `◉` ring, which reads as a
 radio button. That version shipped, made the inactive destination look selected, and
 got correct behaviour reported as a bug. One channel, one meaning.
 
+**And gold is the only colour that may mean selected.** The inactive destination's
+bullet was green; green says "on" loudly enough that it kept reading as the chosen row
+even with gold on the active one. Two colours arguing about selection is one colour too
+many, so the strip is achromatic apart from the active row. The glyph's *shape* carries
+configured-ness — which is the recession rule the palette already follows.
+
 A prompt asked once at startup would be worse: an answer given at the top of a session
 is invisible by the time you press a key, and *where did that just install?* is the
 question this strip exists to answer before it is asked.
@@ -184,6 +190,8 @@ The model:
   Proof: internal/ui/panel_test.go TestActiveDestinationIsGoldEndToEnd
 - **with colour removed it is still marked** — the cursor survives
   Proof: internal/ui/panel_test.go TestActiveDestinationIsMarkedWithoutColour
+- **no second colour competes with gold for meaning**
+  Proof: internal/ui/panel_test.go TestNoSecondColourCompetesWithSelection
 - **the rows report their own state and can differ**
   Proof: cmd/libretto/scope_test.go TestStripRowsReportTheirOwnState
 - the status row follows the active destination rather than summing both

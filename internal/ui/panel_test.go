@@ -554,3 +554,32 @@ func slicesContain(hay []string, needle string) bool {
 func stripANSI(s string) string {
 	return escapes.ReplaceAllString(s, "")
 }
+
+// Gold is the only colour that may mean "selected". The inactive destination's
+// bullet was green, and green says "on" loudly enough that it kept looking like the
+// chosen row even with gold on the active one. Two colours arguing about selection
+// is one colour too many.
+func TestNoSecondColourCompetesWithSelection(t *testing.T) {
+	forceTrueColor(t)
+	theme := darkTheme()
+
+	rows := []TargetRow{
+		{Name: "global", Info: "12 missing", Configured: true},
+		{Name: "project", Info: "3 linked", Configured: true, Active: true},
+	}
+	p := demoPanel()
+	p.Targets = rows
+
+	rendered := strings.Split(theme.targets(p), "\n")
+	green := rgbOf(theme.Green)
+
+	for i, row := range rendered {
+		if slicesContain(coloursIn(row), green) {
+			t.Errorf("strip row %d carries green, which competes with gold for meaning: %q", i, row)
+		}
+	}
+	// And the active row is still the only gold one.
+	if got := coloursIn(rendered[1]); len(got) != 1 || got[0] != rgbOf(theme.Gold) {
+		t.Errorf("the active row is %v, want only gold", got)
+	}
+}

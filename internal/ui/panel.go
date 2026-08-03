@@ -191,9 +191,13 @@ func (t Theme) targets(p Panel) string {
 			// Recedes end to end — the whole row, not just its bullet.
 			rows[i] = "  " + Fg(t.Off).Render(line)
 		default:
-			rows[i] = "  " + Fg(t.Steel).Render(cursor) + " " +
-				Fg(t.Green).Render(bullet) + " " +
-				Fg(t.Steel).Render(pad(tg.Name, targetInfoCol-targetNameCol)) +
+			// Achromatic. The bullet used to be green, and green says "on" loudly
+			// enough that the inactive destination still looked like the chosen one
+			// even with gold on the active row. Two colours arguing about selection
+			// is one colour too many — the shape of the glyph carries configured-ness
+			// and nothing carries selection but gold.
+			rows[i] = "  " + Fg(t.Steel).Render(cursor+" "+bullet+" "+
+				pad(tg.Name, targetInfoCol-targetNameCol)) +
 				Fg(t.Muted).Render(tg.Info)
 		}
 	}
