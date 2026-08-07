@@ -14,6 +14,10 @@ Installing this repository gives a working flow on a machine that has nothing el
 - one command, `libretto-flow`, that routes and never implements
 - `libretto-status`, read-only, reporting what is in flight
 - one skill per phase, each of which stops where its phase stops
+- **the finished work reviewed by someone who did not write it** — in the seam
+  between build and present, `review-work` launches one fresh `work-reviewer`
+  subagent with none of the session's context; it re-runs every proof the change
+  touches and returns findings that phase 7 carries attributed and unedited
 - three standing rules that hold at every phase: **ask**, **commit**, **evidence**
 - **ceremony proportional to the change** — four stops for a change with a contract, one
   for a change too small to have one
@@ -43,6 +47,9 @@ third-party items and their attribution.
   disk, and the two will disagree exactly when it matters.
 - **a second flow for small work.** One flow with a proportionate gear, not two to keep
   in sync.
+- **a review that blocks, fixes or opines.** The reviewer reports — acting on a
+  finding is the user's call and a new pass through phase 6, never a loop inside the
+  skill. Style and taste are not findings; a finding cites a pillar or a proof.
 
 ### Ceremony is proportional to the change
 
@@ -202,6 +209,20 @@ the copy stays comparable with upstream.
   diff-size threshold, not a file count. The real test is whether two people could
   reasonably disagree about what "done" means. A number would be wrong in both directions
   and trusted anyway.
+- **The reviewer reports and never blocks** — decided when the review seam was added,
+  and the same standing as drift detection. The stops in this flow exist so the user
+  can say no, not so a machine can.
+- **The review seam is not a numbered phase.** Independence comes from the fresh
+  context, not from renumbering everything that says eight.
+- **The reviewer re-runs the proofs itself.** Phase 6 having reported them green is
+  not evidence in a review — trusting the builder's report is the failure the seam
+  exists to remove.
+- **No spec, no review.** The trivial lane collapsed the ceremony because there was
+  no contract to disagree with; a reviewer with no contract has nothing to check. One
+  line, no wait.
+- **One reviewer, not a panel.** Two runs of the same model over the same diff are
+  correlation dressed as corroboration. The day reviews need lenses, that is a spec
+  change, not a quiet doubling.
 
 ## Task breakdown
 
@@ -223,8 +244,9 @@ the copy stays comparable with upstream.
 - [ ] **the failure paths.** Still written and never run: an unconfigured tracker, a board
       URL where a key was expected, the trivial lane actually collapsing on a one-line
       change, and a sub-agent hitting a question it must not answer itself.
-- [ ] an independent verifier: check the implementation against the spec's criteria,
-      never run by whoever wrote the code
+- [x] an independent verifier: check the implementation against the spec's criteria,
+      never run by whoever wrote the code — `review-work` and `work-reviewer`, in the
+      seam between phases 6 and 7
 
 ## Verification criteria
 
@@ -279,5 +301,19 @@ prevent:
 - `prune` removed exactly the one stale link it planned to and left the other thirteen,
   the first exercise of that path outside a temporary directory
 
+**What the reviewer's first two runs observed**, 2026-08-07:
+
+- a fresh reviewer with no session context reviewed the change that built it — ran
+  both cited proofs itself, verified every outcome against the diff, and returned a
+  real finding: phase 7's own skill never carried the verdict, only `libretto-flow`
+  did. Fixed in the same change. Caveat: the agent type registers at session start,
+  so both runs used a fresh general-purpose subagent instructed to read and obey
+  `agents/work-reviewer.md` first — same zero context, indirect binding. A fresh
+  session exercises the registration itself.
+- in a fixture repository, a criterion cited a test the committed code failed — the
+  reviewer caught it by running it (`CarryDigits(45,55) = 1, want 2`, exit 1), named
+  the unimplemented outcome clause, and never consulted the builder's claim.
+
 Still unobserved, and therefore still claims rather than facts: the collapsed lane on a
-change that needs no spec, and every remaining failure path above.
+change that needs no spec, the review seam's one-line decline on that same lane, and
+every remaining failure path above.

@@ -150,6 +150,27 @@ Worktree when isolation is cheap. It is not always cheap: unversioned `.env`,
 reproduced before a worktree can build. Check that the tree builds from a clean
 checkout before assuming isolation is free.
 
+## Between 6 and 7 · Review
+
+The flow's own rule is that nothing is true until observed — and until here, phase 7
+was a self-report by the same agent that wrote the code. So before presenting, the
+work goes to someone who did not write it: `review-work` launches one fresh
+`work-reviewer` subagent with none of the session's context, and the builder's
+beliefs about the code become the claim under review.
+
+The reviewer reads the contract and the diff, **re-runs every proof the change
+touches** rather than trusting phase 6's report, and returns findings — each one
+citing a pillar or a proof, never taste. **It reports and never blocks**: the same
+standing as `spec-drift`, because the stops in this flow exist so the user can say
+no, not so a machine can. Acting on a finding is a new pass through phase 6.
+
+No spec, no review: the trivial lane collapsed the ceremony because there was no
+contract to disagree with, and a reviewer with no contract has nothing to check. One
+line, no wait.
+
+Not a numbered phase, on purpose — independence comes from the fresh context, not
+from renumbering everything that says eight.
+
 ## 7 · Present
 
 Show what was done. Then stop.
@@ -159,6 +180,9 @@ Three things, and the third is the one that usually goes missing:
 - what was done, in the terms the spec used
 - where the evidence is — the run, the test, the commit
 - **what was deliberately left out, and when it should be added**
+
+And beside them, attributed and unedited, the reviewer's verdict from the seam
+above — the proofs it ran and what it found, next to the builder's own account.
 
 That last line is what turns a simplification into a decision. "Did the single-user
 case; the shared-state version needs a lock — say so if you need it now" is
@@ -291,7 +315,8 @@ satisfied its spec and was unreadable — 1.4:1 on borders. What caught it was
 `internal/ui/theme.go` existed, and then a WCAG measurement of that render. The
 requirements for fluid width, centring and the single-colour menu all came from
 looking at it, not from the ticket. Whether that becomes a phase of its own, or a
-rule inside 2 and 6, is undecided.
+rule inside 2 and 6, is undecided. The reviewer in the 6→7 seam does not answer it:
+it reads specs, diffs and test output, not pixels.
 
 **Settled since:** who keeps the spec true. Phase 8 commits the spec alongside the
 code that taught it — see `skills/record-work/`. The three divergences in this
