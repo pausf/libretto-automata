@@ -61,10 +61,10 @@ libretto install --global    # the default; both flags at once is an error
 ```bash
 gofmt -l .                                       # must print nothing
 go vet ./...
-go test ./... -count=1                           # 117 tests
+go test ./... -count=1                           # 171 tests
 scripts/check-payload                            # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test        # 17 checks
-skills/record-work/spec-drift --anchors          # 105 citations must resolve
+skills/record-work/spec-drift --anchors          # 166 citations must resolve
 ```
 
 `spec-drift` with no flag warns about staged code whose spec did not move. It never

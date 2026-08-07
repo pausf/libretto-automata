@@ -56,7 +56,13 @@ func main() {
 // Neither means global, which is what every invocation meant before this existed.
 // Changing what an existing command does is worse than making people type a flag
 // for the new thing.
-func scopeFlags(args []string) (target.Scope, []string, error) {
+//
+// chosen is which flag was seen, empty when none was. The panel needs to tell "no
+// flag" from "--global" — they resolve to the same scope and mean different things,
+// one being a default and the other an instruction. Returned rather than recomputed
+// by a second scanner: two places deciding what a scope flag is would agree only by
+// accident, and this file already records that bug happening with the project root.
+func scopeFlags(args []string) (target.Scope, string, []string, error) {
 	scope, chosen := target.GlobalScope, ""
 	rest := make([]string, 0, len(args))
 
@@ -64,19 +70,35 @@ func scopeFlags(args []string) (target.Scope, []string, error) {
 		switch a {
 		case "--global", "-g":
 			if chosen == "project" {
-				return scope, nil, fmt.Errorf("--global and --project are two answers to one question; pick one")
+				return scope, "", nil, fmt.Errorf("--global and --project are two answers to one question; pick one")
 			}
 			scope, chosen = target.GlobalScope, "global"
 		case "--project", "-p":
 			if chosen == "global" {
-				return scope, nil, fmt.Errorf("--global and --project are two answers to one question; pick one")
+				return scope, "", nil, fmt.Errorf("--global and --project are two answers to one question; pick one")
 			}
 			scope, chosen = target.ProjectScope, "project"
 		default:
 			rest = append(rest, a)
 		}
 	}
-	return scope, rest, nil
+	return scope, chosen, rest, nil
+}
+
+// openingScope is the destination the panel opens on.
+//
+// A flag is about this run and wins. With no flag, the panel opens where it was
+// left — which is the whole feature, and it exists as a named function because
+// `run`'s panel branch cannot be reached from a test: with no arguments it checks
+// isatty, and under `go test` that is false.
+//
+// Subcommands never call this. That is what keeps a typed command from changing
+// meaning because of state left by a session the reader cannot see.
+func openingScope(flagged target.Scope, chosen string) target.Scope {
+	if chosen != "" {
+		return flagged
+	}
+	return rememberedScope()
 }
 
 func run(args []string) error {
@@ -85,7 +107,7 @@ func run(args []string) error {
 		return err
 	}
 
-	scope, args, err := scopeFlags(args)
+	scope, chosen, args, err := scopeFlags(args)
 	if err != nil {
 		return err
 	}
@@ -105,7 +127,10 @@ func run(args []string) error {
 			usage()
 			os.Exit(2)
 		}
-		return panelUI(root, projectDir, scope)
+		// Only the panel remembers. `tg` above is deliberately left alone, so the
+		// subcommand paths below cannot be reached by this at all — which is the
+		// promise, not an implementation detail.
+		return panelUI(root, projectDir, openingScope(scope, chosen))
 	}
 
 	switch args[0] {
@@ -141,16 +166,8 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 		return err
 	}
 
-	// The panel changes which destination is active by asking for a fresh view of
-	// the one at index i. scopeOrder is the single place that maps a row back to a
-	// scope, so the strip and the refresh can never disagree about the order.
 	model := ui.NewModel(version, menu, targets, asciiSafe()).
-		WithRefresh(func(i int) ([]ui.MenuItem, []ui.TargetRow, error) {
-			if i < 0 || i >= len(scopeOrder) {
-				return nil, nil, fmt.Errorf("no destination %d", i)
-			}
-			return panelData(root, projectDir, scopeOrder[i])
-		})
+		WithRefresh(panelRefresh(root, projectDir))
 
 	// Actions run inside the panel and report there, so the destination, the state
 	// and the last report stay on screen together.
@@ -168,6 +185,35 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 
 	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
 	return err
+}
+
+// panelRefresh gives the panel a fresh view of the destination at index i, and
+// remembers that it moved there.
+//
+// The panel changes which destination is active by asking for this. scopeOrder is the
+// single place that maps a row back to a scope, so the strip and the refresh can never
+// disagree about the order.
+//
+// The write happens *after* panelData succeeds, and only then. A failed refresh leaves
+// the panel where it was, and a file that disagrees with the screen is the same class
+// of lie as a strip showing one destination's counts under another's name.
+//
+// It is a named function rather than a closure so a test can hand it a bad index. The
+// panel's own path is unreachable from a test — `run` checks isatty first.
+func panelRefresh(root, projectDir string) func(int) ([]ui.MenuItem, []ui.TargetRow, error) {
+	return func(i int) ([]ui.MenuItem, []ui.TargetRow, error) {
+		if i < 0 || i >= len(scopeOrder) {
+			return nil, nil, fmt.Errorf("no destination %d", i)
+		}
+
+		menu, targets, err := panelData(root, projectDir, scopeOrder[i])
+		if err != nil {
+			return nil, nil, err
+		}
+
+		remember(scopeOrder[i])
+		return menu, targets, nil
+	}
 }
 
 // runCaptured performs an action and returns what it printed, line by line.

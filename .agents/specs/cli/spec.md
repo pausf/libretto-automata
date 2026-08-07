@@ -27,7 +27,7 @@ plain command.
 |---|---|
 | `--project` / `-p` | `<cwd>/.claude` |
 | `--global` / `-g` | `~/.claude` |
-| neither | **global** — what every invocation meant before scopes existed |
+| neither | **global** for every subcommand — what every invocation meant before scopes existed. The panel opens where it was left |
 
 Both flags at once is an **error**, not a precedence rule. Two answers to one question
 is a mistake worth reporting rather than resolving by picking the last one and hoping.
@@ -45,6 +45,42 @@ A command acts on exactly one scope. Nothing iterates destinations.
 **Where the project is, is resolved once per invocation and threaded down.** Two
 lookups give two answers that agree only by accident, and they did disagree — the
 panel's strip read one root while the action wrote to another.
+
+### The panel remembers its destination; nothing else does
+
+**With no flag the panel opens on the destination `tab` last moved it to**, recorded as
+one word in `libretto-scope` at the global root. One machine-wide value, not one per
+directory.
+
+**Every subcommand with no flag still acts on global.** A command typed into a terminal
+does not change meaning because of state left by a session the reader cannot see, and
+that includes `preview` — `make preview` prints the same panel whatever a previous
+session pressed.
+
+That boundary is also what makes a single machine-wide value safe enough to keep: the
+remembered word decides which side the panel *opens* on, and the destination strip is
+gold end to end and cursor-marked before any key that acts. The panel can open on
+`project` inside a repository that never asked for it; what it cannot do is install
+there without that destination being on screen first.
+
+**An explicit flag wins and overwrites nothing.** The flag is about this run; the file
+is about where the user works, and a flag typed once must not silently re-answer the
+question for every future session.
+
+**`tab` writes it only once the switch has really happened** — after the new view is
+assembled, never before. A failed refresh leaves the panel where it was, and a file that
+disagrees with the screen is the same class of lie as a strip showing one destination's
+counts under another's name.
+
+**Unreadable or unrecognised is `global`**, following `target.Resolve` rather than
+inventing a second rule: a value nobody recognises must not produce a destination nobody
+chose. **An unwritable one changes nothing else** — remembering is a convenience, and a
+convenience that can fail the thing it decorates is worse than no convenience.
+
+**`prune` and `uninstall` never touch it.** It is a regular file at the target's root,
+not a link under `skills/`, `agents/` or `commands/`, so it is not ours to remove — and
+that is tested rather than assumed, because the failure mode is a destructive path
+deleting a file it does not own.
 
 ### Running an action for the panel
 
@@ -94,7 +130,18 @@ variables, repo-root discovery, the prerequisite report.
 - rendering — `panel` owns it
 - **requiring any optional companion.** The prerequisite report says what is present.
   It never blocks.
-- configuration files. There are none, deliberately.
+- **configuration files. There are none, deliberately** — nothing on disk changes what a
+  command does, and the environment-variable table below is the whole of what is
+  configurable.
+
+  `libretto-scope` is not one of them, and the difference is the point: it is one word
+  the tool writes for itself, recording a position the user already put on screen with
+  `tab`, read only to decide which side the *panel* opens on. No command's behaviour can
+  be altered by editing it.
+
+  **Its ceiling:** the moment a second thing wants remembering, a one-word file is being
+  asked to be a format, and the answer is a real file with a real shape — not a second
+  one-word file beside it, and not a delimiter invented in place.
 
 ## Constraints
 
@@ -133,6 +180,11 @@ to do it, and it took looking at a render to notice.
 
 A value that never varies is not configuration, so nothing else is exposed.
 
+**The remembered destination lives inside the global target**, via
+`target.Global().Root()` and never a second lookup of the home directory. So
+`CLAUDE_HOME` relocates it too, and no new variable is needed — which is also what keeps
+a suite that runs `install` and `prune` away from a real `~/.claude`.
+
 **The version is stamped from git at build time, never held in a source constant.**
 `make build` passes `-ldflags "-X main.version=$(git describe --tags --always --dirty)"`,
 so the binary reports `v0.2.0`, or `v0.2.0-3-gabc123` past a tag, or `v0.2.0-dirty` over
@@ -163,6 +215,21 @@ equivalent. It goes when `libretto install` has been verified against a real
   the wrong thing from the wrong place.
 - After a rebuild the process states that it is still the old binary, rather than
   implying the upgrade took effect mid-run.
+- **The remembered destination is one machine-wide value, and only the panel reads it.**
+  Per-directory was the alternative and was declined with its counter-case stated: a
+  single value lets the panel open on `project` inside a repository that never asked for
+  it. What bounds that is the same decision's other half — no subcommand consults it —
+  and the two are not to be separated. Loosening either one alone reopens a case that was
+  closed deliberately.
+- **`scopeFlags` returns which flag was seen, not just the scope it resolved to.** "No
+  flag" and `--global` produce the same scope and mean different things: one is a default,
+  the other an instruction. A second scanner over the arguments would be two places
+  deciding what a scope flag is, which is the bug this spec already records happening with
+  the project root.
+- **`openingScope` and `panelRefresh` are named functions with one caller each.** `run`'s
+  panel branch checks `isatty` and so cannot be entered from a test; a decision left
+  inline there is a decision no criterion can reach. They exist to be callable, not to
+  abstract anything, and a second caller is not expected.
 
 ## Task breakdown
 
@@ -170,6 +237,7 @@ equivalent. It goes when `libretto install` has been verified against a real
 - [x] `install`, `doctor`, `prune --yes`
 - [x] `update` composed over `repo-sync`
 - [x] tests for the composition — exit codes, dispatch, flags, prerequisites
+- [x] the panel opens on the destination it was left on
 - [ ] 5.2 `--json` for `status` and `doctor`
 - [ ] 5.3 the panel path under a real TTY
 - [ ] `doctor`: target directory missing or unwritable
@@ -267,6 +335,43 @@ typing has gaps in it; the harness has to as well.
 - the tally renders in a fixed order and omits zeros, so one situation gives one line
   Proof: cmd/libretto/main_test.go TestSummarise
 
+The remembered destination:
+
+- **with nothing remembered, the panel opens on global**
+  Proof: cmd/libretto/remembered_test.go TestNothingRememberedOpensGlobal
+- what is written is what is read back, including a value padded by hand
+  Proof: cmd/libretto/remembered_test.go TestRememberThenReadIsARoundTrip
+- **a remembered `project` is the scope the panel is opened with**
+  Proof: cmd/libretto/remembered_test.go TestTheRememberedDestinationOpensThePanel
+- **an explicit flag beats it, and does not overwrite it**
+  Proof: cmd/libretto/remembered_test.go TestAnExplicitFlagBeatsTheRememberedDestination
+- **a successful switch is remembered**
+  Proof: cmd/libretto/remembered_test.go TestSwitchingDestinationRemembersIt
+- **a switch whose refresh failed remembers nothing** — the file must agree with the
+  screen, and the screen did not move
+  Proof: cmd/libretto/remembered_test.go TestAFailedSwitchRemembersNothing
+- **garbage is global** — empty, whitespace, wrong case, a trailing word
+  Proof: cmd/libretto/remembered_test.go TestUnrecognisedPreferenceIsGlobal
+- **an unwritable destination does not fail the switch**
+  Proof: cmd/libretto/remembered_test.go TestAFailedWriteDoesNotFailTheSwitch
+- **subcommands ignore it** — a remembered `project` still leaves a flagless invocation
+  resolving to global
+  Proof: cmd/libretto/remembered_test.go TestSubcommandsIgnoreTheRememberedDestination
+- **`uninstall --yes` does not remove it**, because it was never ours to remove
+  Proof: cmd/libretto/remembered_test.go TestUninstallLeavesThePreferenceAlone
+
+**`CLAUDE_HOME` must point at a directory, even in a test that wants a write to fail.**
+Aimed at a regular file it breaks `panelData` too — that reads the target's `skills/` —
+so the whole refresh errors and the test proves the opposite of its criterion. It did:
+`an unwritable preference failed the switch: open …/not-a-directory/skills: not a
+directory`. The isolating setup is a **read-only** root, plus an assertion that the write
+really was blocked, so a run as root fails loudly rather than passing for the wrong
+reason.
+
+**Two of these were mutation-checked.** Defaulting to the remembered value inside
+`scopeFlags` turns `TestSubcommandsIgnoreTheRememberedDestination` red; moving the write
+above the range check in `panelRefresh` turns `TestAFailedSwitchRemembersNothing` red.
+
 And the payload the CLI installs is checked statically:
 
   Proof: scripts/check-payload
@@ -275,5 +380,7 @@ And the payload the CLI installs is checked statically:
 confirm, and dropping conflicts from the exit-code sum, each turned the matching test
 red. A test that has never been seen to fail is a test nobody has reason to believe.
 
-**Still not covered:** the panel itself under a TTY, and `update`'s three git paths —
+**Still not covered:** the panel itself under a TTY — which now includes the one line in
+`run` handing `openingScope`'s answer to `panelUI`; the decision is proven, the wiring is
+read in review. And `update`'s three git paths —
 those are `repo-sync`'s to prove, and its `Git` interface still has no fake.
