@@ -39,7 +39,10 @@ produce, named per task.
       pixels). Waits on: 2 (documents what exists, not what is hoped).
       Closes: spec-drift --anchors still resolves 169+ citations.
 
-- [ ] **5 · run it once for real** — the spec's three observations: a reviewer that
+- [x] **5 · run it once for real** — two of three observed and recorded in spec.md
+      (fresh review of this change found a real gap, fixed in 01c4803; planted
+      failing proof caught by running it in a fixture repo). The specless decline
+      stays a claim until the first specless change runs. The task was: a reviewer that
       saw no session context returns findings into phase 7's report; a planted
       failing `Proof:` is caught by running it; a specless change gets a one-line
       decline. Waits on: 3, 4.

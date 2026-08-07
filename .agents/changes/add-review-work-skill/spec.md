@@ -120,12 +120,24 @@ skill unchanged — and the scope learned it here.
 - the payload's existing anchors still resolve after the delta lands
   Proof: skills/record-work/spec-drift --anchors
 
-**What the static checks cannot prove**, stated as observations this change must
-produce rather than as citations to tests that cannot exist — a skill is a prompt,
-and a prompt is checked by running it:
+**What the static checks cannot prove**, stated as observations — a skill is a
+prompt, and a prompt is checked by running it. Two of the three were produced by
+this change's own build; the third is still a claim:
 
-- a run of the flow where `review-work` launches a reviewer that saw no session
-  context and its findings appear in phase 7's report, attributed
-- a run against a change whose `Proof:` names a test that does not pass, where the
-  reviewer catches it by running it, not by reading phase 6's claim
-- a change with no spec, where the skill declines in one line and adds no wait
+- **observed, 2026-08-07:** a fresh reviewer with no session context reviewed this
+  very change — ran both cited proofs itself, verified every outcome against the
+  diff, and returned a real finding: phase 7's own skill never carried the verdict,
+  only `libretto-flow` did. The gap was fixed and the scope pillar records who found
+  it. One caveat: the `work-reviewer` agent type registers at session start, so the
+  run used a fresh general-purpose subagent instructed to read and obey
+  `agents/work-reviewer.md` first — same zero context, indirect binding. A run in a
+  fresh session exercises the registration itself.
+- **observed, 2026-08-07:** in a fixture repository, a spec criterion cited
+  `carry_test.go TestCarryDigits` and the committed code failed it — the naive
+  implementation never propagates a carry. The reviewer caught it by running the
+  test (`CarryDigits(45,55) = 1, want 2`, exit 1), named the unimplemented outcome
+  clause, and reported the diff's boundaries as held. Phase 6's claim was never
+  consulted.
+- **still unobserved, therefore still a claim:** a change with no spec, where the
+  skill declines in one line and adds no wait. The first specless change through the
+  flow exercises it.
