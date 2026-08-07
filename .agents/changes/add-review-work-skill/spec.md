@@ -38,7 +38,11 @@ implementation against the spec's criteria, never run by whoever wrote the code.
 ## Scope boundaries
 
 **In:** the `review-work` skill, the `work-reviewer` agent, their wiring into
-`commands/libretto-flow.md`, and the seam documented in `docs/FLOW.md`.
+`commands/libretto-flow.md`, the seam documented in `docs/FLOW.md`, and one
+paragraph in `skills/present-work/SKILL.md` so phase 7 carries the verdict when
+reached by its own trigger, outside `libretto-flow`. That last file was missing from
+this list; the reviewer's first real run found the gap — outcome promised, phase-7
+skill unchanged — and the scope learned it here.
 
 **Out:**
 

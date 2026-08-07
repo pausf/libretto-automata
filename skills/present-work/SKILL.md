@@ -28,6 +28,12 @@ where an unobserved result becomes a lie.
 - **where the evidence is** — the run, the test, the commit. Named, not described.
 - **what was deliberately left out, and the condition that brings it back.**
 
+And when `skills/review-work/` ran in the seam before this phase, a fourth: **the
+reviewer's verdict, attributed and unedited** — the proofs it ran and what it found,
+in its own section next to the account above. The builder's report and the
+reviewer's are two sources and stay two; merging them is how a finding gets
+softened into the prose it was questioning.
+
 ## The third one is the reason this phase exists
 
 It is the one that goes missing, and it is the one that turns a simplification into

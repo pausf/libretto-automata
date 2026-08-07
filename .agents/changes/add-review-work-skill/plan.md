@@ -12,7 +12,7 @@ produce, named per task.
 
 ## Tasks
 
-- [ ] **1 · `agents/work-reviewer.md`** — the fresh reviewer. Inputs it is handed
+- [x] **1 · `agents/work-reviewer.md`** — done, commit 07f3969, six gates green. — the fresh reviewer. Inputs it is handed
       (spec delta path, capability spec paths, diff range), its own rules carried
       explicitly (evidence first, re-run every named `Proof:` in the foreground,
       no commit, no push, no writes anywhere — a shell it keeps read-only by rule),
@@ -21,19 +21,19 @@ produce, named per task.
       Closes: check-payload passes on the new agent; frontmatter `name:` matches
       filename.
 
-- [ ] **2 · `skills/review-work/SKILL.md`** — the seam. Step 0 applicability (no
+- [x] **2 · `skills/review-work/SKILL.md`** — done, commit 122540c, six gates green. — the seam. Step 0 applicability (no
       spec → decline in one line, no wait), assemble the reviewer's inputs, launch
       exactly one `work-reviewer`, relay its findings to phase 7 attributed and
       unedited. Frontmatter contract like the other seven skills (`license`,
       `author`, `version`). Waits on: 1 (it names the agent it launches).
       Closes: check-payload passes; every skill it references exists.
 
-- [ ] **3 · wire `commands/libretto-flow.md`** — invoke `review-work` between
+- [x] **3 · wire `commands/libretto-flow.md`** — done, commit 384a24b, six gates green. — invoke `review-work` between
       phases 6 and 7, with the same invoked-even-when-empty rule as every phase.
       Waits on: 2.
       Closes: check-payload — the command's references all resolve.
 
-- [ ] **4 · document the seam in `docs/FLOW.md`** — the reviewer between build and
+- [x] **4 · document the seam in `docs/FLOW.md`** — done, commit 5f456ed, six gates green. — the reviewer between build and
       present, report-never-block, and the note that the open "where does the
       artifact get looked at" question stays open (this reviews contracts, not
       pixels). Waits on: 2 (documents what exists, not what is hoped).
