@@ -185,6 +185,9 @@ spec ships in the same commit as the code that taught it.
 - name a `Proof:` in the spec for a new criterion, then make it exist
 - point `CLAUDE_HOME` at a temporary directory in anything that touches a target
 - state what was deliberately left out, and what would bring it back
+- write `ponytail:` comments in English, whatever language the session is in. The comment
+  lives in the source next to English identifiers, and `ponytail-debt` harvests it into a
+  ledger that has to read as one document.
 
 ### Ask first
 
