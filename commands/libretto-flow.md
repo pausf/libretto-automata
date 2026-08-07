@@ -113,6 +113,19 @@ only about the tree it ran against.
 Two failed gates on one task stops the task. Two stopped tasks in a row stops the
 session and updates `docs/STATE.md`.
 
+## 6→7 · Review it
+
+```
+Skill(skill="review-work")
+```
+
+Hands the finished work to a fresh `work-reviewer` subagent that saw none of this
+session — it reads the contract and the diff, re-runs the proofs itself, and returns
+findings. **It reports, it never blocks.**
+
+A change with no spec gets a one-line decline and no wait: no contract, nothing to
+review against. The same invoked-even-when-empty rule as every phase.
+
 ## 7 · Present
 
 ```
@@ -120,7 +133,8 @@ Skill(skill="present-work")
 ```
 
 Shows what was done in the spec's terms, names the evidence, and states **what was
-deliberately left out with the condition that would bring it back**.
+deliberately left out with the condition that would bring it back** — and carries the
+reviewer's verdict, attributed, next to the builder's own account.
 
 Then **wait**. Phase 8 begins when the user says it does.
 
