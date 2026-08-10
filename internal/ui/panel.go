@@ -82,6 +82,16 @@ type Panel struct {
 	// question that gets answered by accident.
 	Confirm string
 
+	// The model selector, the panel's second screen. When InSelector is set the
+	// menu is replaced rather than overlaid: two lists of rows on one frame, each
+	// with its own cursor, is two things to misread at a glance.
+	InSelector    bool
+	Agents        []AgentRow
+	AgentCursor   int
+	ChoosingModel bool
+	ModelChoices  []ModelChoice
+	ModelCursor   int
+
 	Notice    string // one-line feedback under the panel
 	Width     int    // terminal width; 0 means lay out at the minimum
 	Height    int    // terminal height; 0 means do not centre vertically
@@ -124,7 +134,11 @@ func (t Theme) Render(p Panel) string {
 	var rows []string
 	rows = append(rows, strings.Split(t.Logo(cw, p.ASCIISafe), "\n")...)
 	rows = append(rows, separator, "")
-	rows = append(rows, strings.Split(t.menu(p), "\n")...)
+	if p.InSelector {
+		rows = append(rows, strings.Split(t.selector(p), "\n")...)
+	} else {
+		rows = append(rows, strings.Split(t.menu(p), "\n")...)
+	}
 	rows = append(rows, "", separator)
 	rows = append(rows, strings.Split(t.targets(p), "\n")...)
 
