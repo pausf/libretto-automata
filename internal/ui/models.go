@@ -23,6 +23,15 @@ type AgentRow struct {
 	Name   string
 	Model  string // empty means the session's model
 	Marked bool
+
+	// Shared marks a row whose file is one this repository owns, reached from more
+	// than one destination. Writing it changes every project on the machine;
+	// writing an unmarked row changes this destination only.
+	//
+	// The caller decides what sets it — this package knows nothing about symlinks,
+	// and the flag is deliberately named for the consequence rather than for the
+	// mechanism, because the consequence is what the reader has to act on.
+	Shared bool
 }
 
 // ModelChoice is one entry of the catalogue the `m` key opens.
@@ -136,6 +145,23 @@ func (m Model) updateSelector(k string) (Model, bool) {
 		m.notice = ""
 		return m, true
 
+	// tab changes the destination, so the rows have to change with it. A selector
+	// still showing the previous destination's agents under the new name is the
+	// same lie the target strip exists to prevent.
+	case "tab", "s":
+		next, _ := m.nextScope()
+		m = next.(Model)
+		rows, err := m.listAgents()
+		if err != nil {
+			// Keep what we had. Showing one destination's agents under another's
+			// name would be worse than showing an error.
+			m.notice = "cannot read the agents: " + err.Error()
+			return m, true
+		}
+		m.panel.Agents = rows
+		m.panel.AgentCursor, m.panel.ChoosingModel = 0, false
+		return m, true
+
 	case "up", "k":
 		m.panel.AgentCursor = wrap(m.panel.AgentCursor-1, len(m.panel.Agents))
 		return m, true
@@ -230,7 +256,7 @@ func describeModel(model string) string {
 // with no marks, because it still applies to them.
 func (t Theme) selector(p Panel) string {
 	if len(p.Agents) == 0 {
-		return "  " + Fg(t.Muted).Render("no agents in this repository")
+		return "  " + Fg(t.Muted).Render("no agents in this destination")
 	}
 
 	rows := make([]string, 0, len(p.Agents)+len(p.ModelChoices)+2)
@@ -244,7 +270,12 @@ func (t Theme) selector(p Panel) string {
 		if a.Marked {
 			box = "[x]"
 		}
-		line := cursor + " " + box + " " + pad(a.Name, menuDescCol-menuLabelCol) + describeModel(a.Model)
+		shared := ""
+		if a.Shared {
+			shared = "   shared"
+		}
+		line := cursor + " " + box + " " + pad(a.Name, menuDescCol-menuLabelCol) +
+			pad(describeModel(a.Model), 12) + shared
 		rows = append(rows, "  "+Fg(colour).Render(line))
 	}
 

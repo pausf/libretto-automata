@@ -67,7 +67,7 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 
 func threeAgents() []AgentRow {
 	return []AgentRow{
-		{Name: "review-design", Model: ""},
+		{Name: "review-design", Model: "", Shared: true},
 		{Name: "review-tests", Model: ""},
 		{Name: "review-security", Model: "opus"},
 	}
@@ -378,4 +378,96 @@ func chooseModel(t *testing.T, m Model, name string) Model {
 	}
 	t.Fatalf("model %q never came under the catalogue cursor", name)
 	return m
+}
+
+// `shared` is a warning, not decoration: applying to a row that is a symlink into the
+// repository changes every project on the machine, and applying to a real file in the
+// target changes that target only. The two are indistinguishable without the marker.
+func TestSharedAgentsAreMarked(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	for _, line := range strings.Split(strip(m.View()), "\n") {
+		switch {
+		case strings.Contains(line, "review-design"):
+			if !strings.Contains(line, "shared") {
+				t.Errorf("a shared agent was not marked: %q", line)
+			}
+		case strings.Contains(line, "review-tests"):
+			if strings.Contains(line, "shared") {
+				t.Errorf("a target-local agent was marked shared: %q", line)
+			}
+		}
+	}
+}
+
+// The strip already shipped the other version of this: selection encoded in a colour,
+// correct behaviour reported as a bug. Colour is the signal that vanishes first.
+func TestSharedMarkerIsLegibleWithoutColour(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	if !strings.Contains(strip(m.View()), "shared") {
+		t.Error("the shared marker is invisible with colour stripped")
+	}
+}
+
+// A screen still showing one destination's agents under another's name is exactly the
+// lie the destination strip exists to prevent.
+func TestTabReloadsTheSelectorForTheNewDestination(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+
+	// Open first, with the original rows loaded. Swapping the callback before
+	// opening made the screen show the new rows without tab doing anything — the
+	// test passed with the reload deleted, which a mutation caught.
+	m = openSelector(t, m)
+	if len(m.AgentRows()) != 3 {
+		t.Fatalf("opened with %d rows, want the original three", len(m.AgentRows()))
+	}
+
+	other := []AgentRow{{Name: "sdd-apply", Model: "sonnet"}}
+	m = m.WithAgents(m.ModelChoices(),
+		func() ([]AgentRow, error) { return other, nil },
+		func([]string, string) error { return nil })
+
+	m = key(m, "tab")
+
+	got := m.AgentRows()
+	if len(got) != 1 || got[0].Name != "sdd-apply" {
+		t.Errorf("rows after tab = %v, want the other destination's agents", got)
+	}
+	if !m.InSelector() {
+		t.Error("tab left the selector")
+	}
+}
+
+// Showing the previous destination's rows under the new name would be worse than
+// showing an error, so a failed reload keeps what it had and says so.
+func TestAFailedReloadKeepsTheRowsAndSaysSo(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = m.WithAgents(m.ModelChoices(),
+		func() ([]AgentRow, error) { return nil, errors.New("unreadable") },
+		func([]string, string) error { return nil })
+	m = key(m, "tab")
+
+	if len(m.AgentRows()) != 3 {
+		t.Errorf("rows = %d after a failed reload, want the three it had", len(m.AgentRows()))
+	}
+	if !strings.Contains(m.Notice(), "unreadable") {
+		t.Errorf("notice = %q, want the error in it", m.Notice())
+	}
+}
+
+func TestAnEmptyAgentSetSaysSo(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, nil)
+	m = openSelector(t, m)
+
+	if !strings.Contains(strip(m.View()), "no agents") {
+		t.Errorf("an empty destination should say so:\n%s", strip(m.View()))
+	}
 }
