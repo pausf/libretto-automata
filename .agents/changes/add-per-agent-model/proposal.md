@@ -28,6 +28,19 @@ answer into each agent file's frontmatter as `model:`.
 Today none of `agents/review-intent.md`, `agents/review-lens.md`, `agents/spec-writer.md`
 or `agents/work-reviewer.md` declares a `model:`.
 
+## Two doors, one selection model
+
+The choice is offered in both places, and they are not two features:
+
+- **the panel** (`libretto`, the TUI) — the agents listed with their current model, picked
+  there
+- **the command** — the same list, the same choice, for a session that is not in the panel
+
+And the selection is **multi**: mark one agent, several, or all of them, then apply one
+model to everything marked. One-by-one is the degenerate case of bulk, not a separate
+mode — a flow that only does one at a time makes the common case (make the four prose
+lenses cheap) into four separate acts.
+
 ## Open, for phase 2 to settle
 
 - **The command's name.** `libretto-save-token` is wrong twice over — nothing here is a
