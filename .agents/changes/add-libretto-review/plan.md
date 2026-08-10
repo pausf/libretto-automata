@@ -49,9 +49,9 @@ The skill carries, in this order:
   project, no libretto specs expected); silence ≠ clean review, relaunch once
 - step 6 — relay findings attributed and unedited; report never blocks; posting to
   the forge is offered as the user's action, never done
-- [ ] **1.1** write the file per the outline above
-- [ ] **1.2** run `scripts/check-payload > /tmp/gate.out; echo $?` — expect 0
-- [ ] **1.3** commit: `feat(payload): add review-project skill`
+- [x] **1.1** write the file per the outline above
+- [x] **1.2** check-payload exit 0 (/tmp/gate1.out, all checks passed)
+- [x] **1.3** committed: 7f9893c `feat(payload): add review-project skill`
 
 ### Task 2: `commands/libretto-review.md`
 
@@ -62,9 +62,9 @@ From spec: task breakdown item 2. Closes: command-delegates criterion.
 
 - frontmatter `description:` only (matches `libretto-status.md` convention)
 - takes the URL as input, invokes `Skill(skill="review-project")`, restates nothing
-- [ ] **2.1** write the file
-- [ ] **2.2** run `scripts/check-payload > /tmp/gate.out; echo $?` — expect 0
-- [ ] **2.3** commit: `feat(payload): add libretto-review command`
+- [x] **2.1** write the file
+- [x] **2.2** check-payload exit 0 (/tmp/gate2.out; command and skill both ok)
+- [x] **2.3** committed: 65cccaa `feat(payload): add libretto-review command`
 
 ### Task 3: spec updates
 
