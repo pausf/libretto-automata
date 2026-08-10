@@ -1,0 +1,117 @@
+package agentmodel
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+// dir is where the payload keeps its agents, relative to the repo root.
+const dir = "agents"
+
+// writable reports whether a file can be opened for writing, without changing it.
+//
+// O_WRONLY with no O_TRUNC and no O_CREATE asks the question and touches nothing.
+// Checking the permission bits instead would be a guess: ownership, ACLs and a
+// read-only mount all answer differently from what the mode says.
+func writable(path string) error {
+	f, err := os.OpenFile(path, os.O_WRONLY, 0)
+	if err != nil {
+		return err
+	}
+	return f.Close()
+}
+
+// Agent is one payload agent and the model it currently runs on.
+type Agent struct {
+	Name  string
+	Model string
+	Path  string
+}
+
+// Agents lists every agent the repo ships, sorted by name.
+//
+// Sorted because two surfaces render this list — the CLI and the panel — and a list
+// whose order depends on readdir is a list that reorders itself between machines.
+func Agents(repoRoot string) ([]Agent, error) {
+	entries, err := os.ReadDir(filepath.Join(repoRoot, dir))
+	if err != nil {
+		return nil, err
+	}
+
+	var agents []Agent
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".md") {
+			continue
+		}
+		path := filepath.Join(repoRoot, dir, name)
+		model, err := ReadModel(path)
+		if err != nil {
+			return nil, err
+		}
+		agents = append(agents, Agent{
+			Name:  strings.TrimSuffix(name, ".md"),
+			Model: model,
+			Path:  path,
+		})
+	}
+
+	sort.Slice(agents, func(i, j int) bool { return agents[i].Name < agents[j].Name })
+	return agents, nil
+}
+
+// Apply declares model on every named agent, or changes nothing at all.
+//
+// The whole set is checked before the first file is opened: the model is in the
+// catalogue, every name is an agent the repo has, and every one of those files has
+// frontmatter to write into. Validating as it went would leave a half-applied set
+// and no way to know how far it got — which is worse than a refusal, because the
+// user's next move depends on knowing the state.
+//
+// ponytail: the guarantee covers the failures this tool can foresee, not a disk that
+// fills between the third write and the fourth. A staged write into temporary files
+// and an atomic rename per file would close that too — worth doing the day an agent
+// file is big enough or a target slow enough for it to happen.
+func Apply(repoRoot string, names []string, model string) error {
+	if len(names) == 0 {
+		return fmt.Errorf("no agents named — nothing marked does not mean all of them")
+	}
+	if model != Default && !Valid(model) {
+		return fmt.Errorf("unknown model %q", model)
+	}
+
+	agents, err := Agents(repoRoot)
+	if err != nil {
+		return err
+	}
+	known := make(map[string]Agent, len(agents))
+	for _, a := range agents {
+		known[a.Name] = a
+	}
+
+	targets := make([]Agent, 0, len(names))
+	for _, name := range names {
+		a, ok := known[name]
+		if !ok {
+			return fmt.Errorf("no such agent: %s", name)
+		}
+		// Agents() already read this file's frontmatter, so a broken one has
+		// failed above. Readable is not writable, though, and a read-only file in
+		// the middle of the set would strand the ones before it — so ask now,
+		// while refusing is still free.
+		if err := writable(a.Path); err != nil {
+			return err
+		}
+		targets = append(targets, a)
+	}
+
+	for _, a := range targets {
+		if err := SetModel(a.Path, model); err != nil {
+			return err
+		}
+	}
+	return nil
+}
