@@ -41,6 +41,14 @@ model to everything marked. One-by-one is the degenerate case of bulk, not a sep
 mode — a flow that only does one at a time makes the common case (make the four prose
 lenses cheap) into four separate acts.
 
+## Prior decisions
+
+**Scope follows the target, both of them.** Asked whether the choice is global or
+per-project, the answer was both — whichever the CLI has selected. The change adds no new
+axis: `install --global` (`~/.claude`) and `install --project` (`<cwd>/.claude`) already
+name two destinations, and the model choice applies to the one in scope, exactly as
+linking does.
+
 ## Open, for phase 2 to settle
 
 - **The command's name.** `libretto-save-token` is wrong twice over — nothing here is a
