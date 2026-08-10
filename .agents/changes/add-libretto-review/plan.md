@@ -84,7 +84,8 @@ phase 8 from this change's delta, not here.
 ### Task 4: the review lenses (scope added by the user 2026-08-10)
 
 Depends on: Tasks 1–3 (rewrites review-project's step 5–6).
-From spec: task breakdown items 4–6. Closes: check-payload criterion.
+From spec: the `review-security`, `review-design` and step 5–6 rewrite items in the
+task breakdown. Closes: check-payload criterion.
 
 **Files:** create `skills/review-security/SKILL.md`, `skills/review-design/SKILL.md`;
 modify `skills/review-project/SKILL.md` steps 5–6.

@@ -78,7 +78,7 @@ status, so a failure reads as success.
 Head branch and base, through the forge CLI, JSON out:
 
 ```
-gh pr view <number> --json headRefName,baseRefName,title > /tmp/review-pr.json; echo $?
+gh pr view <number> --json headRefName,baseRefName,title,body > /tmp/review-pr.json; echo $?
 glab mr view <number> --output json > /tmp/review-mr.json; echo $?
 ```
 
