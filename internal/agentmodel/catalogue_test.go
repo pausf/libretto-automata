@@ -1,6 +1,7 @@
 package agentmodel
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -47,6 +48,32 @@ func TestNoLabelClaimsTheUserHasAPlan(t *testing.T) {
 				t.Errorf("model %q label claims to know the user's plan: %q", m.Name, m.Label)
 			}
 		}
+	}
+}
+
+// `opus` names a tier, not a model. Without the version the user cannot tell
+// whether they are choosing Opus 5 or something two releases old, which is the
+// question they open the selector to answer.
+func TestEveryRealModelNamesItsVersion(t *testing.T) {
+	for _, m := range Catalogue() {
+		if m.Name == Default {
+			if m.Version != "" {
+				t.Errorf("the session default should not claim a version, got %q", m.Version)
+			}
+			continue
+		}
+		if strings.TrimSpace(m.Version) == "" {
+			t.Errorf("model %q names no version — the alias alone does not say what it resolves to", m.Name)
+		}
+	}
+}
+
+// The version column is a snapshot and will go stale. Saying when it was taken
+// is what makes that visible rather than silent — the same failure this
+// repository already shipped once, as a test-count badge nobody recomputed.
+func TestTheResolvedDateIsStated(t *testing.T) {
+	if !regexp.MustCompile(`^\d{4}-\d{2}$`).MatchString(Resolved) {
+		t.Errorf("Resolved = %q, want a YYYY-MM date", Resolved)
 	}
 }
 
