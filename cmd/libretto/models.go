@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/pausf/libretto-automata/internal/agentmodel"
 	"github.com/pausf/libretto-automata/internal/link"
@@ -40,7 +41,7 @@ func agentsDir(tg target.Target) string {
 }
 
 func listModels(root string, tg target.Target) error {
-	agents, err := agentmodel.Agents(agentsDir(tg))
+	agents, unreadable, err := agentmodel.Agents(agentsDir(tg))
 	if err != nil {
 		return err
 	}
@@ -49,14 +50,29 @@ func listModels(root string, tg target.Target) error {
 		return nil
 	}
 
+	width := 0
+	for _, a := range agents {
+		if n := len([]rune(a.Name)); n > width {
+			width = n
+		}
+	}
+
 	fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
 	for _, a := range agents {
 		note := ""
 		if link.Owned(root, a.Path) {
 			note = "  " + sharedMark
 		}
-		fmt.Printf("  %-20s %-12s%s\n", a.Name, describe(a.Model), note)
+		fmt.Printf("  %-*s  %-12s%s\n", width, a.Name, describe(a.Model), note)
 	}
+	// Skipping in silence would trade a loud failure for a quiet one. `doctor` and
+	// `prune` own stale links; this only has to say they are there.
+	if len(unreadable) > 0 {
+		fmt.Println()
+		fmt.Printf("  %d link(s) here point at nothing: %s\n", len(unreadable), strings.Join(unreadable, ", "))
+		fmt.Println("  run `libretto doctor` — `prune --yes` removes them")
+	}
+
 	fmt.Println()
 	fmt.Printf("models available (aliases; versions as of %s):\n", agentmodel.Resolved)
 	for _, m := range agentmodel.Catalogue() {
@@ -91,7 +107,7 @@ func setModels(root string, tg target.Target, args []string) error {
 		return fmt.Errorf("name the agents, or pass --all — refusing to guess which you meant")
 	}
 	if all {
-		agents, err := agentmodel.Agents(agentsDir(tg))
+		agents, _, err := agentmodel.Agents(agentsDir(tg))
 		if err != nil {
 			return err
 		}
@@ -105,7 +121,7 @@ func setModels(root string, tg target.Target, args []string) error {
 
 	// Which rows are shared has to be read before the write, so the report can say
 	// what each one reached.
-	agents, err := agentmodel.Agents(dir)
+	agents, _, err := agentmodel.Agents(dir)
 	if err != nil {
 		return err
 	}

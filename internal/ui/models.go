@@ -222,6 +222,22 @@ func (m Model) applyChosenModel() Model {
 
 	m.panel.ChoosingModel = false
 
+	// A no-op has to say so. SetModel does not rewrite a file that already declares
+	// the model — deliberately, so the tool never dirties a git tree for nothing —
+	// but from the outside "nothing happened because nothing needed to" and "nothing
+	// happened because it is broken" look identical. Twice in one session that was
+	// read as a bug.
+	already := 0
+	for _, a := range m.panel.Agents {
+		if a.Marked && a.Model == model {
+			already++
+		}
+	}
+	if already == len(names) {
+		m.notice = strconv.Itoa(already) + " agent(s) already on " + describeModel(model) + " — nothing to change"
+		return m
+	}
+
 	if err := m.applyModel(m.activeScope(), names, model); err != nil {
 		m.notice = "could not apply: " + err.Error()
 		return m
@@ -271,6 +287,18 @@ func (t Theme) selector(p Panel) string {
 		return "  " + Fg(t.Muted).Render("no agents in this destination")
 	}
 
+	// The name column is measured, not borrowed. It used to reuse the main menu's
+	// constant — sized for `install` and `prune` — while agent names run past twenty
+	// characters, so the model and the `shared` warning started wherever each name
+	// happened to end. pad never truncates, by design, so a too-narrow column does
+	// not clip: it shifts everything after it.
+	width := 0
+	for _, a := range p.Agents {
+		if n := len([]rune(a.Name)); n > width {
+			width = n
+		}
+	}
+
 	rows := make([]string, 0, len(p.Agents)+len(p.ModelChoices)+2)
 	for i, a := range p.Agents {
 		colour, cursor := t.Steel, " "
@@ -286,7 +314,7 @@ func (t Theme) selector(p Panel) string {
 		if a.Shared {
 			shared = "   shared"
 		}
-		line := cursor + " " + box + " " + pad(a.Name, menuDescCol-menuLabelCol) +
+		line := cursor + " " + box + " " + pad(a.Name, width+2) +
 			pad(describeModel(a.Model), 12) + shared
 		rows = append(rows, "  "+Fg(colour).Render(line))
 	}

@@ -501,3 +501,64 @@ func TestAnEmptyAgentSetSaysSo(t *testing.T) {
 		t.Errorf("an empty destination should say so:\n%s", strip(m.View()))
 	}
 }
+
+// The name column used to reuse the main menu's constant, sized for `install` and
+// `prune`. Agent names run past twenty characters, and pad never truncates — so a
+// long name did not clip, it shoved the model and the `shared` warning rightwards and
+// every row started somewhere different.
+func TestTheModelColumnLinesUpWhateverTheNamesAre(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, []AgentRow{
+		{Name: "review-lens-reliability", Model: "sonnet", Shared: true},
+		{Name: "spec-writer", Model: "haiku"},
+		{Name: "jd-judge-a", Model: ""},
+	})
+	m = openSelector(t, m)
+
+	at := map[string]int{}
+	for _, line := range strings.Split(strip(m.View()), "\n") {
+		for _, model := range []string{"sonnet", "haiku", "(session)"} {
+			if i := strings.Index(line, model); i >= 0 && strings.Contains(line, "[") {
+				// Rune count, not byte offset: the cursor is `❯`, three bytes wide
+				// and one column wide, so a byte index reports the selected row two
+				// columns left of where it renders.
+				at[model] = len([]rune(line[:i]))
+			}
+		}
+	}
+	if len(at) != 3 {
+		t.Fatalf("found %d model columns, want 3: %v", len(at), at)
+	}
+	first := -1
+	for model, col := range at {
+		if first == -1 {
+			first = col
+			continue
+		}
+		if col != first {
+			t.Errorf("%q starts at column %d, another model starts at %d — the column moves with the name", model, col, first)
+		}
+	}
+}
+
+// "Nothing happened because nothing needed to" and "nothing happened because it is
+// broken" look identical from outside. Twice in one session the first was read as the
+// second.
+func TestApplyingTheModelTheyAlreadyHaveSaysNothingChanged(t *testing.T) {
+	m, rec := selectorModel(t, []AgentRow{
+		{Name: "spec-writer", Model: "sonnet"},
+		{Name: "work-reviewer", Model: "sonnet"},
+	})
+	m = openSelector(t, m)
+
+	m = key(m, "a")
+	m = key(m, "m")
+	m = chooseModel(t, m, "sonnet")
+
+	if rec.calls != 0 {
+		t.Errorf("apply was called %d times for a no-op", rec.calls)
+	}
+	if !strings.Contains(m.Notice(), "nothing to change") {
+		t.Errorf("notice = %q, want it to say nothing changed", m.Notice())
+	}
+}

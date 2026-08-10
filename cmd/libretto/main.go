@@ -398,7 +398,7 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 // row is. One of them knowing about the other is how a package that promises to
 // stay off the filesystem stops being able to prove it.
 func agentRows(root string, tg target.Target) ([]ui.AgentRow, error) {
-	agents, err := agentmodel.Agents(agentsDir(tg))
+	agents, _, err := agentmodel.Agents(agentsDir(tg))
 	if err != nil {
 		return nil, err
 	}
