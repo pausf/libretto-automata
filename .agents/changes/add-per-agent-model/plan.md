@@ -65,7 +65,7 @@ From spec: `spec.md` breakdown 1. Closes: the three reading criteria.
   written and failing first
 - [x] **1.2** implement until they pass
 - [x] **1.3** six gates, exit codes read from files
-- [ ] **1.4** committed
+- [x] **1.4** committed: b61abca
 
 ### Task 2: write and remove the key
 
@@ -84,13 +84,13 @@ From spec: `spec.md` breakdown 2. Closes: the five writing criteria.
   asserts both halves; an error return with a mangled file is the failure worth
   catching
 - setting the model an agent already has writes nothing — same mtime, same bytes
-- [ ] **2.1** `TestSetModelInsertsWithoutDisturbingTheFile`,
+- [x] **2.1** `TestSetModelInsertsWithoutDisturbingTheFile`,
   `TestSetModelReplacesInPlace`, `TestSetModelDefaultRemovesTheKey`,
   `TestSetModelRefusesAFileWithoutFrontmatter`, `TestSetModelIsIdempotent` — failing
   first
-- [ ] **2.2** implement until they pass
-- [ ] **2.3** six gates
-- [ ] **2.4** committed
+- [x] **2.2** implement until they pass
+- [x] **2.3** six gates
+- [x] **2.4** committed: ed5b0eb
 
 ### Task 3: the catalogue
 
@@ -107,11 +107,11 @@ From spec: `spec.md` breakdown 3. Closes: the two catalogue criteria.
 - `Valid(model string) bool`; everything not in the catalogue is refused
 - the catalogue is the single list. The CLI and the panel both read it; neither
   keeps its own copy of the model names
-- [ ] **3.1** `TestCatalogueListsTheSubscriptionModels`, `TestUnknownModelIsRefused` —
+- [x] **3.1** `TestCatalogueListsTheSubscriptionModels`, `TestUnknownModelIsRefused` —
   failing first
-- [ ] **3.2** implement until they pass
-- [ ] **3.3** six gates
-- [ ] **3.4** committed
+- [x] **3.2** implement until they pass
+- [x] **3.3** six gates
+- [x] **3.4** committed: f2cfee5
 
 ### Task 4: apply one model to a set
 
@@ -128,11 +128,11 @@ From spec: `spec.md` breakdown 4. Closes: the two applying criteria.
 - the test for that is the important one: a set whose last member is unwritable
   leaves the *first* member unchanged. A partial write is the failure mode this
   design exists to prevent, so it gets the test, not a comment
-- [ ] **4.1** `TestApplyReachesEveryAgentInTheSet`,
+- [x] **4.1** `TestApplyReachesEveryAgentInTheSet`,
   `TestApplyWritesNothingWhenAnyAgentIsUnwritable` — failing first
-- [ ] **4.2** implement until they pass
-- [ ] **4.3** six gates
-- [ ] **4.4** committed
+- [x] **4.2** implement until they pass
+- [x] **4.3** six gates
+- [x] **4.4** committed: ce58334
 
 ### Task 5: `libretto models`
 
@@ -151,10 +151,10 @@ From spec: `spec-cli.md` breakdown 5. Closes: all ten cli criteria.
 - **on write, one line saying the effect is not scoped.** Both targets symlink to the
   same repo file, so the change is shared. Say it once, at the moment it matters
 - plain text, no escape codes, like every other non-panel command
-- [ ] **5.1** the ten tests named in `spec-cli.md`, failing first
-- [ ] **5.2** implement until they pass
-- [ ] **5.3** six gates — `TestRunDispatch` covers the new case
-- [ ] **5.4** committed
+- [x] **5.1** the ten tests named in `spec-cli.md`, failing first
+- [x] **5.2** implement until they pass
+- [x] **5.3** six gates — `TestRunDispatch` covers the new case
+- [x] **5.4** committed: c848133
 
 ### Task 6: the selector screen
 
@@ -176,10 +176,10 @@ From spec: `spec-panel.md` breakdown 6. Closes: eight of the twelve panel criter
   `WithRunner` already do
 - the `pending` / `pendingScope` confirmation machinery is **not** reused; this is not
   a destructive action
-- [ ] **6.1** the eight selector tests named in `spec-panel.md`, failing first
-- [ ] **6.2** implement until they pass
-- [ ] **6.3** six gates
-- [ ] **6.4** committed
+- [x] **6.1** the eight selector tests named in `spec-panel.md`, failing first
+- [x] **6.2** implement until they pass
+- [x] **6.3** six gates
+- [x] **6.4** committed: d9100f1
 
 ### Task 7: wire the panel to the package
 
@@ -194,12 +194,12 @@ From spec: `spec-panel.md` breakdown 7. Closes: the menu-row tally criteria.
 - the tally refreshes after applying, through the existing `Refresh`
 - the callbacks are supplied here, in `cmd`, so `internal/ui` gains no dependency on
   `internal/agentmodel` and none on `internal/target`
-- [ ] **7.1** `TestMenuRowReportsTheModelTally`,
+- [x] **7.1** `TestMenuRowReportsTheModelTally`,
   `TestMenuRowTallyRefreshesAfterApplying` — failing first
-- [ ] **7.2** implement until they pass
-- [ ] **7.3** six gates, plus `make preview` looked at — the panel is the one thing a
+- [x] **7.2** implement until they pass
+- [x] **7.3** six gates, plus `make preview` looked at — the panel is the one thing a
   test cannot fully judge
-- [ ] **7.4** committed
+- [x] **7.4** committed: 8991702
 
 ### Task 8: split `review-lens` into four
 
@@ -217,14 +217,22 @@ at :255-285), `docs/FLOW.md`, and every remaining reference
 - `review-intent` keeps `Bash`; it is untouched apart from being allowed a `model:`
 - the four `Skill(skill="…")` names stay written out in the form the static reference
   check can see. That requirement moves house, it does not disappear
-- **hunt every reference to `review-lens`.** `rg -n 'review-lens'` over the whole repo
-  must come back empty before this task closes; a dangling agent name fails as a lens
-  that silently never ran
-- [ ] **8.1** write the four agents, delete the old one
-- [ ] **8.2** update the launch site, `docs/FLOW.md`, and the remaining references
-- [ ] **8.3** `rg -n 'review-lens' .` returns nothing
-- [ ] **8.4** six gates
-- [ ] **8.5** committed
+- **hunt every reference to `review-lens`.** The check is
+
+  ```
+  rg -n --hidden --glob '!.git/*' --glob '!.agents/**' 'review-lens' .
+  ```
+
+  and it must come back empty. **`--hidden` is not optional**: `.agents` starts with a
+  dot and rg skips hidden paths by default, so the obvious spelling of this check
+  reports a clean repo while the specs still name the deleted agent. It did exactly
+  that here. `.agents/specs/review-project/spec.md` keeps its references until phase 8
+  folds the delta in — that is the flow, not a leftover
+- [x] **8.1** write the four agents, delete the old one
+- [x] **8.2** update the launch site, `docs/FLOW.md`, and the remaining references
+- [x] **8.3** `rg -n 'review-lens' .` returns nothing
+- [x] **8.4** six gates
+- [x] **8.5** committed: 99f7d2c
 
 ---
 
