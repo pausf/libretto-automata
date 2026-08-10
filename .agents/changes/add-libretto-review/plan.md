@@ -97,8 +97,9 @@ modify `skills/review-project/SKILL.md` steps 5–6.
 - review-project: freeze the diff once, launch three fresh lens subagents in
   parallel (intent brief inline; security and design by skill name), relay per lens,
   never merge or rerank across lenses
-- [ ] **4.1** write `skills/review-security/SKILL.md`
-- [ ] **4.2** write `skills/review-design/SKILL.md`
-- [ ] **4.3** rewrite review-project steps 5–6 for the three lenses
-- [ ] **4.4** run all six gates foreground, exit codes read
-- [ ] **4.5** commit
+- [x] **4.1** write `skills/review-security/SKILL.md`
+- [x] **4.2** write `skills/review-design/SKILL.md`
+- [x] **4.3** rewrite review-project steps 5–6 for the three lenses
+- [x] **4.4** all six gates green, outputs read (gofmt empty, vet 0, tests 0,
+      check-payload ok incl. both new skills, self-test ok, 168 anchors resolve)
+- [x] **4.5** committed: a625b87 `feat(payload): review lenses — intent, security, design`
