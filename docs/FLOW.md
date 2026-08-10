@@ -160,9 +160,31 @@ beliefs about the code become the claim under review.
 
 The reviewer reads the contract and the diff, **re-runs every proof the change
 touches** rather than trusting phase 6's report, and returns findings — each one
-citing a pillar or a proof, never taste. **It reports and never blocks**: the same
-standing as `spec-drift`, because the stops in this flow exist so the user can say
-no, not so a machine can. Acting on a finding is a new pass through phase 6.
+citing a pillar or a proof, never taste.
+
+Then the seam **fixes every one of them, and asks nothing**. That is not the reviewer
+softening into an author: the reviewer is read-only and stays that way, because an
+agent that repairs what it found is grading its own repair and its next verdict is no
+longer independent of its own hands. The reading and the writing sit on opposite sides
+of the seam, and that is the whole design.
+
+The reason there is no question here is that there is nothing to ask. A finding cites a
+pillar or a proof *by contract* — so it is a defect against something the user already
+agreed to at phase 2. "Shall I fix the thing that violates the spec you approved?" has
+one answer, and charging a round trip for it is charging for a rubber stamp.
+
+Two bounds, both named rather than discovered later:
+
+- **one fix pass, no re-review.** A fix that introduces a new defect is caught by the
+  proofs or not at all. The replacement, the day that bites, is one bounded second look
+  at the fix diff — never a loop.
+- **two failures on one finding stops that finding**, per `skills/evidence/`. It reaches
+  phase 7 as found-and-not-fixed, and so does anything needing a decision that is not
+  ours. Reported, not asked.
+
+`spec-drift` keeps the older standing — warn, never block — and the two are not
+inconsistent. Drift is a question about whether a contract still describes the code, and
+that answer is the user's. A finding is a breach of a contract already settled.
 
 No spec, no review: the trivial lane collapsed the ceremony because there was no
 contract to disagree with, and a reviewer with no contract has nothing to check. One
@@ -173,7 +195,7 @@ from renumbering everything that says eight.
 
 ## 7 · Present
 
-Show what was done. Then stop.
+Show what was done. Then commit it, same turn.
 
 Three things, and the third is the one that usually goes missing:
 
@@ -224,12 +246,54 @@ decision. The gap is deliberate and worth naming rather than papering over.
 
 The push is asked at the very end — yes or no — and never assumed.
 
+## Where the flow stops, and why only there
+
+Three stops. Two inside the work, one at the door.
+
+| After | Stops | What the user is changing |
+|---|---|---|
+| 1 · read the task | no | — the reading is stated, and the spec is where it gets corrected |
+| 2 · the spec | **yes** | the contract |
+| 5 · the plan | **yes** | the order, and what waits on what |
+| 6 · build | no | — |
+| 6→7 · review | no | — the seam fixes what it finds |
+| 7 · present | no | — |
+| 8 · commit | **yes, last** | whether the world sees it |
+
+**A stop is a place where the user changes something.** That is the entire test. A stop
+whose only available answer is "yes, carry on" is a round trip charged for a rubber
+stamp, and it does not become one by being called a decision point.
+
+Phase 1 used to stop, and what it bought was the user reading a paraphrase of their own
+sentence back to them. Phase 7 used to stop, and what it bought was permission to commit
+to a local branch nobody had seen — the cheapest possible place to change your mind,
+guarded as if it were a deployment.
+
+The cost of getting this wrong is not abstract. Four stops for a change is four turns of
+latency, and the flow had already conceded that a typo should not pay them. A concession
+held for typos and refused everywhere else is not a proportionate gear, it is a loophole,
+and what people do with a flow that charges too much is route around it.
+
+**Two exceptions in phase 1, and neither is ceremony:** work already in flight, where
+continuing it or not is a choice about the user's priorities, and a missing or
+unconfigured tracker, where nothing downstream exists. Both are the input failing to
+arrive, not a phase boundary asking to be blessed.
+
 ## Three rules, not phases
 
 **Ask** (4) and **commit** (8) are written above as phases because that is where
-they first appear, but neither happens once. Asking applies at every phase, as
-often as needed. Committing happens per task throughout phase 6, not after phase
-7. A flow that treats them as phases will do them once and consider them done.
+they first appear, but neither happens once. Committing happens per task throughout
+phase 6, not after phase 7. A flow that treats it as a phase will do it once and
+consider it done.
+
+**Asking is bounded to before the plan.** Phases 1, 2 and 5, where nothing has been
+built on the answer yet — which is why the two stops sit exactly there. After the plan
+an unsettled question becomes a *finding*: it goes into the phase 7 report with what was
+assumed in the meantime and what changes if the assumption is wrong, and the user meets
+it at phase 8 alongside everything else.
+
+That bound is the load-bearing part. "Ask whenever you need to" is reasonable in every
+individual case and collapses the whole promise, one reasonable exception at a time.
 
 **Evidence** is the third, and it is not numbered above at all: nothing is true
 until it has been observed. Failing tests get fixed or reported, never edited into
