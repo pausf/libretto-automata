@@ -1003,6 +1003,8 @@ func prerequisites() []Prereq {
 	return []Prereq{
 		{"jira", jira, jiraNote},
 		{"git host", gh || gl, host},
+		{"rg", onPath("rg"), "record-work, find-work — brew install ripgrep"},
+		{"jq", onPath("jq"), "find-work — brew install jq"},
 		{"ponytail", companion(home, "ponytail"), "optional — how much gets built"},
 		{"caveman", companion(home, "caveman"), "optional — how much gets said"},
 	}
