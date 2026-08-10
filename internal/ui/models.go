@@ -302,8 +302,14 @@ func (t Theme) selector(p Panel) string {
 		}
 	}
 
+	cw := ContentWidth(p.Width)
+
 	rows := make([]string, 0, len(p.Agents)+len(p.ModelChoices)+2)
 	for i, a := range p.Agents {
+		if i > 0 && a.Model != p.Agents[i-1].Model {
+			rows = append(rows, t.groupRule(cw))
+		}
+
 		colour, cursor := t.Steel, " "
 		if i == p.AgentCursor && !p.ChoosingModel {
 			colour, cursor = t.Gold, "❯"
@@ -385,6 +391,20 @@ func sortRowsByModel(rows []AgentRow, order []ModelChoice) []AgentRow {
 		return out[i].Name < out[j].Name
 	})
 	return out
+}
+
+// groupRule divides one model's rows from the next.
+//
+// An indented dim rule, deliberately not the frame's ├───┤ junction: that glyph means
+// "a new section of the panel", and three of them inside one list would read as three
+// panels. A blank line was the other candidate and it is worse — inside a bordered
+// frame a blank line reads as the end of the list.
+func (t Theme) groupRule(width int) string {
+	n := width - 4
+	if n < 1 {
+		n = 1
+	}
+	return "  " + Fg(t.Dim).Render(strings.Repeat("─", n))
 }
 
 func countMarked(rows []AgentRow) int {

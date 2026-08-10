@@ -32,13 +32,6 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 	agents := make([]AgentRow, len(rows))
 	copy(agents, rows)
 
-	choices := []ModelChoice{
-		{Name: "", Label: "the session's model"},
-		{Name: "haiku", Label: "cheapest"},
-		{Name: "sonnet", Label: "everyday"},
-		{Name: "opus", Label: "most capable"},
-	}
-
 	m := NewModel("v0", []MenuItem{
 		{Label: "install", Desc: "link", Enabled: true},
 		{Label: "models", Desc: "", Enabled: true},
@@ -55,7 +48,7 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 			}, rows, nil
 		}).
 		WithAgents(
-			choices,
+			catalogue(),
 			func(dest int) ([]AgentRow, error) {
 				rec.listedFor = append(rec.listedFor, dest)
 				out := make([]AgentRow, len(agents))
@@ -79,6 +72,18 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 			},
 		)
 	return m, rec
+}
+
+// catalogue is the model list the panel is handed. One helper rather than a literal
+// per test: the ordering rules under test are the catalogue's, so a fixture that
+// drifted would be testing a catalogue nothing ships.
+func catalogue() []ModelChoice {
+	return []ModelChoice{
+		{Name: "", Label: "the session's model"},
+		{Name: "haiku", Label: "cheapest"},
+		{Name: "sonnet", Label: "everyday"},
+		{Name: "opus", Label: "most capable"},
+	}
 }
 
 func threeAgents() []AgentRow {
@@ -362,6 +367,41 @@ func TestAnUnknownModelGetsItsOwnGroup(t *testing.T) {
 	// the same position Tally gives it, from the same ranking.
 	if got := order(sortRowsByModel(rows, choices)); got != "a c b" {
 		t.Fatalf("order = %q, want %q", got, "a c b")
+	}
+}
+
+// rules counts the group rules in a rendered selector. The frame's own ├───┤ rows are
+// not counted: they start with a junction glyph, the group rule is indented.
+func rules(rendered string) int {
+	n := 0
+	for _, line := range strings.Split(strip(rendered), "\n") {
+		if strings.HasPrefix(line, "  ─") {
+			n++
+		}
+	}
+	return n
+}
+
+func TestGroupRuleSitsOnlyBetweenGroups(t *testing.T) {
+	forceTrueColor(t)
+	theme := darkTheme()
+
+	// threeAgents is one opus row and two session rows: two groups, one rule.
+	mixed := theme.selector(Panel{Width: 90, Agents: sortRowsByModel(threeAgents(), catalogue())})
+	if got := rules(mixed); got != 1 {
+		t.Fatalf("two groups drew %d rules, want 1", got)
+	}
+	lines := strings.Split(strings.TrimRight(strip(mixed), "\n"), "\n")
+	if strings.HasPrefix(lines[len(lines)-1], "  ─") {
+		t.Fatal("a rule was drawn after the last group")
+	}
+
+	uniform := theme.selector(Panel{Width: 90, Agents: []AgentRow{
+		{Name: "a", Model: "haiku"}, {Name: "b", Model: "haiku"},
+	}})
+	// A division of nothing is not a division.
+	if got := rules(uniform); got != 0 {
+		t.Fatalf("one group drew %d rules, want none", got)
 	}
 }
 
