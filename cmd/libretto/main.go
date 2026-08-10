@@ -148,6 +148,8 @@ func run(args []string) error {
 		return uninstall(root, tg, args[1:])
 	case "update":
 		return update(root, tg)
+	case "models":
+		return models(root, tg, args[1:])
 	case "version", "-v", "--version":
 		fmt.Println("libretto-automata", version)
 		return nil
@@ -1012,6 +1014,8 @@ func usage() {
   %[2]s uninstall     show what this repo installed here, change nothing
   %[2]s uninstall --yes  remove it
   %[2]s preview       print the panel once, no TUI
+  %[2]s models        which model each agent runs on
+  %[2]s models set <model> <agent>…   declare it; --all for every agent
 
   --global, -g          act on ~/.claude (the default)
   --project, -p         act on <this directory>/.claude

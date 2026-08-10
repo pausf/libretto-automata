@@ -156,6 +156,8 @@ func TestRunDispatch(t *testing.T) {
 		{"version", []string{"version"}, false},
 		{"short version flag", []string{"-v"}, false},
 		{"help", []string{"help"}, false},
+		{"models", []string{"models"}, false},
+		{"models with an unknown verb", []string{"models", "nosuchthing"}, true},
 		{"unknown command", []string{"nosuchthing"}, true},
 	}
 
