@@ -547,6 +547,60 @@ func TestFooterListsTheScopeKey(t *testing.T) {
 	}
 }
 
+// The legend belongs to the screen, not to the program. It used to list `⏎ select`
+// over a selector where ⏎ opens a catalogue and space is what marks.
+func TestTheFooterFollowsTheScreen(t *testing.T) {
+	forceTrueColor(t)
+	theme := darkTheme()
+
+	menu := strip(theme.footer(Panel{Version: "v0"}, 90))
+	if !strings.Contains(menu, "⏎ select") {
+		t.Fatalf("the menu footer changed: %q", menu)
+	}
+
+	sel := strip(theme.footer(Panel{Version: "v0", InSelector: true}, 90))
+	for _, want := range []string{"space mark", "a all", "m model", "tab scope"} {
+		if !strings.Contains(sel, want) {
+			t.Fatalf("the selector footer does not mention %q: %q", want, sel)
+		}
+	}
+	if strings.Contains(sel, "⏎ select") {
+		t.Fatalf("the selector footer still promises ⏎ select: %q", sel)
+	}
+
+	cat := strip(theme.footer(Panel{Version: "v0", InSelector: true, ChoosingModel: true}, 90))
+	if !strings.Contains(cat, "⏎ apply") || strings.Contains(cat, "space mark") {
+		t.Fatalf("the catalogue footer lists keys that do nothing: %q", cat)
+	}
+
+	confirm := strip(theme.footer(Panel{Version: "v0", InSelector: true, Confirm: "sure?"}, 90))
+	if !strings.Contains(confirm, "y yes") {
+		t.Fatalf("a confirm no longer wins the footer: %q", confirm)
+	}
+}
+
+// A footer wider than the frame drags the centred block off the terminal — the same
+// tearing the fluid frame exists to prevent, arriving from underneath it. The
+// selector's legend is the longest in the program, and a dirty `git describe` is the
+// longest version.
+func TestTheFooterNeverOutgrowsTheFrame(t *testing.T) {
+	forceTrueColor(t)
+
+	for _, term := range []int{MinPanelWidth, 62, 80, 140} {
+		width := ContentWidth(term) + 2
+		for _, p := range []Panel{
+			{Version: "v0.2.0-3-gabc123-dirty"},
+			{Version: "v0.2.0-3-gabc123-dirty", InSelector: true},
+			{Version: "v0.2.0-3-gabc123-dirty", InSelector: true, ChoosingModel: true},
+		} {
+			got := lipgloss.Width(strings.TrimRight(strip(darkTheme().footer(p, width)), " "))
+			if got > width {
+				t.Errorf("term %d: footer is %d columns against a %d frame", term, got, width)
+			}
+		}
+	}
+}
+
 func TestSwitchingScopeSaysSo(t *testing.T) {
 	t.Setenv(EnvTheme, "dark")
 

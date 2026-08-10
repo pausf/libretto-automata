@@ -306,15 +306,39 @@ const footerIndent = 6
 // cursor, so anybody watching the `❯` sees nothing move and concludes the key does
 // nothing — an unlisted key that appears broken is worse than no key.
 func (t Theme) footer(p Panel, width int) string {
-	hints := "↑↓ · ⏎ select · tab scope · q quit"
-	if p.Confirm != "" {
+	// The hints belong to the screen, not to the program. A legend that lists `⏎
+	// select` while ⏎ opens a catalogue is worse than no legend: it is read once,
+	// believed, and never re-read. The selector's real keys used to live in the
+	// opening notice, where the first apply overwrote them and they were gone for the
+	// rest of the session.
+	hints, tight := "↑↓ · ⏎ select · tab scope · q quit", "⏎ select · tab · q"
+	switch {
+	case p.Confirm != "":
 		// While a question is open the only keys that matter are its answers.
 		// Listing the others invites pressing one by reflex.
-		hints = "y yes · n no"
+		hints, tight = "y yes · n no", "y yes · n no"
+	case p.ChoosingModel:
+		hints, tight = "↑↓ · ⏎ apply · esc back", "⏎ apply · esc"
+	case p.InSelector:
+		hints, tight = "↑↓ · space mark · a all · m model · tab scope · esc back",
+			"space · a all · m model · esc"
 	}
 
 	left := strings.Repeat(" ", footerIndent) + p.Version
 	gap := width - lipgloss.Width(left) - lipgloss.Width(hints) - footerIndent
+
+	// The selector's legend is half again as long as the menu's, and a footer wider
+	// than the frame drags the centred block off the terminal — the same tearing the
+	// fluid frame exists to prevent, arriving from underneath it.
+	//
+	// ponytail: one fallback string per screen, not a truncation ladder. What survives
+	// the drop is the keys that exist only on this screen; ↑↓ and `tab` are taught on
+	// the menu, which is the only way in. If a third width ever needs a third form,
+	// that is the moment to build the ladder, not before.
+	if gap < 1 {
+		hints = tight
+		gap = width - lipgloss.Width(left) - lipgloss.Width(hints) - footerIndent
+	}
 	if gap < 1 {
 		gap = 1
 	}
