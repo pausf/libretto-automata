@@ -11,7 +11,7 @@ Phase 6 does not fan out. Serial, one writer, one commit per task.
 
 ## Tasks
 
-- [ ] **1 · `skills/review-work/SKILL.md` — the fix pass**
+- [x] **1 · `skills/review-work/SKILL.md` — the fix pass**
       Step 3 stays (relay, attributed and unedited). A new step 4 fixes every finding in
       the same pass, re-runs the proofs the fix touches, and adds no question. The
       two-failures stop from `skills/evidence/`. A finding that cannot be fixed without a
@@ -23,7 +23,7 @@ Phase 6 does not fan out. Serial, one writer, one commit per task.
       Closes: `scripts/check-payload`
       Waits on: nothing
 
-- [ ] **2 · `agents/work-reviewer.md` — confirm, do not change**
+- [x] **2 · `agents/work-reviewer.md` — confirm, do not change**
       Read it and verify the read-only grant and the no-edit rule are intact and still
       correct beside task 1. If it already says the right thing, this task closes with
       that observation and no diff. Named as a task because "the agent stays read-only"
@@ -32,7 +32,7 @@ Phase 6 does not fan out. Serial, one writer, one commit per task.
       Closes: `scripts/check-payload`
       Waits on: nothing
 
-- [ ] **3 · `skills/find-work/SKILL.md` — no wait after the artifact**
+- [x] **3 · `skills/find-work/SKILL.md` — no wait after the artifact**
       Line 39, "Then confirm the reading, and stop." The artifact and the confirmation
       both survive; the stop goes. Line 278's "Then stop. Nothing else happens here."
       becomes the phase's boundary, not a wait. Line 172's stop stays untouched — that is
@@ -41,7 +41,7 @@ Phase 6 does not fan out. Serial, one writer, one commit per task.
       Closes: `scripts/check-payload`
       Waits on: nothing
 
-- [ ] **4 · `skills/present-work/SKILL.md` — report, then phase 8**
+- [x] **4 · `skills/present-work/SKILL.md` — report, then phase 8**
       Line 12 and lines 127–129. Every sentence of the report survives; the wait does
       not. The trivial-lane exception at line 127 stops being an exception, because both
       lanes now carry straight on.
@@ -49,14 +49,14 @@ Phase 6 does not fan out. Serial, one writer, one commit per task.
       Closes: `scripts/check-payload`
       Waits on: nothing
 
-- [ ] **5 · `commands/libretto-flow.md` — two waits, not four**
+- [x] **5 · `commands/libretto-flow.md` — two waits, not four**
       Lines 57, 76, 101, 139. Remove the phase 1 and phase 7 waits, keep the spec and
       plan waits, and restate the review seam's new standing at lines 120–127.
       From: Outcomes · the stop table
       Closes: `scripts/check-payload`
       Waits on: nothing
 
-- [ ] **6 · `docs/FLOW.md` — the reasoning**
+- [x] **6 · `docs/FLOW.md` — the reasoning**
       Lines 153–176 and 225. Why three stops and not four: each remaining stop is a place
       the user changes something. Why the seam fixes rather than reports, and why the
       reviewer itself stays read-only. Not installed, so nothing depends on it — which is
