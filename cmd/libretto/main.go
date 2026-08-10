@@ -192,7 +192,7 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 	model = model.WithAgents(
 		modelChoices(),
 		func() ([]ui.AgentRow, error) { return agentRows(root) },
-		func(names []string, m string) error { return agentmodel.Apply(root, names, m) },
+		func(names []string, m string) error { return agentmodel.Apply(repoAgents(root), names, m) },
 	)
 
 	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
@@ -385,7 +385,7 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 // row is. One of them knowing about the other is how a package that promises to
 // stay off the filesystem stops being able to prove it.
 func agentRows(root string) ([]ui.AgentRow, error) {
-	agents, err := agentmodel.Agents(root)
+	agents, err := agentmodel.Agents(repoAgents(root))
 	if err != nil {
 		return nil, err
 	}

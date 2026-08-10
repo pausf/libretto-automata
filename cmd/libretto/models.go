@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pausf/libretto-automata/internal/agentmodel"
@@ -25,6 +26,14 @@ func models(root string, tg target.Target, args []string) error {
 	return setModels(root, tg, args[1:])
 }
 
+// repoAgents is where this repository keeps its own agents.
+//
+// A bridge, and deliberately a named one: agentmodel now takes the directory rather
+// than a root it joins `agents/` onto, and both parameters are strings — so the
+// compiler saw nothing when the meaning changed under it. The cmd tests caught it.
+// Task 2 replaces every call with the selected target's directory and this goes.
+func repoAgents(root string) string { return filepath.Join(root, "agents") }
+
 // notLinkedHere marks an agent the repository has but this target does not.
 //
 // The model itself is one file and cannot differ between targets. Which agents
@@ -34,7 +43,7 @@ func models(root string, tg target.Target, args []string) error {
 const notLinkedHere = "· not linked here"
 
 func listModels(root string, tg target.Target) error {
-	agents, err := agentmodel.Agents(root)
+	agents, err := agentmodel.Agents(repoAgents(root))
 	if err != nil {
 		if os.IsNotExist(err) {
 			fmt.Println("no agents in this repository")
@@ -119,7 +128,7 @@ func setModels(root string, tg target.Target, args []string) error {
 		return fmt.Errorf("name the agents, or pass --all — refusing to guess which you meant")
 	}
 	if all {
-		agents, err := agentmodel.Agents(root)
+		agents, err := agentmodel.Agents(repoAgents(root))
 		if err != nil {
 			return err
 		}
@@ -129,7 +138,7 @@ func setModels(root string, tg target.Target, args []string) error {
 		}
 	}
 
-	if err := agentmodel.Apply(root, names, model); err != nil {
+	if err := agentmodel.Apply(repoAgents(root), names, model); err != nil {
 		return err
 	}
 
