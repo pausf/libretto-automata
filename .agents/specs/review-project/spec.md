@@ -1,6 +1,6 @@
 # Review Project
 
-Governs: skills/review-project/** skills/review-security/** skills/review-design/** skills/review-reliability/** skills/review-tests/** agents/review-lens.md agents/review-intent.md commands/libretto-review.md
+Governs: skills/review-project/** skills/review-security/** skills/review-design/** skills/review-reliability/** skills/review-tests/** agents/review-security.md agents/review-design.md agents/review-reliability.md agents/review-tests.md agents/review-intent.md commands/libretto-review.md
 
 Review somebody else's PR/MR without disturbing your own state.
 
@@ -34,18 +34,29 @@ exactly as it found it.
   **tests**. What each lens looks for is that lens's own contract and lives in its
   own skill — restating it here is the second copy nobody edits
 - lenses launch as agents in `agents/`, never as general-purpose subagents, and each
-  declares only the tools its lens uses: `review-lens` reads and never writes, and
-  `review-intent` alone carries `Bash`. A general-purpose subagent brings every tool
-  schema and every installed skill's description into a review that touches four
-  tools, and that overhead is paid once per lens before any of them reads a line
-- **two agents, not five.** `review-lens` serves all four skill-backed lenses: they
-  differ in which skill they apply and in nothing else — same tool grant, same scope
-  discipline, same return shape. `review-intent` is separate because it is genuinely
-  different: different tools, and no skill to delegate to
+  declares only the tools its lens uses: the four skill-backed lenses read and never
+  write, and `review-intent` alone carries `Bash`. A general-purpose subagent brings
+  every tool schema and every installed skill's description into a review that touches
+  four tools, and that overhead is paid once per lens before any of them reads a line
+- **five agents, one per lens.** `review-security`, `review-design`,
+  `review-reliability` and `review-tests` each apply one skill and each declare their
+  own `model:`; `review-intent` is separate for a different reason — different tools,
+  and no skill to delegate to.
+
+  They were one `review-lens` agent with a parameter until each lens needed its own
+  model. That design rested on the four differing in exactly one thing, which skill
+  they apply, and a per-lens model is a second thing: the premise went, not the
+  reasoning. What the split buys is the point of it — **design and tests are
+  pattern-matching over prose and run on a cheap model while security does not**, which
+  a shared file cannot express.
+
+  The cost, accepted knowingly: four near-identical bodies that can drift apart. The
+  ceiling — if they drift, or if a fifth lens arrives, generate them from one source at
+  build time rather than hand-maintaining five copies
 - the four skill names are written in the orchestrating skill as
   `Skill(skill="review-security")` and its siblings — the form `scripts/check-payload`
-  scans, so a renamed lens fails the gate rather than silently never running. Naming
-  them there rather than in the agent is what lets one agent stay one agent
+  scans, so a renamed lens fails the gate rather than silently never running. That
+  requirement survived the split; it just moved house
 - the lens contract lives in the skill and the agent stays thin; inlining a lens
   contract into its agent would be the second copy
 - **intent has an agent but no skill**, the one asymmetry: it is the only lens whose
@@ -194,4 +205,6 @@ every exit path.
   nothing was relaunched once, and a second silence was reported as that lens
   missing rather than papered over; five reports were relayed unmerged. **The token
   cost of a run with the lens agents, measured against the 307k baseline** — the
-  narrow tool grants are a prediction until a second run is counted.
+  narrow tool grants are a prediction until a second run is counted, and so is the
+  saving from running design and tests on a cheaper model. **Neither has been
+  measured.** One real review with the four split agents settles both at once.

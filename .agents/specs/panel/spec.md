@@ -111,6 +111,42 @@ than no test: it makes the lie look checked.
 The report is bounded at `MaxResultRows` and says how many lines it dropped. A
 truncated list that does not admit it is a list that lies.
 
+### The model selector — the panel's second screen
+
+One menu entry opens it and `esc` brings the menu back. It is a **replacement, not an
+overlay**: two lists of rows on one frame, each with its own cursor, is two things to
+misread at a glance.
+
+```
+  ❯ [x] review-design        haiku
+    [x] review-tests         haiku
+    [ ] review-security      opus
+    [ ] spec-writer          (session)
+
+    space mark · a all · m model · esc back
+```
+
+- **Marking is multi.** `space` marks the row under the cursor; `a` marks every row
+  and `a` again clears them — a key that only ever adds leaves no way back but
+  pressing space once per row.
+- **One model, applied to the marked set, in one act.** `m` opens the catalogue and
+  the choice reaches every marked row at once. That is the ordinary case, not the
+  advanced one: making the prose lenses cheap is one gesture, not four.
+- **Nothing marked means nothing happens**, and the panel says so. It never falls
+  back to the row under the cursor — a selector whose marking mechanism is sometimes
+  ignored teaches the user not to trust the marks.
+- **The mark is legible without colour**: `[x]` / `[ ]` *and* the theme's emphasis.
+  The same both-signals rule the destination strip follows.
+- Rows show their new models straight after applying. A screen that needs a reopen to
+  tell the truth lies for as long as it is open.
+- **`esc` leaves the selector, never the program.** Sharing one key between "go back"
+  and "exit" is how somebody loses the panel trying to back out of a screen.
+- **The menu row reports rather than describing itself** — `2 on haiku · 3 on session`,
+  next to `status`. Every other row carries live state, and the tally is the question
+  the screen was opened to answer. The session default sorts last: it is not a price,
+  and a row opening with the one entry that cannot answer "how much is still
+  expensive?" is not answering it.
+
 ## Scope boundaries
 
 **In:** the wordmark, palettes, contrast, layout, the fluid frame, the menu, the target
@@ -118,7 +154,14 @@ strip, the Bubbletea model and its navigation.
 
 **Out:**
 
-- **performing an action.** The model reports the choice; `cli` runs it.
+- **performing an action.** The model reports the choice; `cli` runs it. That holds
+  for the selector too: its rows and its catalogue arrive through callbacks, so this
+  package still knows nothing about what an agent file is and imports neither
+  `internal/target` nor `internal/agentmodel`.
+- **filtering or searching the agent list.** Four to eight rows fit on a screen; a
+  filter is machinery for a scale this does not have.
+- **confirming a model change.** `y/n` is for the destructive actions. Writing a
+  frontmatter key is reversible in one keystroke.
 - **dimming disabled rows.** Colour carries selection and nothing else, so a disabled
   row keeps full contrast and reads as available-but-inert rather than as noise.
 - images, sixel, mouse. A symlink installer does not need them.
@@ -303,3 +346,34 @@ The model:
   Proof: cmd/libretto/scope_test.go TestStripRowsReportTheirOwnState
 - the status row follows the active destination rather than summing both
   Proof: cmd/libretto/scope_test.go TestStatusRowFollowsTheActiveScope
+
+The model selector:
+
+- the menu entry opens it and `esc` returns to the menu
+  Proof: internal/ui/models_test.go TestSelectorOpensFromTheMenuAndEscapeReturns
+- **`esc` in the selector does not quit the panel**
+  Proof: internal/ui/models_test.go TestEscapeInTheSelectorDoesNotQuitThePanel
+- `space` marks and unmarks the row under the cursor
+  Proof: internal/ui/models_test.go TestSpaceMarksAndUnmarksTheCurrentRow
+- `a` marks every row, and again clears every row
+  Proof: internal/ui/models_test.go TestMarkAllTogglesEveryRow
+- a chosen model reaches every marked row and no unmarked one
+  Proof: internal/ui/models_test.go TestChosenModelReachesOnlyTheMarkedRows
+- **applying with nothing marked changes nothing and says so**
+  Proof: internal/ui/models_test.go TestApplyingWithNothingMarkedSaysSo
+- the rows show the new model without reopening the screen
+  Proof: internal/ui/models_test.go TestRowsShowTheNewModelAfterApplying
+- an agent with no declared model renders as running the session's
+  Proof: internal/ui/models_test.go TestUndeclaredAgentRendersAsSession
+- **the mark is visible with colour stripped**
+  Proof: internal/ui/models_test.go TestMarkIsLegibleWithoutColour
+- the selector frame is flush at every width
+  Proof: internal/ui/models_test.go TestSelectorFrameIsFlushAtEveryWidth
+- a failing apply reports the error and leaves the screen usable
+  Proof: internal/ui/models_test.go TestFailedApplyIsReportedAndTheScreenSurvives
+- the menu row reports a tally of agents by model, not a description of itself
+  Proof: internal/ui/models_test.go TestMenuRowReportsTheModelTally
+- the session default sorts last in that tally
+  Proof: internal/ui/models_test.go TestTallyPutsTheSessionDefaultLast
+- the tally refreshes after applying
+  Proof: internal/ui/models_test.go TestMenuRowTallyRefreshesAfterApplying

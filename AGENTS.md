@@ -110,9 +110,10 @@ documentation pretending to be state — which happened while building this very
 
 ## Specs
 
-Per **capability**, never per ticket, in `.agents/specs/<capability>/spec.md`. Nine of
+Per **capability**, never per ticket, in `.agents/specs/<capability>/spec.md`. Ten of
 them: `ownership`, `link-state`, `linking`, `targets`, `repo-sync`, `panel`, `cli`,
-`payload`, `review-project`. `docs/SPEC.md` is an index with no requirements in it.
+`payload`, `review-project`, `agent-models`. `docs/SPEC.md` is an index with no
+requirements in it.
 
 Each declares what it owns and cites the test behind each criterion:
 

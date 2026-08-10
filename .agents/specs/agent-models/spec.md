@@ -1,6 +1,5 @@
 # Agent Models
 
-Targets: agent-models — new capability
 Governs: internal/agentmodel/**
 
 Choose which model each payload agent runs on, so the work that is pattern-matching
@@ -99,7 +98,7 @@ catalogue of legal values, and refusing everything else.
   premise no longer holds. Chosen over writing models into the skill's launch table,
   because that would make the selector write two formats and parse a markdown table
   that any reformat breaks. The cost, accepted knowingly: four near-identical bodies
-  that can drift. The delta is in `spec-review-project.md`.
+  that can drift. The reasoning is recorded in the review-project spec.
 
 - **The default value is an absent key, not the word `inherit`.** See outcomes.
 
