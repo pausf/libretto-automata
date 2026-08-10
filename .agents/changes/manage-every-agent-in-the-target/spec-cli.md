@@ -86,6 +86,19 @@ and the honest per-write message.
 2. `cmd/libretto`: point `models` at the target's agents directory, mark shared rows,
    and make the post-write message name which kind was written.
 
+## Criteria this delta retires
+
+Three criteria in the cli capability spec describe behaviour that no longer exists.
+Their tests are gone, so `--anchors` reports them broken until phase 8 folds this delta
+in — that is the delta doing its job, not rot, and it is named here so the two are
+distinguishable:
+
+| Retired criterion | Why |
+|---|---|
+| `TestModelsListsEveryAgentAndChangesNothing` | replaced by `TestModelsListsTheTargetsAgents` — "every agent" now means the target's |
+| `TestModelsMarksAgentsThatDoNotReachThisScope` | the `· not linked here` marker has nothing left to mark: every listed agent is in the target by construction |
+| `TestModelsSetUnderProjectScopeSaysTheEffectIsShared` | the message was unconditional and is now per row; `TestModelsSetSaysWhenAWriteIsShared` and `TestModelsSetDoesNotOverclaimALocalWrite` replace it as a pair |
+
 ## Verification criteria
 
 - the listing is the target's agents, not the repository's

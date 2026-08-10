@@ -2,9 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/pausf/libretto-automata/internal/agentmodel"
 	"github.com/pausf/libretto-automata/internal/link"
@@ -26,48 +23,39 @@ func models(root string, tg target.Target, args []string) error {
 	return setModels(root, tg, args[1:])
 }
 
-// repoAgents is where this repository keeps its own agents.
+// sharedMark flags an agent whose file this repository owns.
 //
-// A bridge, and deliberately a named one: agentmodel now takes the directory rather
-// than a root it joins `agents/` onto, and both parameters are strings — so the
-// compiler saw nothing when the meaning changed under it. The cmd tests caught it.
-// Task 2 replaces every call with the selected target's directory and this goes.
-func repoAgents(root string) string { return filepath.Join(root, "agents") }
+// Writing it reaches the repository's file, and therefore every target linking to it.
+// Writing an unmarked agent reaches that target only. The word names the consequence
+// rather than the mechanism, because the consequence is what the reader has to act on.
+const sharedMark = "shared"
 
-// notLinkedHere marks an agent the repository has but this target does not.
-//
-// The model itself is one file and cannot differ between targets. Which agents
-// actually reach a target can, and that is the one honest thing the scope flag
-// changes about this command — without it the two listings are identical and the
-// flag is decoration.
-const notLinkedHere = "· not linked here"
+// agentsDir is the directory of the target under discussion. Empty when the target
+// does not take agents at all, which lists nothing rather than failing.
+func agentsDir(tg target.Target) string {
+	if !tg.Accepts(target.Agents) {
+		return ""
+	}
+	return tg.Dir(target.Agents)
+}
 
 func listModels(root string, tg target.Target) error {
-	agents, err := agentmodel.Agents(repoAgents(root))
+	agents, err := agentmodel.Agents(agentsDir(tg))
 	if err != nil {
-		if os.IsNotExist(err) {
-			fmt.Println("no agents in this repository")
-			return nil
-		}
 		return err
 	}
 	if len(agents) == 0 {
-		fmt.Println("no agents in this repository")
+		fmt.Printf("no agents in %s\n", tg.Name())
 		return nil
-	}
-
-	reaches, err := agentsReaching(root, tg)
-	if err != nil {
-		return err
 	}
 
 	fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
 	for _, a := range agents {
 		note := ""
-		if !reaches[a.Name] {
-			note = "  " + notLinkedHere
+		if link.Owned(root, a.Path) {
+			note = "  " + sharedMark
 		}
-		fmt.Printf("  %-20s %s%s\n", a.Name, describe(a.Model), note)
+		fmt.Printf("  %-20s %-12s%s\n", a.Name, describe(a.Model), note)
 	}
 	fmt.Println()
 	fmt.Printf("models available (aliases; versions as of %s):\n", agentmodel.Resolved)
@@ -75,31 +63,6 @@ func listModels(root string, tg target.Target) error {
 		fmt.Printf("  %-10s %-12s %s\n", nameOf(m), m.Version, m.Label)
 	}
 	return nil
-}
-
-// agentsReaching reports which agents are actually installed in a target, keyed by
-// the name agentmodel uses — without the .md that link items carry.
-//
-// Only `Linked` counts. A conflict is somebody else's file sitting where ours would
-// go, and an agent whose slot is occupied does not reach the target however much the
-// repository wishes it did.
-func agentsReaching(root string, tg target.Target) (map[string]bool, error) {
-	if !tg.Accepts(target.Agents) {
-		return nil, nil
-	}
-
-	entries, err := link.Scan(root, tg)
-	if err != nil {
-		return nil, err
-	}
-
-	reaches := make(map[string]bool, len(entries))
-	for _, e := range entries {
-		if e.Kind == target.Agents && e.State == link.Linked {
-			reaches[strings.TrimSuffix(e.Name, ".md")] = true
-		}
-	}
-	return reaches, nil
 }
 
 func setModels(root string, tg target.Target, args []string) error {
@@ -128,7 +91,7 @@ func setModels(root string, tg target.Target, args []string) error {
 		return fmt.Errorf("name the agents, or pass --all — refusing to guess which you meant")
 	}
 	if all {
-		agents, err := agentmodel.Agents(repoAgents(root))
+		agents, err := agentmodel.Agents(agentsDir(tg))
 		if err != nil {
 			return err
 		}
@@ -138,20 +101,42 @@ func setModels(root string, tg target.Target, args []string) error {
 		}
 	}
 
-	if err := agentmodel.Apply(repoAgents(root), names, model); err != nil {
+	dir := agentsDir(tg)
+
+	// Which rows are shared has to be read before the write, so the report can say
+	// what each one reached.
+	agents, err := agentmodel.Agents(dir)
+	if err != nil {
+		return err
+	}
+	shared := make(map[string]bool, len(agents))
+	for _, a := range agents {
+		shared[a.Name] = link.Owned(root, a.Path)
+	}
+
+	if err := agentmodel.Apply(dir, names, model); err != nil {
 		return err
 	}
 
+	anyShared := false
 	for _, name := range names {
-		fmt.Printf("  %-20s %s\n", name, describe(model))
+		note := ""
+		if shared[name] {
+			note, anyShared = "  "+sharedMark, true
+		}
+		fmt.Printf("  %-20s %-12s%s\n", name, describe(model), note)
 	}
 
-	// The scope flag promises something it cannot deliver. Both targets symlink to
-	// the same file in this repository, so the change is shared — and a user who
-	// typed --project has every reason to expect otherwise.
+	// Only the shared rows reach beyond this target. Saying it about all of them was
+	// true when the subject was always this repository's own file; saying it about a
+	// target-local write is the same class of error as the silence it replaced.
 	fmt.Println()
-	fmt.Printf("written into %s/agents — in effect for every project on this machine,\n", root)
-	fmt.Printf("because %s links to those files rather than holding copies.\n", tg.Root())
+	if anyShared {
+		fmt.Printf("the rows marked %s live in %s/agents and are linked from more than one\n", sharedMark, root)
+		fmt.Println("destination — those take effect for every project on this machine.")
+	} else {
+		fmt.Printf("written into %s — this destination only.\n", dir)
+	}
 	return nil
 }
 

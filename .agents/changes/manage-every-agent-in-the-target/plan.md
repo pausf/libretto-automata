@@ -27,6 +27,12 @@ this folder. One writer: the orchestrator marks these boxes; sub-agents report.
   ```
 
   It must be fully green before phase 8.
+- **Task 2 retires three cli criteria, so three citations in `.agents/specs/cli/spec.md`
+  go broken and stay broken until phase 8.** They are named in `spec-cli.md` under
+  *Criteria this delta retires*. From task 2 onward the check is **zero BROKEN outside
+  this change and outside those three names** — a rule stated because otherwise the
+  next reader cannot tell a retired criterion from rot, and would either panic or stop
+  reading the gate.
 - **`rg` needs `--hidden` to see `.agents`.** The obvious spelling of any check over the
   specs reports a clean repo while the specs say otherwise. It did exactly that last
   change.
@@ -60,12 +66,12 @@ From spec: `spec.md` breakdown 1. Closes: all six agent-models criteria.
 - **a symlinked agent file is written through to its destination.** That is ordinary
   file behaviour, and it is the mechanism behind the whole `shared` marker — so it gets
   a test rather than a comment
-- [ ] **1.1** `TestAgentsOnAMissingDirectoryIsEmptyNotAnError`,
+- [x] **1.1** `TestAgentsOnAMissingDirectoryIsEmptyNotAnError`,
   `TestApplyThroughASymlinkWritesTheDestination` written and failing first; the existing
   tests re-pointed at the new fixture shape
-- [ ] **1.2** implement until they pass
-- [ ] **1.3** six gates
-- [ ] **1.4** committed
+- [x] **1.2** implement until they pass
+- [x] **1.3** six gates
+- [x] **1.4** committed: 12ae329
 
 ### Task 2: `models` acts on the target
 
@@ -106,12 +112,12 @@ From spec: `spec-panel.md` breakdown 3. Closes: five of the seven panel criteria
 - a failed reload keeps the rows it had and says so, the way `nextScope` already
   handles a failed refresh
 - an empty set renders a plain statement, not an empty box
-- [ ] **3.1** `TestSharedAgentsAreMarked`, `TestSharedMarkerIsLegibleWithoutColour`,
+- [x] **3.1** `TestSharedAgentsAreMarked`, `TestSharedMarkerIsLegibleWithoutColour`,
   `TestTabReloadsTheSelectorForTheNewDestination`,
   `TestAFailedReloadKeepsTheRowsAndSaysSo`, `TestAnEmptyAgentSetSaysSo` — failing first
-- [ ] **3.2** implement until they pass
-- [ ] **3.3** six gates
-- [ ] **3.4** committed
+- [x] **3.2** implement until they pass
+- [x] **3.3** six gates
+- [x] **3.4** committed: 3f4041e
 
 ### Task 4: wire the panel to the active target
 

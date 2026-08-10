@@ -7,7 +7,8 @@ import (
 	"testing"
 )
 
-// agent writes an agent into the repo fixture and returns its path.
+// agent writes an agent into the repo and returns its path. Used as the source a
+// target's symlink points at.
 func (f fixture) agent(t *testing.T, name, model string) string {
 	t.Helper()
 
@@ -37,30 +38,160 @@ func (f fixture) agentBody(t *testing.T, name string) string {
 	return string(data)
 }
 
-func TestModelsListsEveryAgentAndChangesNothing(t *testing.T) {
+// installed links a repo agent into the target, the way `install` would. Writing it
+// reaches the repository's file — this is the "shared" case.
+func (f fixture) installed(t *testing.T, name, model string) {
+	t.Helper()
+	f.link(t, f.agent(t, name, model), f.dest("agents", name+".md"))
+}
+
+// foreign plants a real agent file in the target that libretto did not create — the
+// 22-agents-in-~/.claude case this whole change exists for.
+func (f fixture) foreign(t *testing.T, name, model string) string {
+	t.Helper()
+
+	dir := filepath.Join(f.Claude, "agents")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := "---\nname: " + name + "\ndescription: not ours\n"
+	if model != "" {
+		body += "model: " + model + "\n"
+	}
+	body += "---\n\nBody.\n"
+
+	path := filepath.Join(dir, name+".md")
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func (f fixture) foreignBody(t *testing.T, name string) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(f.Claude, "agents", name+".md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
+func TestModelsListsTheTargetsAgents(t *testing.T) {
 	f := newFixture(t)
-	f.agent(t, "review-design", "haiku")
-	f.agent(t, "spec-writer", "")
-	before := f.agentBody(t, "review-design")
+	f.installed(t, "review-design", "haiku")
+	f.foreign(t, "sdd-apply", "sonnet")
+	f.agent(t, "never-installed", "") // in the repo, absent from the target
 
 	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	for _, want := range []string{"review-design", "haiku", "spec-writer"} {
+	for _, want := range []string{"review-design", "sdd-apply"} {
 		if !strings.Contains(out, want) {
-			t.Errorf("output does not mention %q:\n%s", want, out)
+			t.Errorf("the target holds %q and it was not listed:\n%s", want, out)
 		}
 	}
-	if got := f.agentBody(t, "review-design"); got != before {
-		t.Error("models with no arguments modified an agent file")
+	if strings.Contains(out, "never-installed") {
+		t.Errorf("an agent absent from the target was listed:\n%s", out)
+	}
+}
+
+// The whole reason for this change. Before it, an agent the user had and libretto did
+// not ship was invisible — and on the machine that reported the bug that was 22 of
+// them.
+func TestModelsEditsAnAgentTheRepositoryDoesNotShip(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "sdd-apply", "")
+
+	_, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"set", "haiku", "sdd-apply"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(f.foreignBody(t, "sdd-apply"), "model: haiku") {
+		t.Error("an agent libretto did not create was not written")
+	}
+}
+
+func TestModelsMarksSharedAgents(t *testing.T) {
+	f := newFixture(t)
+	f.installed(t, "review-design", "haiku")
+	f.foreign(t, "sdd-apply", "sonnet")
+
+	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, line := range strings.Split(out, "\n") {
+		switch {
+		case strings.Contains(line, "review-design"):
+			if !strings.Contains(line, "shared") {
+				t.Errorf("a symlink into the repo was not marked shared: %q", line)
+			}
+		case strings.Contains(line, "sdd-apply"):
+			if strings.Contains(line, "shared") {
+				t.Errorf("a target-local file was marked shared: %q", line)
+			}
+		}
+	}
+}
+
+func TestModelsSetSaysWhenAWriteIsShared(t *testing.T) {
+	f := newFixture(t)
+	f.installed(t, "review-design", "")
+
+	out, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"set", "haiku", "review-design"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(strings.ToLower(out), "every project") {
+		t.Errorf("writing a shared agent did not say the effect is machine-wide:\n%s", out)
+	}
+}
+
+// The shipped message told everyone their write was machine-wide. That is now true of
+// the symlinked rows only, and saying it about a local file is the same class of error
+// as the silence it replaced.
+func TestModelsSetDoesNotOverclaimALocalWrite(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "sdd-apply", "")
+
+	out, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"set", "haiku", "sdd-apply"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(strings.ToLower(out), "every project") {
+		t.Errorf("a target-local write claimed to be machine-wide:\n%s", out)
+	}
+}
+
+func TestModelsListingDiffersBetweenScopes(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "sdd-apply", "")
+
+	globalOut, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectOut, _, err := capture(t, func() error { return models(f.Repo, f.project(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if globalOut == projectOut {
+		t.Error("the two scopes produced identical listings — the flag changes nothing")
 	}
 }
 
 func TestModelsShowsDefaultForAnUndeclaredAgent(t *testing.T) {
 	f := newFixture(t)
-	f.agent(t, "spec-writer", "")
+	f.foreign(t, "sdd-apply", "")
 
 	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
 	if err != nil {
@@ -73,31 +204,30 @@ func TestModelsShowsDefaultForAnUndeclaredAgent(t *testing.T) {
 
 func TestModelsSetAppliesToEveryNamedAgent(t *testing.T) {
 	f := newFixture(t)
-	f.agent(t, "review-design", "")
-	f.agent(t, "review-tests", "")
-	f.agent(t, "review-security", "")
+	f.foreign(t, "sdd-apply", "")
+	f.foreign(t, "jd-judge-a", "")
+	f.foreign(t, "review-risk", "")
 
 	_, _, err := capture(t, func() error {
-		return models(f.Repo, f.global(), []string{"set", "haiku", "review-design", "review-tests"})
+		return models(f.Repo, f.global(), []string{"set", "haiku", "sdd-apply", "jd-judge-a"})
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	for _, name := range []string{"review-design", "review-tests"} {
-		if !strings.Contains(f.agentBody(t, name), "model: haiku") {
+	for _, name := range []string{"sdd-apply", "jd-judge-a"} {
+		if !strings.Contains(f.foreignBody(t, name), "model: haiku") {
 			t.Errorf("%s did not get the model", name)
 		}
 	}
-	if strings.Contains(f.agentBody(t, "review-security"), "model:") {
-		t.Error("review-security was named by nobody and still changed")
+	if strings.Contains(f.foreignBody(t, "review-risk"), "model:") {
+		t.Error("review-risk was named by nobody and still changed")
 	}
 }
 
 func TestModelsSetAllReachesEveryAgent(t *testing.T) {
 	f := newFixture(t)
-	f.agent(t, "review-design", "")
-	f.agent(t, "spec-writer", "")
+	f.foreign(t, "sdd-apply", "")
+	f.installed(t, "review-design", "")
 
 	_, _, err := capture(t, func() error {
 		return models(f.Repo, f.global(), []string{"set", "sonnet", "--all"})
@@ -105,19 +235,19 @@ func TestModelsSetAllReachesEveryAgent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	for _, name := range []string{"review-design", "spec-writer"} {
-		if !strings.Contains(f.agentBody(t, name), "model: sonnet") {
-			t.Errorf("%s did not get the model", name)
-		}
+	if !strings.Contains(f.foreignBody(t, "sdd-apply"), "model: sonnet") {
+		t.Error("the foreign agent did not get the model")
+	}
+	if !strings.Contains(f.agentBody(t, "review-design"), "model: sonnet") {
+		t.Error("the shared agent's destination did not get the model")
 	}
 }
 
-// A destructive default that fires on a forgotten argument is how every agent on
-// the machine silently becomes the same model.
+// A destructive default that fires on a forgotten argument is how every agent on the
+// machine silently becomes the same model — and the set is now 22, not 7.
 func TestModelsSetWithoutAgentsIsAnError(t *testing.T) {
 	f := newFixture(t)
-	f.agent(t, "review-design", "")
+	f.foreign(t, "sdd-apply", "")
 
 	_, _, err := capture(t, func() error {
 		return models(f.Repo, f.global(), []string{"set", "haiku"})
@@ -125,14 +255,14 @@ func TestModelsSetWithoutAgentsIsAnError(t *testing.T) {
 	if err == nil {
 		t.Fatal("set with no agents and no --all was accepted")
 	}
-	if strings.Contains(f.agentBody(t, "review-design"), "model:") {
+	if strings.Contains(f.foreignBody(t, "sdd-apply"), "model:") {
 		t.Error("an agent was written despite the refusal")
 	}
 }
 
 func TestModelsSetRejectsAnUnknownModel(t *testing.T) {
 	f := newFixture(t)
-	f.agent(t, "review-design", "")
+	f.foreign(t, "sdd-apply", "")
 
 	_, _, err := capture(t, func() error {
 		return models(f.Repo, f.global(), []string{"set", "gpt-4", "--all"})
@@ -140,102 +270,63 @@ func TestModelsSetRejectsAnUnknownModel(t *testing.T) {
 	if err == nil {
 		t.Fatal("an unknown model was accepted")
 	}
-	if strings.Contains(f.agentBody(t, "review-design"), "model:") {
+	if strings.Contains(f.foreignBody(t, "sdd-apply"), "model:") {
 		t.Error("an agent was written despite the unknown model")
 	}
 }
 
 func TestModelsSetRejectsAnUnknownAgentAndWritesNothing(t *testing.T) {
 	f := newFixture(t)
-	f.agent(t, "review-design", "")
+	f.foreign(t, "sdd-apply", "")
 
 	_, _, err := capture(t, func() error {
-		return models(f.Repo, f.global(), []string{"set", "haiku", "review-design", "no-such-agent"})
+		return models(f.Repo, f.global(), []string{"set", "haiku", "sdd-apply", "no-such-agent"})
 	})
 	if err == nil {
 		t.Fatal("an unknown agent name was accepted")
 	}
-	if strings.Contains(f.agentBody(t, "review-design"), "model:") {
+	if strings.Contains(f.foreignBody(t, "sdd-apply"), "model:") {
 		t.Error("the valid agent in the set was written anyway")
 	}
 }
 
-// The flag promises a project-local effect it cannot deliver: both scopes symlink
-// to the same repo file. Saying so at the moment of writing is the difference
-// between a documented limit and a surprise three weeks later.
-func TestModelsSetUnderProjectScopeSaysTheEffectIsShared(t *testing.T) {
+// The all-or-nothing guarantee was written for this repository's own tidy files. It
+// now meets whatever is actually in somebody's ~/.claude/agents.
+func TestModelsSetRefusesAStrayFileAndWritesNothing(t *testing.T) {
 	f := newFixture(t)
-	f.agent(t, "review-design", "")
+	f.foreign(t, "sdd-apply", "")
 
-	out, _, err := capture(t, func() error {
-		return models(f.Repo, f.project(), []string{"set", "haiku", "review-design"})
+	stray := filepath.Join(f.Claude, "agents", "NOTES.md")
+	if err := os.WriteFile(stray, []byte("Just a document.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"set", "haiku", "--all"})
 	})
-	if err != nil {
-		t.Fatal(err)
+	if err == nil {
+		t.Fatal("a directory containing a non-agent file was accepted")
 	}
-	if !strings.Contains(strings.ToLower(out), "every project") {
-		t.Errorf("writing under --project did not warn that the effect is shared:\n%s", out)
+	if strings.Contains(f.foreignBody(t, "sdd-apply"), "model:") {
+		t.Error("an agent was written despite the stray file")
 	}
-}
-
-// The scope flag has to earn its place here, and this is the only thing it can
-// honestly do: the model is one file in the repository, but *which agents reach a
-// given target* genuinely differs between the two.
-//
-// Without this the listing is byte-identical under --global and --project, and the
-// flag is decoration on a command that documents itself as respecting it.
-func TestModelsMarksAgentsThatDoNotReachThisScope(t *testing.T) {
-	f := newFixture(t)
-	linked := f.agent(t, "review-design", "")
-	f.agent(t, "spec-writer", "")
-
-	// Only one of the two is installed into the global target.
-	f.link(t, linked, f.dest("agents", "review-design.md"))
-
-	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for _, line := range strings.Split(out, "\n") {
-		switch {
-		case strings.Contains(line, "review-design"):
-			if strings.Contains(line, notLinkedHere) {
-				t.Errorf("an agent linked into this target was marked as absent: %q", line)
-			}
-		case strings.Contains(line, "spec-writer"):
-			if !strings.Contains(line, notLinkedHere) {
-				t.Errorf("an agent that does not reach this target was not marked: %q", line)
-			}
-		}
+	if got := string(mustRead(t, stray)); got != "Just a document.\n" {
+		t.Errorf("the stray file was modified: %q", got)
 	}
 }
 
-// And the difference has to be a difference: the same repo, two scopes, two
-// answers. One scope reporting what the other reports is the bug this closes.
-func TestModelsListingDiffersBetweenScopes(t *testing.T) {
-	f := newFixture(t)
-	linked := f.agent(t, "review-design", "")
-	f.agent(t, "spec-writer", "")
-	f.link(t, linked, f.dest("agents", "review-design.md"))
-
-	globalOut, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
+func mustRead(t *testing.T, path string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	projectOut, _, err := capture(t, func() error { return models(f.Repo, f.project(), nil) })
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if globalOut == projectOut {
-		t.Error("the two scopes produced identical listings — the flag changes nothing")
-	}
+	return data
 }
 
 func TestModelsOutputHasNoEscapeCodes(t *testing.T) {
 	f := newFixture(t)
-	f.agent(t, "review-design", "haiku")
+	f.foreign(t, "sdd-apply", "haiku")
 
 	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
 	if err != nil {
@@ -246,7 +337,7 @@ func TestModelsOutputHasNoEscapeCodes(t *testing.T) {
 	}
 }
 
-// A repo with no agents/ directory is a state, not a crash.
+// A target that has never had an agent installed is a state, not a crash.
 func TestModelsWithNoAgentsSaysSo(t *testing.T) {
 	f := newFixture(t)
 
