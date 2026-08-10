@@ -75,13 +75,44 @@ one. Rename is atomic.
 - only Go sources and module files invalidate the binary
   Proof: internal/repo/git_test.go TestNeedsRebuild
 
-**This capability is under-tested and the gap is named rather than hidden.** One test
-covers 155 lines. The interface was built to be faked and no fake exists, so none of
-the outcomes above — the dirty-tree refusal, the missing-remote path, the rebuild
-notice — is currently held up by anything. Every one of them is a promise this
-document makes and the suite does not keep.
+- a repository with an uncommitted change reads as dirty, and a clean one does not
+  Proof: internal/repo/git_test.go TestDirtyReportsTheWorkingTree
+- a repository with no remote says so rather than failing
+  Proof: internal/repo/git_test.go TestHasRemoteDistinguishesNoRemoteFromAnError
+- `Head` returns the commit the repository is actually on
+  Proof: internal/repo/git_test.go TestHeadIsTheCurrentCommit
+- **a repository with no commits gives `Head` an empty answer, not an error** — the one
+  call that deliberately swallows a git failure, pinned so a later tidy-up cannot turn
+  it into an error and break the empty-repository path in silence
+  Proof: internal/repo/git_test.go TestHeadOnARepositoryWithNoCommitsIsEmptyNotAnError
+- `ChangedSince` names the paths a commit touched and no others
+  Proof: internal/repo/git_test.go TestChangedSinceNamesOnlyWhatChanged
+- an empty revision means "nothing to compare against", not a diff against everything
+  Proof: internal/repo/git_test.go TestChangedSinceWithNoRevisionIsEmpty
+- **`Pull` brings a commit across from a local bare remote** — no network, so the test
+  cannot flake on one
+  Proof: internal/repo/git_test.go TestPullFetchesFromALocalRemote
+- **`Pull` refuses a diverged history**, which is what `--ff-only` is for: a merge
+  commit made by a background command is a merge commit nobody chose
+  Proof: internal/repo/git_test.go TestPullRefusesADivergedHistory
+- outside a repository the reads error rather than answering "clean" and "no remote"
+  Proof: internal/repo/git_test.go TestOutsideARepositoryTheReadsError
 
-Criteria still owed a test:
+### What the tests are, and what they are not
+
+**Real git, not a fake.** The interface was built to be faked and no fake was ever
+written; the tests build a repository in a `t.TempDir()` instead. `Shell` exists so the
+git invocation lives in one place, and replacing it in tests would prove the fake
+works. The cost is tests that need `git` on the machine and are slower than the rest —
+which is what `-short` is for.
+
+**They are the real-git integration `make test-short` has always claimed to skip.**
+That claim was empty before this: every test ran in both modes because nothing in the
+repository called `testing.Short()`. Nine skip now. The teatest half of the claim is
+still unimplemented.
+
+**Still owed, and not by the tests above.** These are `update`'s behaviour, not
+`Shell`'s — they need the command, not the git wrapper:
 
 - a dirty tree refuses to pull and changes no links
 - a missing remote skips the pull and relinks anyway

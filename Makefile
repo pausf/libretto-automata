@@ -24,13 +24,29 @@ LDFLAGS := -X main.version=$(VERSION)
 PREFIX ?= $(HOME)/.local/bin
 NAMES  ?= libretto libretto-automata
 
-.PHONY: build test fmt vet preview clean link unlink
+.PHONY: build test test-short gates fmt vet preview clean link unlink
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o $(BIN) $(PKG)
 
 test:
 	go test ./...
+
+# The six gates AGENTS.md names, in the order it names them.
+#
+# The same six the workflow runs, and a test compares the two lists — two lists that
+# agree today is exactly the arrangement that stops agreeing without anybody noticing.
+#
+# gofmt -l exits ZERO with a list of unformatted files, so the guard tests the output
+# rather than the status. Written the obvious way, this gate passes on a repository
+# nobody has formatted.
+gates:
+	@test -z "$$(gofmt -l .)" || { gofmt -l .; exit 1; }
+	go vet ./...
+	go test ./... -count=1
+	scripts/check-payload
+	skills/record-work/spec-drift --self-test
+	skills/record-work/spec-drift --anchors
 
 # Excludes the slow paths: real-git integration and teatest flows.
 test-short:

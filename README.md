@@ -232,15 +232,16 @@ the capability spec and deleting the change folder — in the same commit as the
 
 ## Gates
 
-All six pass before any commit.
+All six pass before any commit — `make gates` runs them, and so does
+[GitHub Actions](.github/workflows/gates.yml) on every push and pull request.
 
 ```bash
 gofmt -l .                                  # must print nothing
 go vet ./...
-go test ./... -count=1                      # 223 tests
+go test ./... -count=1                      # 251 tests
 scripts/check-payload                       # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test   # 17 checks
-skills/record-work/spec-drift --anchors     # 105 citations
+skills/record-work/spec-drift --anchors     # 208 citations
 ```
 
 ## Built with
@@ -271,12 +272,6 @@ Called when present, never required. `libretto doctor` reports them:
   requirements, because that is where removing work is cheapest.
 - **caveman** — decides how much gets said. Compresses prose; ponytail compresses what
   gets built. No overlap.
-
-The eight-phase shape also owes a debt to reading
-[**odelrio/autopilot**](https://github.com/odelrio/autopilot) closely. Its discipline
-layer was better than anything here had: *verify before you claim*, *never weaken a
-failing test*, *capture output to a file because a pipe hides the exit code*. Those ideas
-are reimplemented in [`skills/evidence/`](skills/evidence/) in our own terms, not copied.
 
 ## Not managed here
 
