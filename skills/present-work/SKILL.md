@@ -4,16 +4,18 @@ description: "Trigger: a task is finished and needs reporting; summarising what 
 license: MIT
 metadata:
   author: pausf
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## What this does
 
-Phase 7 of the Libretto flow: show what was done, then stop.
+Phase 7 of the Libretto flow: show what was done, then commit it.
 
-It runs after `skills/build-and-check/` and **before** `skills/record-work/`. That
-order is the point — presenting after the commit is an announcement; presenting
-before it is a decision point where the answer can still be "no, not that".
+It runs after `skills/build-and-check/` and **before** `skills/record-work/`, in the
+same turn as both. The order is the point — a report written after the commit is
+assembled from the commit, and it will only ever say what the commit already said.
+Written before, it is still an account of the work rather than a description of the
+diff, and what got left out is still in the author's head.
 
 `skills/evidence/` governs this phase more directly than any other. Read it first.
 Every other phase produces work; this one makes claims about work, and a claim is
@@ -29,10 +31,16 @@ where an unobserved result becomes a lie.
 - **what was deliberately left out, and the condition that brings it back.**
 
 And when `skills/review-work/` ran in the seam before this phase, a fourth: **the
-reviewer's verdict, attributed and unedited** — the proofs it ran and what it found,
-in its own section next to the account above. The builder's report and the
-reviewer's are two sources and stay two; merging them is how a finding gets
-softened into the prose it was questioning.
+reviewer's verdict, attributed and unedited** — the proofs it ran, what it found, and
+**what was done about each finding**, in its own section next to the account above.
+The builder's report and the reviewer's are two sources and stay two; merging them is
+how a finding gets softened into the prose it was questioning.
+
+By the time this phase runs, most of those findings are already fixed. **Report them
+anyway, with the repair beside each one** — fixed and re-run, or stopped after two
+attempts, or reported-not-fixed because the decision was not ours. A section showing
+only the repaired state hides that the builder got it wrong, and getting it wrong is
+the thing the seam exists to surface.
 
 ## The third one is the reason this phase exists
 
@@ -98,25 +106,29 @@ left out — because no fragment knows.
 Sub-agents return findings; per `skills/write-spec/`, those returns are read before
 the set is accepted, and what they surfaced belongs in this report.
 
-## The saying is unconditional; the stopping is not
+## This phase says everything and stops for nothing
 
-**Normally this phase ends by stopping.** Phase 8 begins when the user says it does,
-because presenting before the commit is only a decision point if the answer can still
-be "no, not that".
+**The report is the whole job, and phase 8 follows it in the same turn.**
 
-**One exception, and it is narrow: a change `skills/write-spec/` decided needed no
-spec.** There, the report and the commit land in the same turn, and the only question
-asked is phase 8's last one.
+This phase used to end by waiting, on the reasoning that presenting before the commit
+is only a decision point if "no, not that" is still available. It still is — it just
+arrives one beat later, at phase 8's own question, with the commits written and the
+report in front of the user. A commit on a local branch nobody has seen is not a thing
+that needs undoing; it is the cheapest possible place to change your mind.
 
-The reason the exception is safe is that there is no contract to disagree with. A
-change too small to argue about what "done" means is a change too small for a gate
-whose whole purpose is to catch a disagreement about "done". Four stops for a typo
-teaches people to route around the flow, and they route around it for typos first.
+What the wait actually cost was a round trip on every single change, and the flow had
+already conceded the point for changes with no spec. Conceding it once for typos and
+holding it everywhere else is how a rule becomes a thing people route around.
 
-**What is never conditional is the content.** All three things still get said — what
+The two stops that survive are earlier and better placed: the spec, where the contract
+can still be argued with, and the plan, where the order can. By here both were agreed
+and the work matches them — `review-work` fixed what it did not.
+
+**What was never conditional is the content.** All three things still get said — what
 was done, where the evidence is, and what was left out with the condition that brings
-it back. The collapse removes a wait, never a sentence. A phase that skips the saying
-because the change was small is how the one omission that mattered goes unmentioned.
+it back. Nothing about removing the wait removes a sentence. A phase that skips the
+saying because the change looked small is how the one omission that mattered goes
+unmentioned.
 
 ## Output
 
@@ -124,8 +136,5 @@ Per task: what it was, in the spec's terms · its evidence · closed or stopped.
 
 Then the omissions, each with its condition.
 
-Then stop — unless there was no spec, in which case carry straight on to phase 8.
-
-Then **stop and wait**. Do not commit, do not push, do not start the next task.
-Phase 8 begins when the user says it does — presenting exists so that "no" is still
-an available answer.
+Then carry straight on to phase 8, in the same turn. Do not push — that is phase 8's
+one question and the last one in the flow.

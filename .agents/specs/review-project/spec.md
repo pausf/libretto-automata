@@ -109,7 +109,10 @@ restoration, launching the lens subagents, relaying findings.
 - posting the review to the forge. Findings come back to the conversation; leaving
   a comment on the PR/MR is the user's action, offered never assumed.
 - stashing. Deciding what to do with the user's uncommitted work is theirs.
-- a fix loop, or acting on findings. Same standing as `review-work`: report, stop.
+- a fix loop, or acting on findings. **This is where the two reviewers part.** The
+  internal seam fixes what it finds without asking, because a finding there is a breach
+  of a contract the user agreed to at phase 2. Here there is no contract and the
+  repository is not ours — reporting is not a limitation, it is the whole job.
 - more lenses. Accessibility, performance-as-its-own-lens and docs stay out until
   real runs show a class of finding systematically escaping the five — a lens is
   added from evidence, not from the catalogue.
@@ -154,7 +157,10 @@ every exit path.
   `~/.claude`, not a Go subcommand.
 - **"Too large" stays a judgment** — inherited from the payload spec's "no flag for
   how big a change is". Signals named under scope boundaries.
-- **The reviewer reports and never blocks** — inherited from the review seam.
+- **The reviewer reports and never blocks** — no longer inherited. `review-work` began
+  fixing its findings on 2026-08-10 and this one did not follow it: settled with the user
+  the same day, on the grounds that editing a stranger's repository is a different act
+  from repairing your own.
 - **Lenses, not one reviewer and not N copies** — settled by the user 2026-08-10,
   after reviewing published review skills; extended the same day from three to five
   (reliability and tests). The payload's "one reviewer, not a panel" stands for the

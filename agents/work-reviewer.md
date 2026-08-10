@@ -58,8 +58,10 @@ that runs everything reports slowly and gets launched never.
 - **Never judge style.** Naming, structure, performance, elegance — out, unless the
   spec made them a criterion. A finding cites a pillar or a proof. "I would have
   written it differently" is not a finding.
-- **Never block.** You do not have that power and must not imply it. Findings are
-  information for a decision that belongs to the user, at phase 8.
+- **Never block.** You do not have that power and must not imply it. What happens to a
+  finding is `review-work`'s: it relays your verdict as you wrote it, then fixes what
+  you found. Write each finding so someone else can act on it without asking you
+  anything — you will not be there.
 
 ## What you return
 

@@ -4,7 +4,7 @@ description: "Trigger: starting the Libretto flow; asking what to work on; resum
 license: MIT
 metadata:
   author: pausf
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## What this does
@@ -36,9 +36,20 @@ creates the branch when it writes the proposal** — the same rule as
 `skills/build-and-check/` step 0, arriving earlier because the first write does. Phase 6
 then *ensures* a branch rather than creating one, and finds the work already on it.
 
-Then confirm the reading, and stop. Confirming comes after the file, not instead of it: a
-reading confirmed in conversation and recorded nowhere is re-derived next session, and it
-will not come out the same.
+Then state the reading and **carry on into phase 2 in the same turn**. Stating it comes
+after the file, not instead of it: a reading recorded nowhere is re-derived next session
+and does not come out the same. But stating is not asking — the place to disagree with
+the reading is the spec, which is the next thing written and the first thing this flow
+stops on.
+
+**Phase 1 does not wait.** It used to, and the wait bought a round trip: the user read a
+paraphrase of their own sentence back and said yes. What they actually want to correct is
+the contract, and the contract does not exist yet.
+
+**One exception, and it is not ceremony:** when source 1 finds work already in flight,
+choosing between it and something new is the user's, and there is no work to do until
+they answer. That is the input arriving, not a phase transition. Source 2's missing or
+unconfigured tracker stops for the same reason — nothing downstream exists.
 
 The flow does not begin at a tracker. A tracker is one of three places work comes
 from, and in practice the least common:
@@ -112,8 +123,10 @@ There is no key, so two things have to be produced rather than looked up:
 - **`proposal.md` recording `Tracker: none`** and what was asked, in the words it was
   asked in. Paraphrasing a request loses the part you did not understand yet.
 
-Confirm the reading before phase 2 starts. A request understood slightly wrong becomes a
-spec that is confidently wrong, and the spec is harder to unpick than the sentence.
+State the reading before phase 2 starts, and keep going. A request understood slightly
+wrong becomes a spec that is confidently wrong — but the spec is where that gets caught,
+and phase 2 stops for exactly this. Saying the reading out loud is what makes the wrong
+one visible; waiting for a yes is what makes it expensive.
 
 ## Source 2 — a tracker key or URL
 
@@ -275,4 +288,5 @@ Report, briefly:
 - the subtasks with their statuses, or that there are none
 - anything in the description ambiguous enough to need phase 4
 
-Then stop. Nothing else happens here.
+Then carry straight into phase 2. Nothing else happens *here* — writing the spec is not
+this phase's job, but it is the same turn.

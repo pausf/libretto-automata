@@ -16,13 +16,15 @@ Installing this repository gives a working flow on a machine that has nothing el
 - `libretto-review`, which reviews a forge PR/MR in a workspace that restores itself
   — its contract is the `review-project` capability spec
 - one skill per phase, each of which stops where its phase stops
-- **the finished work reviewed by someone who did not write it** — in the seam
-  between build and present, `review-work` launches one fresh `work-reviewer`
+- **the finished work reviewed by someone who did not write it, then repaired** — in the
+  seam between build and present, `review-work` launches one fresh `work-reviewer`
   subagent with none of the session's context; it re-runs every proof the change
-  touches and returns findings that phase 7 carries attributed and unedited
-- three standing rules that hold at every phase: **ask**, **commit**, **evidence**
-- **ceremony proportional to the change** — four stops for a change with a contract, one
-  for a change too small to have one
+  touches and returns findings, which phase 7 carries attributed and unedited **with the
+  repair beside each one**
+- three standing rules: **commit** and **evidence** hold at every phase; **ask** holds at
+  phases 1, 2 and 5 and nowhere after
+- **ceremony proportional to the change** — two stops for a change with a contract, none
+  for a change too small to have one, and phase 8's question in both
 - the vendored delegates the thin skills depend on, so a thin skill is never a broken
   one
 - drift detection that ships with the skill that uses it
@@ -49,20 +51,46 @@ third-party items and their attribution.
   disk, and the two will disagree exactly when it matters.
 - **a second flow for small work.** One flow with a proportionate gear, not two to keep
   in sync.
-- **a review that blocks, fixes or opines.** The reviewer reports — acting on a
-  finding is the user's call and a new pass through phase 6, never a loop inside the
-  skill. Style and taste are not findings; a finding cites a pillar or a proof.
+- **a review that blocks or opines.** Style and taste are not findings; a finding cites a
+  pillar or a proof, and nothing a reviewer says stops the flow.
+- **the reviewer writing.** `work-reviewer` keeps the grant it has — `Read`, `Grep`,
+  `Glob`, `Bash`, `Skill` — and gains nothing that edits. `Skill` is there because its
+  first instruction is to invoke `evidence`, `Bash` because running the proofs is its
+  job. The repair happens in `review-work`, on the other side of the seam: an agent that
+  fixes what it found is grading its own repair.
+- **a fix loop.** One pass. Two failures on one finding stops that finding, per
+  `skills/evidence/`, and it reaches phase 7 as found-and-not-fixed.
+- **asking about a finding**, including one that looks like a product decision. It is
+  reported to phase 7, never turned back into a question.
 
-### Ceremony is proportional to the change
+### A stop is a place where the user changes something
 
-**Four waits are the price of a contract, not the price of the flow.** Phase 1 reports and
-waits, phase 2 waits for the go-ahead, phase 5 waits, phase 7 waits — and every one of
-those exists so the user can say "no, not that" about something they might disagree with.
+That is the whole test, and it is what the count is derived from.
 
-When phase 2 answers **no spec needed**, there is nothing to disagree about, so the waits
-go with the spec: phases 6, 7 and 8 run in one turn and exactly one question is asked at
-the end. **That question is phase 8's, and it survives every collapse** — pushing is the
-user's decision, not ceremony.
+| After | Stops | What is being changed |
+|---|---|---|
+| 1 · find-work | no | — the reading is stated, and the spec is where it gets corrected |
+| 2–3 · write-spec | **yes** | the contract |
+| 5 · write-plan | **yes** | the order, and what waits on what |
+| 6 · build-and-check | no | — |
+| 6→7 · review-work | no | — the seam fixes what it finds |
+| 7 · present-work | no | — |
+| 8 · record-work | **yes, last** | whether the world sees it |
+
+**A stop whose only available answer is "yes, carry on" is a round trip charged for a
+rubber stamp**, and calling it a decision point does not make it one. Phase 1's wait
+bought the user reading a paraphrase of their own sentence back. Phase 7's bought
+permission to commit to a local branch nobody had seen — the cheapest place in the flow
+to change your mind, guarded as though it were a deployment.
+
+**Two exceptions in phase 1, and neither is ceremony:** work already in flight, where
+continuing it or not is a choice about the user's priorities, and a missing or
+unconfigured tracker, where nothing downstream exists. Both are the input failing to
+arrive rather than a phase boundary asking to be blessed.
+
+When phase 2 answers **no spec needed** both remaining stops collapse with it — there is
+no plan either — and phases 6, 7 and 8 run in one turn. **Phase 8's question survives
+every collapse**: pushing is the user's decision, not ceremony.
 
 **What collapses is the wait, never the saying.** Phase 7 still reports what was done, its
 evidence, and what was left out with the condition that brings it back. A phase that skips
@@ -74,6 +102,18 @@ trips updating two documentation files, and every one of the four was mandated b
 payload. A flow that charges a typo the price of a feature gets routed around — for typos
 first, then for small features, until what is left is a ritual reserved for work important
 enough to deserve it.
+
+### Asking is bounded to before the plan
+
+Phases 1, 2 and 5, where nothing has been built on the answer yet — which is why the two
+stops sit exactly there. **After the plan, an unsettled question becomes a finding**: it
+reaches the phase 7 report with what was assumed in the meantime and what changes if the
+assumption is wrong, and the user meets it at phase 8 with everything else.
+
+This reverses an earlier promise that asking held at every phase, as often as needed. That
+was reasonable in every individual case and that is precisely the problem — it returns the
+flow to five, six, nine stops one defensible exception at a time. The bound is the
+load-bearing half of the count above; without it the table is decorative.
 
 ### A phase is invoked even when it has nothing to do
 
@@ -199,9 +239,13 @@ the copy stays comparable with upstream.
   backstop, names the writing phase as its owner,
   and reports rather than silently fixes: a backstop that covers for the rule it backs up
   is how the rule stops being followed.
-- **Push and the pull request are one question.** Asked separately they bought a second
-  round trip and no safety — a pushed branch with no request opened is a state almost
-  nobody wants, and whoever wants it says so in the same breath.
+- **Push and the pull request are one question**, and it is asked with `AskUserQuestion`.
+  Asked separately they bought a second round trip and no safety — a pushed branch with
+  no request opened is a state almost nobody wants, and whoever wants it says so in the
+  same breath. Native rather than prose because it is the last question in the flow and
+  usually the only one after the plan: a question written as a sentence is a paragraph
+  the reader skims, and the flow then waits on an answer to something that read as a
+  summary. Observed 2026-08-10, on the run that landed this.
 - **The forge is derived, never assumed:** `git remote get-url origin`, `github.com` →
   `gh`, `gitlab` → `glab`. No remote means no question. **Ceiling named:** a substring
   test on one URL, which does not survive a self-hosted forge on a neutral domain, or
@@ -215,9 +259,18 @@ the copy stays comparable with upstream.
   diff-size threshold, not a file count. The real test is whether two people could
   reasonably disagree about what "done" means. A number would be wrong in both directions
   and trusted anyway.
-- **The reviewer reports and never blocks** — decided when the review seam was added,
-  and the same standing as drift detection. The stops in this flow exist so the user
-  can say no, not so a machine can.
+- **The reviewer never blocks, and the seam repairs rather than asks.** The first half
+  was decided when the seam was added; the second replaced it on 2026-08-10, when
+  "acting on a finding is the user's call and a new pass through phase 6" turned out to
+  be a round trip charged for a rubber stamp. A finding cites a pillar or a proof *by
+  contract*, so it is a defect against something the user agreed to at phase 2 — there
+  is no version of "yes, leave it broken" worth a stop.
+  **Ceiling named:** one fix pass, no re-review, so a fix that introduces a new defect is
+  caught by the proofs or not at all. The replacement, the day that bites, is one bounded
+  second look at the fix diff — never a loop.
+  `spec-drift` keeps the older standing, warn-never-block, and the two are consistent:
+  drift asks whether a contract still describes the code, which is the user's call. A
+  finding is a breach of a contract already settled.
 - **The review seam is not a numbered phase.** Independence comes from the fresh
   context, not from renumbering everything that says eight.
 - **The reviewer re-runs the proofs itself.** Phase 6 having reported them green is
@@ -313,8 +366,9 @@ prevent:
 - the missing-CLI stop fired for real — `gh` absent, install line given, no workaround
   offered and no token asked for
 - a phase declining was reported in one line, and cost no wait
-- the four stops still happened, because this change had a spec — the gear is
-  proportionate, not removed
+- the four stops of the day still happened, because this change had a spec — the gear was
+  proportionate, not removed. Left as recorded: it is what that run saw, and the count
+  became three on 2026-08-10
 - `prune` removed exactly the one stale link it planned to and left the other thirteen,
   the first exercise of that path outside a temporary directory
 
