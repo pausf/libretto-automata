@@ -4,7 +4,7 @@ description: "Trigger: a task is finished and needs committing; writing a commit
 license: MIT
 metadata:
   author: pausf
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## What this does
@@ -71,10 +71,12 @@ the existing numbering, `Governs:` gains any new paths, `Proof:` citations come
 across, and contradicted sentences are rewritten rather than left beside their
 replacement.
 
-Then verify the anchors before the commit lands:
+Then verify the anchors before the commit lands. `<skill-base>` below is this
+skill's base directory, announced when the skill is invoked — the script is a
+sibling of this file, wherever the payload was installed:
 
 ```
-~/.claude/skills/record-work/spec-drift --anchors
+<skill-base>/spec-drift --anchors
 ```
 
 A citation that survived consolidation pointing at a test that did not is the most
@@ -84,13 +86,13 @@ If a change spans several capabilities, every delta is applied in that same comm
 Half-consolidated is the one state with no honest description.
 
 **`spec-drift` asks it for you**, mechanically, in two directions. It ships beside
-this file — `~/.claude/skills/record-work/spec-drift` once installed — so it is
-there in any project, not only in the repository it came from. Run it from the root
-of the project being worked on:
+this file — `<skill-base>/spec-drift`, whatever directory this skill was installed
+into — so it is there in any project, not only in the repository it came from. Run
+it from the root of the project being worked on:
 
 ```
-~/.claude/skills/record-work/spec-drift             staged code whose spec did not move
-~/.claude/skills/record-work/spec-drift --anchors    every Proof: citation resolves
+<skill-base>/spec-drift             staged code whose spec did not move
+<skill-base>/spec-drift --anchors    every Proof: citation resolves
 ```
 
 The first reads each spec's `Governs:` globs, so it names the spec and the path
