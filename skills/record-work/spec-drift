@@ -54,6 +54,14 @@ set -uo pipefail   # deliberately not -e: this must never be what fails a commit
 # A false negative in a checker is worse than no checker. Nothing here globs paths.
 set -f
 
+# Same principle, one layer down: every question below is asked through rg. Without
+# it each match quietly comes back empty and the answer reads as "no drift", so a
+# missing dependency has to be its own loud exit — 2, distinct from --anchors' 1.
+command -v rg >/dev/null 2>&1 || {
+  printf 'spec-drift: rg (ripgrep) is required and not on PATH — brew install ripgrep\n' >&2
+  exit 2
+}
+
 # Consolidated specs, in precedence order. First hit wins.
 SPEC_ROOTS='.agents/specs specs openspec docs/specs spec'
 # In-flight changes. OpenSpec nests them under openspec/.
@@ -305,6 +313,16 @@ self_test() {
   case "--self-test" in -*) want 'a flag reads as runnable' yes yes ;; *) want 'a flag reads as runnable' yes no ;; esac
   case "TestReal"    in -*) want 'a test name does not'     no  yes ;; *) want 'a test name does not'     no  no  ;; esac
   rm -f "$tmp"
+
+  # The dependency guard: without rg this script must refuse loudly, never report
+  # "no drift". bash by absolute path, so only rg is missing from the child's PATH.
+  bash_bin=$(command -v bash)
+  guard_out=$(PATH=/dev/null "$bash_bin" "$0" 2>&1); guard_rc=$?
+  want 'missing rg exits 2' 2 "$guard_rc"
+  case "$guard_out" in
+    *ripgrep*) want 'missing rg names the tool' yes yes ;;
+    *)         want 'missing rg names the tool' yes no  ;;
+  esac
 
   if [ "$fails" -eq 0 ]; then printf 'spec-drift: all checks passed\n'; return 0; fi
   printf 'spec-drift: %d check(s) failed\n' "$fails"; return 1
