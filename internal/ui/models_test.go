@@ -158,9 +158,11 @@ func TestSpaceMarksAndUnmarksTheCurrentRow(t *testing.T) {
 	m, _ := selectorModel(t, threeAgents())
 	m = openSelector(t, m)
 
+	// The rows are grouped by model, so the first one is the lone opus agent — not
+	// the first name the fixture happens to list.
 	m = key(m, " ")
-	if got := m.MarkedAgents(); len(got) != 1 || got[0] != "review-design" {
-		t.Fatalf("marked = %v, want [review-design]", got)
+	if got := m.MarkedAgents(); len(got) != 1 || got[0] != "review-security" {
+		t.Fatalf("marked = %v, want [review-security]", got)
 	}
 
 	m = key(m, " ")
@@ -189,8 +191,9 @@ func TestChosenModelReachesOnlyTheMarkedRows(t *testing.T) {
 	m, rec := selectorModel(t, threeAgents())
 	m = openSelector(t, m)
 
-	m = key(m, " ")    // review-design
-	m = key(m, "down") // review-tests
+	// Grouped order: the opus row, then the two on the session default.
+	m = key(m, " ")    // review-security
+	m = key(m, "down") // review-design
 	m = key(m, " ")
 	m = key(m, "m")
 
@@ -205,7 +208,7 @@ func TestChosenModelReachesOnlyTheMarkedRows(t *testing.T) {
 	if rec.model != "haiku" {
 		t.Errorf("applied model = %q, want haiku", rec.model)
 	}
-	want := map[string]bool{"review-design": true, "review-tests": true}
+	want := map[string]bool{"review-security": true, "review-design": true}
 	if len(rec.names) != 2 {
 		t.Fatalf("applied to %v, want exactly the two marked rows", rec.names)
 	}
@@ -320,6 +323,48 @@ func TestFailedApplyIsReportedAndTheScreenSurvives(t *testing.T) {
 // Every other menu row reports rather than describing itself: `status` says
 // "21 linked · 2 missing", not "show the status". The tally is the question the
 // panel was opened to answer — how much of this is still on the expensive model.
+// order joins the row names so a wrong order reads as a sentence rather than as two
+// slices to diff by eye.
+func order(rows []AgentRow) string {
+	names := make([]string, len(rows))
+	for i, r := range rows {
+		names[i] = r.Name
+	}
+	return strings.Join(names, " ")
+}
+
+func TestRowsAreGroupedByModel(t *testing.T) {
+	choices := []ModelChoice{{Name: ""}, {Name: "haiku"}, {Name: "sonnet"}}
+	rows := []AgentRow{
+		{Name: "work-reviewer"},
+		{Name: "review-lens-tests", Model: "haiku"},
+		{Name: "spec-writer", Model: "sonnet"},
+		{Name: "review-lens-design", Model: "haiku"},
+	}
+
+	// Catalogue order, cheapest first, the session default last. Names sort inside
+	// a group.
+	want := "review-lens-design review-lens-tests spec-writer work-reviewer"
+	if got := order(sortRowsByModel(rows, choices)); got != want {
+		t.Fatalf("grouped order = %q, want %q", got, want)
+	}
+}
+
+func TestAnUnknownModelGetsItsOwnGroup(t *testing.T) {
+	choices := []ModelChoice{{Name: ""}, {Name: "haiku"}}
+	rows := []AgentRow{
+		{Name: "b", Model: "some-future-model"},
+		{Name: "a", Model: "haiku"},
+		{Name: "c"},
+	}
+
+	// haiku, then the session default, then the model this build does not know —
+	// the same position Tally gives it, from the same ranking.
+	if got := order(sortRowsByModel(rows, choices)); got != "a c b" {
+		t.Fatalf("order = %q, want %q", got, "a c b")
+	}
+}
+
 func TestMenuRowReportsTheModelTally(t *testing.T) {
 	choices := []ModelChoice{
 		{Name: "", Label: "session"},
