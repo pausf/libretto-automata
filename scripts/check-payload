@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# check-payload — static checks on the skills, commands and their cross-references.
+#
+# Catches what silently degrades a prompt: a skill referenced by a name that does
+# not exist, a path that moved, frontmatter a host cannot parse, a stray file that
+# the linker would install as if it were an item.
+#
+# Behaviour is not checked here. A prompt's behaviour is checked by running it.
+#
+# Exit 1 on any failure, so this can gate a commit if someone wants it to.
+
+set -uo pipefail
+cd "$(dirname "$0")/.." || exit 1
+
+fails=0
+fail() { printf '  FAIL  %s\n' "$*"; fails=$((fails + 1)); }
+ok()   { printf '  ok    %s\n' "$*"; }
+
+printf '\n── skills ──\n'
+for d in skills/*/; do
+  n=$(basename "$d")
+  f="$d/SKILL.md"
+  [ -f "$f" ] || { fail "$n has no SKILL.md"; continue; }
+
+  # Frontmatter must open on line 1 and close.
+  [ "$(head -1 "$f")" = '---' ] || { fail "$n frontmatter does not start on line 1"; continue; }
+  awk 'NR>1 && /^---$/{found=1; exit} END{exit !found}' "$f" \
+    || { fail "$n frontmatter is not closed"; continue; }
+
+  name=$(rg -N -m1 '^name:' "$f" | sed 's/^name:[[:space:]]*//' | tr -d '"')
+  desc=$(rg -N -m1 '^description:' "$f")
+
+  [ -n "$name" ]        || fail "$n has no name:"
+  [ -n "$desc" ]        || fail "$n has no description:"
+  [ "$name" = "$n" ]    || fail "$n declares name: $name — must match its directory"
+  [ -n "$name" ] && [ -n "$desc" ] && [ "$name" = "$n" ] && ok "$n"
+done
+
+printf '\n── stray files the linker would install ──\n'
+stray=$(find skills agents commands -maxdepth 1 -type f ! -name '*.md' ! -name '.gitkeep' 2>/dev/null)
+if [ -n "$stray" ]; then
+  printf '%s\n' "$stray" | while IFS= read -r s; do fail "stray: $s"; done
+  fails=$((fails + 1))
+else
+  ok 'none'
+fi
+
+printf '\n── agents ──\n'
+# An agent's name: is what the Agent tool is called with. If it does not match the
+# filename, the caller reads one thing off disk and invokes another, and the failure
+# is a subagent that silently never runs.
+found_agent=
+for f in agents/*.md; do
+  [ -f "$f" ] || continue
+  found_agent=1
+  b=$(basename "$f" .md)
+
+  [ "$(head -1 "$f")" = '---' ] || { fail "$b frontmatter does not start on line 1"; continue; }
+  awk 'NR>1 && /^---$/{found=1; exit} END{exit !found}' "$f" \
+    || { fail "$b frontmatter is not closed"; continue; }
+
+  name=$(rg -N -m1 '^name:' "$f" | sed 's/^name:[[:space:]]*//' | tr -d '"')
+  desc=$(rg -N -m1 '^description:' "$f")
+
+  [ -n "$name" ]     || fail "$b has no name:"
+  [ -n "$desc" ]     || fail "$b has no description:"
+  [ "$name" = "$b" ] || fail "$b declares name: $name — must match its filename"
+  [ -n "$name" ] && [ -n "$desc" ] && [ "$name" = "$b" ] && ok "$b"
+done
+[ -n "$found_agent" ] || ok 'none'
+
+printf '\n── commands ──\n'
+for f in commands/*.md; do
+  [ -f "$f" ] || continue
+  [ "$(head -1 "$f")" = '---' ] && rg -qN '^description:' "$f" \
+    && ok "$(basename "$f")" || fail "$(basename "$f") missing frontmatter description"
+done
+
+printf '\n── referenced skills resolve ──\n'
+# Only scan skills/ and commands/. docs/SPEC.md and docs/PLAN.md use skill names
+# as fixtures in symlink scenarios ("skills/po-assistant/") and those are
+# illustrations, not references — scanning them reports invented names as broken.
+refs=$( { rg -oN 'Skill\(skill="[a-z0-9-]+"\)' skills commands 2>/dev/null \
+            | rg -oN '"[a-z0-9-]+"' | tr -d '"'
+          rg -oN 'skills/[a-z0-9-]+/' skills commands 2>/dev/null \
+            | rg -oN 'skills/[a-z0-9-]+' | sed 's|skills/||'
+        } | sort -u )
+if [ -z "$refs" ]; then
+  fail 'no skill references found — the grep is probably wrong'
+else
+  while IFS= read -r r; do
+    [ -d "skills/$r" ] && ok "$r" || fail "referenced skill does not exist: $r"
+  done <<< "$refs"
+fi
+
+printf '\n── skills never point at an executable that is not installed ──\n'
+# `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
+# telling the user to run scripts/foo is broken for everyone who installed it:
+# scripts/ never reaches their machine, so it only ever worked in the repo it came
+# from. A tool a skill needs ships inside the skill's own directory.
+#
+# Scoped to executables on purpose. Prose mentioning docs/ or an example
+# internal/foo_test.go path is describing, not instructing, and failing those
+# turns this check into noise nobody reads.
+unreachable=$(rg -oN '(^|[^A-Za-z0-9._/~-])(scripts|bin)/[A-Za-z0-9._-]+' skills/*/SKILL.md 2>/dev/null || true)
+if [ -n "$unreachable" ]; then
+  printf '%s\n' "$unreachable" | while IFS= read -r hit; do
+    fail "not installed, so unreachable for users: $hit"
+  done
+  fails=$((fails + 1))
+else
+  ok 'no skill invokes an uninstalled path'
+fi
+
+printf '\n── referenced paths exist ──\n'
+# docs/specs/ and docs/superpowers/ are conventions for the *target* project, not
+# paths in this repository. Everything else referenced here must exist here.
+# Prose only. Scripts carry fixture paths that are deliberately fictional — a
+# test asserting "docs/README.md is not inside src/**" must not be read as a
+# claim that docs/README.md exists.
+paths=$(rg -oN -g '*.md' '(docs|scripts)/[A-Za-z0-9._-]+' skills commands docs *.md 2>/dev/null \
+          | rg -oN '(docs|scripts)/[A-Za-z0-9._-]+' \
+          | rg -v '^docs/(specs|superpowers)' | sort -u)
+while IFS= read -r p; do
+  [ -z "$p" ] && continue
+  [ -e "$p" ] && ok "$p" || fail "referenced path does not exist: $p"
+done <<< "$paths"
+
+printf '\n'
+if [ "$fails" -eq 0 ]; then
+  printf 'check-payload: all checks passed\n\n'; exit 0
+fi
+printf 'check-payload: %d failure(s)\n\n' "$fails"; exit 1

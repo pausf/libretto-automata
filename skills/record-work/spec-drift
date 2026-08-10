@@ -1,0 +1,318 @@
+#!/usr/bin/env bash
+# spec-drift — Spec Anchor drift detection.
+#
+# ── the layout ───────────────────────────────────────────────────────────────
+#
+#   .agents/
+#   ├── specs/                        the living, consolidated specification
+#   │   └── bundle-products/
+#   │       └── spec.md               Governs: src/bundles/** …
+#   └── changes/                      proposals in flight
+#       └── add-relative-discounts/
+#           ├── proposal.md           why, scope, non-goals
+#           ├── spec.md               Targets: bundle-products
+#           └── plan.md               the checklist
+#
+# One spec per capability, not per ticket. A capability spec accumulates and stays
+# true; a ticket spec is dead the day the ticket closes.
+#
+# A change is where edits live while the work is in flight. When it lands, the
+# delta is applied onto the capability spec and the change folder goes away — so
+# there is exactly one current specification, always.
+#
+# ── the two anchors ──────────────────────────────────────────────────────────
+#
+#   Governs: src/bundles/** src/pricing/*.ts      (in a capability spec)
+#   Targets: bundle-products                      (in a change's spec delta)
+#   Proof:   test/bundles.test.ts  applies a relative discount
+#
+# Governs answers "which spec owns this file". Targets says which capability a
+# change is amending, so an in-flight delta counts as that spec moving. Proof
+# cites the test that holds a criterion up.
+#
+# ── the two questions ────────────────────────────────────────────────────────
+#
+#   default    staged code whose owning spec did not move
+#   --anchors  every Proof: citation still resolves, test name included
+#
+# Default mode always exits 0. It warns; blocking in someone else's project gets
+# the check deleted, and a deleted check finds nothing. --anchors exits 1, so CI
+# can gate on it.
+#
+# Usage: spec-drift [--anchors|--self-test]
+
+set -uo pipefail   # deliberately not -e: this must never be what fails a commit
+
+# Pathname expansion off, for the whole script.
+#
+# Governs: lines are read into a variable and word-split on purpose. Unquoted, the
+# shell also *path-expands* them — so `skills/**` became the real directory listing
+# before it was ever used as a pattern, and then matched nothing. Every glob that
+# happened to match real files silently stopped working, which made the drift check
+# report everything as unanchored and therefore never report drift at all.
+#
+# A false negative in a checker is worse than no checker. Nothing here globs paths.
+set -f
+
+# Consolidated specs, in precedence order. First hit wins.
+SPEC_ROOTS='.agents/specs specs openspec docs/specs spec'
+# In-flight changes. OpenSpec nests them under openspec/.
+CHANGE_ROOTS='.agents/changes changes openspec/changes'
+
+md_under() {
+  local d
+  for d in $1; do
+    [ -d "$d" ] && find "$d" -type f -name '*.md' 2>/dev/null
+  done
+}
+
+# spec_files — the consolidated specification, wherever it lives.
+# A single-file spec is honoured: not every project needs a directory of one.
+spec_files() {
+  { md_under "$SPEC_ROOTS"
+    [ -f docs/SPEC.md ] && printf 'docs/SPEC.md\n'
+  } | sort -u
+}
+
+change_files() { md_under "$CHANGE_ROOTS" | sort -u; }
+
+# ── extraction ───────────────────────────────────────────────────────────────
+
+# Leading whitespace is allowed and stripped. A Proof: line indented under the
+# bullet it belongs to is ordinary markdown, and a tool that silently ignores it
+# reports "all citations resolve" while having read none of them. That false green
+# happened here: sixty citations were invisible and the run passed.
+# defenced drops fenced code blocks.
+#
+# A spec that documents this very convention shows it in a fence:
+#
+#     ```
+#     Governs: internal/link/plan.go
+#     ```
+#
+# Read literally, the index page claimed to govern the linking package — an example
+# mistaken for a declaration. Every document explaining the anchors hits this, so it
+# is the extractor's job to know the difference, not the author's job to avoid
+# illustrating.
+defenced() { awk '/^[[:space:]]*```/ { f = !f; next } !f { print }' "$1" 2>/dev/null; }
+
+governs_of() { defenced "$1" | rg -N -o '^[[:space:]]*Governs:.*' | sed 's/^[[:space:]]*Governs:[[:space:]]*//'; }
+targets_of() { defenced "$1" | rg -N -o '^[[:space:]]*Targets:.*' | sed 's/^[[:space:]]*Targets:[[:space:]]*//'; }
+proofs_of()  { defenced "$1" | rg -N -o '^[[:space:]]*Proof:.*'   | sed 's/^[[:space:]]*Proof:[[:space:]]*//'; }
+
+# capability_of <spec_file> — the capability a consolidated spec describes.
+# .agents/specs/bundle-products/spec.md → bundle-products
+capability_of() {
+  local d; d=$(dirname "$1")
+  case "$d" in
+    .|docs) basename "$1" .md ;;   # a single-file spec is its own capability
+    *)      basename "$d" ;;
+  esac
+}
+
+# matches_any <path> <globs...>
+matches_any() {
+  local path="$1"; shift
+  local g
+  for g in "$@"; do
+    [ -z "$g" ] && continue
+    # shellcheck disable=SC2254  # the glob is the point
+    case "$path" in $g) return 0 ;; esac
+  done
+  return 1
+}
+
+has_line() { printf '%s\n' "$1" | rg -qxF "$2"; }
+
+# ── default mode ─────────────────────────────────────────────────────────────
+
+drift() {
+  git rev-parse --git-dir >/dev/null 2>&1 || exit 0
+
+  local staged specs changes
+  staged=$(git diff --cached --name-only) || exit 0
+  [ -n "$staged" ] || exit 0
+
+  specs=$(spec_files)
+  [ -n "$specs" ] || exit 0   # this project keeps no specs; nothing to say
+  changes=$(change_files)
+
+  # Which capabilities are being amended by a staged change delta? An in-flight
+  # delta is where edits belong, so it counts as its target spec moving.
+  local amended="" c t
+  while IFS= read -r c; do
+    [ -n "$c" ] || continue
+    has_line "$staged" "$c" || continue
+    for t in $(targets_of "$c"); do amended="$amended$t"$'\n'; done
+  done <<< "$changes"
+
+  local stale="" unanchored="" path s
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    has_line "$specs" "$path" && continue     # a spec is not code
+    has_line "$changes" "$path" && continue   # neither is a change
+
+    local governed=0
+    while IFS= read -r s; do
+      [ -n "$s" ] || continue
+      local globs; globs=$(governs_of "$s")
+      [ -n "$globs" ] || continue
+      # shellcheck disable=SC2086  # word splitting is how globs arrive
+      matches_any "$path" $globs || continue
+
+      governed=1
+      has_line "$staged" "$s" && continue                       # the spec moved
+      has_line "$amended" "$(capability_of "$s")" && continue   # a delta moved it
+
+      case "$stale" in
+        *"$s|$path"*) ;;
+        *) stale="$stale$s|$path"$'\n' ;;
+      esac
+    done <<< "$specs"
+
+    [ "$governed" -eq 0 ] && unanchored="$unanchored$path"$'\n'
+  done <<< "$staged"
+
+  if [ -n "$stale" ]; then
+    printf '\n  spec-drift: staged code whose specification did not move.\n\n'
+    printf '%s' "$stale" | while IFS='|' read -r s p; do
+      [ -n "$s" ] || continue
+      printf '    %s\n      owns  %s\n' "$s" "$p"
+    done
+    printf '\n  Did this change teach the spec anything?\n'
+    printf '  If yes it belongs in this commit — in the change delta while the work\n'
+    printf '  is in flight, or in the capability spec once it lands.\n'
+    printf '  If no, say so out loud and carry on.\n'
+  fi
+
+  if [ -n "$unanchored" ]; then
+    printf '\n  spec-drift: staged paths no spec claims to own.\n\n'
+    printf '%s' "$unanchored" | sed 's/^/    /'
+    printf '\n  Not necessarily wrong — not everything needs a contract.\n'
+    printf '  If it does, add it to a Governs: line.\n'
+  fi
+
+  [ -z "$stale$unanchored" ] || printf '\n'
+  exit 0
+}
+
+# ── --anchors ────────────────────────────────────────────────────────────────
+
+# symbol_exists <file> <symbol…> — is this test actually defined there?
+#
+# Language-agnostic: the name has to appear in a line that declares something.
+# The symbol is the part that matters. A file-level check passes a citation
+# naming a test nobody wrote, as long as some file sits at that path — which is
+# the exact fabrication an anchor exists to prevent. It happened in this repo.
+symbol_exists() {
+  local f="$1"; shift
+  rg -qN "(func|def|test|it|describe|class|fn|Scenario|Test)\b.*$*" "$f" 2>/dev/null
+}
+
+anchors() {
+  local all broken=0 total=0
+  all=$( { spec_files; change_files; } | sort -u )
+
+  if [ -z "$all" ]; then printf 'spec-drift: no specs found\n'; return 0; fi
+
+  local s line p sym
+  while IFS= read -r s; do
+    [ -n "$s" ] || continue
+    while IFS= read -r line; do
+      [ -n "$line" ] || continue
+      p=${line%% *}
+      sym=${line#"$p"}; sym=${sym# }
+      total=$((total + 1))
+
+      if [ ! -e "$p" ]; then
+        printf '  BROKEN  %s cites %s — no such file\n' "$s" "$p"
+        broken=$((broken + 1))
+
+      # A citation can name a command to run rather than a test to find:
+      #   Proof: skills/record-work/spec-drift --self-test
+      # Some criteria are held up by an executable check, not a named test
+      # function, and demanding a function name would force the spec to cite
+      # less precisely than it can.
+      elif [ "${sym#-}" != "$sym" ]; then
+        if [ -x "$p" ]; then
+          printf '  ok      %s → %s %s (runnable)\n' "$s" "$p" "$sym"
+        else
+          printf '  BROKEN  %s cites %s %s — not executable\n' "$s" "$p" "$sym"
+          broken=$((broken + 1))
+        fi
+
+      elif [ -n "$sym" ] && ! symbol_exists "$p" "$sym"; then
+        printf '  BROKEN  %s cites "%s" in %s — no such test\n' "$s" "$sym" "$p"
+        broken=$((broken + 1))
+      elif [ -n "$sym" ]; then
+        printf '  ok      %s → %s %s\n' "$s" "$p" "$sym"
+      else
+        printf '  ok      %s → %s (file only, no test named)\n' "$s" "$p"
+      fi
+    done <<< "$(proofs_of "$s")"
+  done <<< "$all"
+
+  if [ "$total" -eq 0 ]; then
+    printf '  no Proof: citations — the specs promise nothing checkable\n'; return 0
+  fi
+  if [ "$broken" -eq 0 ]; then
+    printf '\nspec-drift: %d citation(s), all resolve\n' "$total"; return 0
+  fi
+  printf '\nspec-drift: %d of %d citation(s) broken\n' "$broken" "$total"
+  return 1
+}
+
+# ── self-test ────────────────────────────────────────────────────────────────
+
+self_test() {
+  local fails=0 tmp
+  want() { # want <name> <expected> <got>
+    if [ "$2" = "$3" ]; then printf '  ok    %s\n' "$1"
+    else printf '  FAIL  %s — wanted %s, got %s\n' "$1" "$2" "$3"; fails=$((fails + 1)); fi
+  }
+  glob() { matches_any "$1" "${@:2}" && echo yes || echo no; }
+
+  want 'exact path matches'            yes "$(glob 'cmd/libretto/main.go' 'cmd/libretto/main.go')"
+  want 'deep glob matches'             yes "$(glob 'src/bundles/a.ts' 'src/bundles/**')"
+  want 'unrelated path does not'       no  "$(glob 'docs/README.md' 'src/bundles/**')"
+  want 'prefix sibling is not inside'  no  "$(glob 'src/bundling/a.ts' 'src/bundles/*')"
+  want 'second glob still counts'      yes "$(glob 'cmd/libretto/main.go' 'internal/**' 'cmd/**')"
+  want 'empty glob list matches none'  no  "$(glob 'anything.go' '')"
+
+  # A glob that matches real directories must still be treated as a pattern. Without
+  # `set -f` the shell expands it first and the match silently fails.
+  real=$(printf 'skills/** internal/**')
+  # shellcheck disable=SC2086
+  want 'a glob over real dirs still matches' yes "$(glob 'skills/evidence/SKILL.md' $real)"
+
+  want 'capability from a directory'   bundle-products "$(capability_of '.agents/specs/bundle-products/spec.md')"
+  want 'capability from a single file'  SPEC           "$(capability_of 'docs/SPEC.md')"
+
+  tmp=$(mktemp)
+  # An example inside a fence is an illustration, not a declaration.
+  printf 'Governs: a/** b/*\nTargets: bundle-products\nProof: t.go does a thing\n\x60\x60\x60\nGoverns: never/**\nProof: never.go NeverRun\n\x60\x60\x60\n' > "$tmp"
+  want 'Governs: extracted'  'a/** b/*'        "$(governs_of "$tmp")"
+  want 'Targets: extracted'  'bundle-products' "$(targets_of "$tmp")"
+  want 'Proof: keeps path and name' 't.go does a thing' "$(proofs_of "$tmp")"
+  want 'a fenced example is not a declaration' 'a/** b/*' "$(governs_of "$tmp")"
+
+  printf 'func TestReal(t *testing.T) {}\nit("does a thing", () => {})\n' > "$tmp"
+  symbol_exists "$tmp" 'TestReal'     && want 'a real Go test is found'   yes yes || want 'a real Go test is found' yes no
+  symbol_exists "$tmp" 'does a thing' && want 'a real JS case is found'   yes yes || want 'a real JS case is found' yes no
+  symbol_exists "$tmp" 'TestInvented' && want 'an invented name is rejected' no yes || want 'an invented name is rejected' no no
+
+  # A flag is a command to run, not a symbol to find.
+  case "--self-test" in -*) want 'a flag reads as runnable' yes yes ;; *) want 'a flag reads as runnable' yes no ;; esac
+  case "TestReal"    in -*) want 'a test name does not'     no  yes ;; *) want 'a test name does not'     no  no  ;; esac
+  rm -f "$tmp"
+
+  if [ "$fails" -eq 0 ]; then printf 'spec-drift: all checks passed\n'; return 0; fi
+  printf 'spec-drift: %d check(s) failed\n' "$fails"; return 1
+}
+
+case "${1:-}" in
+  --self-test) self_test; exit $? ;;
+  --anchors)   anchors;   exit $? ;;
+  '')          drift ;;
+  *) printf 'usage: %s [--anchors|--self-test]\n' "$0" >&2; exit 2 ;;
+esac

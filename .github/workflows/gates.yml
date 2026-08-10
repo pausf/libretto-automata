@@ -1,0 +1,61 @@
+name: gates
+
+# The same six gates AGENTS.md names, run by a machine that is not the author's.
+#
+# One step per gate, deliberately: a red build should name the gate on the summary
+# page rather than bury it in the middle of one long log.
+#
+# Read-only. Nothing here pushes, comments, formats or commits — a workflow that can
+# write is a workflow that can be made to write.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          # Read from go.mod rather than restated here. Two places that agree today
+          # is the arrangement that stops agreeing without anybody noticing.
+          go-version-file: go.mod
+
+      # check-payload and spec-drift are bash and both shell out to rg. Without it
+      # they fail for a reason that has nothing to do with the code under test.
+      - name: install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      # `gofmt -l` prints the unformatted files and exits ZERO. A step written as
+      # `run: gofmt -l .` is green on a repository nobody has formatted: the gate is
+      # present, named in the summary, and asserting nothing. Test the output.
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test ./... -count=1 -cover
+
+      - name: check-payload
+        run: scripts/check-payload
+
+      # From the repository, not from ~/.claude. The installed copy may be a
+      # different version; CI checks the tree it was handed.
+      - name: spec-drift --self-test
+        run: skills/record-work/spec-drift --self-test
+
+      # Red mid-change by design: write-spec says to cite tests before writing them,
+      # so a branch part-way through a change has broken citations. Phase 8 folds the
+      # delta and deletes the change folder, so a request that went through the flow
+      # arrives green. A specification citing tests that do not exist is exactly what
+      # should not merge.
+      - name: spec-drift --anchors
+        run: skills/record-work/spec-drift --anchors

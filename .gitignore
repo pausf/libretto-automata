@@ -1,0 +1,12 @@
+/bin/
+.DS_Store
+.atl/
+
+.idea/
+
+# The payload installed into this project by `libretto install --project`.
+#
+# Symlinks to absolute paths on one machine. Committed, they are broken links for
+# everybody else — which is why project scope means "isolated from the global config",
+# not "shared with the team".
+.claude/
