@@ -17,6 +17,17 @@ import (
 // action. Named once, so the menu and the dispatch cannot drift apart.
 const modelsAction = "models"
 
+// allRow is the cursor position of the `all` row, which sits above every group.
+//
+// The consequence is that screen position and agent index stop being the same number:
+// agent i is at cursor i+1. Every read of p.Agents from the cursor goes through
+// AgentCursor-1, and getting that wrong marks the neighbouring agent silently — which
+// is why it has a test of its own.
+const allRow = 0
+
+// selectorRows is how many rows the cursor can reach: the agents, plus `all`.
+func selectorRows(p Panel) int { return len(p.Agents) + 1 }
+
 // AgentRow is one agent in the selector: what it is called, what it runs on, and
 // whether the user has marked it.
 type AgentRow struct {
@@ -112,7 +123,7 @@ func (m Model) openSelector() Model {
 		return m
 	}
 
-	m.panel.Agents = rows
+	m.panel.Agents = sortRowsByModel(rows, m.modelChoices)
 	m.panel.ModelChoices = m.modelChoices
 	m.panel.InSelector, m.panel.ChoosingModel = true, false
 	m.panel.AgentCursor, m.panel.ModelCursor = 0, 0
@@ -170,36 +181,35 @@ func (m Model) updateSelector(k string) (Model, bool) {
 			before.notice = "cannot read the agents: " + err.Error()
 			return before, true
 		}
-		m.panel.Agents = rows
+		m.panel.Agents = sortRowsByModel(rows, m.modelChoices)
 		m.panel.AgentCursor, m.panel.ChoosingModel = 0, false
 		return m, true
 
 	case "up", "k":
-		m.panel.AgentCursor = wrap(m.panel.AgentCursor-1, len(m.panel.Agents))
+		m.panel.AgentCursor = wrap(m.panel.AgentCursor-1, selectorRows(m.panel))
 		return m, true
 
 	case "down", "j":
-		m.panel.AgentCursor = wrap(m.panel.AgentCursor+1, len(m.panel.Agents))
+		m.panel.AgentCursor = wrap(m.panel.AgentCursor+1, selectorRows(m.panel))
 		return m, true
 
 	case " ":
-		if len(m.panel.Agents) > 0 {
-			rows := append([]AgentRow(nil), m.panel.Agents...)
-			rows[m.panel.AgentCursor].Marked = !rows[m.panel.AgentCursor].Marked
-			m.panel.Agents = rows
+		if len(m.panel.Agents) == 0 {
+			return m, true
 		}
-		return m, true
-
-	// Marking all and clearing all are the same key. One that only ever adds
-	// leaves no way back but pressing space once per row.
-	case "a":
-		marking := len(m.MarkedAgents()) < len(m.panel.Agents)
+		if m.panel.AgentCursor == allRow {
+			return m.markAll(), true
+		}
 		rows := append([]AgentRow(nil), m.panel.Agents...)
-		for i := range rows {
-			rows[i].Marked = marking
-		}
+		rows[m.panel.AgentCursor-1].Marked = !rows[m.panel.AgentCursor-1].Marked
 		m.panel.Agents = rows
 		return m, true
+
+	// The key and the row are one behaviour, so they are one function. Two copies
+	// would drift, and the drift would be a row and a key disagreeing about what
+	// "all" means.
+	case "a":
+		return m.markAll(), true
 
 	case "m", "enter":
 		if len(m.MarkedAgents()) == 0 {
@@ -210,6 +220,20 @@ func (m Model) updateSelector(k string) (Model, bool) {
 		return m, true
 	}
 	return m, true
+}
+
+// markAll marks every row, or clears them when they are already all marked.
+//
+// One gesture both ways: a control that only ever adds leaves no way back but
+// pressing space once per row.
+func (m Model) markAll() Model {
+	marking := len(m.MarkedAgents()) < len(m.panel.Agents)
+	rows := append([]AgentRow(nil), m.panel.Agents...)
+	for i := range rows {
+		rows[i].Marked = marking
+	}
+	m.panel.Agents = rows
+	return m
 }
 
 // applyChosenModel sends the marked set and the chosen model to the caller.
@@ -254,7 +278,10 @@ func (m Model) applyChosenModel() Model {
 		for i := range rows {
 			rows[i].Marked = marked[rows[i].Name]
 		}
-		m.panel.Agents = rows
+		// The models just changed, so the groups have to move with them. A screen
+		// that keeps the old grouping under the new models is the same lie as one
+		// that keeps the old models.
+		m.panel.Agents = sortRowsByModel(rows, m.modelChoices)
 	}
 
 	m.notice = strconv.Itoa(len(names)) + " agent(s) → " + describeModel(model)
@@ -299,10 +326,33 @@ func (t Theme) selector(p Panel) string {
 		}
 	}
 
-	rows := make([]string, 0, len(p.Agents)+len(p.ModelChoices)+2)
+	cw := ContentWidth(p.Width)
+
+	rows := make([]string, 0, len(p.Agents)+len(p.ModelChoices)+4)
+
+	// The `all` row is a control, not an agent. Its box says what is true of the set
+	// below it — `[x]` only when every row is marked, because a master checkbox that
+	// stays ticked after one row is cleared is a checkbox that lies.
+	allBox := "[ ]"
+	if countMarked(p.Agents) == len(p.Agents) {
+		allBox = "[x]"
+	}
+	allColour, allCursor := t.Steel, " "
+	if p.AgentCursor == allRow && !p.ChoosingModel {
+		allColour, allCursor = t.Gold, "❯"
+	}
+	rows = append(rows,
+		"  "+Fg(allColour).Render(allCursor+" "+allBox+" all"),
+		t.groupRule(cw),
+	)
+
 	for i, a := range p.Agents {
+		if i > 0 && a.Model != p.Agents[i-1].Model {
+			rows = append(rows, t.groupRule(cw))
+		}
+
 		colour, cursor := t.Steel, " "
-		if i == p.AgentCursor && !p.ChoosingModel {
+		if i+1 == p.AgentCursor && !p.ChoosingModel {
 			colour, cursor = t.Gold, "❯"
 		}
 
@@ -337,6 +387,67 @@ func (t Theme) selector(p Panel) string {
 	return strings.Join(rows, "\n")
 }
 
+// modelRank orders models the way the catalogue does: cheapest first, then the
+// session default, and a model this build does not know about after both — absent
+// from the map, so every caller has to decide what to do with a miss.
+//
+// Catalogue order is cheapest first, but it opens with the session default, which is
+// not a price — it is an unknown. It goes last, so a list reads as an answer to "how
+// much of this is still expensive?" rather than starting with the one entry that
+// cannot answer it.
+//
+// One function rather than two, because the menu tally and the selector below it are
+// one screen. Two orderings of the same models would be read as a bug, and it would
+// be one.
+func modelRank(order []ModelChoice) map[string]int {
+	rank := make(map[string]int, len(order))
+	for i, c := range order {
+		rank[c.Name] = i
+	}
+	rank[""] = len(order)
+	return rank
+}
+
+// sortRowsByModel groups the rows by model so the screen reads at a glance. Names
+// sort inside a group: two agents on one model in an order nobody chose is a list
+// that reorders itself between sessions.
+func sortRowsByModel(rows []AgentRow, order []ModelChoice) []AgentRow {
+	out := append([]AgentRow(nil), rows...)
+	rank := modelRank(order)
+	sort.SliceStable(out, func(i, j int) bool {
+		ri, oki := rank[out[i].Model]
+		rj, okj := rank[out[j].Model]
+		if oki != okj {
+			return oki
+		}
+		if ri != rj {
+			return ri < rj
+		}
+		// Two models the catalogue does not know rank equally, and leaving it there
+		// would interleave them by name — two groups shuffled into one, which is the
+		// one thing this function exists to prevent.
+		if out[i].Model != out[j].Model {
+			return out[i].Model < out[j].Model
+		}
+		return out[i].Name < out[j].Name
+	})
+	return out
+}
+
+// groupRule divides one model's rows from the next.
+//
+// An indented dim rule, deliberately not the frame's ├───┤ junction: that glyph means
+// "a new section of the panel", and three of them inside one list would read as three
+// panels. A blank line was the other candidate and it is worse — inside a bordered
+// frame a blank line reads as the end of the list.
+func (t Theme) groupRule(width int) string {
+	n := width - 4
+	if n < 1 {
+		n = 1
+	}
+	return "  " + Fg(t.Dim).Render(strings.Repeat("─", n))
+}
+
 func countMarked(rows []AgentRow) int {
 	n := 0
 	for _, r := range rows {
@@ -358,15 +469,7 @@ func Tally(rows []AgentRow, order []ModelChoice) string {
 		counts[r.Model]++
 	}
 
-	// Catalogue order is cheapest first, but it opens with the session default —
-	// which is not a price, it is an unknown. It goes last, so the row reads as an
-	// answer to "how much of this is still expensive?" rather than starting with
-	// the one entry that cannot answer it.
-	rank := make(map[string]int, len(order))
-	for i, c := range order {
-		rank[c.Name] = i
-	}
-	rank[""] = len(order)
+	rank := modelRank(order)
 
 	names := make([]string, 0, len(counts))
 	for name := range counts {

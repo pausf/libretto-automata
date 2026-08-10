@@ -547,6 +547,88 @@ func TestFooterListsTheScopeKey(t *testing.T) {
 	}
 }
 
+// The legend belongs to the screen, not to the program. It used to list `⏎ select`
+// over a selector where ⏎ opens a catalogue and space is what marks.
+func TestTheFooterFollowsTheScreen(t *testing.T) {
+	forceTrueColor(t)
+	theme := darkTheme()
+
+	menu := strip(theme.footer(Panel{Version: "v0"}, 90))
+	if !strings.Contains(menu, "⏎ select") {
+		t.Fatalf("the menu footer changed: %q", menu)
+	}
+
+	sel := strip(theme.footer(Panel{Version: "v0", InSelector: true}, 90))
+	for _, want := range []string{"space mark", "a all", "m model", "tab scope"} {
+		if !strings.Contains(sel, want) {
+			t.Fatalf("the selector footer does not mention %q: %q", want, sel)
+		}
+	}
+	if strings.Contains(sel, "⏎ select") {
+		t.Fatalf("the selector footer still promises ⏎ select: %q", sel)
+	}
+
+	cat := strip(theme.footer(Panel{Version: "v0", InSelector: true, ChoosingModel: true}, 90))
+	if !strings.Contains(cat, "⏎ apply") || strings.Contains(cat, "space mark") {
+		t.Fatalf("the catalogue footer lists keys that do nothing: %q", cat)
+	}
+
+	confirm := strip(theme.footer(Panel{Version: "v0", InSelector: true, Confirm: "sure?"}, 90))
+	if !strings.Contains(confirm, "y yes") {
+		t.Fatalf("a confirm no longer wins the footer: %q", confirm)
+	}
+}
+
+// A footer wider than the frame drags the centred block off the terminal — the same
+// tearing the fluid frame exists to prevent, arriving from underneath it. The
+// selector's legend is the longest in the program, and a dirty `git describe` is the
+// longest version.
+func TestTheFooterNeverOutgrowsTheFrame(t *testing.T) {
+	forceTrueColor(t)
+
+	// A tag name is arbitrary, so there is no longest version to pin — pinning one is
+	// how this passed while `v0.10.0-17-g96c04e3-dirty` overflowed by a column, which
+	// is what this repo will print two tags from now. Sweep the length instead.
+	for _, term := range []int{MinPanelWidth, 62, 80, 140} {
+		width := ContentWidth(term) + 2
+		for n := 0; n <= 48; n++ {
+			version := "v" + strings.Repeat("0", n)
+			for _, p := range []Panel{
+				{Version: version},
+				{Version: version, InSelector: true},
+				{Version: version, InSelector: true, ChoosingModel: true},
+				{Version: version, InSelector: true, Confirm: "sure?"},
+			} {
+				got := lipgloss.Width(strings.TrimRight(strip(darkTheme().footer(p, width)), " "))
+				if got > width {
+					t.Fatalf("term %d, version %d chars: footer is %d columns against a %d frame",
+						term, n+1, got, width)
+				}
+			}
+		}
+	}
+}
+
+// The legend is what the panel is operated with; the version is reference, and
+// `libretto version` still prints it. So the version is what goes when neither fits.
+func TestTheLegendOutlivesTheVersion(t *testing.T) {
+	forceTrueColor(t)
+
+	got := strip(darkTheme().footer(Panel{
+		Version:    "v0.10.0-17-g96c04e3-dirty",
+		InSelector: true,
+	}, ContentWidth(MinPanelWidth)+2))
+
+	if strings.Contains(got, "v0.10.0") {
+		t.Fatalf("the version survived at the expense of the legend: %q", got)
+	}
+	for _, want := range []string{"space", "a all", "m model", "esc"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("the legend lost %q at the floor: %q", want, got)
+		}
+	}
+}
+
 func TestSwitchingScopeSaysSo(t *testing.T) {
 	t.Setenv(EnvTheme, "dark")
 

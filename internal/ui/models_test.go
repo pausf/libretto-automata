@@ -32,13 +32,6 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 	agents := make([]AgentRow, len(rows))
 	copy(agents, rows)
 
-	choices := []ModelChoice{
-		{Name: "", Label: "the session's model"},
-		{Name: "haiku", Label: "cheapest"},
-		{Name: "sonnet", Label: "everyday"},
-		{Name: "opus", Label: "most capable"},
-	}
-
 	m := NewModel("v0", []MenuItem{
 		{Label: "install", Desc: "link", Enabled: true},
 		{Label: "models", Desc: "", Enabled: true},
@@ -55,7 +48,7 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 			}, rows, nil
 		}).
 		WithAgents(
-			choices,
+			catalogue(),
 			func(dest int) ([]AgentRow, error) {
 				rec.listedFor = append(rec.listedFor, dest)
 				out := make([]AgentRow, len(agents))
@@ -79,6 +72,18 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 			},
 		)
 	return m, rec
+}
+
+// catalogue is the model list the panel is handed. One helper rather than a literal
+// per test: the ordering rules under test are the catalogue's, so a fixture that
+// drifted would be testing a catalogue nothing ships.
+func catalogue() []ModelChoice {
+	return []ModelChoice{
+		{Name: "", Label: "the session's model"},
+		{Name: "haiku", Label: "cheapest"},
+		{Name: "sonnet", Label: "everyday"},
+		{Name: "opus", Label: "most capable"},
+	}
 }
 
 func threeAgents() []AgentRow {
@@ -158,9 +163,12 @@ func TestSpaceMarksAndUnmarksTheCurrentRow(t *testing.T) {
 	m, _ := selectorModel(t, threeAgents())
 	m = openSelector(t, m)
 
+	// The selector opens on the `all` row, so one down reaches the first agent — the
+	// lone opus one, because the rows are grouped by model.
+	m = key(m, "down")
 	m = key(m, " ")
-	if got := m.MarkedAgents(); len(got) != 1 || got[0] != "review-design" {
-		t.Fatalf("marked = %v, want [review-design]", got)
+	if got := m.MarkedAgents(); len(got) != 1 || got[0] != "review-security" {
+		t.Fatalf("marked = %v, want [review-security]", got)
 	}
 
 	m = key(m, " ")
@@ -189,8 +197,11 @@ func TestChosenModelReachesOnlyTheMarkedRows(t *testing.T) {
 	m, rec := selectorModel(t, threeAgents())
 	m = openSelector(t, m)
 
-	m = key(m, " ")    // review-design
-	m = key(m, "down") // review-tests
+	// Past the `all` row, then the grouped order: the opus row, then the two on the
+	// session default.
+	m = key(m, "down") // review-security
+	m = key(m, " ")
+	m = key(m, "down") // review-design
 	m = key(m, " ")
 	m = key(m, "m")
 
@@ -205,7 +216,7 @@ func TestChosenModelReachesOnlyTheMarkedRows(t *testing.T) {
 	if rec.model != "haiku" {
 		t.Errorf("applied model = %q, want haiku", rec.model)
 	}
-	want := map[string]bool{"review-design": true, "review-tests": true}
+	want := map[string]bool{"review-security": true, "review-design": true}
 	if len(rec.names) != 2 {
 		t.Fatalf("applied to %v, want exactly the two marked rows", rec.names)
 	}
@@ -267,6 +278,9 @@ func TestMarkIsLegibleWithoutColour(t *testing.T) {
 	forceTrueColor(t)
 	m, _ := selectorModel(t, threeAgents())
 	m = openSelector(t, m)
+	// One agent, not the `all` row — the screen has to show both states at once for
+	// this to prove anything.
+	m = key(m, "down")
 	m = key(m, " ")
 
 	view := strip(m.View())
@@ -320,6 +334,164 @@ func TestFailedApplyIsReportedAndTheScreenSurvives(t *testing.T) {
 // Every other menu row reports rather than describing itself: `status` says
 // "21 linked · 2 missing", not "show the status". The tally is the question the
 // panel was opened to answer — how much of this is still on the expensive model.
+// order joins the row names so a wrong order reads as a sentence rather than as two
+// slices to diff by eye.
+func order(rows []AgentRow) string {
+	names := make([]string, len(rows))
+	for i, r := range rows {
+		names[i] = r.Name
+	}
+	return strings.Join(names, " ")
+}
+
+func TestRowsAreGroupedByModel(t *testing.T) {
+	choices := []ModelChoice{{Name: ""}, {Name: "haiku"}, {Name: "sonnet"}}
+	rows := []AgentRow{
+		{Name: "work-reviewer"},
+		{Name: "review-lens-tests", Model: "haiku"},
+		{Name: "spec-writer", Model: "sonnet"},
+		{Name: "review-lens-design", Model: "haiku"},
+	}
+
+	// Catalogue order, cheapest first, the session default last. Names sort inside
+	// a group.
+	want := "review-lens-design review-lens-tests spec-writer work-reviewer"
+	if got := order(sortRowsByModel(rows, choices)); got != want {
+		t.Fatalf("grouped order = %q, want %q", got, want)
+	}
+}
+
+func TestAnUnknownModelGetsItsOwnGroup(t *testing.T) {
+	choices := []ModelChoice{{Name: ""}, {Name: "haiku"}}
+	rows := []AgentRow{
+		{Name: "b", Model: "some-future-model"},
+		{Name: "a", Model: "haiku"},
+		{Name: "c"},
+	}
+
+	// haiku, then the session default, then the model this build does not know —
+	// the same position Tally gives it, from the same ranking.
+	if got := order(sortRowsByModel(rows, choices)); got != "a c b" {
+		t.Fatalf("order = %q, want %q", got, "a c b")
+	}
+}
+
+// rules counts the group rules in a rendered selector. The frame's own ├───┤ rows are
+// not counted: they start with a junction glyph, the group rule is indented.
+func rules(rendered string) int {
+	n := 0
+	for _, line := range strings.Split(strip(rendered), "\n") {
+		if strings.HasPrefix(line, "  ─") {
+			n++
+		}
+	}
+	return n
+}
+
+func TestGroupRuleSitsOnlyBetweenGroups(t *testing.T) {
+	forceTrueColor(t)
+	theme := darkTheme()
+
+	// threeAgents is one opus row and two session rows: two groups. Two rules — one
+	// under the `all` row, one between the groups. One rule per boundary, and the
+	// `all` row is a boundary.
+	mixed := theme.selector(Panel{Width: 90, Agents: sortRowsByModel(threeAgents(), catalogue())})
+	if got := rules(mixed); got != 2 {
+		t.Fatalf("two groups drew %d rules, want 2", got)
+	}
+	lines := strings.Split(strings.TrimRight(strip(mixed), "\n"), "\n")
+	if strings.HasPrefix(lines[len(lines)-1], "  ─") {
+		t.Fatal("a rule was drawn after the last group")
+	}
+
+	uniform := theme.selector(Panel{Width: 90, Agents: []AgentRow{
+		{Name: "a", Model: "haiku"}, {Name: "b", Model: "haiku"},
+	}})
+	// Only the `all` row's rule survives: a division of nothing is not a division.
+	if got := rules(uniform); got != 1 {
+		t.Fatalf("one group drew %d rules, want just the all row's", got)
+	}
+}
+
+// Sorted, threeAgents is review-security (opus) first, then review-design and
+// review-tests (session). Every cursor count below assumes that order.
+
+func TestSpaceOnTheAllRowMarksEveryAgent(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	// The selector opens on `all`, so the first space marks everything.
+	m = key(m, " ")
+	if got := m.MarkedAgents(); len(got) != 3 {
+		t.Fatalf("space on the all row marked %v, want all three", got)
+	}
+
+	m = key(m, " ")
+	if got := m.MarkedAgents(); len(got) != 0 {
+		t.Fatalf("space on the all row again left %v marked, want none", got)
+	}
+}
+
+func TestTheAllRowBoxFollowsEveryAgent(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = key(m, " ")    // every agent marked
+	m = key(m, "down") // onto the first agent
+	m = key(m, " ")    // unmark it
+
+	first := strings.Split(strip(darkTheme().selector(m.panel)), "\n")[0]
+	if strings.Contains(first, "[x]") {
+		t.Fatalf("the all row still reads %q with an agent unmarked", first)
+	}
+}
+
+func TestTheAllRowIsNeverAppliedAsAnAgent(t *testing.T) {
+	m, rec := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = key(m, " ") // cursor on all: mark everything
+	m = key(m, "m") // open the catalogue from the all row
+	m = chooseModel(t, m, "haiku")
+
+	for _, n := range rec.names {
+		if n == "all" {
+			t.Fatal("the all row reached ApplyModel as an agent name")
+		}
+	}
+	if len(rec.names) != 3 {
+		t.Fatalf("applied to %v, want the three agents", rec.names)
+	}
+}
+
+// The all row means screen position and agent index stop being the same number.
+// Getting that offset wrong marks the neighbouring agent and says nothing.
+func TestTheCursorMarksTheRowItPointsAt(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = key(m, "down") // all -> review-security
+	m = key(m, "down") // -> review-design
+	m = key(m, " ")
+
+	got := m.MarkedAgents()
+	if len(got) != 1 || got[0] != "review-design" {
+		t.Fatalf("marked %v, want [review-design] — the all row shifted the cursor", got)
+	}
+}
+
+func TestTheAllRowIsLegibleWithoutColour(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+	m = key(m, " ")
+
+	if plain := strip(m.View()); !strings.Contains(plain, "[x] all") {
+		t.Fatalf("the all row is not legible without colour:\n%s", plain)
+	}
+}
+
 func TestMenuRowReportsTheModelTally(t *testing.T) {
 	choices := []ModelChoice{
 		{Name: "", Label: "session"},

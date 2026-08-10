@@ -52,6 +52,26 @@ changing from `○` to `◉` and a path changing inside a description are eviden
 to go looking for, and a key whose effect must be hunted for is a key that does not
 work.
 
+### The footer's legend belongs to the screen it is under
+
+Each screen lists its own keys: the menu's, the selector's, the catalogue's, and — over
+any of them — the answers while a confirmation is open.
+
+A legend that lists `⏎ select` over a selector where `⏎` opens a catalogue and `space`
+is what marks is worse than no legend: it is read once, believed, and never re-read.
+The selector's real keys used to live only in the opening notice, which the first apply
+overwrote and which was then gone for the rest of the session — which is how `a`, a key
+this spec had promised since the selector shipped, stayed invisible to anyone who did
+not read the one frame before their first keystroke.
+
+**The footer never outgrows the frame, at any width and for a version of any length.**
+A tag name is arbitrary, so no fixed pair of legends is short enough on its own, and a
+footer wider than the frame drags the whole centred block off the terminal — the same
+tearing the fluid frame exists to prevent, arriving from underneath it. Three steps:
+the full legend; a tight second one when it will not fit, which loses the verbs and no
+key; and then the version, because the legend is what the panel is operated with and
+`libretto version` still prints the version.
+
 ### Actions run in place and report inside the frame
 
 `enter` carries the action out and shows what it did, in a section below the strip.
@@ -121,17 +141,44 @@ The rows are **the active destination's agents** — the same set `models` lists
 the same flag — and `tab` changes them.
 
 ```
-  ❯ [x] review-lens-design   haiku        shared
+  ❯ [ ] all
+    ──────────────────────────────────────
+    [x] review-lens-design   haiku        shared
     [x] sdd-apply            sonnet
+    ──────────────────────────────────────
     [ ] review-risk          opus
+    ──────────────────────────────────────
     [ ] jd-judge-a           (session)
-
-    space mark · a all · m model · esc back
 ```
 
+- **The rows are grouped by model**, in the catalogue's order — cheapest first, the
+  session default after them, and a model this build does not know about last. That is
+  the ranking the menu tally already uses, shared rather than restated: the tally row
+  and the list below it are one screen, and two orderings of the same models would be
+  read as a bug. Names sort inside a group, because two agents on one model in an
+  order nobody chose is a list that reorders itself between sessions.
+- **A rule divides one group from the next**, and a rule divides the `all` row from
+  the list. One per boundary and none anywhere else — never above the `all` row, never
+  after the last group, and a screen whose agents all share one model shows the `all`
+  row's rule alone. It is an indented dim rule, deliberately **not** the frame's
+  `├───┤` junction: that glyph means "a new section of the panel", and three of them
+  inside one list would read as three panels. A blank line was the other candidate and
+  it is worse — inside a bordered frame it reads as the end of the list.
 - **Marking is multi.** `space` marks the row under the cursor; `a` marks every row
   and `a` again clears them — a key that only ever adds leaves no way back but
   pressing space once per row.
+- **`all` is a row, and it is the discoverable half of `a`.** It sits above the first
+  group, `space` on it marks every agent and `space` again clears them, and its box
+  reads `[x]` only when every agent is marked — a master checkbox that stays ticked
+  after one row is cleared is a checkbox that lies. `a` keeps working: taking the key
+  away to justify the row would cost whoever already found it. The row is a marking
+  control, not an agent — it never reaches `ApplyModel` and never appears in
+  `MarkedAgents`, and `m` on it opens the catalogue for whatever is marked, like any
+  other row. No agents means no `all` row.
+- **The cost of the row is that screen position stops being the agent index.** Agent
+  `i` sits at cursor `i+1`. A wrong offset marks the neighbouring agent and says
+  nothing, which is the one failure here that is silent, so it carries a proof of its
+  own.
 - **One model, applied to the marked set, in one act.** `m` opens the catalogue and
   the choice reaches every marked row at once. That is the ordinary case, not the
   advanced one: making the prose lenses cheap is one gesture, not four.
@@ -184,6 +231,11 @@ strip, the Bubbletea model and its navigation.
   `Runner` follows, and the same failure if it were not.
 - **filtering or searching the agent list.** Four to eight rows fit on a screen; a
   filter is machinery for a scale this does not have.
+- **any second ordering of the rows** — by name, by `shared`, by destination. One
+  order, and it is the one that answers the question the screen was opened with.
+- **a header naming each group's model, and collapsing a group.** Every row already
+  carries its model in the model column, so a header would print it twice and cost a
+  row per group. Seven rows fit.
 - **confirming a model change.** `y/n` is for the destructive actions. Writing a
   frontmatter key is reversible in one keystroke.
 - **dimming disabled rows.** Colour carries selection and nothing else, so a disabled
@@ -209,7 +261,9 @@ lack them.
 
 **Fluid frame, 58–98 content columns**, centred on both axes when there is room.
 Padding never truncates: a layout that silently cuts a word is a layout that lies about
-what it contains.
+what it contains. **The footer sits outside the frame and must not be wider than it**,
+for a version of any length — otherwise it, and not the frame, decides how wide the
+centred block is.
 
 **Every colour in every theme covers every layer.** A theme with a hole renders a
 default nobody chose.
@@ -224,6 +278,18 @@ default nobody chose.
   promise what it cannot do, and it does not hide what is coming.
 - `COLUMNS` is honoured when stdout is not a terminal, so centring is checkable in a
   pipe. Without it, layout would be untestable outside an interactive session.
+- **The selector sorts its rows rather than leaving them alphabetical and ruling only
+  where the model changes.** Asked and answered by the user: the rows move. Grouping
+  that leaves the order alone answers "where does this agent sit?"; grouping that
+  reorders answers "what is still expensive?", which is what the screen is opened for.
+- **One ranking function for the tally and the selector.** The delta that introduced
+  grouping first invented a second order — unknown models before the session default,
+  where the tally puts them after. Reading `Tally` is what caught it. Two orders on one
+  screen is a bug people report as a bug.
+- **A pinned version string is not a worst case for the footer.** The first footer-width
+  criterion sampled one 22-character version and passed while 25 overflowed by a
+  column. There is no longest tag name, so the sweep is over lengths and the last
+  resort is dropping the version, not choosing a shorter legend.
 
 ## Task breakdown
 
@@ -418,3 +484,36 @@ The model selector:
   Proof: internal/ui/models_test.go TestTheModelColumnLinesUpWhateverTheNamesAre
 - **applying a model every marked row already has says nothing changed**
   Proof: internal/ui/models_test.go TestApplyingTheModelTheyAlreadyHaveSaysNothingChanged
+
+Grouping, the `all` row, and the legend:
+
+- **rows are grouped by model** — every row of one model contiguous, groups in
+  catalogue order with the session default last, names sorted inside a group
+  Proof: internal/ui/models_test.go TestRowsAreGroupedByModel
+- a model the catalogue does not know still renders, in its own group, last — the same
+  position the tally gives it, from the same shared ranking
+  Proof: internal/ui/models_test.go TestAnUnknownModelGetsItsOwnGroup
+- **one rule per boundary and none anywhere else** — one under `all`, one wherever the
+  model changes, none above `all`, none after the last group, and a single-model screen
+  shows the `all` row's rule alone
+  Proof: internal/ui/models_test.go TestGroupRuleSitsOnlyBetweenGroups
+- `space` on the `all` row marks every agent, and again clears them
+  Proof: internal/ui/models_test.go TestSpaceOnTheAllRowMarksEveryAgent
+- the `all` row's box is `[x]` only while every agent is marked
+  Proof: internal/ui/models_test.go TestTheAllRowBoxFollowsEveryAgent
+- **`all` never reaches the apply callback and never appears in `MarkedAgents`**
+  Proof: internal/ui/models_test.go TestTheAllRowIsNeverAppliedAsAnAgent
+- **the cursor marks the row it points at** — the `all` row does not shift the mark by
+  one, which is the only silent failure this screen has
+  Proof: internal/ui/models_test.go TestTheCursorMarksTheRowItPointsAt
+- **the `all` row is legible with colour stripped**
+  Proof: internal/ui/models_test.go TestTheAllRowIsLegibleWithoutColour
+- **the footer lists the keys of the screen it is under** — the menu's unchanged, the
+  selector's naming `space`, `a`, `m` and `tab`, the catalogue's only `⏎` and `esc`,
+  and a confirmation still winning over all of them
+  Proof: internal/ui/panel_test.go TestTheFooterFollowsTheScreen
+- **no footer is wider than its frame**, at every width down to the floor and at every
+  version length — swept, not sampled
+  Proof: internal/ui/panel_test.go TestTheFooterNeverOutgrowsTheFrame
+- when neither legend fits beside the version, the version goes and the legend stays
+  Proof: internal/ui/panel_test.go TestTheLegendOutlivesTheVersion
