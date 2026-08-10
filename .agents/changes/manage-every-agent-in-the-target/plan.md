@@ -90,10 +90,10 @@ From spec: `spec-cli.md` breakdown 2. Closes: all ten cli criteria.
   replaced
 - `agentsReaching` and the `· not linked here` marker go: every listed agent is in the
   target by construction now, so the note has nothing left to say
-- [ ] **2.1** the ten tests named in `spec-cli.md`, failing first
-- [ ] **2.2** implement until they pass
-- [ ] **2.3** six gates
-- [ ] **2.4** committed
+- [x] **2.1** the ten tests named in `spec-cli.md`, failing first
+- [x] **2.2** implement until they pass
+- [x] **2.3** six gates
+- [x] **2.4** committed: 633b206
 
 ### Task 3: the row learns it is shared, and `tab` reloads
 

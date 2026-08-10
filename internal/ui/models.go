@@ -44,11 +44,16 @@ type ModelChoice struct {
 	Label string
 }
 
-// ListAgents returns the agents and their current models.
-type ListAgents func() ([]AgentRow, error)
+// ListAgents returns the agents of one destination and their current models.
+//
+// The destination index is passed in, never captured when the panel opened — the
+// same rule Runner follows, for the same reason: a closure over the starting scope
+// would list one destination's agents while the strip named another, and the write
+// that followed would land somewhere the user could not see.
+type ListAgents func(destination int) ([]AgentRow, error)
 
-// ApplyModel declares one model on a set of agents.
-type ApplyModel func(names []string, model string) error
+// ApplyModel declares one model on a set of agents in one destination.
+type ApplyModel func(destination int, names []string, model string) error
 
 // WithAgents wires the selector. Without it the menu row refuses, the same way an
 // unwired action does.
@@ -101,7 +106,7 @@ func (m Model) openSelector() Model {
 		return m
 	}
 
-	rows, err := m.listAgents()
+	rows, err := m.listAgents(m.activeScope())
 	if err != nil {
 		m.notice = "cannot read the agents: " + err.Error()
 		return m
@@ -151,7 +156,7 @@ func (m Model) updateSelector(k string) (Model, bool) {
 	case "tab", "s":
 		next, _ := m.nextScope()
 		m = next.(Model)
-		rows, err := m.listAgents()
+		rows, err := m.listAgents(m.activeScope())
 		if err != nil {
 			// Keep what we had. Showing one destination's agents under another's
 			// name would be worse than showing an error.
@@ -210,7 +215,7 @@ func (m Model) applyChosenModel() Model {
 
 	m.panel.ChoosingModel = false
 
-	if err := m.applyModel(names, model); err != nil {
+	if err := m.applyModel(m.activeScope(), names, model); err != nil {
 		m.notice = "could not apply: " + err.Error()
 		return m
 	}
@@ -218,7 +223,7 @@ func (m Model) applyChosenModel() Model {
 	// Ask for the rows again rather than editing them here. A screen that patches
 	// its own state after a write is a second answer to what the files say, and the
 	// two disagree the first time a write half-succeeds.
-	if rows, err := m.listAgents(); err == nil {
+	if rows, err := m.listAgents(m.activeScope()); err == nil {
 		marked := make(map[string]bool, len(names))
 		for _, n := range names {
 			marked[n] = true

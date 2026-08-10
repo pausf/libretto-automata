@@ -41,12 +41,12 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 	}, []TargetRow{{Name: "claude", Active: true}}, false).
 		WithAgents(
 			choices,
-			func() ([]AgentRow, error) {
+			func(int) ([]AgentRow, error) {
 				out := make([]AgentRow, len(agents))
 				copy(out, agents)
 				return out, nil
 			},
-			func(names []string, model string) error {
+			func(_ int, names []string, model string) error {
 				rec.calls++
 				rec.names, rec.model = names, model
 				if rec.err != nil {
@@ -345,7 +345,7 @@ func TestMenuRowTallyRefreshesAfterApplying(t *testing.T) {
 	// The caller owns the menu, so the refresh is what rebuilds the row. Here it
 	// recomputes the tally from whatever the agents callback now reports.
 	m = m.WithRefresh(func(int) ([]MenuItem, []TargetRow, error) {
-		rows, err := m.listAgents()
+		rows, err := m.listAgents(0)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -429,8 +429,8 @@ func TestTabReloadsTheSelectorForTheNewDestination(t *testing.T) {
 
 	other := []AgentRow{{Name: "sdd-apply", Model: "sonnet"}}
 	m = m.WithAgents(m.ModelChoices(),
-		func() ([]AgentRow, error) { return other, nil },
-		func([]string, string) error { return nil })
+		func(int) ([]AgentRow, error) { return other, nil },
+		func(int, []string, string) error { return nil })
 
 	m = key(m, "tab")
 
@@ -450,8 +450,8 @@ func TestAFailedReloadKeepsTheRowsAndSaysSo(t *testing.T) {
 	m = openSelector(t, m)
 
 	m = m.WithAgents(m.ModelChoices(),
-		func() ([]AgentRow, error) { return nil, errors.New("unreadable") },
-		func([]string, string) error { return nil })
+		func(int) ([]AgentRow, error) { return nil, errors.New("unreadable") },
+		func(int, []string, string) error { return nil })
 	m = key(m, "tab")
 
 	if len(m.AgentRows()) != 3 {

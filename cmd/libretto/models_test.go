@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/pausf/libretto-automata/internal/target"
 )
 
 // agent writes an agent into the repo and returns its path. Used as the source a
@@ -347,5 +349,34 @@ func TestModelsWithNoAgentsSaysSo(t *testing.T) {
 	}
 	if !strings.Contains(out, "no agents") {
 		t.Errorf("expected a plain statement that there are none:\n%s", out)
+	}
+}
+
+// The menu row answers "how much of this destination is still expensive". Counting a
+// directory the user is not looking at would make the one row that reports live state
+// report somebody else's.
+func TestMenuTallyCountsTheActiveTargetsAgents(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "sdd-apply", "haiku")
+	f.foreign(t, "jd-judge-a", "opus")
+
+	menu, _, err := panelData(f.Repo, f.Project, target.GlobalScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var models string
+	for _, item := range menu {
+		if item.Label == "models" {
+			models = item.Desc
+		}
+	}
+	if models == "" {
+		t.Fatal("no models row in the menu")
+	}
+	for _, want := range []string{"1 on haiku", "1 on opus"} {
+		if !strings.Contains(models, want) {
+			t.Errorf("tally = %q, want it to contain %q", models, want)
+		}
 	}
 }
