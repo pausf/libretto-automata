@@ -11,6 +11,26 @@ this package never reads the filesystem.
 The menu gains one entry. Choosing it replaces the menu with a **model selector** and
 `esc` brings the menu back.
 
+```
+  ❯ ▸ install     link the score into …/libretto-automata/.claude
+    ▸ uninstall   take it back out of …/libretto-automata/.claude
+    ▸ update      git pull · relink · report
+    ▸ status      21 linked · 2 missing
+    ▸ models      2 on haiku · 3 on session
+    ▸ doctor      diagnose the orchestra
+    ▸ prune       drop links whose source is gone
+```
+
+**The row carries live state, like every other row.** `status` does not say "show the
+status", it says `21 linked · 2 missing`. A `models` row reading "choose agent models"
+would be the one entry in the menu that describes itself instead of reporting — and the
+tally is the whole question the user opened the panel to answer: *how much of this is
+still running on the expensive model?*
+
+The tally counts agents by the model they declare, cheapest first, with undeclared ones
+as `session`. It refreshes after applying, through the `Refresh` callback that already
+exists for exactly this.
+
 The selector is a list of every agent, one row each: its name, the model it runs on
 today, and a mark.
 
@@ -70,6 +90,10 @@ reversible in one keystroke and `y/n` is for the destructive actions.
 
 - the menu entry opens the selector and `esc` returns to the menu
   Proof: internal/ui/models_test.go TestSelectorOpensFromTheMenuAndEscapeReturns
+- the menu row reports a tally of agents by model, not a description of itself
+  Proof: internal/ui/models_test.go TestMenuRowReportsTheModelTally
+- the tally refreshes after applying
+  Proof: internal/ui/models_test.go TestMenuRowTallyRefreshesAfterApplying
 - `space` marks and unmarks the row under the cursor
   Proof: internal/ui/models_test.go TestSpaceMarksAndUnmarksTheCurrentRow
 - `a` marks every row, and again clears every row
