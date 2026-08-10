@@ -272,6 +272,12 @@ Called when present, never required. `libretto doctor` reports them:
 - **caveman** — decides how much gets said. Compresses prose; ponytail compresses what
   gets built. No overlap.
 
+The eight-phase shape also owes a debt to reading
+[**odelrio/autopilot**](https://github.com/odelrio/autopilot) closely. Its discipline
+layer was better than anything here had: *verify before you claim*, *never weaken a
+failing test*, *capture output to a file because a pipe hides the exit code*. Those ideas
+are reimplemented in [`skills/evidence/`](skills/evidence/) in our own terms, not copied.
+
 ## Not managed here
 
 `CLAUDE.md` and `settings.json`. Other tooling rewrites regions of those files, so they
