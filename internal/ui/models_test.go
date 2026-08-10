@@ -163,8 +163,9 @@ func TestSpaceMarksAndUnmarksTheCurrentRow(t *testing.T) {
 	m, _ := selectorModel(t, threeAgents())
 	m = openSelector(t, m)
 
-	// The rows are grouped by model, so the first one is the lone opus agent — not
-	// the first name the fixture happens to list.
+	// The selector opens on the `all` row, so one down reaches the first agent — the
+	// lone opus one, because the rows are grouped by model.
+	m = key(m, "down")
 	m = key(m, " ")
 	if got := m.MarkedAgents(); len(got) != 1 || got[0] != "review-security" {
 		t.Fatalf("marked = %v, want [review-security]", got)
@@ -196,8 +197,10 @@ func TestChosenModelReachesOnlyTheMarkedRows(t *testing.T) {
 	m, rec := selectorModel(t, threeAgents())
 	m = openSelector(t, m)
 
-	// Grouped order: the opus row, then the two on the session default.
-	m = key(m, " ")    // review-security
+	// Past the `all` row, then the grouped order: the opus row, then the two on the
+	// session default.
+	m = key(m, "down") // review-security
+	m = key(m, " ")
 	m = key(m, "down") // review-design
 	m = key(m, " ")
 	m = key(m, "m")
@@ -275,6 +278,9 @@ func TestMarkIsLegibleWithoutColour(t *testing.T) {
 	forceTrueColor(t)
 	m, _ := selectorModel(t, threeAgents())
 	m = openSelector(t, m)
+	// One agent, not the `all` row — the screen has to show both states at once for
+	// this to prove anything.
+	m = key(m, "down")
 	m = key(m, " ")
 
 	view := strip(m.View())
@@ -386,10 +392,12 @@ func TestGroupRuleSitsOnlyBetweenGroups(t *testing.T) {
 	forceTrueColor(t)
 	theme := darkTheme()
 
-	// threeAgents is one opus row and two session rows: two groups, one rule.
+	// threeAgents is one opus row and two session rows: two groups. Two rules — one
+	// under the `all` row, one between the groups. One rule per boundary, and the
+	// `all` row is a boundary.
 	mixed := theme.selector(Panel{Width: 90, Agents: sortRowsByModel(threeAgents(), catalogue())})
-	if got := rules(mixed); got != 1 {
-		t.Fatalf("two groups drew %d rules, want 1", got)
+	if got := rules(mixed); got != 2 {
+		t.Fatalf("two groups drew %d rules, want 2", got)
 	}
 	lines := strings.Split(strings.TrimRight(strip(mixed), "\n"), "\n")
 	if strings.HasPrefix(lines[len(lines)-1], "  ─") {
@@ -399,9 +407,88 @@ func TestGroupRuleSitsOnlyBetweenGroups(t *testing.T) {
 	uniform := theme.selector(Panel{Width: 90, Agents: []AgentRow{
 		{Name: "a", Model: "haiku"}, {Name: "b", Model: "haiku"},
 	}})
-	// A division of nothing is not a division.
-	if got := rules(uniform); got != 0 {
-		t.Fatalf("one group drew %d rules, want none", got)
+	// Only the `all` row's rule survives: a division of nothing is not a division.
+	if got := rules(uniform); got != 1 {
+		t.Fatalf("one group drew %d rules, want just the all row's", got)
+	}
+}
+
+// Sorted, threeAgents is review-security (opus) first, then review-design and
+// review-tests (session). Every cursor count below assumes that order.
+
+func TestSpaceOnTheAllRowMarksEveryAgent(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	// The selector opens on `all`, so the first space marks everything.
+	m = key(m, " ")
+	if got := m.MarkedAgents(); len(got) != 3 {
+		t.Fatalf("space on the all row marked %v, want all three", got)
+	}
+
+	m = key(m, " ")
+	if got := m.MarkedAgents(); len(got) != 0 {
+		t.Fatalf("space on the all row again left %v marked, want none", got)
+	}
+}
+
+func TestTheAllRowBoxFollowsEveryAgent(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = key(m, " ")    // every agent marked
+	m = key(m, "down") // onto the first agent
+	m = key(m, " ")    // unmark it
+
+	first := strings.Split(strip(darkTheme().selector(m.panel)), "\n")[0]
+	if strings.Contains(first, "[x]") {
+		t.Fatalf("the all row still reads %q with an agent unmarked", first)
+	}
+}
+
+func TestTheAllRowIsNeverAppliedAsAnAgent(t *testing.T) {
+	m, rec := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = key(m, " ") // cursor on all: mark everything
+	m = key(m, "m") // open the catalogue from the all row
+	m = chooseModel(t, m, "haiku")
+
+	for _, n := range rec.names {
+		if n == "all" {
+			t.Fatal("the all row reached ApplyModel as an agent name")
+		}
+	}
+	if len(rec.names) != 3 {
+		t.Fatalf("applied to %v, want the three agents", rec.names)
+	}
+}
+
+// The all row means screen position and agent index stop being the same number.
+// Getting that offset wrong marks the neighbouring agent and says nothing.
+func TestTheCursorMarksTheRowItPointsAt(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = key(m, "down") // all -> review-security
+	m = key(m, "down") // -> review-design
+	m = key(m, " ")
+
+	got := m.MarkedAgents()
+	if len(got) != 1 || got[0] != "review-design" {
+		t.Fatalf("marked %v, want [review-design] — the all row shifted the cursor", got)
+	}
+}
+
+func TestTheAllRowIsLegibleWithoutColour(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+	m = key(m, " ")
+
+	if plain := strip(m.View()); !strings.Contains(plain, "[x] all") {
+		t.Fatalf("the all row is not legible without colour:\n%s", plain)
 	}
 }
 

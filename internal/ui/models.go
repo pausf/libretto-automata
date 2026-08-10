@@ -17,6 +17,17 @@ import (
 // action. Named once, so the menu and the dispatch cannot drift apart.
 const modelsAction = "models"
 
+// allRow is the cursor position of the `all` row, which sits above every group.
+//
+// The consequence is that screen position and agent index stop being the same number:
+// agent i is at cursor i+1. Every read of p.Agents from the cursor goes through
+// AgentCursor-1, and getting that wrong marks the neighbouring agent silently — which
+// is why it has a test of its own.
+const allRow = 0
+
+// selectorRows is how many rows the cursor can reach: the agents, plus `all`.
+func selectorRows(p Panel) int { return len(p.Agents) + 1 }
+
 // AgentRow is one agent in the selector: what it is called, what it runs on, and
 // whether the user has marked it.
 type AgentRow struct {
@@ -175,31 +186,30 @@ func (m Model) updateSelector(k string) (Model, bool) {
 		return m, true
 
 	case "up", "k":
-		m.panel.AgentCursor = wrap(m.panel.AgentCursor-1, len(m.panel.Agents))
+		m.panel.AgentCursor = wrap(m.panel.AgentCursor-1, selectorRows(m.panel))
 		return m, true
 
 	case "down", "j":
-		m.panel.AgentCursor = wrap(m.panel.AgentCursor+1, len(m.panel.Agents))
+		m.panel.AgentCursor = wrap(m.panel.AgentCursor+1, selectorRows(m.panel))
 		return m, true
 
 	case " ":
-		if len(m.panel.Agents) > 0 {
-			rows := append([]AgentRow(nil), m.panel.Agents...)
-			rows[m.panel.AgentCursor].Marked = !rows[m.panel.AgentCursor].Marked
-			m.panel.Agents = rows
+		if len(m.panel.Agents) == 0 {
+			return m, true
 		}
-		return m, true
-
-	// Marking all and clearing all are the same key. One that only ever adds
-	// leaves no way back but pressing space once per row.
-	case "a":
-		marking := len(m.MarkedAgents()) < len(m.panel.Agents)
+		if m.panel.AgentCursor == allRow {
+			return m.markAll(), true
+		}
 		rows := append([]AgentRow(nil), m.panel.Agents...)
-		for i := range rows {
-			rows[i].Marked = marking
-		}
+		rows[m.panel.AgentCursor-1].Marked = !rows[m.panel.AgentCursor-1].Marked
 		m.panel.Agents = rows
 		return m, true
+
+	// The key and the row are one behaviour, so they are one function. Two copies
+	// would drift, and the drift would be a row and a key disagreeing about what
+	// "all" means.
+	case "a":
+		return m.markAll(), true
 
 	case "m", "enter":
 		if len(m.MarkedAgents()) == 0 {
@@ -210,6 +220,20 @@ func (m Model) updateSelector(k string) (Model, bool) {
 		return m, true
 	}
 	return m, true
+}
+
+// markAll marks every row, or clears them when they are already all marked.
+//
+// One gesture both ways: a control that only ever adds leaves no way back but
+// pressing space once per row.
+func (m Model) markAll() Model {
+	marking := len(m.MarkedAgents()) < len(m.panel.Agents)
+	rows := append([]AgentRow(nil), m.panel.Agents...)
+	for i := range rows {
+		rows[i].Marked = marking
+	}
+	m.panel.Agents = rows
+	return m
 }
 
 // applyChosenModel sends the marked set and the chosen model to the caller.
@@ -304,14 +328,31 @@ func (t Theme) selector(p Panel) string {
 
 	cw := ContentWidth(p.Width)
 
-	rows := make([]string, 0, len(p.Agents)+len(p.ModelChoices)+2)
+	rows := make([]string, 0, len(p.Agents)+len(p.ModelChoices)+4)
+
+	// The `all` row is a control, not an agent. Its box says what is true of the set
+	// below it — `[x]` only when every row is marked, because a master checkbox that
+	// stays ticked after one row is cleared is a checkbox that lies.
+	allBox := "[ ]"
+	if countMarked(p.Agents) == len(p.Agents) {
+		allBox = "[x]"
+	}
+	allColour, allCursor := t.Steel, " "
+	if p.AgentCursor == allRow && !p.ChoosingModel {
+		allColour, allCursor = t.Gold, "❯"
+	}
+	rows = append(rows,
+		"  "+Fg(allColour).Render(allCursor+" "+allBox+" all"),
+		t.groupRule(cw),
+	)
+
 	for i, a := range p.Agents {
 		if i > 0 && a.Model != p.Agents[i-1].Model {
 			rows = append(rows, t.groupRule(cw))
 		}
 
 		colour, cursor := t.Steel, " "
-		if i == p.AgentCursor && !p.ChoosingModel {
+		if i+1 == p.AgentCursor && !p.ChoosingModel {
 			colour, cursor = t.Gold, "❯"
 		}
 
