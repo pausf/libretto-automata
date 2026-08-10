@@ -112,6 +112,20 @@ else
   ok 'no skill invokes an uninstalled path'
 fi
 
+printf '\n── skills never hardcode the install layout ──\n'
+# A skill naming its tools by an absolute install path works only in the layout it
+# was written in. install --project puts the payload under <project>/.claude, and
+# the skill breaks for exactly the users who chose that. Tools are referenced
+# relative to the skill's own base directory, which every invocation announces.
+layout=$(rg -n '~/\.claude/' skills/ 2>/dev/null || true)
+if [ -n "$layout" ]; then
+  while IFS= read -r hit; do
+    fail "absolute install path: $hit"
+  done <<< "$layout"
+else
+  ok 'no ~/.claude/ absolute paths in skills/'
+fi
+
 printf '\n── referenced paths exist ──\n'
 # docs/specs/ and docs/superpowers/ are conventions for the *target* project, not
 # paths in this repository. Everything else referenced here must exist here.

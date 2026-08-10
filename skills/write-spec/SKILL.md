@@ -4,7 +4,7 @@ description: "Trigger: a task has been read and needs a specification; writing o
 license: MIT
 metadata:
   author: pausf
-  version: "1.1"
+  version: "1.2"
 ---
 
 ## What this does
@@ -306,7 +306,9 @@ Write citations in a form a tool can check:
 Proof: internal/link/apply_test.go TestApplyIsIdempotent
 ```
 
-`~/.claude/skills/record-work/spec-drift --anchors` resolves every one of them and fails on a citation
+`spec-drift --anchors` — the script beside the sibling `record-work` skill, at
+`<skill-base>/../record-work/spec-drift` from this skill's announced base
+directory — resolves every one of them and fails on a citation
 whose file or whose **test** is absent. The test name is the part that matters: a
 file-level check passes an invented test name as long as some file sits at that
 path, which is precisely the fabrication the anchor exists to prevent. It caught
@@ -394,7 +396,8 @@ not several changes racing each other.
 
 ### If the project already has a convention
 
-Whatever exists wins. `~/.claude/skills/record-work/spec-drift` looks for consolidated specs under
+Whatever exists wins. `spec-drift` (at `<skill-base>/../record-work/spec-drift`,
+next to the sibling `record-work` skill) looks for consolidated specs under
 `.agents/specs`, `specs`, `openspec`, `docs/specs`, `spec` — in that order — plus a
 single-file `docs/SPEC.md`, and for changes under `.agents/changes`, `changes`,
 `openspec/changes`.

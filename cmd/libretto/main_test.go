@@ -255,6 +255,21 @@ func TestOutputNamesTheInvokedCommand(t *testing.T) {
 
 // ── prerequisites are informational ──────────────────────────────────────────
 
+// rg and jq are what the payload's own gates run on — spec-drift asks every
+// question through rg, find-work parses jira through jq. A doctor that omits them
+// leaves the silent-false-negative machine looking healthy.
+func TestPrerequisitesIncludeTheGateTools(t *testing.T) {
+	names := map[string]bool{}
+	for _, p := range prerequisites() {
+		names[p.Name] = true
+	}
+	for _, want := range []string{"rg", "jq"} {
+		if !names[want] {
+			t.Errorf("prerequisites() missing %q", want)
+		}
+	}
+}
+
 // None of the prerequisites is required, so their absence must never reach the
 // exit code. Failing on an optional absence trains people to ignore the section.
 func TestPrerequisitesDoNotAffectTheExitCode(t *testing.T) {

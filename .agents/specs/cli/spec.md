@@ -319,6 +319,11 @@ typing has gaps in it; the harness has to as well.
 - **the prerequisite report never changes the exit code** — with an empty `PATH` and an
   empty home, `doctor` still exits zero on a correct tree
   Proof: cmd/libretto/main_test.go TestPrerequisitesDoNotAffectTheExitCode
+- **the report includes the gate tools** — `rg` and `jq`, each attributed to the skill
+  that runs on it, with its install line. The payload's own gates ask their questions
+  through them, and a doctor that omits them leaves a silent false negative looking
+  healthy.
+  Proof: cmd/libretto/main_test.go TestPrerequisitesIncludeTheGateTools
 - a companion counts as present in all four places it can legitimately live
   Proof: cmd/libretto/main_test.go TestCompanionFoundWhereverItLegitimatelyLives
 - an absent companion is reported absent

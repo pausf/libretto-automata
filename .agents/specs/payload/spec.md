@@ -264,6 +264,11 @@ the copy stays comparable with upstream.
   Proof: scripts/check-payload
 - **no skill invokes a path that does not get installed**
   Proof: scripts/check-payload
+- **no skill hardcodes the install layout.** A `~/.claude/` path is only true under
+  `install --global`; a skill's tools resolve from its own base directory, which every
+  invocation announces — `record-work` reaches `spec-drift` as its sibling, `write-spec`
+  hops to `../record-work/`. Both layouts keep skills side by side.
+  Proof: scripts/check-payload
 - glob matching, capability derivation and citation extraction behave
   Proof: skills/record-work/spec-drift --self-test
 - **an anchor inside a fenced code block is an illustration, not a declaration.** Any
@@ -277,6 +282,12 @@ the copy stays comparable with upstream.
   false negative in a checker is worse than no checker.
   Proof: skills/record-work/spec-drift --self-test
 - **an invented test name is rejected rather than accepted**
+  Proof: skills/record-work/spec-drift --self-test
+- **spec-drift without rg refuses loudly.** Every question it asks goes through rg;
+  missing, each match came back empty and default mode exited 0 having checked
+  nothing. Now: exit 2 on stderr naming the tool, distinct from `--anchors`' failure
+  exit 1. Drift findings keep exiting 0 — warn-never-block is about findings, not
+  about being unable to look.
   Proof: skills/record-work/spec-drift --self-test
 - every `Proof:` citation in every spec resolves, file and test name
   Proof: skills/record-work/spec-drift --anchors
