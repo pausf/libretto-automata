@@ -21,7 +21,7 @@ state exactly as it found it.
   original branch is restored — always, including when the review itself fails
 - a dirty working tree stops the fallback before any checkout: the state is reported,
   never stashed or discarded on the user's behalf
-- the review runs as **three lenses over one frozen diff**, each a fresh subagent
+- the review runs as **five lenses over one frozen diff**, each a fresh subagent
   with none of the session's context, launched in parallel:
   - **intent** — does the diff do what the MR says it does: missing requirements,
     scope creep, implemented-but-wrong; every finding quotes the MR's stated
@@ -34,10 +34,17 @@ state exactly as it found it.
   - **design** — the `review-design` skill: YAGNI, KISS, SOLID and code smells as
     labelled judgment calls; the reviewed project's own conventions override the
     baseline
+  - **reliability** — the `review-reliability` skill: what breaks at runtime —
+    logic errors, edge cases, races, unbounded work, leaked resources, error paths
+    that lose data; every finding names the input or state that triggers it, and
+    the report closes by naming what could not be verified
+  - **tests** — the `review-tests` skill: does the change carry its proof, and did
+    any existing proof get quietly weakened — skips added, assertions broadened,
+    invariant tests deleted; test-tampering findings are always severe
 - lens reports are relayed per lens, attributed and unedited — never merged or
   reranked against each other; one lens passing must not mask another failing
-- `review-security` and `review-design` are standalone skills, each usable on any
-  diff without `review-project`
+- the lens skills (`review-security`, `review-design`, `review-reliability`,
+  `review-tests`) are standalone, each usable on any diff without `review-project`
 - the review reports and never blocks, edits, commits or pushes in the reviewed
   repository
 
@@ -94,12 +101,13 @@ every exit path.
 - **"Too large" stays a judgment** — inherited from the payload spec's "no flag for
   how big a change is". Signals named under scope boundaries.
 - **The reviewer reports and never blocks** — inherited from the review seam.
-- **Three lenses, not one reviewer and not N copies** — settled by the user
-  2026-08-10, after reviewing published review skills. The payload's "one reviewer,
-  not a panel" stands for the internal seam and anticipated exactly this: lenses are
-  a spec change, and this is that change. Diversity comes from distinct briefs
-  (intent, security, design), never from re-running one brief twice — two runs of
-  the same model over the same diff with the same brief are correlation.
+- **Lenses, not one reviewer and not N copies** — settled by the user 2026-08-10,
+  after reviewing published review skills; extended the same day from three to five
+  (reliability and tests). The payload's "one reviewer, not a panel" stands for the
+  internal seam and anticipated exactly this: lenses are a spec change, and this is
+  that change. Diversity comes from distinct briefs (intent, security, design,
+  reliability, tests), never from re-running one brief twice — two runs of the same
+  model over the same diff with the same brief are correlation.
 - **Ideas taken, text not copied** — the lens skills draw on published review
   skills (confidence-gated security findings à la Sentry, non-reranked axes à la
   Pocock, judgment-call principles à la code-quality-principles) and are written
@@ -113,6 +121,9 @@ every exit path.
 - [x] payload spec delta: `libretto-review` joins the outcomes list; capability spec
       `review-project` created on landing
 - [x] `skills/review-security/SKILL.md` — the security lens, standalone
+- [ ] `skills/review-reliability/SKILL.md` — the runtime-bugs lens, standalone
+- [ ] `skills/review-tests/SKILL.md` — the proof lens, standalone
+- [ ] `review-project` step 5 wired for five lenses
 - [x] `skills/review-design/SKILL.md` — the design lens, standalone
 - [x] `review-project` step 5–6 rewritten: freeze the diff, three lenses in
       parallel, relay per lens without reranking

@@ -1,6 +1,6 @@
 ---
 name: review-project
-description: "Trigger: a GitHub or GitLab PR/MR URL to review in a repository already cloned on this machine. Prepares an isolated workspace — a worktree by default, a branch switch with guaranteed restore when the project is too large — runs three fresh review lenses (intent, security, design) over one frozen diff, and relays their findings per lens. Reports, never blocks."
+description: "Trigger: a GitHub or GitLab PR/MR URL to review in a repository already cloned on this machine. Prepares an isolated workspace — a worktree by default, a branch switch with guaranteed restore when the project is too large — runs five fresh review lenses (intent, security, design, reliability, tests) over one frozen diff, and relays their findings per lens. Reports, never blocks."
 license: MIT
 metadata:
   author: pausf
@@ -10,10 +10,11 @@ metadata:
 ## What this does
 
 Review somebody else's change without disturbing your own: take a PR/MR URL, put its
-head in a workspace that costs the user nothing, hand one frozen diff to three
+head in a workspace that costs the user nothing, hand one frozen diff to five
 review lenses that carry none of this session — **intent** (does it do what the MR
-says?), **security** (`review-security`) and **design** (`review-design`) — and
-bring the findings back, per lens.
+says?), **security** (`review-security`), **design** (`review-design`),
+**reliability** (`review-reliability`) and **tests** (`review-tests`) — and bring
+the findings back, per lens.
 
 `evidence` governs here: nothing reported that was not observed, every command whose
 exit code decides the next step run in the foreground and read, findings relayed as
@@ -147,40 +148,46 @@ git checkout <recorded-branch>
 A fallback that can leave the user stranded on a branch they never chose has lost
 the thing this skill exists to protect.
 
-## Step 5 — Freeze the diff, launch the three lenses
+## Step 5 — Freeze the diff, launch the lenses
 
 **Freeze once, before any lens runs**: the diff range
 `origin/<baseRefName>...origin/<headRefName>` and the commit list. Every lens
-reviews those exact bytes; three lenses over three readings of a moving target are
-three reviews of different things.
+reviews those exact bytes; five lenses over five readings of a moving target are
+five reviews of different things.
 
-Three fresh subagents, in parallel, each carrying one brief and none of this
+Five fresh subagents, in parallel, each carrying one brief and none of this
 conversation. Telling a reviewer what to expect is priming the witness, so each
 gets the workspace path, the frozen range, and its brief — nothing else:
 
 - **intent** — the PR/MR title and description, and one question: does the diff do
   what it says? Report requirements stated but missing or partial, behaviour
   present but never asked for, and requirements implemented but implemented wrong —
-  each finding quoting the stated intent it fails.
+  each finding quoting the stated intent it fails. If the project has a test
+  suite, this lens runs it against the head and reports what it observed, never
+  what the MR claims.
 - **security** — apply the `review-security` skill to the frozen range.
 - **design** — apply the `review-design` skill to the frozen range.
+- **reliability** — apply the `review-reliability` skill to the frozen range.
+- **tests** — apply the `review-tests` skill to the frozen range.
+
+The diversity is the briefs, not the repetition — five distinct questions over one
+diff, never the same question asked five times.
 
 Each lens reviews the project on its own terms — external repository, so the
 absence of a spec directory is not a finding; conventions the project writes down
-override any baseline. If the project has a test suite, the intent lens runs it
-against the head and reports what it observed, never what the MR claims.
+override any baseline.
 
 No lens edits, commits or pushes in the reviewed repository.
 
 **Silence is not a clean review.** A lens that died or returned nothing did not
 run — say so and relaunch that lens, once. Twice is a stop, reported as that lens
-missing, never papered over by the other two.
+missing, never papered over by the others.
 
 ## Step 6 — Relay per lens, then restore
 
-The three reports stay three, attributed and unedited — never merged, never
+The five reports stay five, attributed and unedited — never merged, never
 reranked against each other, never filtered by "that one is minor". A change can
-pass two lenses and fail the third, and one lens passing must not mask another
+pass four lenses and fail the fifth, and one lens passing must not mask another
 failing. A lens's explicit "nothing found" is a statement, not an absence.
 
 The review reports; it never blocks anything. Posting it to the forge is the user's

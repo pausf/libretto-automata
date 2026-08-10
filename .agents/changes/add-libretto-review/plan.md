@@ -103,3 +103,22 @@ modify `skills/review-project/SKILL.md` steps 5–6.
 - [x] **4.4** all six gates green, outputs read (gofmt empty, vet 0, tests 0,
       check-payload ok incl. both new skills, self-test ok, 168 anchors resolve)
 - [x] **4.5** committed: a625b87 `feat(payload): review lenses — intent, security, design`
+
+### Task 5: two more lenses — reliability and tests (scope added by the user 2026-08-10)
+
+Depends on: Task 4 (extends the lens set).
+From spec: task breakdown items for `review-reliability`, `review-tests`, and the
+five-lens wiring. Closes: check-payload criterion.
+
+**Files:** create `skills/review-reliability/SKILL.md`,
+`skills/review-tests/SKILL.md`; modify `skills/review-project/SKILL.md` step 5.
+
+- reliability lens: trigger-traced runtime bugs (races, unbounded work, leaked
+  resources, data-losing error paths), severity by impact, blind spots named
+- tests lens: change carries its proof; invariant erosion (skips added, assertions
+  loosened, tests deleted) always severe until the MR's intent explains it
+- [ ] **5.1** write `skills/review-reliability/SKILL.md`
+- [ ] **5.2** write `skills/review-tests/SKILL.md`
+- [ ] **5.3** wire five lenses in review-project step 5
+- [ ] **5.4** run all six gates foreground, exit codes read
+- [ ] **5.5** commit
