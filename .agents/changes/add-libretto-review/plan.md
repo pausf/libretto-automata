@@ -76,6 +76,7 @@ resolve).
 outcomes list, one line); the `review-project` capability spec itself is created by
 phase 8 from this change's delta, not here.
 
-- [ ] **3.1** add the outcome line to the payload spec
-- [ ] **3.2** run all six gates foreground, exit codes read
-- [ ] **3.3** commit: `docs(spec): record libretto-review in payload outcomes`
+- [x] **3.1** add the outcome line to the payload spec
+- [x] **3.2** all six gates green, foreground, outputs read (gofmt empty, vet 0,
+      tests 0, check-payload passed, self-test passed, 168 anchors resolve)
+- [x] **3.3** committed: c4dd023 `docs(spec): record libretto-review in payload outcomes`
