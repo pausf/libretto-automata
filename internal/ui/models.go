@@ -1,0 +1,325 @@
+package ui
+
+import (
+	"sort"
+	"strconv"
+	"strings"
+)
+
+// The model selector: the panel's second screen.
+//
+// Everything here obeys the rule the rest of the package already lives by — no
+// filesystem, no knowledge of what an agent file is. Rows come in through a
+// callback and the chosen model goes out through another, exactly as Refresh and
+// Runner already do. That is what keeps the panel testable by calling Update.
+
+// modelsAction is the menu label that opens the selector rather than running an
+// action. Named once, so the menu and the dispatch cannot drift apart.
+const modelsAction = "models"
+
+// AgentRow is one agent in the selector: what it is called, what it runs on, and
+// whether the user has marked it.
+type AgentRow struct {
+	Name   string
+	Model  string // empty means the session's model
+	Marked bool
+}
+
+// ModelChoice is one entry of the catalogue the `m` key opens.
+//
+// The catalogue is supplied rather than known. This package deciding which models
+// exist would put the list in two places, and the copy nobody edited would be the
+// one on screen.
+type ModelChoice struct {
+	Name  string // empty is the session's model — declaring nothing
+	Label string
+}
+
+// ListAgents returns the agents and their current models.
+type ListAgents func() ([]AgentRow, error)
+
+// ApplyModel declares one model on a set of agents.
+type ApplyModel func(names []string, model string) error
+
+// WithAgents wires the selector. Without it the menu row refuses, the same way an
+// unwired action does.
+func (m Model) WithAgents(choices []ModelChoice, list ListAgents, apply ApplyModel) Model {
+	m.modelChoices = choices
+	m.listAgents = list
+	m.applyModel = apply
+	return m
+}
+
+// InSelector reports whether the second screen is up.
+func (m Model) InSelector() bool { return m.panel.InSelector }
+
+// ChoosingModel reports whether the catalogue is open over the selector.
+func (m Model) ChoosingModel() bool { return m.panel.ChoosingModel }
+
+// AgentRows exposes the rows for tests.
+func (m Model) AgentRows() []AgentRow { return m.panel.Agents }
+
+// ModelChoices exposes the catalogue for tests.
+func (m Model) ModelChoices() []ModelChoice { return m.modelChoices }
+
+// Done reports whether the panel is quitting, so a test can tell "left the
+// selector" from "left the program".
+func (m Model) Done() bool { return m.done }
+
+// ChosenModelName is the catalogue entry under the cursor.
+func (m Model) ChosenModelName() string {
+	if len(m.modelChoices) == 0 {
+		return ""
+	}
+	return m.modelChoices[m.panel.ModelCursor].Name
+}
+
+// MarkedAgents lists the marked rows, in screen order.
+func (m Model) MarkedAgents() []string {
+	var out []string
+	for _, a := range m.panel.Agents {
+		if a.Marked {
+			out = append(out, a.Name)
+		}
+	}
+	return out
+}
+
+// openSelector loads the rows and shows the second screen.
+func (m Model) openSelector() Model {
+	if m.listAgents == nil || m.applyModel == nil {
+		m.notice = "models is not wired up yet"
+		return m
+	}
+
+	rows, err := m.listAgents()
+	if err != nil {
+		m.notice = "cannot read the agents: " + err.Error()
+		return m
+	}
+
+	m.panel.Agents = rows
+	m.panel.ModelChoices = m.modelChoices
+	m.panel.InSelector, m.panel.ChoosingModel = true, false
+	m.panel.AgentCursor, m.panel.ModelCursor = 0, 0
+	m.notice = "space mark · a all · m model · esc back"
+	return m
+}
+
+// updateSelector handles the second screen's keys.
+//
+// esc closes the catalogue if it is open, and otherwise returns to the menu. It
+// never quits: sharing one key between "go back" and "exit the program" is how
+// somebody loses the panel trying to back out of a screen.
+func (m Model) updateSelector(k string) (Model, bool) {
+	if m.panel.ChoosingModel {
+		switch k {
+		case "esc":
+			m.panel.ChoosingModel = false
+			return m, true
+		case "up", "k":
+			m.panel.ModelCursor = wrap(m.panel.ModelCursor-1, len(m.modelChoices))
+			return m, true
+		case "down", "j":
+			m.panel.ModelCursor = wrap(m.panel.ModelCursor+1, len(m.modelChoices))
+			return m, true
+		case "enter":
+			return m.applyChosenModel(), true
+		}
+		return m, true
+	}
+
+	switch k {
+	case "esc", "q":
+		m.panel.InSelector = false
+		m.panel.Agents = nil
+		m.notice = ""
+		return m, true
+
+	case "up", "k":
+		m.panel.AgentCursor = wrap(m.panel.AgentCursor-1, len(m.panel.Agents))
+		return m, true
+
+	case "down", "j":
+		m.panel.AgentCursor = wrap(m.panel.AgentCursor+1, len(m.panel.Agents))
+		return m, true
+
+	case " ":
+		if len(m.panel.Agents) > 0 {
+			rows := append([]AgentRow(nil), m.panel.Agents...)
+			rows[m.panel.AgentCursor].Marked = !rows[m.panel.AgentCursor].Marked
+			m.panel.Agents = rows
+		}
+		return m, true
+
+	// Marking all and clearing all are the same key. One that only ever adds
+	// leaves no way back but pressing space once per row.
+	case "a":
+		marking := len(m.MarkedAgents()) < len(m.panel.Agents)
+		rows := append([]AgentRow(nil), m.panel.Agents...)
+		for i := range rows {
+			rows[i].Marked = marking
+		}
+		m.panel.Agents = rows
+		return m, true
+
+	case "m", "enter":
+		if len(m.MarkedAgents()) == 0 {
+			m.notice = "nothing marked — space marks a row, a marks all"
+			return m, true
+		}
+		m.panel.ChoosingModel, m.panel.ModelCursor = true, 0
+		return m, true
+	}
+	return m, true
+}
+
+// applyChosenModel sends the marked set and the chosen model to the caller.
+//
+// A failure keeps the screen and says what went wrong. Throwing the user back to
+// the menu would hide the marks they would have to make again.
+func (m Model) applyChosenModel() Model {
+	names := m.MarkedAgents()
+	model := m.ChosenModelName()
+
+	m.panel.ChoosingModel = false
+
+	if err := m.applyModel(names, model); err != nil {
+		m.notice = "could not apply: " + err.Error()
+		return m
+	}
+
+	// Ask for the rows again rather than editing them here. A screen that patches
+	// its own state after a write is a second answer to what the files say, and the
+	// two disagree the first time a write half-succeeds.
+	if rows, err := m.listAgents(); err == nil {
+		marked := make(map[string]bool, len(names))
+		for _, n := range names {
+			marked[n] = true
+		}
+		for i := range rows {
+			rows[i].Marked = marked[rows[i].Name]
+		}
+		m.panel.Agents = rows
+	}
+
+	m.notice = strconv.Itoa(len(names)) + " agent(s) → " + describeModel(model)
+	if m.refresh != nil {
+		if menu, targets, err := m.refresh(m.activeScope()); err == nil {
+			m.panel.Menu, m.panel.Targets = menu, targets
+		}
+	}
+	return m
+}
+
+// describeModel renders a model for a human. The empty string is a state, and an
+// empty column would read as a bug.
+func describeModel(model string) string {
+	if model == "" {
+		return "(session)"
+	}
+	return model
+}
+
+// selector renders the second screen: one row per agent, and the catalogue over it
+// when the user is choosing.
+//
+// The mark is `[x]` / `[ ]` and gold, never gold alone. Colour is the signal that
+// disappears first — on a mono terminal, in a pipe, in a screenshot somebody
+// pasted into a ticket — and a marking UI whose marks vanish is worse than one
+// with no marks, because it still applies to them.
+func (t Theme) selector(p Panel) string {
+	if len(p.Agents) == 0 {
+		return "  " + Fg(t.Muted).Render("no agents in this repository")
+	}
+
+	rows := make([]string, 0, len(p.Agents)+len(p.ModelChoices)+2)
+	for i, a := range p.Agents {
+		colour, cursor := t.Steel, " "
+		if i == p.AgentCursor && !p.ChoosingModel {
+			colour, cursor = t.Gold, "❯"
+		}
+
+		box := "[ ]"
+		if a.Marked {
+			box = "[x]"
+		}
+		line := cursor + " " + box + " " + pad(a.Name, menuDescCol-menuLabelCol) + describeModel(a.Model)
+		rows = append(rows, "  "+Fg(colour).Render(line))
+	}
+
+	if p.ChoosingModel {
+		rows = append(rows, "", "  "+Fg(t.Muted).Render("model for "+strconv.Itoa(countMarked(p.Agents))+" marked:"))
+		for i, c := range p.ModelChoices {
+			colour, cursor := t.Steel, " "
+			if i == p.ModelCursor {
+				colour, cursor = t.Gold, "❯"
+			}
+			name := c.Name
+			if name == "" {
+				name = "default"
+			}
+			line := cursor + "     " + pad(name, menuDescCol-menuLabelCol) + c.Label
+			rows = append(rows, "  "+Fg(colour).Render(line))
+		}
+	}
+	return strings.Join(rows, "\n")
+}
+
+func countMarked(rows []AgentRow) int {
+	n := 0
+	for _, r := range rows {
+		if r.Marked {
+			n++
+		}
+	}
+	return n
+}
+
+// Tally summarises a set of agents by model, cheapest first, for the menu row.
+//
+// It lives here rather than in the caller because the caller would have to know the
+// rendering, and the menu row is a rendering. `order` is the catalogue order the
+// panel was given, which is already cheapest first.
+func Tally(rows []AgentRow, order []ModelChoice) string {
+	counts := make(map[string]int, len(rows))
+	for _, r := range rows {
+		counts[r.Model]++
+	}
+
+	// Catalogue order is cheapest first, but it opens with the session default —
+	// which is not a price, it is an unknown. It goes last, so the row reads as an
+	// answer to "how much of this is still expensive?" rather than starting with
+	// the one entry that cannot answer it.
+	rank := make(map[string]int, len(order))
+	for i, c := range order {
+		rank[c.Name] = i
+	}
+	rank[""] = len(order)
+
+	names := make([]string, 0, len(counts))
+	for name := range counts {
+		names = append(names, name)
+	}
+	sort.Slice(names, func(i, j int) bool {
+		ri, oki := rank[names[i]]
+		rj, okj := rank[names[j]]
+		if oki != okj {
+			return oki
+		}
+		if ri != rj {
+			return ri < rj
+		}
+		return names[i] < names[j]
+	})
+
+	parts := make([]string, 0, len(names))
+	for _, name := range names {
+		label := name
+		if label == "" {
+			label = "session"
+		}
+		parts = append(parts, strconv.Itoa(counts[name])+" on "+label)
+	}
+	return strings.Join(parts, " · ")
+}

@@ -19,6 +19,8 @@ plain command.
 | `prune` | show links whose source is gone; `--yes` removes them |
 | `uninstall` | show what this repo installed here; `--yes` removes it |
 | `preview` | print the panel once, no TUI |
+| `models` | list every agent with the model it runs on, read-only |
+| `models set <model> <agent>…` | write that model into each named agent; `--all` for every one |
 | `version`, `help` | say so |
 
 ### Scope: where it writes
@@ -41,6 +43,23 @@ left in place would reach `prune` and be read as a confirmation nobody gave.
 not say where it wrote is a run you have to reconstruct later.
 
 A command acts on exactly one scope. Nothing iterates destinations.
+
+**`models` is the one command whose scope does not decide where it writes.** An
+agent's model is one line in the repository's own `agents/*.md`, and both targets
+symlink to those files — a write through a symlink writes its destination, so the
+change is shared whichever flag was typed. `models set` therefore says so, once, at
+the moment it writes: a user who passed `--project` has every reason to expect a
+project-local effect, and leaving that expectation unchallenged is how a shared
+setting gets discovered by accident weeks later.
+
+What the flag *does* change is the listing. `models` marks every agent the repository
+has but the target does not, and **only `linked` counts**: a conflict is somebody
+else's file in our slot, and an agent whose slot is occupied does not reach that
+target however much the repository wishes it did.
+
+That clause shipped once with no criterion behind it and no code implementing it —
+both listings were byte-identical and the suite had no way to notice. It was caught in
+review, not by a gate. An outcome with no `Proof:` is a promise nothing keeps.
 
 **Where the project is, is resolved once per invocation and threaded down.** Two
 lookups give two answers that agree only by accident, and they did disagree — the
@@ -298,6 +317,35 @@ typing has gaps in it; the harness has to as well.
   Proof: cmd/libretto/scope_test.go TestPruneProjectScopeLeavesGlobalAlone
 - no flag means global
   Proof: cmd/libretto/scope_test.go TestDefaultScopeIsGlobal
+
+`models`:
+
+- it lists every agent with its current model and writes nothing
+  Proof: cmd/libretto/models_test.go TestModelsListsEveryAgentAndChangesNothing
+- an agent with no declared model is listed as running the session's
+  Proof: cmd/libretto/models_test.go TestModelsShowsDefaultForAnUndeclaredAgent
+- `set` applies one model to several named agents
+  Proof: cmd/libretto/models_test.go TestModelsSetAppliesToEveryNamedAgent
+- `set --all` reaches every agent
+  Proof: cmd/libretto/models_test.go TestModelsSetAllReachesEveryAgent
+- **`set` with no agents and no `--all` is an error and writes nothing** — a
+  destructive default that fires on a forgotten argument is how every agent on the
+  machine silently becomes the same model
+  Proof: cmd/libretto/models_test.go TestModelsSetWithoutAgentsIsAnError
+- an unknown model exits non-zero and writes nothing
+  Proof: cmd/libretto/models_test.go TestModelsSetRejectsAnUnknownModel
+- an unknown agent name exits non-zero and leaves the valid ones untouched
+  Proof: cmd/libretto/models_test.go TestModelsSetRejectsAnUnknownAgentAndWritesNothing
+- an agent the repository has but this target does not is marked as such
+  Proof: cmd/libretto/models_test.go TestModelsMarksAgentsThatDoNotReachThisScope
+- **the two scopes do not produce the same listing** — the flag changes something
+  Proof: cmd/libretto/models_test.go TestModelsListingDiffersBetweenScopes
+- writing under `--project` says the effect is not project-local
+  Proof: cmd/libretto/models_test.go TestModelsSetUnderProjectScopeSaysTheEffectIsShared
+- a repository with no agents says so rather than failing
+  Proof: cmd/libretto/models_test.go TestModelsWithNoAgentsSaysSo
+- piped `models` carries no escape codes
+  Proof: cmd/libretto/models_test.go TestModelsOutputHasNoEscapeCodes
 - scope flags never reach the subcommand
   Proof: cmd/libretto/scope_test.go TestScopeFlagsAreRemovedFromTheArguments
 - both flags at once is an error

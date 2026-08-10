@@ -10,9 +10,9 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-payload-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
 [![Jira CLI](https://img.shields.io/badge/Jira%20CLI-tracker-0052CC?logo=jira&logoColor=white)](https://github.com/ankitpokhrel/jira-cli)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-117%20passing-brightgreen.svg)](#gates)
+[![Tests](https://img.shields.io/badge/tests-221%20passing-brightgreen.svg)](#gates)
 
-<img src="docs/panel.svg" alt="The libretto panel: a menu with install, uninstall, update, status, doctor and prune, acting on a chosen destination — here ~/.claude with all 13 items linked" width="800">
+<img src="docs/panel.svg" alt="The libretto panel: a menu with install, uninstall, update, status, models, doctor and prune, acting on a chosen destination — here ~/.claude with all 26 items linked" width="800">
 
 *The panel — real terminal output, captured from the binary. `tab` switches where it acts.*
 
@@ -76,6 +76,34 @@ libretto install   # symlink every item into ~/.claude
 | `libretto prune` | show links whose source is gone — **changes nothing** |
 | `libretto prune --yes` | remove them |
 | `libretto preview` | print the panel once, no TUI |
+| `libretto models` | which model each agent runs on. Read-only. |
+| `libretto models set <model> <agent>…` | declare it; `--all` for every agent |
+
+### Choosing a model per agent
+
+Not every agent needs the same model. The review lenses that pattern-match over prose —
+design, tests — do the job on a cheap one; the lens looking for what an attacker can
+reach should not.
+
+```bash
+libretto models                                  # who runs on what
+libretto models set haiku review-design review-tests
+libretto models set default work-reviewer        # back to the session's model
+```
+
+The panel has the same thing behind its `models` row: mark agents with `space`, or all
+of them with `a`, pick a model with `m`. One gesture for the whole set, because making
+the prose lenses cheap is one decision, not four.
+
+The choice is written into `model:` in each agent's own frontmatter, **in this
+repository**. Both install scopes symlink to those files, so it takes effect for every
+project on the machine — `models set` says so when it writes. What `--global` and
+`--project` do change is the listing: an agent the repo has but that target does not is
+marked as such.
+
+`default` means no `model:` key at all — an absent key is already how the format says
+"whatever the session runs on", and two spellings of one state is a difference somebody
+eventually treats as meaningful.
 
 ### Where it installs
 
@@ -196,7 +224,7 @@ All six pass before any commit.
 ```bash
 gofmt -l .                                  # must print nothing
 go vet ./...
-go test ./... -count=1                      # 117 tests
+go test ./... -count=1                      # 221 tests
 scripts/check-payload                       # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test   # 17 checks
 skills/record-work/spec-drift --anchors     # 105 citations

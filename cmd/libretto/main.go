@@ -20,6 +20,7 @@ import (
 	"github.com/mattn/go-isatty"
 	"github.com/muesli/termenv"
 
+	"github.com/pausf/libretto-automata/internal/agentmodel"
 	"github.com/pausf/libretto-automata/internal/link"
 	"github.com/pausf/libretto-automata/internal/repo"
 	"github.com/pausf/libretto-automata/internal/target"
@@ -148,6 +149,8 @@ func run(args []string) error {
 		return uninstall(root, tg, args[1:])
 	case "update":
 		return update(root, tg)
+	case "models":
+		return models(root, tg, args[1:])
 	case "version", "-v", "--version":
 		fmt.Println("libretto-automata", version)
 		return nil
@@ -182,6 +185,15 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 		}
 		return runCaptured(action, root, target.Resolve(scopeOrder[dest], projectDir), confirm)
 	})
+
+	// The selector's two callbacks. Both close over the repo root and nothing else:
+	// the model lives in the repository's own agent files, so unlike the runner
+	// above there is no destination to get wrong.
+	model = model.WithAgents(
+		modelChoices(),
+		func() ([]ui.AgentRow, error) { return agentRows(root) },
+		func(names []string, m string) error { return agentmodel.Apply(root, names, m) },
+	)
 
 	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
 	return err
@@ -342,10 +354,55 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 		{Label: "uninstall", Desc: "take it back out of " + shorten(active.Root()), Enabled: true, Destructive: true},
 		{Label: "update", Desc: "git pull · relink · report", Enabled: true},
 		{Label: "status", Desc: summarise(overall), Enabled: true},
-		{Label: "doctor", Desc: "diagnose the orchestra", Enabled: true},
-		{Label: "prune", Desc: "drop links whose source is gone", Enabled: true, Destructive: true},
 	}
+
+	// Next to status, and reporting like it. "choose agent models" would be the one
+	// entry in the menu describing itself instead of saying something, and the
+	// tally is the question the screen exists to answer.
+	//
+	// A repo with no agents/ directory simply has no row. An entry that opens an
+	// empty screen is a promise the panel cannot keep.
+	if agents, err := agentRows(root); err == nil && len(agents) > 0 {
+		menu = append(menu, ui.MenuItem{
+			Label:   "models",
+			Desc:    ui.Tally(agents, modelChoices()),
+			Enabled: true,
+		})
+	}
+
+	menu = append(menu,
+		ui.MenuItem{Label: "doctor", Desc: "diagnose the orchestra", Enabled: true},
+		ui.MenuItem{Label: "prune", Desc: "drop links whose source is gone", Enabled: true, Destructive: true},
+	)
+
 	return menu, rows, nil
+}
+
+// agentRows adapts the agent package to the panel's row type.
+//
+// The adaptation lives here rather than in either package: internal/ui must not
+// learn what an agent file is, and internal/agentmodel must not learn what a panel
+// row is. One of them knowing about the other is how a package that promises to
+// stay off the filesystem stops being able to prove it.
+func agentRows(root string) ([]ui.AgentRow, error) {
+	agents, err := agentmodel.Agents(root)
+	if err != nil {
+		return nil, err
+	}
+	rows := make([]ui.AgentRow, 0, len(agents))
+	for _, a := range agents {
+		rows = append(rows, ui.AgentRow{Name: a.Name, Model: a.Model})
+	}
+	return rows, nil
+}
+
+func modelChoices() []ui.ModelChoice {
+	cat := agentmodel.Catalogue()
+	out := make([]ui.ModelChoice, 0, len(cat))
+	for _, m := range cat {
+		out = append(out, ui.ModelChoice{Name: m.Name, Label: m.Label})
+	}
+	return out
 }
 
 // pad widens s to n columns so the roots line up in the strip. It never truncates —
@@ -1012,6 +1069,8 @@ func usage() {
   %[2]s uninstall     show what this repo installed here, change nothing
   %[2]s uninstall --yes  remove it
   %[2]s preview       print the panel once, no TUI
+  %[2]s models        which model each agent runs on
+  %[2]s models set <model> <agent>…   declare it; --all for every agent
 
   --global, -g          act on ~/.claude (the default)
   --project, -p         act on <this directory>/.claude

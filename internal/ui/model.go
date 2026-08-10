@@ -29,6 +29,12 @@ type Model struct {
 	// "show me" a moment ago. `y` and `n` are an answer to something asked.
 	pending      string
 	pendingScope int
+
+	// The model selector's wiring. Callbacks rather than a dependency, so this
+	// package still cannot read a file — see models.go.
+	modelChoices []ModelChoice
+	listAgents   ListAgents
+	applyModel   ApplyModel
 }
 
 // Runner performs a menu action and returns its report, one line per row.
@@ -151,6 +157,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// The selector owns every key while it is up, including esc and q. Falling
+		// through to the menu's handlers would quit the panel on the key that means
+		// "go back one screen".
+		if m.panel.InSelector {
+			if msg.String() == "ctrl+c" {
+				m.done = true
+				return m, tea.Quit
+			}
+			next, _ := m.updateSelector(msg.String())
+			return next, nil
+		}
+
 		switch msg.String() {
 		case "q", "esc", "ctrl+c":
 			m.done = true
@@ -233,6 +251,11 @@ func (m Model) selectCurrent() (tea.Model, tea.Cmd) {
 	}
 	item := m.panel.Menu[m.panel.Selected]
 
+	// The one action that opens a screen instead of running something.
+	if item.Label == modelsAction {
+		return m.openSelector(), nil
+	}
+
 	if !item.Enabled {
 		m.notice, m.panel.Results = item.Label+" is not wired up yet", nil
 		return m, nil
@@ -304,6 +327,10 @@ func wrap(i, n int) int {
 	}
 	return ((i % n) + n) % n
 }
+
+// MenuItemForTest exposes one menu row, so a test can assert what it says rather
+// than scraping it back out of the rendered frame.
+func (m Model) MenuItemForTest(i int) MenuItem { return m.panel.Menu[i] }
 
 // SetSelectedForTest moves the cursor from outside the package. Tests in cmd need it
 // to reach a row without simulating keypresses to get there.

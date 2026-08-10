@@ -37,6 +37,7 @@ from being overwritten by other tooling that writes into the same directories.
 | [panel](../.agents/specs/panel/spec.md) | `internal/ui/**` | logo, palette, layout, menu |
 | [cli](../.agents/specs/cli/spec.md) | `cmd/libretto/**`, `install.sh` | the command surface, exit codes, environment |
 | [payload](../.agents/specs/payload/spec.md) | `skills/**`, `commands/**`, `agents/**`, `scripts/**` | the flow itself — the reason the project exists |
+| [agent-models](../.agents/specs/agent-models/spec.md) | `internal/agentmodel/**` | which model each payload agent runs on |
 | [review-project](../.agents/specs/review-project/spec.md) | `skills/review-*/**`, `agents/review-*.md`, `commands/libretto-review.md` | reviewing somebody else's PR/MR without disturbing your own state |
 
 The flow's own reasoning — its eight phases and why they are those — is
