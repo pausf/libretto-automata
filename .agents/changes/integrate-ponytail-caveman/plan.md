@@ -9,7 +9,7 @@ first time the gates see the work.
 
 ## Tasks
 
-- [ ] 1. vendor `skills/ponytail/` and `skills/ponytail-debt/` from
+- [x] 1. vendor `skills/ponytail/` and `skills/ponytail-debt/` from
       DietrichGebert/ponytail at the current upstream commit, unmodified, plus
       `LICENSE-ponytail`. Verify self-sufficiency: no reference outside each skill's
       directory — if `ponytail-debt` reaches outside itself, it is dropped, never
@@ -18,7 +18,7 @@ first time the gates see the work.
       Closes: spec criterion "frontmatter parses and name equals directory"
       (scripts/check-payload) for the ponytail pair.
 
-- [ ] 2. vendor `skills/caveman/` and `skills/caveman-commit/` from
+- [x] 2. vendor `skills/caveman/` and `skills/caveman-commit/` from
       JuliusBrussee/caveman at the current upstream commit, unmodified, plus
       `LICENSE-caveman`. Same self-sufficiency check, same drop-never-patch rule.
       Waits on: nothing. Independent of task 1.
