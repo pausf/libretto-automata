@@ -1,6 +1,6 @@
 # Review Project
 
-Governs: skills/review-project/** skills/review-security/** skills/review-design/** skills/review-reliability/** skills/review-tests/** agents/review-security.md agents/review-design.md agents/review-reliability.md agents/review-tests.md agents/review-intent.md commands/libretto-review.md
+Governs: skills/review-project/** skills/review-security/** skills/review-design/** skills/review-reliability/** skills/review-tests/** agents/review-lens-security.md agents/review-lens-design.md agents/review-lens-reliability.md agents/review-lens-tests.md agents/review-lens-intent.md commands/libretto-review.md
 
 Review somebody else's PR/MR without disturbing your own state.
 
@@ -35,13 +35,13 @@ exactly as it found it.
   own skill — restating it here is the second copy nobody edits
 - lenses launch as agents in `agents/`, never as general-purpose subagents, and each
   declares only the tools its lens uses: the four skill-backed lenses read and never
-  write, and `review-intent` alone carries `Bash`. A general-purpose subagent brings
+  write, and `review-lens-intent` alone carries `Bash`. A general-purpose subagent brings
   every tool schema and every installed skill's description into a review that touches
   four tools, and that overhead is paid once per lens before any of them reads a line
-- **five agents, one per lens.** `review-security`, `review-design`,
-  `review-reliability` and `review-tests` each apply one skill and each declare their
-  own `model:`; `review-intent` is separate for a different reason — different tools,
-  and no skill to delegate to.
+- **five agents, one per lens.** `review-lens-security`, `review-lens-design`,
+  `review-lens-reliability` and `review-lens-tests` each apply one skill and each
+  declare their own `model:`; `review-lens-intent` is separate for a different reason
+  — different tools, and no skill to delegate to.
 
   They were one `review-lens` agent with a parameter until each lens needed its own
   model. That design rested on the four differing in exactly one thing, which skill
@@ -53,6 +53,13 @@ exactly as it found it.
   The cost, accepted knowingly: four near-identical bodies that can drift apart. The
   ceiling — if they drift, or if a fifth lens arrives, generate them from one source at
   build time rather than hand-maintaining five copies
+- **the agents are `review-lens-*`; the skills they apply keep the plain names.**
+  `review-*` is a crowded namespace in a real `~/.claude` — the split gave the lenses
+  generic names and `review-reliability` hit an agent somebody already had, which
+  `install` reported and refused to touch. A name we do not own is a name we can never
+  install under. All five were renamed, not just the one that broke: the other three
+  were free by luck, and a family launched by one skill with two naming schemes is an
+  inconsistency somebody straightens later with less context
 - the four skill names are written in the orchestrating skill as
   `Skill(skill="review-security")` and its siblings — the form `scripts/check-payload`
   scans, so a renamed lens fails the gate rather than silently never running. That

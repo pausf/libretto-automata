@@ -52,7 +52,7 @@ libretto uninstall      # what this repo installed here; change nothing
 libretto uninstall --yes # take it back out
 libretto preview
 libretto models         # which model each agent runs on, read-only
-libretto models set haiku review-design review-tests   # --all for every agent
+libretto models set haiku review-lens-design review-lens-tests   # --all for every agent
 
 libretto install --project   # <cwd>/.claude instead of ~/.claude
 libretto install --global    # the default; both flags at once is an error

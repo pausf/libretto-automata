@@ -44,26 +44,37 @@ not say where it wrote is a run you have to reconstruct later.
 
 A command acts on exactly one scope. Nothing iterates destinations.
 
-**`models` is the one command whose scope does not decide where it writes.** An
-agent's model is one line in the repository's own `agents/*.md`, and both targets
-symlink to those files — a write through a symlink writes its destination, so the
-change is shared whichever flag was typed. `models set` therefore says so, once, at
-the moment it writes: a user who passed `--project` has every reason to expect a
-project-local effect, and leaving that expectation unchallenged is how a shared
-setting gets discovered by accident weeks later.
+**`models` acts on the agents directory of the selected target** — `~/.claude/agents`
+under `--global`, `<cwd>/.claude/agents` under `--project`. Every `*.md` there is
+listed, whether libretto created it or not.
 
-What the flag *does* change is the listing. `models` marks every agent the repository
-has but the target does not, and **only `linked` counts**: a conflict is somebody
-else's file in our slot, and an agent whose slot is occupied does not reach that
-target however much the repository wishes it did.
+An agent file in a target is one of two things, and they behave differently:
 
-That clause shipped once with no criterion behind it and no code implementing it —
-both listings were byte-identical and the suite had no way to notice. It was caught in
-review, not by a gate. An outcome with no `Proof:` is a promise nothing keeps.
+| The file is | Writing it affects | Marked |
+|---|---|---|
+| a symlink into this repository | **every project on the machine** — one file, many targets | `shared` |
+| a real file in that target | that target only | *(nothing)* |
 
-**Where the project is, is resolved once per invocation and threaded down.** Two
-lookups give two answers that agree only by accident, and they did disagree — the
-panel's strip read one root while the action wrote to another.
+The listing marks the shared ones, and `set` says which kind it just wrote.
+
+**`set` edits real files this tool did not create, and does so without asking.**
+Chosen over a per-write confirmation: the user's own agents are the point of the
+feature, and a prompt on every one of twenty-odd rows is a prompt people learn to
+dismiss. This is not `--force` by the back door — `AGENTS.md` forbids *overwriting*
+what the tool did not create, meaning replacing a foreign item with our symlink and
+destroying what was there. This replaces one frontmatter line, in a file the user
+named, at their request. `install` still refuses a conflict exactly as before.
+
+A target with no `agents/` directory says so and exits zero. A `*.md` there with no
+frontmatter is refused by name and **nothing in the set is written** — the
+all-or-nothing guarantee, written for this repository's own tidy files, now protects
+foreign ones.
+
+**An earlier version of this command read `<repo>/agents` regardless of scope**, and
+told every user their write was machine-wide. That was true while the subject was
+always the repository's own file. It listed seven agents installed nowhere on a
+machine holding twenty-two, and the blanket warning is now a per-row fact: saying it
+about a target-local write is the same class of error as the silence it replaced.
 
 ### The panel remembers its destination; nothing else does
 
@@ -320,13 +331,23 @@ typing has gaps in it; the harness has to as well.
 
 `models`:
 
-- it lists every agent with its current model and writes nothing
-  Proof: cmd/libretto/models_test.go TestModelsListsEveryAgentAndChangesNothing
+- the listing is the target's agents, not the repository's
+  Proof: cmd/libretto/models_test.go TestModelsListsTheTargetsAgents
+- **an agent the target has and the repository does not is listed and editable**
+  Proof: cmd/libretto/models_test.go TestModelsEditsAnAgentTheRepositoryDoesNotShip
+- a symlink into the repository is marked shared; a real file is not
+  Proof: cmd/libretto/models_test.go TestModelsMarksSharedAgents
+- writing a shared agent says the effect reaches every project
+  Proof: cmd/libretto/models_test.go TestModelsSetSaysWhenAWriteIsShared
+- **writing a target-local agent does not claim to be machine-wide**
+  Proof: cmd/libretto/models_test.go TestModelsSetDoesNotOverclaimALocalWrite
+- the two scopes list different agents
+  Proof: cmd/libretto/models_test.go TestModelsListingDiffersBetweenScopes
 - an agent with no declared model is listed as running the session's
   Proof: cmd/libretto/models_test.go TestModelsShowsDefaultForAnUndeclaredAgent
 - `set` applies one model to several named agents
   Proof: cmd/libretto/models_test.go TestModelsSetAppliesToEveryNamedAgent
-- `set --all` reaches every agent
+- `set --all` reaches every agent in the target
   Proof: cmd/libretto/models_test.go TestModelsSetAllReachesEveryAgent
 - **`set` with no agents and no `--all` is an error and writes nothing** — a
   destructive default that fires on a forgotten argument is how every agent on the
@@ -336,99 +357,9 @@ typing has gaps in it; the harness has to as well.
   Proof: cmd/libretto/models_test.go TestModelsSetRejectsAnUnknownModel
 - an unknown agent name exits non-zero and leaves the valid ones untouched
   Proof: cmd/libretto/models_test.go TestModelsSetRejectsAnUnknownAgentAndWritesNothing
-- an agent the repository has but this target does not is marked as such
-  Proof: cmd/libretto/models_test.go TestModelsMarksAgentsThatDoNotReachThisScope
-- **the two scopes do not produce the same listing** — the flag changes something
-  Proof: cmd/libretto/models_test.go TestModelsListingDiffersBetweenScopes
-- writing under `--project` says the effect is not project-local
-  Proof: cmd/libretto/models_test.go TestModelsSetUnderProjectScopeSaysTheEffectIsShared
-- a repository with no agents says so rather than failing
+- **a stray file with no frontmatter is refused and the whole set is left alone**
+  Proof: cmd/libretto/models_test.go TestModelsSetRefusesAStrayFileAndWritesNothing
+- a target with no agents directory says so and exits zero
   Proof: cmd/libretto/models_test.go TestModelsWithNoAgentsSaysSo
 - piped `models` carries no escape codes
   Proof: cmd/libretto/models_test.go TestModelsOutputHasNoEscapeCodes
-- scope flags never reach the subcommand
-  Proof: cmd/libretto/scope_test.go TestScopeFlagsAreRemovedFromTheArguments
-- both flags at once is an error
-  Proof: cmd/libretto/scope_test.go TestBothScopeFlagsIsAnError
-- repeating one flag is accepted
-  Proof: cmd/libretto/scope_test.go TestRepeatingTheSameScopeFlagIsFine
-- the output names the root it acted on
-  Proof: cmd/libretto/scope_test.go TestOutputNamesTheScopeRoot
-- **a long root is elided rather than tearing the frame**
-  Proof: cmd/libretto/scope_test.go TestShortenKeepsRootsInsideTheBudget
-- **the strip and the action agree on where the project is**
-  Proof: cmd/libretto/scope_test.go TestStripAndRunnerAgreeOnTheProjectRoot
-- **the capture returns lines and puts stdout back**
-  Proof: cmd/libretto/panelrun_test.go TestRunCapturedReturnsLinesAndRestoresStdout
-- **a failing action still returns what it printed**
-  Proof: cmd/libretto/panelrun_test.go TestRunCapturedKeepsOutputOnFailure
-- every enabled menu label has a dispatch case
-  Proof: cmd/libretto/scope_test.go TestEveryMenuLabelDispatches
-- **an unconfirmed prune removes nothing**
-  Proof: cmd/libretto/scope_test.go TestDispatchedPruneIsDry
-- **an unconfirmed uninstall removes nothing**
-  Proof: cmd/libretto/uninstall_test.go TestUninstallWithoutYesChangesNothing
-- `uninstall --yes` removes what the plan named
-  Proof: cmd/libretto/uninstall_test.go TestUninstallYesRemovesOurLinks
-- **it acts on one destination only**
-  Proof: cmd/libretto/uninstall_test.go TestUninstallProjectScopeLeavesGlobalAlone
-- **a conflict is kept, reported, and not an error on its own**
-  Proof: cmd/libretto/uninstall_test.go TestUninstallReportsConflicts
-- nothing of ours installed is a state, not an error
-  Proof: cmd/libretto/uninstall_test.go TestUninstallOnACleanDestinationSaysSo
-- **install then uninstall is a round trip**
-  Proof: cmd/libretto/uninstall_test.go TestInstallThenUninstallIsARoundTrip
-- a root inside the budget is left alone
-  Proof: cmd/libretto/scope_test.go TestShortenLeavesShortPathsAlone
-- the tally renders in a fixed order and omits zeros, so one situation gives one line
-  Proof: cmd/libretto/main_test.go TestSummarise
-
-The remembered destination:
-
-- **with nothing remembered, the panel opens on global**
-  Proof: cmd/libretto/remembered_test.go TestNothingRememberedOpensGlobal
-- what is written is what is read back, including a value padded by hand
-  Proof: cmd/libretto/remembered_test.go TestRememberThenReadIsARoundTrip
-- **a remembered `project` is the scope the panel is opened with**
-  Proof: cmd/libretto/remembered_test.go TestTheRememberedDestinationOpensThePanel
-- **an explicit flag beats it, and does not overwrite it**
-  Proof: cmd/libretto/remembered_test.go TestAnExplicitFlagBeatsTheRememberedDestination
-- **a successful switch is remembered**
-  Proof: cmd/libretto/remembered_test.go TestSwitchingDestinationRemembersIt
-- **a switch whose refresh failed remembers nothing** — the file must agree with the
-  screen, and the screen did not move
-  Proof: cmd/libretto/remembered_test.go TestAFailedSwitchRemembersNothing
-- **garbage is global** — empty, whitespace, wrong case, a trailing word
-  Proof: cmd/libretto/remembered_test.go TestUnrecognisedPreferenceIsGlobal
-- **an unwritable destination does not fail the switch**
-  Proof: cmd/libretto/remembered_test.go TestAFailedWriteDoesNotFailTheSwitch
-- **subcommands ignore it** — a remembered `project` still leaves a flagless invocation
-  resolving to global
-  Proof: cmd/libretto/remembered_test.go TestSubcommandsIgnoreTheRememberedDestination
-- **`uninstall --yes` does not remove it**, because it was never ours to remove
-  Proof: cmd/libretto/remembered_test.go TestUninstallLeavesThePreferenceAlone
-
-**`CLAUDE_HOME` must point at a directory, even in a test that wants a write to fail.**
-Aimed at a regular file it breaks `panelData` too — that reads the target's `skills/` —
-so the whole refresh errors and the test proves the opposite of its criterion. It did:
-`an unwritable preference failed the switch: open …/not-a-directory/skills: not a
-directory`. The isolating setup is a **read-only** root, plus an assertion that the write
-really was blocked, so a run as root fails loudly rather than passing for the wrong
-reason.
-
-**Two of these were mutation-checked.** Defaulting to the remembered value inside
-`scopeFlags` turns `TestSubcommandsIgnoreTheRememberedDestination` red; moving the write
-above the range check in `panelRefresh` turns `TestAFailedSwitchRemembersNothing` red.
-
-And the payload the CLI installs is checked statically:
-
-  Proof: scripts/check-payload
-
-**Two of these were mutation-checked rather than trusted.** Making `prune` always
-confirm, and dropping conflicts from the exit-code sum, each turned the matching test
-red. A test that has never been seen to fail is a test nobody has reason to believe.
-
-**Still not covered:** the panel itself under a TTY — which now includes the one line in
-`run` handing `openingScope`'s answer to `panelUI`; the decision is proven, the wiring is
-read in review. And `update`'s three git paths —
-those are `repo-sync`'s to prove, and its `Git` interface still has no fake.

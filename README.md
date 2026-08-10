@@ -87,7 +87,7 @@ reach should not.
 
 ```bash
 libretto models                                  # who runs on what
-libretto models set haiku review-design review-tests
+libretto models set haiku review-lens-design review-lens-tests
 libretto models set default work-reviewer        # back to the session's model
 ```
 
@@ -95,11 +95,13 @@ The panel has the same thing behind its `models` row: mark agents with `space`, 
 of them with `a`, pick a model with `m`. One gesture for the whole set, because making
 the prose lenses cheap is one decision, not four.
 
-The choice is written into `model:` in each agent's own frontmatter, **in this
-repository**. Both install scopes symlink to those files, so it takes effect for every
-project on the machine — `models set` says so when it writes. What `--global` and
-`--project` do change is the listing: an agent the repo has but that target does not is
-marked as such.
+`models` acts on **the agents of the destination you name** — `~/.claude/agents` under
+`--global`, `<cwd>/.claude/agents` under `--project`. Every agent there is listed and
+editable, not just the ones this repository ships.
+
+A row marked `shared` is a file this repository owns, reached from more than one
+destination: writing it changes every project on the machine. An unmarked row is a real
+file in that destination and changing it changes nothing else.
 
 `default` means no `model:` key at all — an absent key is already how the format says
 "whatever the session runs on", and two spellings of one state is a difference somebody
