@@ -1,13 +1,14 @@
-# Delta: add-libretto-review
+# Review Project
 
-Targets: review-project — a new capability; no existing spec covers reviewing an
-external project's PR/MR.
+Governs: skills/review-project/** skills/review-security/** skills/review-design/** skills/review-reliability/** skills/review-tests/** commands/libretto-review.md
+
+Review somebody else's PR/MR without disturbing your own state.
 
 ## Outcomes
 
-Installing this repository gives one more command, `libretto-review`, that takes a
-GitHub or GitLab PR/MR URL and reviews it in a workspace that leaves the user's own
-state exactly as it found it.
+Installing this repository gives one command, `libretto-review`, that takes a GitHub
+or GitLab PR/MR URL and reviews it in a workspace that leaves the user's repository
+exactly as it found it.
 
 - `commands/libretto-review.md` routes and never implements; the logic lives in one
   skill, `skills/review-project/`
@@ -50,9 +51,9 @@ state exactly as it found it.
 
 ## Scope boundaries
 
-**In:** the command, the skill, forge derivation, worktree lifecycle, the
-branch-switch fallback with state restoration, launching one reviewer subagent,
-relaying findings.
+**In:** the command, the orchestrating skill, the four lens skills, forge
+derivation, worktree lifecycle, the branch-switch fallback with state restoration,
+launching the lens subagents, relaying findings.
 
 **Out — named so it cannot be quietly added:**
 
@@ -63,13 +64,15 @@ relaying findings.
   signals — a build that needs unversioned files (this repo's own `Ask first` case),
   a dependency install too heavy to duplicate, or the user saying so.
 - reviewing against libretto specs. An external project has no `.agents/specs/`;
-  the reviewer reviews the diff on its own terms. If the project happens to have
-  specs, the reviewer may read them, but their absence is not a finding.
+  the lenses review the diff on its own terms. If the project happens to have
+  specs, a lens may read them, but their absence is not a finding.
 - posting the review to the forge. Findings come back to the conversation; leaving
   a comment on the PR/MR is the user's action, offered never assumed.
 - stashing. Deciding what to do with the user's uncommitted work is theirs.
-- a second reviewer, a fix loop, or acting on findings. Same standing as
-  `review-work`: report, stop.
+- a fix loop, or acting on findings. Same standing as `review-work`: report, stop.
+- more lenses. Accessibility, performance-as-its-own-lens and docs stay out until
+  real runs show a class of finding systematically escaping the five — a lens is
+  added from evidence, not from the catalogue.
 
 Never scoped out: the restore. A fallback that can leave the user on the wrong
 branch after a failure is data loss's neighbour — the original branch is restored on
@@ -77,19 +80,16 @@ every exit path.
 
 ## Constraints
 
-- a skill may only invoke what gets installed: every tool the skill needs ships in
-  `skills/review-project/` or is a documented external CLI (`git`, `gh`, `glab`,
-  `rg`, `jq`)
+- a skill may only invoke what gets installed: every tool these skills need ships
+  inside them or is a documented external CLI (`git`, `gh`, `glab`, `rg`, `jq`)
 - forge derivation is the recorded prior decision, ceiling included: substring on
   the URL, `github.com` → `gh`, `gitlab` → `glab`; a self-hosted forge on a neutral
   domain is out until an explicit setting exists
 - a missing forge CLI stops with its install line — never a hand-built API call,
   never the other CLI as fallback, never a token
-- frontmatter `name:` equals the directory (`review-project`) and the command
-  filename (`libretto-review`)
+- frontmatter `name:` equals each skill's directory and the command's filename
 - worktrees land outside the repository's working tree or in an ignored directory;
   removal uses `git worktree remove`, never a bare `rm` that could follow a symlink
-- release: this is a new capability — a minor bump, `v0.5.0`, tagged when it ships
 
 ## Prior decisions
 
@@ -112,21 +112,6 @@ every exit path.
   skills (confidence-gated security findings à la Sentry, non-reranked axes à la
   Pocock, judgment-call principles à la code-quality-principles) and are written
   in this payload's own terms.
-
-## Task breakdown
-
-- [x] `skills/review-project/SKILL.md` — URL parsing, forge derivation, clone
-      verification, worktree default, fallback with restore, reviewer launch, relay
-- [x] `commands/libretto-review.md` — routes to the skill, nothing else
-- [x] payload spec delta: `libretto-review` joins the outcomes list; capability spec
-      `review-project` created on landing
-- [x] `skills/review-security/SKILL.md` — the security lens, standalone
-- [x] `skills/review-design/SKILL.md` — the design lens, standalone
-- [x] `review-project` step 5–6 rewritten: freeze the diff, lenses in parallel,
-      relay per lens without reranking
-- [x] `skills/review-reliability/SKILL.md` — the runtime-bugs lens, standalone
-- [x] `skills/review-tests/SKILL.md` — the proof lens, standalone
-- [x] `review-project` step 5 wired for five lenses — the current state of step 5
 
 ## Verification criteria
 
