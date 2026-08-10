@@ -121,9 +121,9 @@ every exit path.
 - [x] payload spec delta: `libretto-review` joins the outcomes list; capability spec
       `review-project` created on landing
 - [x] `skills/review-security/SKILL.md` — the security lens, standalone
-- [ ] `skills/review-reliability/SKILL.md` — the runtime-bugs lens, standalone
-- [ ] `skills/review-tests/SKILL.md` — the proof lens, standalone
-- [ ] `review-project` step 5 wired for five lenses
+- [x] `skills/review-reliability/SKILL.md` — the runtime-bugs lens, standalone
+- [x] `skills/review-tests/SKILL.md` — the proof lens, standalone
+- [x] `review-project` step 5 wired for five lenses
 - [x] `skills/review-design/SKILL.md` — the design lens, standalone
 - [x] `review-project` step 5–6 rewritten: freeze the diff, three lenses in
       parallel, relay per lens without reranking

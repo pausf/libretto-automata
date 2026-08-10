@@ -117,8 +117,9 @@ five-lens wiring. Closes: check-payload criterion.
   resources, data-losing error paths), severity by impact, blind spots named
 - tests lens: change carries its proof; invariant erosion (skips added, assertions
   loosened, tests deleted) always severe until the MR's intent explains it
-- [ ] **5.1** write `skills/review-reliability/SKILL.md`
-- [ ] **5.2** write `skills/review-tests/SKILL.md`
-- [ ] **5.3** wire five lenses in review-project step 5
-- [ ] **5.4** run all six gates foreground, exit codes read
-- [ ] **5.5** commit
+- [x] **5.1** write `skills/review-reliability/SKILL.md`
+- [x] **5.2** write `skills/review-tests/SKILL.md`
+- [x] **5.3** wire five lenses in review-project step 5
+- [x] **5.4** all six gates green, outputs read (gofmt empty, vet 0, tests 0,
+      check-payload ok incl. both new skills, self-test ok, 168 anchors resolve)
+- [x] **5.5** committed: 06d46e4 `feat(payload): two more lenses — reliability and tests`
