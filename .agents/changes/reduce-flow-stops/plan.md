@@ -69,7 +69,9 @@ Phase 6 does not fan out. Serial, one writer, one commit per task.
       Apply the delta onto `.agents/specs/payload/spec.md` — the four-waits promise in
       Outcomes, the "a review that blocks, fixes or opines" boundary, the ceremony
       section, and the two prior decisions about the reviewer's standing. Fix
-      `.agents/specs/review-project/spec.md` line 112, whose analogy no longer holds.
+      `.agents/specs/review-project/spec.md` at **both** lines 112 and 157, which carry
+      the same now-false analogy. Also the standing rule at `payload` line 23 — asking no
+      longer holds at every phase, and a promise reversed is the reason this task exists.
       Delete `.agents/changes/reduce-flow-stops/`. One commit with the final code.
       From: Task breakdown · 7
       Closes: `skills/record-work/spec-drift --anchors`

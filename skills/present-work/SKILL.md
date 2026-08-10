@@ -31,10 +31,16 @@ where an unobserved result becomes a lie.
 - **what was deliberately left out, and the condition that brings it back.**
 
 And when `skills/review-work/` ran in the seam before this phase, a fourth: **the
-reviewer's verdict, attributed and unedited** — the proofs it ran and what it found,
-in its own section next to the account above. The builder's report and the
-reviewer's are two sources and stay two; merging them is how a finding gets
-softened into the prose it was questioning.
+reviewer's verdict, attributed and unedited** — the proofs it ran, what it found, and
+**what was done about each finding**, in its own section next to the account above.
+The builder's report and the reviewer's are two sources and stay two; merging them is
+how a finding gets softened into the prose it was questioning.
+
+By the time this phase runs, most of those findings are already fixed. **Report them
+anyway, with the repair beside each one** — fixed and re-run, or stopped after two
+attempts, or reported-not-fixed because the decision was not ours. A section showing
+only the repaired state hides that the builder got it wrong, and getting it wrong is
+the thing the seam exists to surface.
 
 ## The third one is the reason this phase exists
 

@@ -26,20 +26,41 @@ reviewer's findings and then fixes every one of them — the same pass, no quest
 new round trip — re-runs the proofs the fix touches, and hands phase 7 both the
 findings and what was done about each.
 
-**Phase 7 still says everything it says today.** What disappears is the *stop* after it,
-never a sentence of the report. The report and the commits land in the same turn.
+**Phase 7 still says everything it says today, plus one thing.** What disappears is the
+*stop* after it, never a sentence of the report. The report and the commits land in the
+same turn. The reviewer's section gains a repair beside each finding — fixed and re-run,
+stopped after two attempts, or reported-not-fixed.
+
+**Asking is bounded to before the plan, and this reverses a standing promise.** The
+payload today promises three standing rules that hold *at every phase*, and asking is one
+of them. After this change it holds at phases 1, 2 and 5 — where nothing has been built
+on the answer yet — and nowhere after. A question that arises in phase 6 or in the review
+seam becomes a **finding**: it reaches the phase 7 report with what was assumed in the
+meantime and what changes if the assumption is wrong, and the user meets it at phase 8
+with everything else.
+
+Without that bound the rest is decorative. "Ask whenever you genuinely need to" is
+defensible in every individual case and returns the flow to five, six, nine stops one
+reasonable exception at a time — which is the state being fixed. It is named here as a
+reversal rather than slipped in as a clarification, because the versioning table calls a
+removed promise a major concern and this is one.
 
 ## Scope boundaries
 
-**In:** `docs/FLOW.md`, `commands/libretto-flow.md`, and the four skills whose stop or
-standing changes — `find-work`, `review-work`, `present-work`, plus the payload spec
-that promises four waits. One line in the `review-project` spec that justifies its own
-no-fix rule by analogy to `review-work`, which no longer holds.
+**In:** `docs/FLOW.md`, `commands/libretto-flow.md`, and the skills whose stop or
+standing changes — `find-work`, `review-work`, `present-work`, and `work-reviewer`'s
+statement of why it never blocks, whose *reason* moves even though its rule and its tool
+grant do not. Plus the payload spec, which promises four waits and three standing rules
+holding at every phase. In `review-project`'s spec, **both** places that justify its
+no-fix rule by analogy to `review-work` — lines 112 and 157 — because an analogy fixed in
+one of two spots reads as a disagreement between them.
 
 **Out:**
 
-- **the reviewer becoming a writer.** `work-reviewer` stays read-only — `Read`, `Grep`,
-  `Glob`, `Bash` and nothing else. Its independence is the whole point of the seam, and
+- **the reviewer becoming a writer.** `work-reviewer` keeps the grant it already has —
+  `Read`, `Grep`, `Glob`, `Bash`, `Skill` — and gains nothing that writes. `Skill` is on
+  that list because the agent's first instruction is to invoke `evidence`; `Bash` because
+  running the proofs is its job. Neither writes. Its independence is the point of the seam, and
   an agent that fixes what it finds is grading its own repair. The fixing happens in
   `review-work`, after the verdict is in and attributed.
 - **`review-project` fixing anything.** It reviews somebody else's repository. Reporting
@@ -104,8 +125,12 @@ than not removing it, because whichever one the session happens to read wins.
 - [ ] 4 · `commands/libretto-flow.md` — the two remaining waits, and the review seam's
       new standing
 - [ ] 5 · `docs/FLOW.md` — the reasoning behind three stops instead of four-plus-one
-- [ ] 6 · `.agents/specs/review-project/spec.md` — the analogy that no longer holds
-- [ ] 7 · land the delta onto `.agents/specs/payload/spec.md` and delete the change
+- [ ] 6 · `.agents/specs/review-project/spec.md` — the analogy that no longer holds, at
+      **both** lines 112 and 157
+- [ ] 7 · land the delta onto `.agents/specs/payload/spec.md` — the four-waits promise,
+      the "a review that blocks, fixes or opines" boundary, the ceremony section, **the
+      standing rule that asking holds at every phase**, and the reviewer's standing — then
+      delete the change
 
 ## Verification criteria
 
