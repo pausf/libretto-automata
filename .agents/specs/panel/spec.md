@@ -117,11 +117,14 @@ One menu entry opens it and `esc` brings the menu back. It is a **replacement, n
 overlay**: two lists of rows on one frame, each with its own cursor, is two things to
 misread at a glance.
 
+The rows are **the active destination's agents** — the same set `models` lists under
+the same flag — and `tab` changes them.
+
 ```
-  ❯ [x] review-design        haiku
-    [x] review-tests         haiku
-    [ ] review-security      opus
-    [ ] spec-writer          (session)
+  ❯ [x] review-lens-design   haiku        shared
+    [x] sdd-apply            sonnet
+    [ ] review-risk          opus
+    [ ] jd-judge-a           (session)
 
     space mark · a all · m model · esc back
 ```
@@ -141,6 +144,16 @@ misread at a glance.
   tell the truth lies for as long as it is open.
 - **`esc` leaves the selector, never the program.** Sharing one key between "go back"
   and "exit" is how somebody loses the panel trying to back out of a screen.
+- **`shared` is a warning, not decoration.** A row whose file this repository owns is
+  reached from more than one destination: applying to it changes every project on the
+  machine, applying to an unmarked one changes this destination only. The word, not a
+  colour — the strip already shipped that mistake once.
+- **`tab` reloads the rows, and abandons the switch if they will not load.** Moving
+  the destination first and loading second leaves the strip naming one place while the
+  rows below belong to another — the exact divergence the strip exists to prevent,
+  produced by the code meant to honour it. Found in review, after a test that passed
+  with the destination index hardcoded.
+- An empty or absent agents directory shows a plain line saying so, not an empty box.
 - **The menu row reports rather than describing itself** — `2 on haiku · 3 on session`,
   next to `status`. Every other row carries live state, and the tally is the question
   the screen was opened to answer. The session default sorts last: it is not a price,
@@ -156,8 +169,10 @@ strip, the Bubbletea model and its navigation.
 
 - **performing an action.** The model reports the choice; `cli` runs it. That holds
   for the selector too: its rows and its catalogue arrive through callbacks, so this
-  package still knows nothing about what an agent file is and imports neither
-  `internal/target` nor `internal/agentmodel`.
+  package still knows nothing about what an agent file is — or what a symlink is — and
+  imports neither `internal/target` nor `internal/agentmodel`. The destination index is
+  passed to those callbacks, never captured when the panel opened: the same rule
+  `Runner` follows, and the same failure if it were not.
 - **filtering or searching the agent list.** Four to eight rows fit on a screen; a
   filter is machinery for a scale this does not have.
 - **confirming a model change.** `y/n` is for the destructive actions. Writing a
@@ -377,3 +392,16 @@ The model selector:
   Proof: internal/ui/models_test.go TestTallyPutsTheSessionDefaultLast
 - the tally refreshes after applying
   Proof: internal/ui/models_test.go TestMenuRowTallyRefreshesAfterApplying
+
+- a shared row is marked and a local one is not
+  Proof: internal/ui/models_test.go TestSharedAgentsAreMarked
+- **the marker survives colour being stripped**
+  Proof: internal/ui/models_test.go TestSharedMarkerIsLegibleWithoutColour
+- `tab` reloads the rows for the new destination, and asks for that destination
+  Proof: internal/ui/models_test.go TestTabReloadsTheSelectorForTheNewDestination
+- **a failed reload abandons the whole switch** — rows and destination both stay
+  Proof: internal/ui/models_test.go TestAFailedReloadKeepsTheRowsAndSaysSo
+- an empty agents directory renders a plain statement, not an empty box
+  Proof: internal/ui/models_test.go TestAnEmptyAgentSetSaysSo
+- the tally counts the active destination's agents
+  Proof: cmd/libretto/models_test.go TestMenuTallyCountsTheActiveTargetsAgents

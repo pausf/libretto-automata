@@ -8,9 +8,6 @@ import (
 	"strings"
 )
 
-// dir is where the payload keeps its agents, relative to the repo root.
-const dir = "agents"
-
 // writable reports whether a file can be opened for writing, without changing it.
 //
 // O_WRONLY with no O_TRUNC and no O_CREATE asks the question and touches nothing.
@@ -31,13 +28,27 @@ type Agent struct {
 	Path  string
 }
 
-// Agents lists every agent the repo ships, sorted by name.
+// Agents lists every agent file in a directory, sorted by name.
+//
+// The directory is handed in rather than derived. That is what lets one package serve
+// both the repository's own `agents/` and an install target's — without learning what
+// a target is, and while staying testable against a bare t.TempDir().
+//
+// **Every `*.md` here is an agent**, whether this tool created it or not. Ownership is
+// the caller's question; this package works on what it is pointed at.
+//
+// A directory that does not exist reports no agents rather than an error: a target
+// that has never had one installed is a state, and making every caller special-case
+// os.IsNotExist to render an empty list is how that state becomes a crash.
 //
 // Sorted because two surfaces render this list — the CLI and the panel — and a list
 // whose order depends on readdir is a list that reorders itself between machines.
-func Agents(repoRoot string) ([]Agent, error) {
-	entries, err := os.ReadDir(filepath.Join(repoRoot, dir))
+func Agents(dir string) ([]Agent, error) {
+	entries, err := os.ReadDir(dir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -47,7 +58,7 @@ func Agents(repoRoot string) ([]Agent, error) {
 		if e.IsDir() || !strings.HasSuffix(name, ".md") {
 			continue
 		}
-		path := filepath.Join(repoRoot, dir, name)
+		path := filepath.Join(dir, name)
 		model, err := ReadModel(path)
 		if err != nil {
 			return nil, err
@@ -75,7 +86,7 @@ func Agents(repoRoot string) ([]Agent, error) {
 // fills between the third write and the fourth. A staged write into temporary files
 // and an atomic rename per file would close that too — worth doing the day an agent
 // file is big enough or a target slow enough for it to happen.
-func Apply(repoRoot string, names []string, model string) error {
+func Apply(dir string, names []string, model string) error {
 	if len(names) == 0 {
 		return fmt.Errorf("no agents named — nothing marked does not mean all of them")
 	}
@@ -83,7 +94,7 @@ func Apply(repoRoot string, names []string, model string) error {
 		return fmt.Errorf("unknown model %q", model)
 	}
 
-	agents, err := Agents(repoRoot)
+	agents, err := Agents(dir)
 	if err != nil {
 		return err
 	}

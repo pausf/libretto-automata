@@ -186,13 +186,26 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 		return runCaptured(action, root, target.Resolve(scopeOrder[dest], projectDir), confirm)
 	})
 
-	// The selector's two callbacks. Both close over the repo root and nothing else:
-	// the model lives in the repository's own agent files, so unlike the runner
-	// above there is no destination to get wrong.
+	// The selector's two callbacks. The destination comes in as an argument, never
+	// captured here — the same rule as the runner above, and the same failure if it
+	// were not: the strip would name one destination while the rows came from
+	// another, and the write would land where the user could not see it.
 	model = model.WithAgents(
 		modelChoices(),
-		func() ([]ui.AgentRow, error) { return agentRows(root) },
-		func(names []string, m string) error { return agentmodel.Apply(root, names, m) },
+		func(dest int) ([]ui.AgentRow, error) {
+			tg, err := destination(dest, projectDir)
+			if err != nil {
+				return nil, err
+			}
+			return agentRows(root, tg)
+		},
+		func(dest int, names []string, m string) error {
+			tg, err := destination(dest, projectDir)
+			if err != nil {
+				return err
+			}
+			return agentmodel.Apply(agentsDir(tg), names, m)
+		},
 	)
 
 	_, err = tea.NewProgram(model, tea.WithAltScreen()).Run()
@@ -362,7 +375,7 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 	//
 	// A repo with no agents/ directory simply has no row. An entry that opens an
 	// empty screen is a promise the panel cannot keep.
-	if agents, err := agentRows(root); err == nil && len(agents) > 0 {
+	if agents, err := agentRows(root, active); err == nil && len(agents) > 0 {
 		menu = append(menu, ui.MenuItem{
 			Label:   "models",
 			Desc:    ui.Tally(agents, modelChoices()),
@@ -384,16 +397,31 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 // learn what an agent file is, and internal/agentmodel must not learn what a panel
 // row is. One of them knowing about the other is how a package that promises to
 // stay off the filesystem stops being able to prove it.
-func agentRows(root string) ([]ui.AgentRow, error) {
-	agents, err := agentmodel.Agents(root)
+func agentRows(root string, tg target.Target) ([]ui.AgentRow, error) {
+	agents, err := agentmodel.Agents(agentsDir(tg))
 	if err != nil {
 		return nil, err
 	}
 	rows := make([]ui.AgentRow, 0, len(agents))
 	for _, a := range agents {
-		rows = append(rows, ui.AgentRow{Name: a.Name, Model: a.Model})
+		rows = append(rows, ui.AgentRow{
+			Name:  a.Name,
+			Model: a.Model,
+			// Owned means the file is one of ours, reached from more than one
+			// destination — so writing it is not local to this one.
+			Shared: link.Owned(root, a.Path),
+		})
 	}
 	return rows, nil
+}
+
+// destination maps a strip row back to a target. scopeOrder is the single place that
+// mapping lives, so the strip and every callback agree by construction.
+func destination(i int, projectDir string) (target.Target, error) {
+	if i < 0 || i >= len(scopeOrder) {
+		return nil, fmt.Errorf("no destination %d", i)
+	}
+	return target.Resolve(scopeOrder[i], projectDir), nil
 }
 
 func modelChoices() []ui.ModelChoice {

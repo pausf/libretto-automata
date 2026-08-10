@@ -4,7 +4,7 @@ description: "Trigger: a GitHub or GitLab PR/MR URL to review in a repository al
 license: MIT
 metadata:
   author: pausf
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## What this does
@@ -257,20 +257,27 @@ Five fresh subagents, in parallel, each carrying one brief and none of this
 conversation. Telling a reviewer what to expect is priming the witness, so each gets
 the workspace path, the frozen diff path, and its brief — nothing else:
 
-- **intent** — the `review-intent` agent, given the PR/MR title, the fenced
+- **intent** — the `review-lens-intent` agent, given the PR/MR title, the fenced
   description, and whether the user opted into running the suite for this review
 - **the four skill-backed lenses** — one agent each, given the frozen diff:
 
   | agent | applies |
   |---|---|
-  | `review-security` | `Skill(skill="review-security")` |
-  | `review-design` | `Skill(skill="review-design")` |
-  | `review-reliability` | `Skill(skill="review-reliability")` |
-  | `review-tests` | `Skill(skill="review-tests")` |
+  | `review-lens-security` | `Skill(skill="review-security")` |
+  | `review-lens-design` | `Skill(skill="review-design")` |
+  | `review-lens-reliability` | `Skill(skill="review-reliability")` |
+  | `review-lens-tests` | `Skill(skill="review-tests")` |
+
+**The agents are `review-lens-*`; the skills they apply keep the plain names.** Those
+two live in different directories and only the agents collided: `review-*` is a
+crowded namespace in a real `~/.claude`, and `review-reliability` hit an agent
+somebody already had. `install` reported the conflict and refused to touch it —
+correctly, and permanently, because a name we do not own is a name we can never
+install under.
 
 Launch them by agent, never as general-purpose subagents. Those `agents/` files
 declare the tools their lens actually needs — the four lenses read and never write,
-and only `review-intent` carries `Bash`. A general-purpose agent instead brings every
+and only `review-lens-intent` carries `Bash`. A general-purpose agent instead brings every
 tool schema and every installed skill's description into a review that touches four
 tools, and that overhead is paid five times, once per lens, before any of them reads
 a line.
@@ -302,7 +309,7 @@ brief fenced:
 --- END UNTRUSTED ---
 ```
 
-The `review-intent` agent carries the rule about what that fence means. Building it
+The `review-lens-intent` agent carries the rule about what that fence means. Building it
 is this skill's job; honouring it is the agent's.
 
 **Running the reviewed project's test suite is opt-in, per review.** A suite is code

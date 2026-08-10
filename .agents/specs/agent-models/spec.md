@@ -86,13 +86,31 @@ catalogue of legal values, and refusing everything else.
 - **The writer must refuse a file with no frontmatter**, rather than inventing one. A
   file that does not open with `---` on line 1 is not an agent file by this repo's own
   check, and writing a block into it would manufacture an agent out of a document.
-- This package **never touches an install target**. It reads and writes files in the
-  repository. Where the targets come in is the CLI's problem, and the answer there is
-  that they resolve to these same files.
+- This package **never learns what an install target is**. It is handed a directory
+  and works on every `*.md` in it, whoever created them. Which directory is the CLI's
+  problem, and that is what keeps the layering true while the reach is wide: no
+  `internal/target` import, and the whole package testable against a bare `t.TempDir()`.
+- **A directory that does not exist reports no agents rather than an error.** A target
+  that has never had one installed is a state, and making every caller special-case
+  `os.IsNotExist` to render an empty list is how that state becomes a crash.
+- **A symlinked agent file is written through to its destination.** Ordinary file
+  behaviour rather than anything this package does — but the callers promise it to the
+  user, so it is pinned by a test rather than left to be true by accident.
 
 ## Prior decisions
 
-- **One source of truth: the repository's own `agents/*.md`.** Asked whether the choice
+- **The subject is a directory, not the repository.** The first version of this
+  capability read `<repo>/agents` and nothing else. On the machine that reported it
+  that meant editing seven files installed nowhere while the user's own 22 agents were
+  invisible — *"the agents available right now"* had been read as *"the agents this
+  payload ships"*. **The contract was written from the same misreading as the code,
+  which is why no gate caught it.**
+
+  What survives of the original decision is below: the CLI still decides which
+  directory. What fell is the assumption that the answer is always this repository's.
+
+- **Superseded — kept because the reasoning still holds for the shared case.** Asked
+  whether the choice
   should be global or per-project, the answer was both — and the code says both resolve
   to the same file. `~/.claude/agents/x.md` and `<cwd>/.claude/agents/x.md` are symlinks
   to the same repo file (`internal/link/own.go:23`), and a write through a symlink
@@ -162,6 +180,14 @@ The catalogue, and refusing what is not in it:
 
 Applying to a set:
 
+- a directory of agent files is listed whatever its path
+  Proof: internal/agentmodel/apply_test.go TestAgentsListsEveryAgentSorted
+- current models are read per agent
+  Proof: internal/agentmodel/apply_test.go TestAgentsReportsEachCurrentModel
+- **a directory that does not exist reports no agents rather than an error**
+  Proof: internal/agentmodel/apply_test.go TestAgentsOnAMissingDirectoryIsEmptyNotAnError
+- **writing through a symlinked agent file edits its destination**
+  Proof: internal/agentmodel/apply_test.go TestApplyThroughASymlinkWritesTheDestination
 - one model reaches every agent in the set
   Proof: internal/agentmodel/apply_test.go TestApplyReachesEveryAgentInTheSet
 - **a bad name in the set means nothing is written at all** — not even the agents that

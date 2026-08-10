@@ -23,6 +23,15 @@ type AgentRow struct {
 	Name   string
 	Model  string // empty means the session's model
 	Marked bool
+
+	// Shared marks a row whose file is one this repository owns, reached from more
+	// than one destination. Writing it changes every project on the machine;
+	// writing an unmarked row changes this destination only.
+	//
+	// The caller decides what sets it — this package knows nothing about symlinks,
+	// and the flag is deliberately named for the consequence rather than for the
+	// mechanism, because the consequence is what the reader has to act on.
+	Shared bool
 }
 
 // ModelChoice is one entry of the catalogue the `m` key opens.
@@ -35,11 +44,16 @@ type ModelChoice struct {
 	Label string
 }
 
-// ListAgents returns the agents and their current models.
-type ListAgents func() ([]AgentRow, error)
+// ListAgents returns the agents of one destination and their current models.
+//
+// The destination index is passed in, never captured when the panel opened — the
+// same rule Runner follows, for the same reason: a closure over the starting scope
+// would list one destination's agents while the strip named another, and the write
+// that followed would land somewhere the user could not see.
+type ListAgents func(destination int) ([]AgentRow, error)
 
-// ApplyModel declares one model on a set of agents.
-type ApplyModel func(names []string, model string) error
+// ApplyModel declares one model on a set of agents in one destination.
+type ApplyModel func(destination int, names []string, model string) error
 
 // WithAgents wires the selector. Without it the menu row refuses, the same way an
 // unwired action does.
@@ -92,7 +106,7 @@ func (m Model) openSelector() Model {
 		return m
 	}
 
-	rows, err := m.listAgents()
+	rows, err := m.listAgents(m.activeScope())
 	if err != nil {
 		m.notice = "cannot read the agents: " + err.Error()
 		return m
@@ -134,6 +148,30 @@ func (m Model) updateSelector(k string) (Model, bool) {
 		m.panel.InSelector = false
 		m.panel.Agents = nil
 		m.notice = ""
+		return m, true
+
+	// tab changes the destination, so the rows have to change with it. A selector
+	// still showing the previous destination's agents under the new name is the
+	// same lie the target strip exists to prevent.
+	case "tab", "s":
+		// Move nothing until the new destination's rows are in hand.
+		//
+		// Switching first and loading second leaves the strip naming one
+		// destination while the rows below it belong to another when the load
+		// fails — which is the exact lie the strip exists to prevent, produced by
+		// the code meant to honour it. So the whole switch is abandoned on error
+		// and the screen stays where it was.
+		before := m
+		next, _ := m.nextScope()
+		m = next.(Model)
+
+		rows, err := m.listAgents(m.activeScope())
+		if err != nil {
+			before.notice = "cannot read the agents: " + err.Error()
+			return before, true
+		}
+		m.panel.Agents = rows
+		m.panel.AgentCursor, m.panel.ChoosingModel = 0, false
 		return m, true
 
 	case "up", "k":
@@ -184,7 +222,7 @@ func (m Model) applyChosenModel() Model {
 
 	m.panel.ChoosingModel = false
 
-	if err := m.applyModel(names, model); err != nil {
+	if err := m.applyModel(m.activeScope(), names, model); err != nil {
 		m.notice = "could not apply: " + err.Error()
 		return m
 	}
@@ -192,7 +230,7 @@ func (m Model) applyChosenModel() Model {
 	// Ask for the rows again rather than editing them here. A screen that patches
 	// its own state after a write is a second answer to what the files say, and the
 	// two disagree the first time a write half-succeeds.
-	if rows, err := m.listAgents(); err == nil {
+	if rows, err := m.listAgents(m.activeScope()); err == nil {
 		marked := make(map[string]bool, len(names))
 		for _, n := range names {
 			marked[n] = true
@@ -230,7 +268,7 @@ func describeModel(model string) string {
 // with no marks, because it still applies to them.
 func (t Theme) selector(p Panel) string {
 	if len(p.Agents) == 0 {
-		return "  " + Fg(t.Muted).Render("no agents in this repository")
+		return "  " + Fg(t.Muted).Render("no agents in this destination")
 	}
 
 	rows := make([]string, 0, len(p.Agents)+len(p.ModelChoices)+2)
@@ -244,7 +282,12 @@ func (t Theme) selector(p Panel) string {
 		if a.Marked {
 			box = "[x]"
 		}
-		line := cursor + " " + box + " " + pad(a.Name, menuDescCol-menuLabelCol) + describeModel(a.Model)
+		shared := ""
+		if a.Shared {
+			shared = "   shared"
+		}
+		line := cursor + " " + box + " " + pad(a.Name, menuDescCol-menuLabelCol) +
+			pad(describeModel(a.Model), 12) + shared
 		rows = append(rows, "  "+Fg(colour).Render(line))
 	}
 

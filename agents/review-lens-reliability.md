@@ -1,5 +1,5 @@
 ---
-name: review-reliability
+name: review-lens-reliability
 description: The reliability lens of review-project. Reads one frozen diff for what breaks at runtime — logic errors, edge cases, races, unbounded work, error paths that lose data.
 tools: Read, Grep, Glob, Skill
 ---

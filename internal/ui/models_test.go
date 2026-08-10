@@ -19,6 +19,10 @@ type applied struct {
 	model string
 	calls int
 	err   error
+
+	// listedFor records the destination index each listing was asked for. Without
+	// it the tab tests pass with the index hardcoded, which is how they shipped.
+	listedFor []int
 }
 
 func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
@@ -38,15 +42,27 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 	m := NewModel("v0", []MenuItem{
 		{Label: "install", Desc: "link", Enabled: true},
 		{Label: "models", Desc: "", Enabled: true},
-	}, []TargetRow{{Name: "claude", Active: true}}, false).
+	}, []TargetRow{
+		{Name: "global", Active: true},
+		{Name: "project"},
+	}, false).
+		WithRefresh(func(i int) ([]MenuItem, []TargetRow, error) {
+			rows := []TargetRow{{Name: "global"}, {Name: "project"}}
+			rows[i].Active = true
+			return []MenuItem{
+				{Label: "install", Desc: "link", Enabled: true},
+				{Label: "models", Desc: "", Enabled: true},
+			}, rows, nil
+		}).
 		WithAgents(
 			choices,
-			func() ([]AgentRow, error) {
+			func(dest int) ([]AgentRow, error) {
+				rec.listedFor = append(rec.listedFor, dest)
 				out := make([]AgentRow, len(agents))
 				copy(out, agents)
 				return out, nil
 			},
-			func(names []string, model string) error {
+			func(_ int, names []string, model string) error {
 				rec.calls++
 				rec.names, rec.model = names, model
 				if rec.err != nil {
@@ -67,7 +83,7 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 
 func threeAgents() []AgentRow {
 	return []AgentRow{
-		{Name: "review-design", Model: ""},
+		{Name: "review-design", Model: "", Shared: true},
 		{Name: "review-tests", Model: ""},
 		{Name: "review-security", Model: "opus"},
 	}
@@ -345,7 +361,7 @@ func TestMenuRowTallyRefreshesAfterApplying(t *testing.T) {
 	// The caller owns the menu, so the refresh is what rebuilds the row. Here it
 	// recomputes the tally from whatever the agents callback now reports.
 	m = m.WithRefresh(func(int) ([]MenuItem, []TargetRow, error) {
-		rows, err := m.listAgents()
+		rows, err := m.listAgents(0)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -378,4 +394,110 @@ func chooseModel(t *testing.T, m Model, name string) Model {
 	}
 	t.Fatalf("model %q never came under the catalogue cursor", name)
 	return m
+}
+
+// `shared` is a warning, not decoration: applying to a row that is a symlink into the
+// repository changes every project on the machine, and applying to a real file in the
+// target changes that target only. The two are indistinguishable without the marker.
+func TestSharedAgentsAreMarked(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	for _, line := range strings.Split(strip(m.View()), "\n") {
+		switch {
+		case strings.Contains(line, "review-design"):
+			if !strings.Contains(line, "shared") {
+				t.Errorf("a shared agent was not marked: %q", line)
+			}
+		case strings.Contains(line, "review-tests"):
+			if strings.Contains(line, "shared") {
+				t.Errorf("a target-local agent was marked shared: %q", line)
+			}
+		}
+	}
+}
+
+// The strip already shipped the other version of this: selection encoded in a colour,
+// correct behaviour reported as a bug. Colour is the signal that vanishes first.
+func TestSharedMarkerIsLegibleWithoutColour(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	if !strings.Contains(strip(m.View()), "shared") {
+		t.Error("the shared marker is invisible with colour stripped")
+	}
+}
+
+// A screen still showing one destination's agents under another's name is exactly the
+// lie the destination strip exists to prevent.
+func TestTabReloadsTheSelectorForTheNewDestination(t *testing.T) {
+	m, rec := selectorModel(t, threeAgents())
+
+	m = openSelector(t, m)
+	if got := m.ActiveScope(); got != 0 {
+		t.Fatalf("opened on destination %d, want 0", got)
+	}
+
+	other := []AgentRow{{Name: "sdd-apply", Model: "sonnet"}}
+	m = m.WithAgents(m.ModelChoices(),
+		func(dest int) ([]AgentRow, error) {
+			rec.listedFor = append(rec.listedFor, dest)
+			return other, nil
+		},
+		func(int, []string, string) error { return nil })
+
+	m = key(m, "tab")
+
+	// The rows, the strip and the index the caller was asked for all have to move
+	// together. Asserting only the rows passed with the index hardcoded.
+	if got := m.ActiveScope(); got != 1 {
+		t.Errorf("destination = %d after tab, want 1", got)
+	}
+	if len(rec.listedFor) == 0 || rec.listedFor[len(rec.listedFor)-1] != 1 {
+		t.Errorf("agents were listed for %v, want the last request to name destination 1", rec.listedFor)
+	}
+	got := m.AgentRows()
+	if len(got) != 1 || got[0].Name != "sdd-apply" {
+		t.Errorf("rows after tab = %v, want the other destination's agents", got)
+	}
+	if !m.InSelector() {
+		t.Error("tab left the selector")
+	}
+}
+
+// Showing the previous destination's rows under the new name would be worse than
+// showing an error, so a failed reload keeps what it had and says so.
+func TestAFailedReloadKeepsTheRowsAndSaysSo(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = m.WithAgents(m.ModelChoices(),
+		func(int) ([]AgentRow, error) { return nil, errors.New("unreadable") },
+		func(int, []string, string) error { return nil })
+	m = key(m, "tab")
+
+	if len(m.AgentRows()) != 3 {
+		t.Errorf("rows = %d after a failed reload, want the three it had", len(m.AgentRows()))
+	}
+	// The whole switch is abandoned, not just the rows. Moving the strip while the
+	// rows stay behind is the divergence the marker exists to prevent — produced by
+	// the code meant to honour it.
+	if got := m.ActiveScope(); got != 0 {
+		t.Errorf("destination = %d after a failed reload, want it to have stayed at 0", got)
+	}
+	if !strings.Contains(m.Notice(), "unreadable") {
+		t.Errorf("notice = %q, want the error in it", m.Notice())
+	}
+}
+
+func TestAnEmptyAgentSetSaysSo(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, nil)
+	m = openSelector(t, m)
+
+	if !strings.Contains(strip(m.View()), "no agents") {
+		t.Errorf("an empty destination should say so:\n%s", strip(m.View()))
+	}
 }

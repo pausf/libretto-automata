@@ -6,27 +6,28 @@ import (
 	"testing"
 )
 
-// repoWith builds a throwaway repo root holding agents/, one file per name.
+// dirWith builds a throwaway directory of agent files, one per name.
+//
+// It replaces a helper that built a repo root with an `agents/` inside it. The
+// assertions below did not change — only the shape of the fixture, because the
+// package no longer knows that a repository is where agents come from.
+//
 // The payload's own agents are never touched by a test.
-func repoWith(t *testing.T, names ...string) string {
+func dirWith(t *testing.T, names ...string) string {
 	t.Helper()
-	root := t.TempDir()
-	dir := filepath.Join(root, "agents")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
 	for _, name := range names {
 		body := "---\nname: " + name + "\ndescription: A lens.\n---\n\nBody.\n"
 		if err := os.WriteFile(filepath.Join(dir, name+".md"), []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
-	return root
+	return dir
 }
 
-func modelOf(t *testing.T, root, name string) string {
+func modelOf(t *testing.T, dir, name string) string {
 	t.Helper()
-	got, err := ReadModel(filepath.Join(root, "agents", name+".md"))
+	got, err := ReadModel(filepath.Join(dir, name+".md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,9 +35,9 @@ func modelOf(t *testing.T, root, name string) string {
 }
 
 func TestAgentsListsEveryAgentSorted(t *testing.T) {
-	root := repoWith(t, "work-reviewer", "review-design", "spec-writer")
+	dir := dirWith(t, "work-reviewer", "review-design", "spec-writer")
 
-	agents, err := Agents(root)
+	agents, err := Agents(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,12 +54,12 @@ func TestAgentsListsEveryAgentSorted(t *testing.T) {
 }
 
 func TestAgentsReportsEachCurrentModel(t *testing.T) {
-	root := repoWith(t, "review-design", "spec-writer")
-	if err := SetModel(filepath.Join(root, "agents", "review-design.md"), "haiku"); err != nil {
+	dir := dirWith(t, "review-design", "spec-writer")
+	if err := SetModel(filepath.Join(dir, "review-design.md"), "haiku"); err != nil {
 		t.Fatal(err)
 	}
 
-	agents, err := Agents(root)
+	agents, err := Agents(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,19 +72,19 @@ func TestAgentsReportsEachCurrentModel(t *testing.T) {
 }
 
 func TestApplyReachesEveryAgentInTheSet(t *testing.T) {
-	root := repoWith(t, "review-design", "review-tests", "review-security")
+	dir := dirWith(t, "review-design", "review-tests", "review-security")
 
-	if err := Apply(root, []string{"review-design", "review-tests"}, "haiku"); err != nil {
+	if err := Apply(dir, []string{"review-design", "review-tests"}, "haiku"); err != nil {
 		t.Fatal(err)
 	}
 
-	if got := modelOf(t, root, "review-design"); got != "haiku" {
+	if got := modelOf(t, dir, "review-design"); got != "haiku" {
 		t.Errorf("review-design = %q, want haiku", got)
 	}
-	if got := modelOf(t, root, "review-tests"); got != "haiku" {
+	if got := modelOf(t, dir, "review-tests"); got != "haiku" {
 		t.Errorf("review-tests = %q, want haiku", got)
 	}
-	if got := modelOf(t, root, "review-security"); got != Default {
+	if got := modelOf(t, dir, "review-security"); got != Default {
 		t.Errorf("review-security = %q, want untouched", got)
 	}
 }
@@ -94,19 +95,19 @@ func TestApplyReachesEveryAgentInTheSet(t *testing.T) {
 // way to know how far it got. So the whole set is checked before any file is opened,
 // and the proof is that the *first* member is untouched when the last one is bad.
 func TestApplyWritesNothingWhenAnyAgentIsUnwritable(t *testing.T) {
-	root := repoWith(t, "review-design", "review-tests")
+	dir := dirWith(t, "review-design", "review-tests")
 
 	// A file that is not an agent file: no frontmatter, so SetModel refuses it.
-	broken := filepath.Join(root, "agents", "broken.md")
+	broken := filepath.Join(dir, "broken.md")
 	if err := os.WriteFile(broken, []byte("Just a document.\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	err := Apply(root, []string{"review-design", "broken"}, "haiku")
+	err := Apply(dir, []string{"review-design", "broken"}, "haiku")
 	if err == nil {
 		t.Fatal("Apply() accepted a set containing an unwritable agent")
 	}
-	if got := modelOf(t, root, "review-design"); got != Default {
+	if got := modelOf(t, dir, "review-design"); got != Default {
 		t.Errorf("review-design = %q — the first member was written before the set failed", got)
 	}
 }
@@ -123,40 +124,40 @@ func TestApplyWritesNothingWhenAMemberIsReadOnly(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("running as root: the permission bits would not stop a write")
 	}
-	root := repoWith(t, "review-design", "review-tests")
+	dir := dirWith(t, "review-design", "review-tests")
 
-	locked := filepath.Join(root, "agents", "review-tests.md")
+	locked := filepath.Join(dir, "review-tests.md")
 	if err := os.Chmod(locked, 0o444); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(locked, 0o644) })
 
-	if err := Apply(root, []string{"review-design", "review-tests"}, "haiku"); err == nil {
+	if err := Apply(dir, []string{"review-design", "review-tests"}, "haiku"); err == nil {
 		t.Fatal("Apply() accepted a set containing a read-only agent")
 	}
-	if got := modelOf(t, root, "review-design"); got != Default {
+	if got := modelOf(t, dir, "review-design"); got != Default {
 		t.Errorf("review-design = %q — written before the set was known to be writable", got)
 	}
 }
 
 func TestApplyRejectsAnUnknownModel(t *testing.T) {
-	root := repoWith(t, "review-design")
+	dir := dirWith(t, "review-design")
 
-	if err := Apply(root, []string{"review-design"}, "gpt-4"); err == nil {
+	if err := Apply(dir, []string{"review-design"}, "gpt-4"); err == nil {
 		t.Fatal("Apply() accepted a model the catalogue does not list")
 	}
-	if got := modelOf(t, root, "review-design"); got != Default {
+	if got := modelOf(t, dir, "review-design"); got != Default {
 		t.Errorf("review-design = %q, want untouched", got)
 	}
 }
 
 func TestApplyRejectsAnUnknownAgent(t *testing.T) {
-	root := repoWith(t, "review-design")
+	dir := dirWith(t, "review-design")
 
-	if err := Apply(root, []string{"review-design", "no-such-agent"}, "haiku"); err == nil {
+	if err := Apply(dir, []string{"review-design", "no-such-agent"}, "haiku"); err == nil {
 		t.Fatal("Apply() accepted an agent the repo does not have")
 	}
-	if got := modelOf(t, root, "review-design"); got != Default {
+	if got := modelOf(t, dir, "review-design"); got != Default {
 		t.Errorf("review-design = %q — written despite an unknown name in the set", got)
 	}
 }
@@ -165,23 +166,66 @@ func TestApplyRejectsAnUnknownAgent(t *testing.T) {
 // from declaring a model. Apply still has to accept it, or the panel's "back to the
 // session's model" choice has no way through.
 func TestApplyAcceptsTheDefaultToClearTheKey(t *testing.T) {
-	root := repoWith(t, "review-design")
-	if err := Apply(root, []string{"review-design"}, "haiku"); err != nil {
+	dir := dirWith(t, "review-design")
+	if err := Apply(dir, []string{"review-design"}, "haiku"); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := Apply(root, []string{"review-design"}, Default); err != nil {
+	if err := Apply(dir, []string{"review-design"}, Default); err != nil {
 		t.Fatal(err)
 	}
-	if got := modelOf(t, root, "review-design"); got != Default {
+	if got := modelOf(t, dir, "review-design"); got != Default {
 		t.Errorf("review-design = %q, want the key gone", got)
 	}
 }
 
 func TestApplyRejectsAnEmptySet(t *testing.T) {
-	root := repoWith(t, "review-design")
+	dir := dirWith(t, "review-design")
 
-	if err := Apply(root, nil, "haiku"); err == nil {
+	if err := Apply(dir, nil, "haiku"); err == nil {
 		t.Error("Apply() accepted an empty set — nothing marked must not mean everything")
+	}
+}
+
+// A target that has never had an agent installed has no agents/ directory. That is a
+// state, not a failure — and reporting it as an error would make every caller
+// special-case os.IsNotExist to render an empty list.
+func TestAgentsOnAMissingDirectoryIsEmptyNotAnError(t *testing.T) {
+	agents, err := Agents(filepath.Join(t.TempDir(), "no-such-directory"))
+	if err != nil {
+		t.Fatalf("Agents() on a missing directory returned %v, want no error", err)
+	}
+	if len(agents) != 0 {
+		t.Errorf("Agents() = %d agents on a missing directory, want none", len(agents))
+	}
+}
+
+// The mechanism behind the whole `shared` marker.
+//
+// An agent installed by this tool is a symlink into the repository, so writing it
+// edits the repository's file and every other target linking to it. That is ordinary
+// file behaviour rather than anything this package does, which is exactly why it
+// needs a test: the callers promise it to the user, and a promise nothing pins is a
+// promise that quietly stops being true.
+func TestApplyThroughASymlinkWritesTheDestination(t *testing.T) {
+	source := dirWith(t, "review-design")
+	installed := t.TempDir()
+
+	link := filepath.Join(installed, "review-design.md")
+	if err := os.Symlink(filepath.Join(source, "review-design.md"), link); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Apply(installed, []string{"review-design"}, "haiku"); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := modelOf(t, source, "review-design"); got != "haiku" {
+		t.Errorf("the symlink's destination = %q, want haiku — the write did not reach it", got)
+	}
+	if fi, err := os.Lstat(link); err != nil {
+		t.Fatal(err)
+	} else if fi.Mode()&os.ModeSymlink == 0 {
+		t.Error("the symlink was replaced by a regular file")
 	}
 }
