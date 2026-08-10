@@ -184,7 +184,8 @@ Skill(skill="record-work")
 One commit per task, the spec updated in the same commit as the code that taught it,
 conventional messages, no AI attribution.
 
-Pushing is asked once at the very end. Never assumed.
+Pushing is asked once at the very end, with `AskUserQuestion` — never as a sentence at
+the bottom of a report. Never assumed.
 
 ## 4 · Asking — before the plan, not after it
 

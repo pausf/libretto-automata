@@ -4,7 +4,7 @@ description: "Trigger: a task is finished and needs committing; writing a commit
 license: MIT
 metadata:
   author: pausf
-  version: "1.1"
+  version: "1.2"
 ---
 
 ## What this does
@@ -158,6 +158,18 @@ not because the previous task was pushed.
 At the very end — after everything is committed and reported — ask once: **push, and
 open the pull request?** One question, one answer. A no ends it and needs no
 follow-up.
+
+**Ask it with `AskUserQuestion`, never as a sentence at the end of a report.** This is
+the last question in the flow and usually the only one after the plan, so it is the one
+that must not be missable — a question in prose is a paragraph the reader can skim past,
+and the flow then sits waiting for an answer to something that read as a summary. The
+options are yes, no, and push-without-the-request for whoever genuinely wants it; the
+recommendation goes first and says what will actually run.
+
+Phase 4 already requires the native prompt for anything the user must settle. This is
+the same rule arriving at the phase that used to be written as prose, and it is stated
+here because a rule written only where the *asking* is described gets read as belonging
+to phase 4 alone.
 
 The two used to be asked separately. That bought a second round trip and no safety:
 pushing a branch and then declining to open the request for it is a state almost

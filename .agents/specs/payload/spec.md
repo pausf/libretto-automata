@@ -239,9 +239,13 @@ the copy stays comparable with upstream.
   backstop, names the writing phase as its owner,
   and reports rather than silently fixes: a backstop that covers for the rule it backs up
   is how the rule stops being followed.
-- **Push and the pull request are one question.** Asked separately they bought a second
-  round trip and no safety — a pushed branch with no request opened is a state almost
-  nobody wants, and whoever wants it says so in the same breath.
+- **Push and the pull request are one question**, and it is asked with `AskUserQuestion`.
+  Asked separately they bought a second round trip and no safety — a pushed branch with
+  no request opened is a state almost nobody wants, and whoever wants it says so in the
+  same breath. Native rather than prose because it is the last question in the flow and
+  usually the only one after the plan: a question written as a sentence is a paragraph
+  the reader skims, and the flow then waits on an answer to something that read as a
+  summary. Observed 2026-08-10, on the run that landed this.
 - **The forge is derived, never assumed:** `git remote get-url origin`, `github.com` →
   `gh`, `gitlab` → `glab`. No remote means no question. **Ceiling named:** a substring
   test on one URL, which does not survive a self-hosted forge on a neutral domain, or
