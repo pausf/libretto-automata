@@ -109,8 +109,11 @@ All of it inside `internal/ui/`.
   glyphs, not shades — the same both-signals rule the mark and the `shared` warning
   already follow.
 - **No astral-plane runes, no ambiguous-width glyphs** in the rule.
-- **The footer must still fit** at `MinContentWidth`; the selector's hint string is
-  longer than the menu's and the gap calculation already clamps at 1.
+- **The footer must still fit** at `MinContentWidth`, with the longest version
+  `git describe --tags --always --dirty` can produce. The gap calculation clamps at 1
+  and then overflows, and a footer wider than the frame drags the whole centred block
+  off the terminal. Each screen therefore carries a tight second legend, taken when
+  the long one will not fit; every key survives the drop, only the verbs do not.
 
 ## Prior decisions
 
@@ -184,3 +187,10 @@ All of it inside `internal/ui/`.
 
 10. The `all` row and the group rule are legible with colour stripped.
     Proof: internal/ui/models_test.go TestTheAllRowIsLegibleWithoutColour
+
+11. No screen's footer is wider than the frame it sits under, at any width down to
+    the floor and with the longest version string `git describe` can produce. The
+    constraint was stated below and had no proof; building the selector's legend —
+    half again as long as the menu's — is what made it a real one, at 79 columns
+    against a 60 frame.
+    Proof: internal/ui/panel_test.go TestTheFooterNeverOutgrowsTheFrame
