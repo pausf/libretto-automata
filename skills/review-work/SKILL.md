@@ -1,10 +1,10 @@
 ---
 name: review-work
-description: "Trigger: phase 6 finished and the work has a spec; before present-work reports; asking whether the work matches its contract. The seam between build and present. Launches one fresh work-reviewer subagent that re-runs the proofs and returns findings — it reports, it never blocks."
+description: "Trigger: phase 6 finished and the work has a spec; before present-work reports; asking whether the work matches its contract. The seam between build and present. Launches one fresh work-reviewer subagent that re-runs the proofs, relays what it found attributed and unedited, then fixes every finding without asking."
 license: MIT
 metadata:
   author: pausf
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## What this does
@@ -16,8 +16,12 @@ This skill does not review anything itself — it cannot. Whoever is reading thi
 carried the session that produced the code, and what that session believes about the
 work is precisely the claim under review. The review runs in a **fresh `work-reviewer`
 subagent** that starts with none of this context. This skill decides whether a review
-applies, assembles what the reviewer needs, launches exactly one, and relays what
-comes back.
+applies, assembles what the reviewer needs, launches exactly one, relays what comes
+back — and then fixes it.
+
+**The reviewer reads; this skill writes.** The split is the value of the seam: an agent
+that repairs what it found is grading its own repair, and a verdict is only independent
+while the hands that earned it are not the ones being judged.
 
 `skills/evidence/` governs here too: the reviewer's verdict is relayed as observed,
 never summarised into something kinder.
@@ -72,15 +76,50 @@ reviewer, next to the builder's own account:
 - or the reviewer's explicit **"nothing found"**, which is a statement, not an
   absence
 
-**Findings never block.** Phase 8 remains the user's decision, taken with the
-verdict in front of them. What a finding changes is what the user knows, not what
-the user may do. Acting on one is a new pass through phase 6, not a loop inside
-this skill.
+**Relay before repairing, always.** By the time phase 7 reports, most of these will
+already be fixed — and a report showing only the repaired state hides that the builder
+got it wrong. What was wrong is part of the record even when it is no longer true.
+
+## Step 4 — Fix every one of them, and ask nothing
+
+The findings do not go to the user as a question. They get fixed, here, in this pass.
+
+Sending a defect back to the user to authorise its own repair is a round trip that buys
+nothing: a finding cites a pillar or a proof by contract, so it is a defect against a
+contract the user already agreed to. There is no version of "yes, leave it broken" worth
+a stop.
+
+Per finding, in the order they came back:
+
+1. fix it — `skills/build-and-check/` governs how much, the same as any phase 6 work
+2. re-run **the proofs that finding touched**, in the foreground, and read the output.
+   Not the whole suite unless the fix reaches that far
+3. record what changed, one line, for phase 7 to carry beside the finding
+
+**Two failed attempts on one finding stops that finding.** Not a third try. It goes to
+phase 7 as *found, not fixed*, with what failed and what is still unknown — the stopped-item
+rule from `skills/evidence/`, unchanged. One stopped finding does not stop the others.
+
+**A finding that cannot be fixed without a decision that is not ours is reported, not
+asked.** A product tradeoff, a boundary the spec never drew — it goes to phase 7 with the
+rest and the user meets it at phase 8, which is where they already were. Turning it into a
+question here reintroduces the stop this seam exists without.
+
+**One fix pass. No re-review.** The fixes are not themselves seen by a fresh context, so a
+fix that introduces a new defect is caught by the proofs or not at all. Named as a ceiling
+rather than hidden: the replacement, the day it bites, is one bounded second look at the
+fix diff — never a loop.
+
+Nothing here weakens a proof to make a fix look done. `skills/evidence/` binds this pass
+exactly as it binds phase 6.
 
 ## Output
 
-One line when declining. Otherwise: the reviewer's proof verdicts and findings,
-relayed as returned, ready for phase 7 to carry.
+One line when declining. Otherwise, in this order:
 
-Then stop. Presenting is phase 7's, and the decision the findings inform is the
-user's.
+- the reviewer's proof verdicts and findings, relayed as returned
+- what was done about each: fixed with its re-run, or stopped with what failed, or
+  reported-not-fixed because the decision was not ours
+
+Then carry straight into phase 7. Presenting is phase 7's job, but it is not another
+turn — nothing here is waiting on the user.
