@@ -20,6 +20,19 @@ orchestrator marks these boxes; sub-agents report.
 - six gates before every commit: `gofmt -l .` silent, `go vet ./...`,
   `go test ./... -count=1`, `scripts/check-payload`, `spec-drift --self-test`,
   `spec-drift --anchors`
+- **`--anchors` is red for this change until task 7, and that is the design.**
+  `write-spec` says to cite tests that do not exist yet, because the citation is what
+  makes them get written. So the deltas cite 30 tests the plan creates in tasks 2–7,
+  and every one of them is BROKEN until its task lands. The per-task check is
+  therefore **zero BROKEN citations outside `add-per-agent-model`**:
+
+  ```
+  skills/record-work/spec-drift --anchors > /tmp/anchors.out 2>&1
+  rg -N '^  BROKEN' /tmp/anchors.out | rg -v 'add-per-agent-model' | wc -l   # must be 0
+  ```
+
+  It must be **fully green before phase 8**. A change that lands with a broken anchor
+  has written a promise into a capability spec that nothing keeps
 - **Go 1.26.5, standard library only.** No YAML dependency — frontmatter here is a
   fenced block of `key: value` lines and must stay that
 - `CLAUDE_HOME` points at a temp dir in anything that touches a target; never a real
@@ -47,11 +60,11 @@ From spec: `spec.md` breakdown 1. Closes: the three reading criteria.
 - `ReadModel(path) (string, error)` returns the declared value, or the empty string
   meaning *default* when the key is absent. **Absent is not an error**
 - a `model:` line after the closing `---` is body text and is not the model
-- [ ] **1.1** `TestReadModelReturnsTheDeclaredModel`,
+- [x] **1.1** `TestReadModelReturnsTheDeclaredModel`,
   `TestReadModelReportsDefaultWhenTheKeyIsAbsent`, `TestReadModelIgnoresTheBody` —
   written and failing first
-- [ ] **1.2** implement until they pass
-- [ ] **1.3** six gates, exit codes read from files
+- [x] **1.2** implement until they pass
+- [x] **1.3** six gates, exit codes read from files
 - [ ] **1.4** committed
 
 ### Task 2: write and remove the key
