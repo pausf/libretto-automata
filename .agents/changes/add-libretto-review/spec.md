@@ -24,10 +24,13 @@ state exactly as it found it.
 - the review runs as **three lenses over one frozen diff**, each a fresh subagent
   with none of the session's context, launched in parallel:
   - **intent** — does the diff do what the MR says it does: missing requirements,
-    scope creep, implemented-but-wrong; every finding quotes the MR's stated intent
-  - **security** — the `review-security` skill: only high-confidence findings with
-    attacker-controlled input traced, severity classified, framework mitigations
-    checked before flagging
+    scope creep, implemented-but-wrong; every finding quotes the MR's stated
+    intent. If the project has a test suite, this lens runs it against the head
+    and reports what it observed, never what the MR claims
+  - **security** — the `review-security` skill: confirmed findings with
+    attacker-controlled input traced and severity classified; a dangerous pattern
+    with one unreadable hop is reported as a marked question, never dressed up as
+    confirmed; theoretical issues are dropped
   - **design** — the `review-design` skill: YAGNI, KISS, SOLID and code smells as
     labelled judgment calls; the reviewed project's own conventions override the
     baseline
@@ -109,9 +112,9 @@ every exit path.
 - [x] `commands/libretto-review.md` — routes to the skill, nothing else
 - [x] payload spec delta: `libretto-review` joins the outcomes list; capability spec
       `review-project` created on landing
-- [ ] `skills/review-security/SKILL.md` — the security lens, standalone
-- [ ] `skills/review-design/SKILL.md` — the design lens, standalone
-- [ ] `review-project` step 5–6 rewritten: freeze the diff, three lenses in
+- [x] `skills/review-security/SKILL.md` — the security lens, standalone
+- [x] `skills/review-design/SKILL.md` — the design lens, standalone
+- [x] `review-project` step 5–6 rewritten: freeze the diff, three lenses in
       parallel, relay per lens without reranking
 
 ## Verification criteria
