@@ -259,25 +259,31 @@ the workspace path, the frozen diff path, and its brief — nothing else:
 
 - **intent** — the `review-intent` agent, given the PR/MR title, the fenced
   description, and whether the user opted into running the suite for this review
-- **the four skill-backed lenses** — the `review-lens` agent, four launches, each
-  given the frozen diff and the name of the skill it is:
+- **the four skill-backed lenses** — one agent each, given the frozen diff:
 
-  ```
-  Skill(skill="review-security")     Skill(skill="review-design")
-  Skill(skill="review-reliability")  Skill(skill="review-tests")
-  ```
+  | agent | applies |
+  |---|---|
+  | `review-security` | `Skill(skill="review-security")` |
+  | `review-design` | `Skill(skill="review-design")` |
+  | `review-reliability` | `Skill(skill="review-reliability")` |
+  | `review-tests` | `Skill(skill="review-tests")` |
 
 Launch them by agent, never as general-purpose subagents. Those `agents/` files
-declare the tools their lens actually needs — `review-lens` reads and never writes,
+declare the tools their lens actually needs — the four lenses read and never write,
 and only `review-intent` carries `Bash`. A general-purpose agent instead brings every
 tool schema and every installed skill's description into a review that touches four
 tools, and that overhead is paid five times, once per lens, before any of them reads
 a line.
 
-**One `review-lens` agent, not four.** The four differ in exactly one thing — which
-skill they apply — and everything else about them is identical: the tool grant, the
-scope discipline, the shape of what they return. Four files that a string
-substitution can generate from each other are one file with a parameter.
+**Four agents, not one with a parameter.** They were one file until each lens needed
+its own `model:`. That design rested on the four differing in exactly one thing —
+which skill they apply — and a per-lens model is a second thing, so the premise went
+rather than the reasoning. What it buys is the point of the split: design and tests
+are pattern-matching over prose and can run on a cheap model while security does not.
+
+The cost is four near-identical bodies that can drift apart. If they do, or if a
+fifth lens arrives, generate them from one source at build time — do not hand-maintain
+five copies.
 
 The four skill names are written out here, in the `Skill(skill="…")` form a static
 reference check can see, because this is the skill that decides which lenses run. A
