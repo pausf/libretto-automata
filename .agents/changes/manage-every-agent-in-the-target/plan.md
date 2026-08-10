@@ -161,7 +161,7 @@ From spec: `spec-review-project.md` breakdown 5. Closes: its check-payload crite
 - [x] **5.2** update the launch table and the `Governs:` line
 - [x] **5.3** the reference hunt returns nothing
 - [x] **5.4** six gates
-- [ ] **5.5** committed
+- [x] **5.5** committed: 3922793
 
 ---
 
