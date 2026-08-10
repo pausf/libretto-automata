@@ -30,7 +30,7 @@ Spec: spec-payload.md · Criterion: "Skills carry no `~/.claude/` absolute path.
 
 **Files:** Modify: `scripts/check-payload` (after the scripts/-reference check, ~line 100)
 
-- [ ] **Step 1: add the check**
+- [x] **Step 1: add the check**
 
 ```bash
 # A skill naming its tools by an absolute install path works only in the layout it
@@ -45,9 +45,8 @@ else
 fi
 ```
 
-- [ ] **Step 2: run it and observe FAIL** — `scripts/check-payload; echo $?` must exit 1
-  listing the six known references (write-spec:309,397; record-work:77,87,92,93).
-  This red run is the test; do not commit until Task 2 turns it green.
+- [x] **Step 2: run it and observe FAIL** — observed: exit 1, exactly the six known
+  references (write-spec:309,397; record-work:77,87,92,93).
 
 ### Task 2 — reword the six references to the skill base directory
 
@@ -56,7 +55,7 @@ Spec: spec-payload.md · Criterion: same as Task 1 (turns it green)
 **Files:** Modify: `skills/record-work/SKILL.md` (lines 77, 87, 92–93; frontmatter
 version), `skills/write-spec/SKILL.md` (lines 309, 397; frontmatter version 1.1 → 1.2)
 
-- [ ] **Step 1: record-work** — the script is its sibling. Replace the path in the three
+- [x] **Step 1: record-work** — the script is its sibling. Replace the path in the three
   spots; where the path appears in a runnable block, use the announced base directory:
 
 ```
@@ -68,13 +67,12 @@ version), `skills/write-spec/SKILL.md` (lines 309, 397; frontmatter version 1.1 
   this file") already says the right thing — keep it, drop the absolute path from it.
   Bump `version:` in frontmatter.
 
-- [ ] **Step 2: write-spec** — same phrasing, sibling hop: `<skill-base>/../record-work/spec-drift`.
+- [x] **Step 2: write-spec** — same phrasing, sibling hop: `<skill-base>/../record-work/spec-drift`.
   Both install layouts keep skills side by side, so the hop holds. Bump 1.1 → 1.2.
 
-- [ ] **Step 3: run `scripts/check-payload; echo $?`** — expect exit 0, the new check ok.
+- [x] **Step 3: run `scripts/check-payload; echo $?`** — observed: exit 0, new check ok.
 
-- [ ] **Step 4: commit** tasks 1+2 together (the check and the fix are one reviewable
-  unit; committing the check alone leaves a red gate on the branch).
+- [x] **Step 4: commit** tasks 1+2 together — d800acf.
 
 ### Task 3 — spec-drift refuses loudly without rg
 
@@ -84,7 +82,7 @@ tool. Proof: skills/record-work/spec-drift --self-test"
 **Files:** Modify: `skills/record-work/spec-drift` (guard near the top, after `set`;
 new self-test case at the end of the self-test block)
 
-- [ ] **Step 1: the guard**
+- [x] **Step 1: the guard**
 
 ```bash
 command -v rg >/dev/null 2>&1 || {
@@ -93,31 +91,25 @@ command -v rg >/dev/null 2>&1 || {
 }
 ```
 
-- [ ] **Step 2: the self-test case** — follow the existing harness's style on contact
-  (read how existing cases invoke and assert). The contract to assert: run the script
-  with a `PATH` where `rg` cannot resolve but `bash` can, expect exit 2 and a message
-  naming ripgrep. Sketch, to adjust against the real harness:
+- [x] **Step 2: the self-test case** — done in the harness's `want` style: bash invoked
+  by absolute path with `PATH=/dev/null`, so only rg is missing; asserts exit 2 and
+  a message naming ripgrep. Two new checks (code and message), 20 total.
 
-```bash
-out=$(PATH=/dev/null bash "$0" 2>&1); rc=$?
-want 'missing rg exits 2' '2' "$rc"
-```
+- [x] **Step 3: run `skills/record-work/spec-drift --self-test; echo $?`** — observed:
+  exit 0, 20 checks ok. Default mode still 0. `--anchors` exited 1 mid-change — the
+  cli delta's Proof named a test task 4 had not written yet; green after task 4.
 
-- [ ] **Step 3: run `skills/record-work/spec-drift --self-test; echo $?`** — expect exit 0,
-  one more check than the current 17. Then `--anchors` and default mode still exit as
-  before (0 on this tree).
-
-- [ ] **Step 4: commit.**
+- [x] **Step 4: commit** — b6b0e90.
 
 ### Task 4 — doctor reports rg and jq
 
-Spec: spec-cli.md · Criterion: "report lists rg and jq with attribution.
-Proof: cmd/libretto/main_test.go TestPrerequisitesIncludeTheGateTools"
+Spec: spec-cli.md · Criterion: report lists rg and jq with attribution.
+Proof: cmd/libretto/main_test.go TestPrerequisitesIncludeTheGateTools
 
 **Files:** Modify: `cmd/libretto/main.go` (`prerequisites()`, the return slice),
 `cmd/libretto/main_test.go` (new test beside `TestPrerequisitesDoNotAffectTheExitCode`)
 
-- [ ] **Step 1: failing test**
+- [x] **Step 1: failing test**
 
 ```go
 func TestPrerequisitesIncludeTheGateTools(t *testing.T) {
@@ -135,17 +127,17 @@ func TestPrerequisitesIncludeTheGateTools(t *testing.T) {
 
   Run: `go test ./cmd/libretto/ -run TestPrerequisitesIncludeTheGateTools -count=1` — expect FAIL.
 
-- [ ] **Step 2: the rows** — in the `return []Prereq{...}` slice, after "git host":
+- [x] **Step 2: the rows** — in the `return []Prereq{...}` slice, after "git host":
 
 ```go
 {"rg", onPath("rg"), "record-work, find-work — brew install ripgrep"},
 {"jq", onPath("jq"), "find-work — brew install jq"},
 ```
 
-- [ ] **Step 3: run the test** — expect PASS. Then the neighbour:
-  `go test ./cmd/libretto/ -run TestPrerequisites -count=1` (both tests) — PASS.
+- [x] **Step 3: run the test** — observed: red first (`missing "rg"`, `missing "jq"`),
+  then both prerequisite tests PASS after the rows.
 
-- [ ] **Step 4: commit.**
+- [x] **Step 4: commit** — 1aff3e2.
 
 ---
 
