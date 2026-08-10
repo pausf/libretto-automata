@@ -132,10 +132,10 @@ From spec: `spec-panel.md` breakdown 4. Closes: the tally criterion, and turns
   **passed in, never captured at startup** — the same rule the runner already follows,
   and for the same reason
 - the menu row's tally counts that target's agents
-- [ ] **4.1** `TestMenuTallyCountsTheActiveTargetsAgents` — failing first
-- [ ] **4.2** implement until it passes
-- [ ] **4.3** six gates, `--anchors` fully green, plus `make preview` looked at
-- [ ] **4.4** committed
+- [x] **4.1** `TestMenuTallyCountsTheActiveTargetsAgents` — failing first
+- [x] **4.2** implement until it passes
+- [x] **4.3** six gates, `--anchors` fully green, plus `make preview` looked at
+- [x] **4.4** committed: 935fbe7
 
 ---
 
