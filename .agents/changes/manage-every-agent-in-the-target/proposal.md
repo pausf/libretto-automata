@@ -58,6 +58,22 @@ it — correct — but the lens can therefore never link into the global target 
 name. The same collision is possible for `review-security`, `review-design` and
 `review-tests`, which are also generic names.
 
+## Settled in phase 2
+
+- **Write foreign files without asking.** The scope answer chose the option that
+  writes over the one that confirms each write. Recorded in `spec-cli.md`, with the
+  distinction that makes it legal: `AGENTS.md` forbids *overwriting* what the tool did
+  not create; this replaces one frontmatter line in a file the user named.
+- **The package takes a directory, not a target.** `agentmodel` never learns what a
+  target is, so the layering survives the wider reach. `spec.md`.
+- **Ours versus theirs is shown as `shared`**, and it marks the blast radius rather
+  than the ownership: a symlink into the repo reaches every project, a real file
+  reaches one target. `spec-cli.md`, `spec-panel.md`.
+- **The name collision is deferred to its own change.** It belongs to
+  `review-project`, not to the model selector, and folding an install-time defect into
+  a scope change would make both harder to review. **It is not fixed by this work** —
+  `review-reliability` still cannot install into this machine's global target.
+
 ## Open, for phase 2 to settle
 
 - **Whether a foreign file is written without asking.** The scope decision says write;
