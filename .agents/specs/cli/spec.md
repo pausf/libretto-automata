@@ -65,7 +65,10 @@ what the tool did not create, meaning replacing a foreign item with our symlink 
 destroying what was there. This replaces one frontmatter line, in a file the user
 named, at their request. `install` still refuses a conflict exactly as before.
 
-A target with no `agents/` directory says so and exits zero. A `*.md` there with no
+`models` names any link in the target that points at nothing and sends the reader to
+`doctor` — skipping in silence would trade a loud failure for a quiet one, and a
+rename leaves exactly these behind. A target with no `agents/` directory says so and
+exits zero. A `*.md` there with no
 frontmatter is refused by name and **nothing in the set is written** — the
 all-or-nothing guarantee, written for this repository's own tidy files, now protects
 foreign ones.

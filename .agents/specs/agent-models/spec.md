@@ -90,6 +90,12 @@ catalogue of legal values, and refusing everything else.
   and works on every `*.md` in it, whoever created them. Which directory is the CLI's
   problem, and that is what keeps the layering true while the reach is wide: no
   `internal/target` import, and the whole package testable against a bare `t.TempDir()`.
+- **A stale link is survivable; a stray file is not.** An entry that cannot be opened
+  at all — a symlink whose destination was renamed or deleted — is skipped and named
+  in a second return value. Renaming one agent leaves a dangling link in every target
+  that had the old name, and taking eleven readable agents down because a twelfth is
+  broken is a listing that punishes the ordinary case. A file that *is* present and is
+  not an agent stays an error: `Apply`'s all-or-nothing guarantee rests on it.
 - **A directory that does not exist reports no agents rather than an error.** A target
   that has never had one installed is a state, and making every caller special-case
   `os.IsNotExist` to render an empty list is how that state becomes a crash.
@@ -186,6 +192,10 @@ Applying to a set:
   Proof: internal/agentmodel/apply_test.go TestAgentsReportsEachCurrentModel
 - **a directory that does not exist reports no agents rather than an error**
   Proof: internal/agentmodel/apply_test.go TestAgentsOnAMissingDirectoryIsEmptyNotAnError
+- **a stale link is skipped and named, not fatal to the whole listing**
+  Proof: internal/agentmodel/apply_test.go TestAgentsSkipsAStaleLinkAndNamesIt
+- a present file that is not an agent is still an error
+  Proof: internal/agentmodel/apply_test.go TestAgentsStillFailsOnAPresentFileWithNoFrontmatter
 - **writing through a symlinked agent file edits its destination**
   Proof: internal/agentmodel/apply_test.go TestApplyThroughASymlinkWritesTheDestination
 - one model reaches every agent in the set

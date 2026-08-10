@@ -37,7 +37,7 @@ func modelOf(t *testing.T, dir, name string) string {
 func TestAgentsListsEveryAgentSorted(t *testing.T) {
 	dir := dirWith(t, "work-reviewer", "review-design", "spec-writer")
 
-	agents, err := Agents(dir)
+	agents, _, err := Agents(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestAgentsReportsEachCurrentModel(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	agents, err := Agents(dir)
+	agents, _, err := Agents(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestApplyRejectsAnEmptySet(t *testing.T) {
 // state, not a failure — and reporting it as an error would make every caller
 // special-case os.IsNotExist to render an empty list.
 func TestAgentsOnAMissingDirectoryIsEmptyNotAnError(t *testing.T) {
-	agents, err := Agents(filepath.Join(t.TempDir(), "no-such-directory"))
+	agents, _, err := Agents(filepath.Join(t.TempDir(), "no-such-directory"))
 	if err != nil {
 		t.Fatalf("Agents() on a missing directory returned %v, want no error", err)
 	}
@@ -227,5 +227,40 @@ func TestApplyThroughASymlinkWritesTheDestination(t *testing.T) {
 		t.Fatal(err)
 	} else if fi.Mode()&os.ModeSymlink == 0 {
 		t.Error("the symlink was replaced by a regular file")
+	}
+}
+
+// A stale symlink is an ordinary state — `prune` exists for it, and renaming an agent
+// creates one in every target that had the old name. One broken entry must not take
+// the other eleven down with it.
+func TestAgentsSkipsAStaleLinkAndNamesIt(t *testing.T) {
+	dir := dirWith(t, "spec-writer", "work-reviewer")
+	if err := os.Symlink(filepath.Join(dir, "gone.md"), filepath.Join(dir, "stale.md")); err != nil {
+		t.Fatal(err)
+	}
+
+	agents, unreadable, err := Agents(dir)
+	if err != nil {
+		t.Fatalf("a stale link made the whole listing fail: %v", err)
+	}
+	if len(agents) != 2 {
+		t.Errorf("listed %d agents, want the two that are readable", len(agents))
+	}
+	if len(unreadable) != 1 || unreadable[0] != "stale" {
+		t.Errorf("unreadable = %v, want [stale] — skipping in silence hides state", unreadable)
+	}
+}
+
+// The other half of that distinction. A file that is present but is not an agent is
+// still an error: Apply's all-or-nothing guarantee rests on it, and skipping it would
+// let `--all` quietly write around a file somebody put there on purpose.
+func TestAgentsStillFailsOnAPresentFileWithNoFrontmatter(t *testing.T) {
+	dir := dirWith(t, "spec-writer")
+	if err := os.WriteFile(filepath.Join(dir, "NOTES.md"), []byte("Just a document.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err := Agents(dir); err == nil {
+		t.Error("a present non-agent file was accepted — Apply's refusal depends on this")
 	}
 }

@@ -153,6 +153,15 @@ the same flag — and `tab` changes them.
   rows below belong to another — the exact divergence the strip exists to prevent,
   produced by the code meant to honour it. Found in review, after a test that passed
   with the destination index hardcoded.
+- **The name column is measured from the longest name**, not borrowed from the main
+  menu's constant. `pad` never truncates by design, so a column too narrow does not
+  clip — it shifts everything after it, and the `shared` warning lands somewhere
+  different on every row.
+- **Applying the model every marked row already has says so and writes nothing.**
+  `SetModel` will not rewrite a file that already declares the model, deliberately —
+  but from outside, "nothing happened because nothing needed to" and "nothing happened
+  because it is broken" are the same picture. Twice in one session the first was read
+  as the second.
 - An empty or absent agents directory shows a plain line saying so, not an empty box.
 - **The menu row reports rather than describing itself** — `2 on haiku · 3 on session`,
   next to `status`. Every other row carries live state, and the tally is the question
@@ -405,3 +414,7 @@ The model selector:
   Proof: internal/ui/models_test.go TestAnEmptyAgentSetSaysSo
 - the tally counts the active destination's agents
   Proof: cmd/libretto/models_test.go TestMenuTallyCountsTheActiveTargetsAgents
+- the model column starts in the same place whatever the names are
+  Proof: internal/ui/models_test.go TestTheModelColumnLinesUpWhateverTheNamesAre
+- **applying a model every marked row already has says nothing changed**
+  Proof: internal/ui/models_test.go TestApplyingTheModelTheyAlreadyHaveSaysNothingChanged

@@ -41,18 +41,28 @@ type Agent struct {
 // that has never had one installed is a state, and making every caller special-case
 // os.IsNotExist to render an empty list is how that state becomes a crash.
 //
+// An entry that cannot be opened at all — a stale symlink whose destination was
+// renamed or deleted — is skipped and returned by name in the second value, rather
+// than failing the whole listing. Renaming one agent leaves a stale link in every
+// target that had the old name, and taking down eleven readable agents because a
+// twelfth is dangling is a listing that punishes the ordinary case. `prune` owns
+// stale links; this only has to survive them.
+//
+// **A file that is present and is not an agent is still an error.** Apply's
+// all-or-nothing guarantee rests on it — skipping it would let `--all` write around
+// something somebody put there deliberately.
+//
 // Sorted because two surfaces render this list — the CLI and the panel — and a list
 // whose order depends on readdir is a list that reorders itself between machines.
-func Agents(dir string) ([]Agent, error) {
+func Agents(dir string) (agents []Agent, unreadable []string, err error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, nil
+			return nil, nil, nil
 		}
-		return nil, err
+		return nil, nil, err
 	}
 
-	var agents []Agent
 	for _, e := range entries {
 		name := e.Name()
 		if e.IsDir() || !strings.HasSuffix(name, ".md") {
@@ -61,7 +71,11 @@ func Agents(dir string) ([]Agent, error) {
 		path := filepath.Join(dir, name)
 		model, err := ReadModel(path)
 		if err != nil {
-			return nil, err
+			if os.IsNotExist(err) {
+				unreadable = append(unreadable, strings.TrimSuffix(name, ".md"))
+				continue
+			}
+			return nil, nil, err
 		}
 		agents = append(agents, Agent{
 			Name:  strings.TrimSuffix(name, ".md"),
@@ -71,7 +85,8 @@ func Agents(dir string) ([]Agent, error) {
 	}
 
 	sort.Slice(agents, func(i, j int) bool { return agents[i].Name < agents[j].Name })
-	return agents, nil
+	sort.Strings(unreadable)
+	return agents, unreadable, nil
 }
 
 // Apply declares model on every named agent, or changes nothing at all.
@@ -94,7 +109,7 @@ func Apply(dir string, names []string, model string) error {
 		return fmt.Errorf("unknown model %q", model)
 	}
 
-	agents, err := Agents(dir)
+	agents, _, err := Agents(dir)
 	if err != nil {
 		return err
 	}
