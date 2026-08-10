@@ -16,7 +16,7 @@ reported that was not observed, failing tests are fixed or reported and never ed
 into silence, and commands whose result decides the next step run in the foreground
 with their output read.
 
-If `ponytail` is installed it applies throughout too — how much gets built is its
+`ponytail` ships with this flow and applies throughout — how much gets built is its
 question, and phase 2 is where it earns the most.
 
 ### A phase is invoked even when it has nothing to do
