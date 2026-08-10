@@ -33,23 +33,12 @@ model: haiku
 - **The catalogue names what a Claude subscription offers**, and says which plan each
   one needs, because the binary cannot ask Anthropic what the user is paying for.
 
-| Value | Resolves to | Means |
-|---|---|---|
-| `opus` | Opus 5 | the most capable. Max plans; metered on Pro |
-| `sonnet` | Sonnet 5 | the default working model |
-| `haiku` | Haiku 4.5 | the cheap one — what this capability exists to make reachable |
-| *default* | — | no `model:` key at all: the agent runs on whatever the session runs on |
-
-**The value written is the alias; the version is what it means today.** `opus` keeps
-meaning "the Opus tier" after the model behind it is replaced, which is why the
-frontmatter carries the alias — an agent file written today should not need editing
-the day a new Opus ships.
-
-But `opus` alone does not answer the question somebody opens the selector to ask, so
-the catalogue carries the version too, **with the date it was last checked**. That
-column decays. It is stated rather than hidden because this repository has already
-shipped the other kind: a test-count badge that read 117 against an actual 221,
-because nobody recomputed it and nothing said when it was written.
+| Value | Means |
+|---|---|
+| `opus` | the most capable. Max plans; metered on Pro |
+| `sonnet` | the default working model |
+| `haiku` | the cheap one — what this capability exists to make reachable |
+| *default* | no `model:` key at all: the agent runs on whatever the session runs on |
 
 Choosing *default* **removes** the key rather than writing a word meaning "no choice".
 An absent key is already the language's way of saying it, and two spellings of one
@@ -152,11 +141,6 @@ The catalogue, and refusing what is not in it:
 
 - the catalogue lists exactly the subscription models plus default
   Proof: internal/agentmodel/catalogue_test.go TestCatalogueListsTheSubscriptionModels
-- **every real model names the version its alias resolves to** — an alias alone does
-  not say what it means
-  Proof: internal/agentmodel/catalogue_test.go TestEveryRealModelNamesItsVersion
-- the date those versions were checked is stated, so the staleness is visible
-  Proof: internal/agentmodel/catalogue_test.go TestTheResolvedDateIsStated
 - an unknown model name is refused
   Proof: internal/agentmodel/catalogue_test.go TestUnknownModelIsRefused
 

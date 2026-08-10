@@ -14,35 +14,11 @@ package agentmodel
 // Model is one catalogue entry.
 type Model struct {
 	// Name is what goes in the frontmatter. Default is the empty string.
-	//
-	// It is an alias, not a version. `opus` keeps meaning "the Opus tier" after
-	// the model behind it is replaced, which is why the frontmatter carries the
-	// alias and not a pinned id — an agent file written today should not need
-	// editing the day a new Opus ships.
 	Name string
-
-	// Version is the model the alias resolves to as of Resolved. Empty for the
-	// session default, which resolves to whatever the session is running.
-	//
-	// This is the field that decays. It is here anyway because `opus` alone does
-	// not answer the question the user is actually asking, and an answer that
-	// goes stale in public beats no answer at all — Resolved is what makes the
-	// staleness visible instead of silent.
-	Version string
 
 	// Label is the one line shown beside it in the CLI and the panel.
 	Label string
 }
-
-// Resolved is when the Version column was last checked against the model
-// catalogue.
-//
-// ponytail: a hand-maintained date, and it will rot exactly the way this
-// repository's own "117 tests" badge rotted. The upgrade path, the day it
-// matters: read the aliases from the host rather than restating them. Nothing
-// here can ask, so until then the date is the honesty mechanism — a reader can
-// see how old the claim is instead of trusting it blind.
-const Resolved = "2026-08"
 
 // catalogue is ordered cheapest first, with the session default at the top.
 //
@@ -50,10 +26,10 @@ const Resolved = "2026-08"
 // list whose first entry is the most expensive model puts the costly choice under
 // the cursor of a feature whose whole purpose is to reduce the bill.
 var catalogue = []Model{
-	{Default, "", "the session's model — whatever you are running"},
-	{"haiku", "Haiku 4.5", "cheapest; fine for pattern-matching over prose"},
-	{"sonnet", "Sonnet 5", "the everyday working model"},
-	{"opus", "Opus 5", "most capable; Max plans, metered on Pro"},
+	{Default, "the session's model — whatever you are running"},
+	{"haiku", "cheapest; fine for pattern-matching over prose"},
+	{"sonnet", "the everyday working model"},
+	{"opus", "most capable; Max plans, metered on Pro"},
 }
 
 // Catalogue returns the legal models, cheapest first.

@@ -400,13 +400,7 @@ func modelChoices() []ui.ModelChoice {
 	cat := agentmodel.Catalogue()
 	out := make([]ui.ModelChoice, 0, len(cat))
 	for _, m := range cat {
-		// The version leads the label. `opus` answers which tier; "Opus 5"
-		// answers the question the user opened the screen with.
-		label := m.Label
-		if m.Version != "" {
-			label = m.Version + " · " + m.Label
-		}
-		out = append(out, ui.ModelChoice{Name: m.Name, Label: label})
+		out = append(out, ui.ModelChoice{Name: m.Name, Label: m.Label})
 	}
 	return out
 }

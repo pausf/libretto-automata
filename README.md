@@ -10,7 +10,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-payload-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
 [![Jira CLI](https://img.shields.io/badge/Jira%20CLI-tracker-0052CC?logo=jira&logoColor=white)](https://github.com/ankitpokhrel/jira-cli)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-223%20passing-brightgreen.svg)](#gates)
+[![Tests](https://img.shields.io/badge/tests-221%20passing-brightgreen.svg)](#gates)
 
 <img src="docs/panel.svg" alt="The libretto panel: a menu with install, uninstall, update, status, models, doctor and prune, acting on a chosen destination — here ~/.claude with all 26 items linked" width="800">
 
@@ -104,17 +104,6 @@ marked as such.
 `default` means no `model:` key at all — an absent key is already how the format says
 "whatever the session runs on", and two spellings of one state is a difference somebody
 eventually treats as meaningful.
-
-The values are **aliases**, so an agent file does not need editing the day a new model
-ships. The listing shows what each one resolves to, and when that was last checked:
-
-```
-models available (aliases; versions as of 2026-08):
-  default                 the session's model — whatever you are running
-  haiku      Haiku 4.5    cheapest; fine for pattern-matching over prose
-  sonnet     Sonnet 5     the everyday working model
-  opus       Opus 5       most capable; Max plans, metered on Pro
-```
 
 ### Where it installs
 
@@ -235,7 +224,7 @@ All six pass before any commit.
 ```bash
 gofmt -l .                                  # must print nothing
 go vet ./...
-go test ./... -count=1                      # 223 tests
+go test ./... -count=1                      # 221 tests
 scripts/check-payload                       # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test   # 17 checks
 skills/record-work/spec-drift --anchors     # 105 citations
