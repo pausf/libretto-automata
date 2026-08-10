@@ -51,6 +51,8 @@ libretto prune --yes    # remove them
 libretto uninstall      # what this repo installed here; change nothing
 libretto uninstall --yes # take it back out
 libretto preview
+libretto models         # which model each agent runs on, read-only
+libretto models set haiku review-design review-tests   # --all for every agent
 
 libretto install --project   # <cwd>/.claude instead of ~/.claude
 libretto install --global    # the default; both flags at once is an error
@@ -61,7 +63,7 @@ libretto install --global    # the default; both flags at once is an error
 ```bash
 gofmt -l .                                       # must print nothing
 go vet ./...
-go test ./... -count=1                           # 171 tests
+go test ./... -count=1                           # 221 tests
 scripts/check-payload                            # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test        # 17 checks
 skills/record-work/spec-drift --anchors          # 167 citations must resolve
@@ -81,7 +83,8 @@ cmd/libretto/           the CLI, dispatch and the scope flags
 internal/target/        what an installable destination is
 internal/link/          own.go (ownership) · scan.go state.go (read) · plan.go apply.go (write)
 internal/repo/          git, and the rebuild decision. ONE test for 155 lines — the largest gap.
-internal/ui/            logo, theme, panel, model
+internal/ui/            logo, theme, panel, model, models.go (the selector screen)
+internal/agentmodel/    the model: key in agents/*.md, and the catalogue of values
 skills/ agents/ commands/   THE PAYLOAD — what gets symlinked
 scripts/check-payload   repo-only tooling. Never referenced from a skill.
 .agents/specs/          the specification, one directory per capability
