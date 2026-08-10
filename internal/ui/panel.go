@@ -333,10 +333,18 @@ func (t Theme) footer(p Panel, width int) string {
 	//
 	// ponytail: one fallback string per screen, not a truncation ladder. What survives
 	// the drop is the keys that exist only on this screen; ↑↓ and `tab` are taught on
-	// the menu, which is the only way in. If a third width ever needs a third form,
-	// that is the moment to build the ladder, not before.
+	// the menu, which is the only way in.
 	if gap < 1 {
 		hints = tight
+		gap = width - lipgloss.Width(left) - lipgloss.Width(hints) - footerIndent
+	}
+
+	// A tag name has no length limit, so no pair of legends can be short enough on its
+	// own — `v0.10.0-17-g96c04e3-dirty` is two tags away and already one column over.
+	// The legend is what the panel is operated with and the version is reference that
+	// `libretto version` still prints, so the version is what goes.
+	if gap < 1 {
+		left = strings.Repeat(" ", footerIndent)
 		gap = width - lipgloss.Width(left) - lipgloss.Width(hints) - footerIndent
 	}
 	if gap < 1 {

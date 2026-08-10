@@ -43,8 +43,10 @@ answers "what is still on the expensive model?" without reading every row.
   reads as the end of the list. It is an indented dim rule, **not** the frame's
   `├───┤` junction: that glyph means "new section of the panel", and three of them
   inside one list would read as three panels.
-- **One group means no separator.** A rule with nothing on one side of it is a
-  division of nothing.
+- **One group means no separator between groups.** A rule with nothing on one side of
+  it is a division of nothing. The `all` row's own rule is not one of these: it
+  divides the control from the list, which is a boundary that exists whatever the
+  models are, so a single-model screen still shows exactly that one.
 
 ### `all` is a row, and space on it marks everything
 
@@ -109,11 +111,12 @@ All of it inside `internal/ui/`.
   glyphs, not shades — the same both-signals rule the mark and the `shared` warning
   already follow.
 - **No astral-plane runes, no ambiguous-width glyphs** in the rule.
-- **The footer must still fit** at `MinContentWidth`, with the longest version
-  `git describe --tags --always --dirty` can produce. The gap calculation clamps at 1
-  and then overflows, and a footer wider than the frame drags the whole centred block
-  off the terminal. Each screen therefore carries a tight second legend, taken when
-  the long one will not fit; every key survives the drop, only the verbs do not.
+- **The footer must fit at `MinContentWidth` for a version of any length.** A tag name
+  is arbitrary, so no fixed pair of legends is short enough on its own. The gap
+  calculation clamps at 1 and then overflows, and a footer wider than the frame drags
+  the whole centred block off the terminal. Three steps: the full legend, a tight
+  second one when it will not fit — every key survives, only the verbs go — and then
+  the version drops, which bounds the line at two indents plus the tight legend.
 
 ## Prior decisions
 
@@ -158,8 +161,9 @@ All of it inside `internal/ui/`.
    same position `Tally` gives it, from the same shared ranking.
    Proof: internal/ui/models_test.go TestAnUnknownModelGetsItsOwnGroup
 
-3. A rule is drawn between groups and nowhere else — none above the first group, none
-   after the last, and none at all when every agent shares one model.
+3. One rule per boundary and none anywhere else: one under the `all` row, one wherever
+   the model changes, none above the `all` row and none after the last group. A screen
+   whose agents all share one model shows the `all` row's rule alone.
    Proof: internal/ui/models_test.go TestGroupRuleSitsOnlyBetweenGroups
 
 4. `space` on the `all` row marks every agent; `space` again clears them.
@@ -188,9 +192,13 @@ All of it inside `internal/ui/`.
 10. The `all` row and the group rule are legible with colour stripped.
     Proof: internal/ui/models_test.go TestTheAllRowIsLegibleWithoutColour
 
-11. No screen's footer is wider than the frame it sits under, at any width down to
-    the floor and with the longest version string `git describe` can produce. The
-    constraint was stated below and had no proof; building the selector's legend —
-    half again as long as the menu's — is what made it a real one, at 79 columns
-    against a 60 frame.
+11. No screen's footer is wider than the frame it sits under, at any width down to the
+    floor and at **every** version length — swept, not sampled. A tag name has no
+    length limit, so a pinned version is not a worst case: the first version of this
+    criterion pinned 22 characters and passed while 25 overflowed by a column.
     Proof: internal/ui/panel_test.go TestTheFooterNeverOutgrowsTheFrame
+
+12. When neither legend fits beside the version, the version goes and the legend
+    stays. It is what the panel is operated with, and `libretto version` still prints
+    it.
+    Proof: internal/ui/panel_test.go TestTheLegendOutlivesTheVersion

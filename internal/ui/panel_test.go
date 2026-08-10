@@ -586,17 +586,45 @@ func TestTheFooterFollowsTheScreen(t *testing.T) {
 func TestTheFooterNeverOutgrowsTheFrame(t *testing.T) {
 	forceTrueColor(t)
 
+	// A tag name is arbitrary, so there is no longest version to pin — pinning one is
+	// how this passed while `v0.10.0-17-g96c04e3-dirty` overflowed by a column, which
+	// is what this repo will print two tags from now. Sweep the length instead.
 	for _, term := range []int{MinPanelWidth, 62, 80, 140} {
 		width := ContentWidth(term) + 2
-		for _, p := range []Panel{
-			{Version: "v0.2.0-3-gabc123-dirty"},
-			{Version: "v0.2.0-3-gabc123-dirty", InSelector: true},
-			{Version: "v0.2.0-3-gabc123-dirty", InSelector: true, ChoosingModel: true},
-		} {
-			got := lipgloss.Width(strings.TrimRight(strip(darkTheme().footer(p, width)), " "))
-			if got > width {
-				t.Errorf("term %d: footer is %d columns against a %d frame", term, got, width)
+		for n := 0; n <= 48; n++ {
+			version := "v" + strings.Repeat("0", n)
+			for _, p := range []Panel{
+				{Version: version},
+				{Version: version, InSelector: true},
+				{Version: version, InSelector: true, ChoosingModel: true},
+				{Version: version, InSelector: true, Confirm: "sure?"},
+			} {
+				got := lipgloss.Width(strings.TrimRight(strip(darkTheme().footer(p, width)), " "))
+				if got > width {
+					t.Fatalf("term %d, version %d chars: footer is %d columns against a %d frame",
+						term, n+1, got, width)
+				}
 			}
+		}
+	}
+}
+
+// The legend is what the panel is operated with; the version is reference, and
+// `libretto version` still prints it. So the version is what goes when neither fits.
+func TestTheLegendOutlivesTheVersion(t *testing.T) {
+	forceTrueColor(t)
+
+	got := strip(darkTheme().footer(Panel{
+		Version:    "v0.10.0-17-g96c04e3-dirty",
+		InSelector: true,
+	}, ContentWidth(MinPanelWidth)+2))
+
+	if strings.Contains(got, "v0.10.0") {
+		t.Fatalf("the version survived at the expense of the legend: %q", got)
+	}
+	for _, want := range []string{"space", "a all", "m model", "esc"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("the legend lost %q at the floor: %q", want, got)
 		}
 	}
 }
