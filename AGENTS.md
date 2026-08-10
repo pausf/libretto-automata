@@ -63,7 +63,7 @@ libretto install --global    # the default; both flags at once is an error
 ```bash
 gofmt -l .                                       # must print nothing
 go vet ./...
-go test ./... -count=1                           # 221 tests
+go test ./... -count=1                           # 223 tests
 scripts/check-payload                            # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test        # 17 checks
 skills/record-work/spec-drift --anchors          # 167 citations must resolve

@@ -61,9 +61,9 @@ func listModels(root string, tg target.Target) error {
 		fmt.Printf("  %-20s %s%s\n", a.Name, describe(a.Model), note)
 	}
 	fmt.Println()
-	fmt.Println("models available:")
+	fmt.Printf("models available (aliases; versions as of %s):\n", agentmodel.Resolved)
 	for _, m := range agentmodel.Catalogue() {
-		fmt.Printf("  %-20s %s\n", nameOf(m), m.Label)
+		fmt.Printf("  %-10s %-12s %s\n", nameOf(m), m.Version, m.Label)
 	}
 	return nil
 }
