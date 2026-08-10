@@ -328,6 +328,10 @@ func wrap(i, n int) int {
 	return ((i % n) + n) % n
 }
 
+// MenuItemForTest exposes one menu row, so a test can assert what it says rather
+// than scraping it back out of the rendered frame.
+func (m Model) MenuItemForTest(i int) MenuItem { return m.panel.Menu[i] }
+
 // SetSelectedForTest moves the cursor from outside the package. Tests in cmd need it
 // to reach a row without simulating keypresses to get there.
 func (m Model) SetSelectedForTest(i int) Model {

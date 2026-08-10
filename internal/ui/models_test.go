@@ -301,6 +301,71 @@ func TestFailedApplyIsReportedAndTheScreenSurvives(t *testing.T) {
 	}
 }
 
+// Every other menu row reports rather than describing itself: `status` says
+// "21 linked · 2 missing", not "show the status". The tally is the question the
+// panel was opened to answer — how much of this is still on the expensive model.
+func TestMenuRowReportsTheModelTally(t *testing.T) {
+	choices := []ModelChoice{
+		{Name: "", Label: "session"},
+		{Name: "haiku", Label: "cheapest"},
+		{Name: "sonnet", Label: "everyday"},
+		{Name: "opus", Label: "most capable"},
+	}
+	rows := []AgentRow{
+		{Name: "a", Model: "haiku"},
+		{Name: "b", Model: "haiku"},
+		{Name: "c", Model: ""},
+		{Name: "d", Model: "opus"},
+	}
+
+	got := Tally(rows, choices)
+	want := "2 on haiku · 1 on opus · 1 on session"
+	if got != want {
+		t.Errorf("Tally() = %q, want %q", got, want)
+	}
+}
+
+// The session default goes last even though the catalogue lists it first. It is
+// not a price, and a row that opens with the one entry that cannot answer "how
+// much is still expensive?" is not answering the question.
+func TestTallyPutsTheSessionDefaultLast(t *testing.T) {
+	choices := []ModelChoice{{Name: ""}, {Name: "haiku"}, {Name: "opus"}}
+	rows := []AgentRow{{Name: "a", Model: ""}, {Name: "b", Model: "opus"}}
+
+	if got, want := Tally(rows, choices), "1 on opus · 1 on session"; got != want {
+		t.Errorf("Tally() = %q, want %q", got, want)
+	}
+}
+
+// A screen that requires a reopen to tell the truth is a screen that lies for as
+// long as it is open — and the menu row behind it lies too.
+func TestMenuRowTallyRefreshesAfterApplying(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+
+	// The caller owns the menu, so the refresh is what rebuilds the row. Here it
+	// recomputes the tally from whatever the agents callback now reports.
+	m = m.WithRefresh(func(int) ([]MenuItem, []TargetRow, error) {
+		rows, err := m.listAgents()
+		if err != nil {
+			return nil, nil, err
+		}
+		return []MenuItem{
+			{Label: "install", Desc: "link", Enabled: true},
+			{Label: "models", Desc: Tally(rows, m.ModelChoices()), Enabled: true},
+		}, []TargetRow{{Name: "claude", Active: true}}, nil
+	})
+
+	m = openSelector(t, m)
+	m = key(m, "a")
+	m = key(m, "m")
+	m = chooseModel(t, m, "haiku")
+
+	row := m.MenuItemForTest(1)
+	if row.Desc != "3 on haiku" {
+		t.Errorf("menu row = %q, want %q", row.Desc, "3 on haiku")
+	}
+}
+
 // chooseModel moves the catalogue cursor onto name and confirms.
 func chooseModel(t *testing.T, m Model, name string) Model {
 	t.Helper()
