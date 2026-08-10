@@ -178,6 +178,61 @@ func TestModelsSetUnderProjectScopeSaysTheEffectIsShared(t *testing.T) {
 	}
 }
 
+// The scope flag has to earn its place here, and this is the only thing it can
+// honestly do: the model is one file in the repository, but *which agents reach a
+// given target* genuinely differs between the two.
+//
+// Without this the listing is byte-identical under --global and --project, and the
+// flag is decoration on a command that documents itself as respecting it.
+func TestModelsMarksAgentsThatDoNotReachThisScope(t *testing.T) {
+	f := newFixture(t)
+	linked := f.agent(t, "review-design", "")
+	f.agent(t, "spec-writer", "")
+
+	// Only one of the two is installed into the global target.
+	f.link(t, linked, f.dest("agents", "review-design.md"))
+
+	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, line := range strings.Split(out, "\n") {
+		switch {
+		case strings.Contains(line, "review-design"):
+			if strings.Contains(line, notLinkedHere) {
+				t.Errorf("an agent linked into this target was marked as absent: %q", line)
+			}
+		case strings.Contains(line, "spec-writer"):
+			if !strings.Contains(line, notLinkedHere) {
+				t.Errorf("an agent that does not reach this target was not marked: %q", line)
+			}
+		}
+	}
+}
+
+// And the difference has to be a difference: the same repo, two scopes, two
+// answers. One scope reporting what the other reports is the bug this closes.
+func TestModelsListingDiffersBetweenScopes(t *testing.T) {
+	f := newFixture(t)
+	linked := f.agent(t, "review-design", "")
+	f.agent(t, "spec-writer", "")
+	f.link(t, linked, f.dest("agents", "review-design.md"))
+
+	globalOut, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectOut, _, err := capture(t, func() error { return models(f.Repo, f.project(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if globalOut == projectOut {
+		t.Error("the two scopes produced identical listings — the flag changes nothing")
+	}
+}
+
 func TestModelsOutputHasNoEscapeCodes(t *testing.T) {
 	f := newFixture(t)
 	f.agent(t, "review-design", "haiku")

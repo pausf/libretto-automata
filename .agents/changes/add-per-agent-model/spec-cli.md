@@ -43,7 +43,15 @@ reasonably expects a project-local effect; leaving that expectation unchallenged
 how a shared setting gets discovered by accident later.
 
 An agent listed in one scope and not the other is a real difference and is shown as
-such — that is the scope flag earning its place here.
+such — that is the scope flag earning its place here. The listing marks every agent
+the repository has but the target does not, and **only `linked` counts**: a conflict
+is somebody else's file in our slot, and an agent whose slot is occupied does not
+reach that target however much the repository wishes it did.
+
+This clause had no criterion in the first draft of this delta, and the code did not
+implement it — the listing was byte-identical under both flags and the green suite
+had no way to notice. That is what an outcome with no `Proof:` behind it costs, and
+it is why the two criteria below exist.
 
 ## Scope boundaries
 
@@ -79,6 +87,10 @@ reading the model of an agent this repo does not own.
   Proof: cmd/libretto/models_test.go TestModelsSetRejectsAnUnknownModel
 - an unknown agent name exits non-zero and leaves the valid ones untouched
   Proof: cmd/libretto/models_test.go TestModelsSetRejectsAnUnknownAgentAndWritesNothing
+- an agent the repository has but this target does not is marked as such
+  Proof: cmd/libretto/models_test.go TestModelsMarksAgentsThatDoNotReachThisScope
+- **the two scopes do not produce the same listing** — the flag changes something
+  Proof: cmd/libretto/models_test.go TestModelsListingDiffersBetweenScopes
 - writing under `--project` says the effect is not project-local
   Proof: cmd/libretto/models_test.go TestModelsSetUnderProjectScopeSaysTheEffectIsShared
 - the subcommand is reachable from dispatch

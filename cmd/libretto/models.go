@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/pausf/libretto-automata/internal/agentmodel"
+	"github.com/pausf/libretto-automata/internal/link"
 	"github.com/pausf/libretto-automata/internal/target"
 )
 
@@ -23,6 +25,14 @@ func models(root string, tg target.Target, args []string) error {
 	return setModels(root, tg, args[1:])
 }
 
+// notLinkedHere marks an agent the repository has but this target does not.
+//
+// The model itself is one file and cannot differ between targets. Which agents
+// actually reach a target can, and that is the one honest thing the scope flag
+// changes about this command — without it the two listings are identical and the
+// flag is decoration.
+const notLinkedHere = "· not linked here"
+
 func listModels(root string, tg target.Target) error {
 	agents, err := agentmodel.Agents(root)
 	if err != nil {
@@ -37,9 +47,18 @@ func listModels(root string, tg target.Target) error {
 		return nil
 	}
 
+	reaches, err := agentsReaching(root, tg)
+	if err != nil {
+		return err
+	}
+
 	fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
 	for _, a := range agents {
-		fmt.Printf("  %-20s %s\n", a.Name, describe(a.Model))
+		note := ""
+		if !reaches[a.Name] {
+			note = "  " + notLinkedHere
+		}
+		fmt.Printf("  %-20s %s%s\n", a.Name, describe(a.Model), note)
 	}
 	fmt.Println()
 	fmt.Println("models available:")
@@ -47,6 +66,31 @@ func listModels(root string, tg target.Target) error {
 		fmt.Printf("  %-20s %s\n", nameOf(m), m.Label)
 	}
 	return nil
+}
+
+// agentsReaching reports which agents are actually installed in a target, keyed by
+// the name agentmodel uses — without the .md that link items carry.
+//
+// Only `Linked` counts. A conflict is somebody else's file sitting where ours would
+// go, and an agent whose slot is occupied does not reach the target however much the
+// repository wishes it did.
+func agentsReaching(root string, tg target.Target) (map[string]bool, error) {
+	if !tg.Accepts(target.Agents) {
+		return nil, nil
+	}
+
+	entries, err := link.Scan(root, tg)
+	if err != nil {
+		return nil, err
+	}
+
+	reaches := make(map[string]bool, len(entries))
+	for _, e := range entries {
+		if e.Kind == target.Agents && e.State == link.Linked {
+			reaches[strings.TrimSuffix(e.Name, ".md")] = true
+		}
+	}
+	return reaches, nil
 }
 
 func setModels(root string, tg target.Target, args []string) error {
