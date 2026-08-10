@@ -4,7 +4,7 @@ description: "Trigger: a task has been read and needs a specification; writing o
 license: MIT
 metadata:
   author: pausf
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## What this does
@@ -146,6 +146,9 @@ Every file in this phase has exactly one author. That is the property that makes
 fan-out safe, and it is the same rule as the plan's, with a different single writer.
 
 ### What each sub-agent is given
+
+Each one is launched as the `spec-writer` agent — that contract exists for exactly
+this seat, and a generic sub-agent would start without it. In its prompt:
 
 - the path to the brief, and the instruction to read it first
 - its own subtask — key, summary, description

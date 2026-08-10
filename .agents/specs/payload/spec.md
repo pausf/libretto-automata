@@ -168,6 +168,10 @@ makes concurrency safe without locks.
 **Sub-agents start with no rules loaded.** Every launch carries them explicitly, or the
 default takes over — and the default is to guess plausibly.
 
+**An agent that ships is named by the skill that launches it.** Phase 3's fan-out runs
+`spec-writer`, named in `write-spec`. An agent nothing references is dead payload —
+`spec-writer` sat unreferenced from its landing until 2026-08-10, and no gate noticed.
+
 **Vendored items are copied unmodified**, with their licence and version recorded. A
 change needed for this flow goes in the skill that calls them, never into the copy, so
 the copy stays comparable with upstream.
