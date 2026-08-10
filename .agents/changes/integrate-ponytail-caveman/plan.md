@@ -24,13 +24,13 @@ first time the gates see the work.
       Waits on: nothing. Independent of task 1.
       Closes: the same criterion for the caveman pair.
 
-- [ ] 3. THIRD-PARTY.md: move both from *Not vendored* to *Vendored* with pinned
+- [x] 3. THIRD-PARTY.md: move both from *Not vendored* to *Vendored* with pinned
       version/commit and licence lines; rewrite the *Not vendored* rationale and
       *Naming* to state the reversal and why (target user starts from zero;
       namespacing already answers the collision).
       Waits on: 1 and 2 (the pinned commits are known only after the copies exist).
 
-- [ ] 4. calling skills: `write-spec` (`ponytail:ponytail` → `ponytail`, ledger
+- [x] 4. calling skills: `write-spec` (`ponytail:ponytail` → `ponytail`, ledger
       reference), `build-and-check`, `present-work`, `record-work`
       (`caveman-commit`), `commands/libretto-flow.md` — conditional "if installed"
       prose reconciled to shipped-by-default, adaptations only in callers, never in
@@ -40,11 +40,11 @@ first time the gates see the work.
       Closes: spec criterion "every skill the flow references exists"
       (scripts/check-payload).
 
-- [ ] 5. docs: `docs/FLOW.md` "present rather than vendored" paragraph and README's
+- [x] 5. docs: `docs/FLOW.md` "present rather than vendored" paragraph and README's
       companions section state the new decision.
       Waits on: 3 (the docs cite the decision THIRD-PARTY.md records).
 
-- [ ] 6. all six gates green over the enlarged payload, including
+- [x] 6. all six gates green over the enlarged payload, including
       `spec-drift --anchors` after the prose edits.
       Waits on: 1–5.
       Closes: spec criteria "no vendored skill invokes a path that does not get
