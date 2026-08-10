@@ -21,9 +21,20 @@ state exactly as it found it.
   original branch is restored — always, including when the review itself fails
 - a dirty working tree stops the fallback before any checkout: the state is reported,
   never stashed or discarded on the user's behalf
-- the review itself is launched in one fresh subagent with none of the session's
-  context; it reads the diff range `<base>...<head>` and returns findings that are
-  relayed attributed and unedited — the same seam contract as `review-work`
+- the review runs as **three lenses over one frozen diff**, each a fresh subagent
+  with none of the session's context, launched in parallel:
+  - **intent** — does the diff do what the MR says it does: missing requirements,
+    scope creep, implemented-but-wrong; every finding quotes the MR's stated intent
+  - **security** — the `review-security` skill: only high-confidence findings with
+    attacker-controlled input traced, severity classified, framework mitigations
+    checked before flagging
+  - **design** — the `review-design` skill: YAGNI, KISS, SOLID and code smells as
+    labelled judgment calls; the reviewed project's own conventions override the
+    baseline
+- lens reports are relayed per lens, attributed and unedited — never merged or
+  reranked against each other; one lens passing must not mask another failing
+- `review-security` and `review-design` are standalone skills, each usable on any
+  diff without `review-project`
 - the review reports and never blocks, edits, commits or pushes in the reviewed
   repository
 
@@ -80,15 +91,28 @@ every exit path.
 - **"Too large" stays a judgment** — inherited from the payload spec's "no flag for
   how big a change is". Signals named under scope boundaries.
 - **The reviewer reports and never blocks** — inherited from the review seam.
-- **One reviewer, not a panel** — inherited; two runs of one model are correlation.
+- **Three lenses, not one reviewer and not N copies** — settled by the user
+  2026-08-10, after reviewing published review skills. The payload's "one reviewer,
+  not a panel" stands for the internal seam and anticipated exactly this: lenses are
+  a spec change, and this is that change. Diversity comes from distinct briefs
+  (intent, security, design), never from re-running one brief twice — two runs of
+  the same model over the same diff with the same brief are correlation.
+- **Ideas taken, text not copied** — the lens skills draw on published review
+  skills (confidence-gated security findings à la Sentry, non-reranked axes à la
+  Pocock, judgment-call principles à la code-quality-principles) and are written
+  in this payload's own terms.
 
 ## Task breakdown
 
-- [ ] `skills/review-project/SKILL.md` — URL parsing, forge derivation, clone
+- [x] `skills/review-project/SKILL.md` — URL parsing, forge derivation, clone
       verification, worktree default, fallback with restore, reviewer launch, relay
-- [ ] `commands/libretto-review.md` — routes to the skill, nothing else
-- [ ] payload spec delta: `libretto-review` joins the outcomes list; capability spec
+- [x] `commands/libretto-review.md` — routes to the skill, nothing else
+- [x] payload spec delta: `libretto-review` joins the outcomes list; capability spec
       `review-project` created on landing
+- [ ] `skills/review-security/SKILL.md` — the security lens, standalone
+- [ ] `skills/review-design/SKILL.md` — the design lens, standalone
+- [ ] `review-project` step 5–6 rewritten: freeze the diff, three lenses in
+      parallel, relay per lens without reranking
 
 ## Verification criteria
 

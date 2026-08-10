@@ -80,3 +80,25 @@ phase 8 from this change's delta, not here.
 - [x] **3.2** all six gates green, foreground, outputs read (gofmt empty, vet 0,
       tests 0, check-payload passed, self-test passed, 168 anchors resolve)
 - [x] **3.3** committed: c4dd023 `docs(spec): record libretto-review in payload outcomes`
+
+### Task 4: the review lenses (scope added by the user 2026-08-10)
+
+Depends on: Tasks 1–3 (rewrites review-project's step 5–6).
+From spec: task breakdown items 4–6. Closes: check-payload criterion.
+
+**Files:** create `skills/review-security/SKILL.md`, `skills/review-design/SKILL.md`;
+modify `skills/review-project/SKILL.md` steps 5–6.
+
+- security lens: high-confidence findings only, attacker-controlled input traced,
+  framework mitigations checked before flagging, severity classified, explicit
+  do-not-flag list; standalone on any diff
+- design lens: YAGNI, KISS, SOLID, smells — every finding a labelled judgment call,
+  the reviewed project's conventions override the baseline; standalone on any diff
+- review-project: freeze the diff once, launch three fresh lens subagents in
+  parallel (intent brief inline; security and design by skill name), relay per lens,
+  never merge or rerank across lenses
+- [ ] **4.1** write `skills/review-security/SKILL.md`
+- [ ] **4.2** write `skills/review-design/SKILL.md`
+- [ ] **4.3** rewrite review-project steps 5–6 for the three lenses
+- [ ] **4.4** run all six gates foreground, exit codes read
+- [ ] **4.5** commit
