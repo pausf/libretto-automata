@@ -4,7 +4,7 @@ description: "Trigger: a GitHub or GitLab PR/MR URL to review in a repository al
 license: MIT
 metadata:
   author: pausf
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## What this does

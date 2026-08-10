@@ -18,9 +18,10 @@ agents/review-lens-intent.md
   invokes `Skill(skill="review-design")`. They live in different directories, only
   the agents collided, and renaming a skill nobody asked about would be scope
   arriving unannounced.
-- Every reference moves with them: the launch table in `skills/review-project/SKILL.md`
-  and the `Governs:` line above. `rg --hidden` over the repository finds no surviving
-  `agents/review-<lens>.md`.
+- Every reference in the payload and the code moves with them: the launch table in
+  `skills/review-project/SKILL.md`, and the `Governs:` line above. The capability
+  spec keeps its old names until phase 8 folds this delta onto it — it describes
+  `main`, and `main` still has the old files.
 - The four skill names stay written out in the `Skill(skill="…")` form
   `scripts/check-payload` scans. That requirement has now moved house twice and has
   not changed.
@@ -41,6 +42,13 @@ The lens was unreachable in the global target and would have stayed that way.
 ## Scope boundaries
 
 **In:** the five agent filenames, their `name:` frontmatter, and every reference.
+
+**In, and worth naming because a reviewer could not tie it to an outcome
+otherwise:** `agents/review-lens-intent.md` carries `model: haiku`. That line is the
+user's own edit, made from the panel before this change opened, carried onto the
+branch by `2767491` rather than discarded. It is a setting, not a behaviour change
+this work chose — but it arrived inside a rename commit and the commit message was
+the only place that said so, which is not a contract.
 
 **Out:**
 
@@ -88,18 +96,30 @@ The lens was unreachable in the global target and would have stayed that way.
   Proof: scripts/check-payload
 - every `Proof:` citation in the amended specs resolves
   Proof: skills/record-work/spec-drift --anchors
-- **no reference to an old lens agent name survives anywhere in the repository.**
+- **no reference to an old lens agent name survives in the payload or the code.**
   Checked with `rg --hidden`, because `.agents` starts with a dot and the obvious
   spelling of this check reports a clean repo while the specs still name the deleted
   agent — which is exactly what happened the last time a lens was renamed:
 
   ```
-  rg -n --hidden --glob '!.git/*' 'agents/review-(security|design|reliability|tests|intent)\.md'
+  rg -n --hidden --glob '!.git/*' --glob '!.agents/**' \
+    'agents/review-(security|design|reliability|tests|intent)\.md'
   ```
+
+  **The first draft of this criterion claimed the whole repository and was false when
+  written.** `.agents/specs/review-project/spec.md` still names the five old files in
+  its `Governs:` line and in prose, because a capability spec describes what is on
+  `main` until phase 8 folds this delta onto it. Claiming otherwise made a criterion
+  that failed the moment a reviewer ran it — and the reviewer did.
 
   No `Proof:` — no test asserts this. `check-payload` verifies that each agent that
   *exists* is coherent; it cannot see a name that should have stopped existing. An
   observation, until a check earns the citation.
+
+- **the capability spec's own references move when the delta lands**, not before —
+  `Governs:` and the three prose mentions. Phase 8's consolidation is where that is
+  checked, and `--anchors` is the check.
+
 - behaviour is a prompt and is checked by running it. **Owed:** one real review
   launched with the renamed agents, five reports relayed. Until then the rename is
   believed rather than observed.

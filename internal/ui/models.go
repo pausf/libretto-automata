@@ -154,14 +154,21 @@ func (m Model) updateSelector(k string) (Model, bool) {
 	// still showing the previous destination's agents under the new name is the
 	// same lie the target strip exists to prevent.
 	case "tab", "s":
+		// Move nothing until the new destination's rows are in hand.
+		//
+		// Switching first and loading second leaves the strip naming one
+		// destination while the rows below it belong to another when the load
+		// fails — which is the exact lie the strip exists to prevent, produced by
+		// the code meant to honour it. So the whole switch is abandoned on error
+		// and the screen stays where it was.
+		before := m
 		next, _ := m.nextScope()
 		m = next.(Model)
+
 		rows, err := m.listAgents(m.activeScope())
 		if err != nil {
-			// Keep what we had. Showing one destination's agents under another's
-			// name would be worse than showing an error.
-			m.notice = "cannot read the agents: " + err.Error()
-			return m, true
+			before.notice = "cannot read the agents: " + err.Error()
+			return before, true
 		}
 		m.panel.Agents = rows
 		m.panel.AgentCursor, m.panel.ChoosingModel = 0, false
