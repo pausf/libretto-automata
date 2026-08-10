@@ -64,7 +64,7 @@ go vet ./...
 go test ./... -count=1                           # 171 tests
 scripts/check-payload                            # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test        # 17 checks
-skills/record-work/spec-drift --anchors          # 166 citations must resolve
+skills/record-work/spec-drift --anchors          # 167 citations must resolve
 ```
 
 `spec-drift` with no flag warns about staged code whose spec did not move. It never
@@ -110,9 +110,9 @@ documentation pretending to be state — which happened while building this very
 
 ## Specs
 
-Per **capability**, never per ticket, in `.agents/specs/<capability>/spec.md`. Eight of
+Per **capability**, never per ticket, in `.agents/specs/<capability>/spec.md`. Nine of
 them: `ownership`, `link-state`, `linking`, `targets`, `repo-sync`, `panel`, `cli`,
-`payload`. `docs/SPEC.md` is an index with no requirements in it.
+`payload`, `review-project`. `docs/SPEC.md` is an index with no requirements in it.
 
 Each declares what it owns and cites the test behind each criterion:
 
