@@ -137,6 +137,32 @@ From spec: `spec-panel.md` breakdown 4. Closes: the tally criterion, and turns
 - [x] **4.3** six gates, `--anchors` fully green, plus `make preview` looked at
 - [x] **4.4** committed: 935fbe7
 
+### Task 5: namespace the lens agents
+
+Depends on: nothing in Go. Payload only. Added mid-change, at the user's request, so
+the collision is fixed before this work is reviewed rather than after.
+From spec: `spec-review-project.md` breakdown 5. Closes: its check-payload criteria.
+
+**Files:** rename `agents/review-{security,design,reliability,tests,intent}.md` to
+`agents/review-lens-*.md`; modify `skills/review-project/SKILL.md`
+
+- the agents are renamed; **the skills they apply are not** — they did not collide,
+  and `install --global` reports exactly one conflict on the reporting machine
+- **the reference hunt is the work, not the rename.** A dangling agent name fails as a
+  lens that silently never ran:
+
+  ```
+  rg -n --hidden --glob '!.git/*' 'agents/review-(security|design|reliability|tests|intent)\.md'
+  ```
+
+  `--hidden` is not optional — `.agents` starts with a dot, and the obvious spelling
+  reported a clean repo while the specs still named a deleted agent, last time
+- [x] **5.1** rename the five files and their `name:` frontmatter
+- [x] **5.2** update the launch table and the `Governs:` line
+- [x] **5.3** the reference hunt returns nothing
+- [x] **5.4** six gates
+- [ ] **5.5** committed
+
 ---
 
 ## What can start now
@@ -153,8 +179,9 @@ Then: 2 (after 1) → 4 (after 1, 2, 3).
   run the fix is a claim about the exact thing the last one got wrong.
 - `make preview`, and the selector driven by hand with `tab`.
 
-## Named, and deliberately not fixed here
+## Fixed here after all
 
-- **`review-reliability` still cannot install into this machine's global target.** The
-  split of `review-lens` collided with an agent the user already had. It belongs to
-  `review-project`, it is a separate change, and this plan does not close it.
+- **The `review-reliability` collision is closed by task 5.** It was written up as a
+  separate change; the user asked for it fixed before review rather than after, which
+  is the better call — a reviewer reading this diff would otherwise have found a
+  payload that cannot install on the machine it was built on.
