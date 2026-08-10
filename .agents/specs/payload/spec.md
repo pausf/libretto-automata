@@ -13,6 +13,8 @@ Installing this repository gives a working flow on a machine that has nothing el
 
 - one command, `libretto-flow`, that routes and never implements
 - `libretto-status`, read-only, reporting what is in flight
+- `libretto-review`, which reviews a forge PR/MR in a workspace that restores itself
+  — its contract is the `review-project` capability spec
 - one skill per phase, each of which stops where its phase stops
 - **the finished work reviewed by someone who did not write it** — in the seam
   between build and present, `review-work` launches one fresh `work-reviewer`
