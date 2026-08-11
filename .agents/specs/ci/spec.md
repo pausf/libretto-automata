@@ -237,15 +237,21 @@ than loud:
 - **no `run:` script expands a label, a title or a body** — untrusted text arrives through `env:`
   Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowNeverExpandsUntrustedTextInsideAScript
 
-- **owed, and not provable here:** one real request with the gates workflow attached, green;
-  **one real merge that tags and publishes**; and branch protection turned on so the check is
-  required. Until all three, "cannot merge until green" and "every merge is tagged" are
-  sentences in a file rather than rules anybody is held to.
+- **paid, by observation:** the gates workflow has run green on real requests, and **one real
+  merge has tagged and published** — request #25, run `31485394056`, all seven steps `success`,
+  `v1.0.0` on the remote pointing at `main`'s tip and a Release carrying the request's title.
+  `libretto version` reports `v1.0.0` from a fresh build.
+- **still owed:** branch protection, so the gates are *required* rather than merely run. Until
+  then "cannot merge until green" is a sentence in a file rather than a rule anybody is held
+  to — a repository setting, not something a file in this tree can make true.
 
-  **Whether the request that introduces this workflow triggers it on its own merge is not
-  known here, and was not assumed either way.** `pull_request` events run the workflow file
-  as it exists in the request rather than in the base, which suggests it does fire — but that
-  was reasoned, not observed, and a spec is the wrong place to record a guess. The consequence
-  either way is the same instruction: **that request carries a `release:` label too.** If the
-  workflow fires, the label is what stops it refusing; if it does not, the tag is created by
-  hand once and every merge after it is automatic.
+  **A request introducing a change to this workflow triggers the changed version on its own
+  merge.** Observed, not reasoned: request #25 added `release.yml` and its own merge ran it,
+  deriving `v0.5.1 -> v1.0.0 (major)` from its `release:major` label and publishing the
+  Release. `pull_request` events run the workflow file as it exists in the request rather than
+  in the base.
+
+  **That is a property to be careful with, not a convenience.** A request that breaks this
+  workflow breaks the release of the merge that lands it, and the evidence arrives after the
+  merge. So a change here carries its `release:` label like any other, and the run is read
+  afterwards rather than assumed.
