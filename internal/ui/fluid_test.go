@@ -106,6 +106,30 @@ func TestFrameIsFlushAtEveryWidth(t *testing.T) {
 	}
 }
 
+// The update notice is a frame row like any other, so it is measured and padded like any
+// other. A row that is one column short is a torn box, and a notice long enough to be
+// worth reading is exactly the row most likely to be it.
+func TestFrameHoldsWithUpdateNotice(t *testing.T) {
+	forceTrueColor(t)
+
+	for _, term := range []int{MinPanelWidth, 80, 140} {
+		p := demoPanel()
+		p.Width = term
+		p.UpdateNotice = "v0.2.0 → v0.3.0 available · choose update"
+		want := ContentWidth(term) + 2
+
+		for i, line := range strings.Split(darkTheme().Render(p), "\n") {
+			plain := strings.TrimSpace(strip(line))
+			if plain == "" || !strings.ContainsAny(string([]rune(plain)[0]), "╭│├╰") {
+				continue
+			}
+			if got := lipgloss.Width(plain); got != want {
+				t.Errorf("term %d, row %d: %d columns, want %d: %q", term, i, got, want, plain)
+			}
+		}
+	}
+}
+
 // Past the ceiling the panel stops growing and starts centring instead.
 func TestPanelStopsGrowingAtTheCeiling(t *testing.T) {
 	forceTrueColor(t)
