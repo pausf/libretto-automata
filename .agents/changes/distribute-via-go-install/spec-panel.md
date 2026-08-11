@@ -82,9 +82,10 @@ A second implementation of "is this newer" is a second implementation that can d
 ## Verification criteria
 
 ```
-Proof: internal/ui/panel_test.go TestPanelRendersUpdateNoticeBetweenMenuAndStrip
-Proof: internal/ui/panel_test.go TestPanelOmitsUpdateNoticeWhenEmpty
-Proof: internal/ui/panel_test.go TestNarrowLayoutKeepsUpdateNotice
+Proof: internal/ui/notice_test.go TestPanelRendersUpdateNoticeBetweenMenuAndStrip
+Proof: internal/ui/notice_test.go TestPanelOmitsUpdateNoticeWhenEmpty
+Proof: internal/ui/notice_test.go TestNarrowLayoutKeepsUpdateNotice
+Proof: internal/ui/notice_test.go TestUpdateNoticeAndActionFeedbackCoexist
 Proof: internal/ui/fluid_test.go TestFrameHoldsWithUpdateNotice
 Proof: internal/ui/notice_test.go TestInitReturnsReleaseCheckCommand
 Proof: internal/ui/notice_test.go TestUpdateNoticeSetFromMessage

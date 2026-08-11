@@ -62,12 +62,17 @@ decides when to ask; `internal/ui` renders one row and performs no I/O.
 `IsNewer(latest, running string) bool` — exported, because the CLI formats the row and
 must not own a second answer to the same question
 
-- [ ] failing tests: field-numeric ordering (`v0.10.0` > `v0.9.0`), prerelease and
+- [x] failing tests: field-numeric ordering (`v0.10.0` > `v0.9.0`), prerelease and
       non-semver tags rejected by `parseSemver`, unparseable *running* version never
       yields true
-- [ ] run them, watch them fail
-- [ ] implement; `ponytail:` comment naming the prerelease ceiling at the comparison
-- [ ] `make gates`, commit
+- [x] run them, watch them fail — `undefined: IsNewer`, `undefined: parseSemver`
+- [x] implement; `ponytail:` comment naming the prerelease ceiling at the comparison
+- [x] `make gates`, commit — exit 0, 223 citations resolve · `7e0…` *(T1 closed)*
+
+Added beyond the plan: `TestParseSemverAcceptsOnlyPlainReleases` (13 cases) and
+`TestNewerIsFalseForUnparseableLatest`. A digit-count guard went in too — a tag is a
+remote-controlled string, and an overflowing field compares as negative, which reads as
+*older* and swallows the notice silently.
 
 **Closes:** `TestNewerComparesFieldsNumerically` ·
 `TestNewerIsFalseForUnparseableRunningVersion` ·
@@ -82,14 +87,19 @@ must not own a second answer to the same question
 **Blocked by:** nothing
 **Produces:** `Clone(ctx, url, dest string) error` · `ModuleURL() string`
 
-- [ ] failing tests: refuses a destination with anything in it; creates a missing
+- [x] failing tests: refuses a destination with anything in it; creates a missing
       destination; an existing empty directory is accepted; `ModuleURL` derives
       `https://<module path>.git` from build info
-- [ ] run them, watch them fail
-- [ ] implement — `exec.CommandContext`, the module-path fallback literal in exactly one
+- [x] run them, watch them fail — `undefined: Clone`, `undefined: moduleURL`
+- [x] implement — `exec.CommandContext`, the module-path fallback literal in exactly one
       place
-- [ ] mark the real-git test `-short`-skippable, matching `git_test.go`
-- [ ] `make gates`, commit
+- [x] mark the real-git test `-short`-skippable, matching `git_test.go` — verified:
+      `go test -short -run TestClone` passes with the git-backed cases skipped
+- [x] `make gates`, commit — exit 0 *(T2 closed)*
+
+`ModuleURL()` reads the build info; `moduleURL(info)` takes it, so the fallback branch is
+testable at all. Deriving the URL also means a fork installed from its own module path
+bootstraps from the fork — behaviour worth having, and free.
 
 **Closes:** `TestCloneRefusesNonEmptyDestination` · `TestCloneCreatesMissingDestination` ·
 `TestModuleURLDerivesFromBuildInfo`
@@ -108,12 +118,25 @@ must not own a second answer to the same question
 **This is the task that makes the rest correct.** The module cache has a `go.mod` and
 would otherwise win.
 
-- [ ] failing tests: a `go.mod` without `.git` is rejected; `LIBRETTO_ROOT` wins over
+- [x] failing tests: a `go.mod` without `.git` is rejected; `LIBRETTO_ROOT` wins over
       everything; nothing found falls back to the bootstrap path
-- [ ] run them, watch them fail
-- [ ] move `repoRoot` into `root.go`, change the probe from `go.mod` to `.git`, add the
+- [x] run them, watch them fail — `undefined: isRepo`, `EnvRoot`, `BootstrapDir`
+- [x] move `repoRoot` into `root.go`, change the probe from `go.mod` to `.git`, add the
       bootstrap rung
-- [ ] `make gates`, commit
+- [x] `make gates`, commit — exit 0 *(T3 closed)*
+
+**The first attempt failed, and the failure was the design's, not the test's.**
+`TestRepoRootFallsBackToBootstrapPath` could not pass: `runtime.Caller` is fixed at
+compile time, so inside this repository rung 2 always wins and rungs 3 and 4 are
+unreachable — the exact rungs that exist only for a binary living somewhere else. Split
+into `resolveRoot(override, compileTime, wd, home)` taking its inputs, with `repoRoot()`
+gathering them. Without that seam the `go install` behaviour is the part with no proof.
+
+Two rungs went in rather than one. The working directory is accepted only when its
+`go.mod` names **this** module — any git repository satisfied the old `$PWD` fallback, so
+`libretto install` inside an unrelated project would look for a payload that project does
+not have. A `.git` *file* counts as a repo too: that is what a worktree has, and refusing
+it would break the tool exactly where this flow's own advice puts you.
 
 **Closes:** `TestRepoRootRequiresGitDirectory` · `TestRepoRootPrefersEnvOverride` ·
 `TestRepoRootFallsBackToBootstrapPath`
@@ -131,11 +154,16 @@ would otherwise win.
 Pure, taking the build info rather than reading it, so both branches are testable — a
 function calling `debug.ReadBuildInfo()` directly cannot be tested for the fallback.
 
-- [ ] failing tests: a set ldflags value wins over build info; `dev` falls through to
+- [x] failing tests: a set ldflags value wins over build info; `dev` falls through to
       build info; neither means `dev`
-- [ ] run them, watch them fail
-- [ ] implement, call it once at startup
-- [ ] `make gates`, commit
+- [x] run them, watch them fail — `undefined: resolveVersion`
+- [x] implement, call it once at startup
+- [x] `make gates`, commit — exit 0 *(T4 closed)*
+
+`(devel)` falls through to `dev` too — it is what the toolchain records for a build from a
+working tree, not a version. `buildVersion(stamped)` wraps `resolveVersion` and is called
+once in `main`, into the same package var everything already reads, so the footer and
+`libretto version` both pick it up with no other change.
 
 **Closes:** `TestVersionPrefersLdflagsOverBuildInfo` · `TestVersionFallsBackToBuildInfo`
 
@@ -149,11 +177,17 @@ function calling `debug.ReadBuildInfo()` directly cannot be tested for the fallb
 **Blocked by:** nothing
 **Produces:** `Panel.UpdateNotice string`
 
-- [ ] failing tests: rendered as its own row between the menu and the strip; absent when
+- [x] failing tests: rendered as its own row between the menu and the strip; absent when
       empty; present in `renderNarrow`; the fluid frame does not tear with it set
-- [ ] run them, watch them fail
-- [ ] add the field and the row, attention colour, both layouts
-- [ ] `make gates`, commit
+- [x] run them, watch them fail — `p.UpdateNotice undefined`
+- [x] add the field and the row, attention colour, both layouts
+- [x] `make gates`, commit — exit 0 *(T5 closed)*
+
+The row is elided to the content area like a report line, so a long notice cannot tear the
+frame — `TestFrameHoldsWithUpdateNotice` is the guard. `TestUpdateNoticeAndActionFeedbackCoexist`
+replaced the planned `TestActionFeedbackDoesNotOverwriteUpdateNotice`: at this layer the
+claim is that both render, which is what the two-fields decision buys. The model-level
+version of it lands in T10.
 
 **Closes:** `TestPanelRendersUpdateNoticeBetweenMenuAndStrip` ·
 `TestPanelOmitsUpdateNoticeWhenEmpty` · `TestNarrowLayoutKeepsUpdateNotice` ·

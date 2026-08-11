@@ -5,6 +5,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -707,10 +708,23 @@ func update(root string, tg target.Target) error {
 		return err
 	}
 	if repo.NeedsRebuild(changed) {
-		if err := rebuild(root); err != nil {
+		// The binary that is running, not the one in the clone. A $GOBIN install and a
+		// `make link` symlink both end up here, and both are what the user's next
+		// invocation will execute.
+		exe, err := os.Executable()
+		if err != nil {
+			return fmt.Errorf("the pull landed but the binary could not be located: %w", err)
+		}
+
+		note, err := rebuildOrReport(root, exe)
+		if err != nil {
 			return fmt.Errorf("the pull landed but the rebuild failed: %w", err)
 		}
-		fmt.Println("rebuilt  bin/libretto")
+		if note != "" {
+			fmt.Println("rebuilt  " + note)
+		} else {
+			fmt.Println("rebuilt  " + exe)
+		}
 		fmt.Println("         this process is still the old binary — run it again to use the new one")
 	}
 
@@ -718,19 +732,46 @@ func update(root string, tg target.Target) error {
 	return install(root, tg)
 }
 
-// rebuild compiles the CLI to a temporary file and renames it into place.
+// rebuild compiles the CLI to a temporary file and renames it over dest.
 //
-// Writing straight over the running executable is what produces "text file busy",
-// and a half-written binary is worse than a stale one. Rename is atomic, and the
-// process already running keeps the inode it started from — which is why the
-// caller has to say so rather than pretend the upgrade took effect mid-run.
-func rebuild(root string) error {
-	dest := filepath.Join(root, "bin", "libretto")
+// dest is the binary that is *running*, not bin/libretto. Once `go install` can put the
+// command in $GOBIN, rebuilding into the clone's bin/ upgrades a file nobody executes:
+// `update` would report success and every later invocation would stay on the old version.
+// The destination is a parameter rather than read from os.Executable() inside, so a test
+// does not have to be the binary under test.
+//
+// A symlink is resolved and written through. `make link` puts one in ~/.local/bin
+// pointing at bin/libretto, and replacing that link with a regular file would sever the
+// development setup silently.
+//
+// Writing straight over the running executable is what produces "text file busy", and a
+// half-written binary is worse than a stale one. Rename is atomic, and the process
+// already running keeps the inode it started from — which is why the caller has to say so
+// rather than pretend the upgrade took effect mid-run.
+func rebuild(root, dest string) error {
+	// EvalSymlinks fails on a path that does not exist yet, which is fine: there is no
+	// link to follow, and the original is the destination.
+	if resolved, err := filepath.EvalSymlinks(dest); err == nil {
+		dest = resolved
+	}
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return err
 	}
 
+	// The temporary file goes beside the destination, not in TMPDIR: rename across
+	// filesystems fails, and $GOBIN and /tmp are routinely on different ones.
 	tmp := dest + ".new"
+
+	// Probe the write before paying for a compile. Without this the permission failure
+	// arrives as a `go build` error string — unrecognisable as a permission problem, so
+	// rebuildOrReport could not tell "you cannot write there" from "the code is broken",
+	// and a locked $GOBIN would read as a compile failure after a three-second wait.
+	probe, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY, 0o755)
+	if err != nil {
+		return err
+	}
+	probe.Close()
+
 	cmd := exec.Command("go", "build", "-o", tmp, "./cmd/libretto")
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -746,6 +787,31 @@ func rebuild(root string) error {
 		return err
 	}
 	return nil
+}
+
+// rebuildOrReport rebuilds, and turns "I could not write there" into a note instead of an
+// error.
+//
+// The pull already happened and the links are already correct. Failing the whole update
+// because a rename was refused would roll back work that succeeded, and leave the user
+// with neither the new binary nor the relink. The note has to say where the binary is, or
+// it is a dead end dressed as an explanation.
+func rebuildOrReport(root, dest string) (string, error) {
+	err := rebuild(root, dest)
+	if err == nil {
+		return "", nil
+	}
+	if !errors.Is(err, os.ErrPermission) {
+		return "", err
+	}
+
+	// Fall back to the clone, which the user can always write to — they own the checkout.
+	fallback := filepath.Join(root, "bin", "libretto")
+	if berr := rebuild(root, fallback); berr != nil {
+		return "", err
+	}
+	return fmt.Sprintf("could not replace %s — no permission\n"+
+		"         the new binary is at %s; move it there yourself", dest, fallback), nil
 }
 
 func short(rev string) string {
