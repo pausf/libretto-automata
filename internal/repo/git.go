@@ -12,6 +12,7 @@
 package repo
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -36,6 +37,11 @@ type Git interface {
 	// ChangedSince lists paths that changed between rev and HEAD, relative to
 	// the repository root.
 	ChangedSince(rev string) ([]string, error)
+
+	// LatestTag is the highest plain release tag on the remote, or "" when the
+	// remote has none to offer. It takes a context because it is the only call
+	// here that reaches the network on its own initiative.
+	LatestTag(ctx context.Context) (string, error)
 }
 
 // Shell is the real implementation, running git in a subprocess.
