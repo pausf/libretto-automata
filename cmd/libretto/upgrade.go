@@ -46,7 +46,7 @@ type upgradeDeps struct {
 	relink         func() error
 }
 
-// upgrade moves an installed copy to the newest release.
+// fromRelease moves an installed copy to the newest release.
 //
 // **The order is fixed: payload, then binary, then relink.** A new binary reading an old
 // payload is a state nobody can reason about — the same argument the update flow already makes
@@ -59,7 +59,7 @@ type upgradeDeps struct {
 //
 // It says `git` nowhere, in success or in failure. That is the whole reason this command
 // exists rather than `update` growing a branch.
-func upgrade(ctx context.Context, out io.Writer, d upgradeDeps) error {
+func fromRelease(ctx context.Context, out io.Writer, d upgradeDeps) error {
 	tag, err := d.latest(ctx)
 	if err != nil {
 		return fmt.Errorf("could not find the newest release: %w", err)
@@ -100,23 +100,19 @@ func upgrade(ctx context.Context, out io.Writer, d upgradeDeps) error {
 	return nil
 }
 
-// runUpgrade wires upgrade to the real world.
+// updateFromRelease wires fromRelease to the real world. `update` calls it for an installed
+// copy; a checkout takes the other branch and pulls.
 //
-// **It refuses inside a checkout.** Overwriting a developer's working tree with a release
-// tarball is the one thing this command must never do, and the refusal names `update` rather
-// than silently becoming it: two commands that do different things, and one that quietly
-// turns into the other is one whose output nobody can predict.
-func runUpgrade(ctx context.Context) error {
-	root, err := payloadRoot()
-	if err != nil {
-		return err
-	}
-	if isRepo(root) {
-		return fmt.Errorf("%s is a checkout, not an installed release\n"+
-			"       use `%s update` there — it pulls and rebuilds from the tree you are working in",
-			root, invokedAs())
-	}
-
+// There is no second command. `install` links the payload and `update` brings the installation
+// up to date — those are the two words the audience already knows, and for them the meaning is
+// one thing either way: put my installation on the newest version. Which mechanism runs is
+// decided by how the tool got here, which the person who put it there knows perfectly well.
+//
+// An earlier session split this into `update` and `upgrade` and argued that a command whose
+// mechanism depends on invisible state has unpredictable failures. The state is not invisible —
+// it is "did you clone this or install it" — and the split bought two commands, two menu rows
+// and a pair of mutual refusals to explain.
+func updateFromRelease(ctx context.Context) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -126,7 +122,7 @@ func runUpgrade(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, upgradeTimeout)
 	defer cancel()
 
-	return upgrade(ctx, os.Stdout, upgradeDeps{
+	return fromRelease(ctx, os.Stdout, upgradeDeps{
 		running: version,
 		base:    base,
 		latest: func(ctx context.Context) (string, error) {

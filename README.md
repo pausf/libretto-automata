@@ -45,11 +45,11 @@ Requires [Go 1.26+](https://go.dev/dl/).
 ```bash
 go install github.com/pausf/libretto-automata/cmd/libretto@latest
 
-libretto upgrade   # fetch the payload from the newest release and link it
+libretto update    # fetch the newest release and link it
 libretto doctor    # what needs attention, and what the flow expects on this machine
 ```
 
-`upgrade` fetches the newest release's payload and links it. That is also how the payload
+`update` fetches the newest release's payload and links it. That is also how the payload
 arrives the first time — the binary comes from `go install`, the payload comes from the
 release, and the two steps are separate because they come from different places.
 
@@ -70,20 +70,20 @@ why this is not a self-contained executable. `LIBRETTO_ROOT` points the tool som
 ### Updating
 
 ```bash
-libretto upgrade   # fetch the newest release · verify · activate · relink
+libretto update    # fetch the newest release · verify · activate · relink
 ```
 
 The panel also says when a newer release exists, checked once a day. Silent when it cannot
 check.
 
-Three things `upgrade` does that are worth knowing:
+Three things `update` does that are worth knowing:
 
 - **the tarball's checksum is verified before anything is extracted**, and extraction refuses
   any entry that resolves outside its destination, any symlink and anything that is not a
   plain file or directory
 - **it relinks afterwards**, so a release that adds a new skill does not leave it unlinked
-- **it refuses inside a checkout** and points at `update` instead — overwriting your working
-  tree with a release tarball is the one thing it must never do
+- **in a checkout it pulls instead**, because there the tree you are working in *is* the
+  installation — one command, and how you got the tool decides the mechanism
 
 ### From a checkout instead
 
@@ -103,8 +103,8 @@ and no stale binary can pretend to be current. It refuses to overwrite a `libret
 did not create.
 
 A checkout you are standing in wins over the installed release, so editing a skill and seeing
-it live still works. In a checkout the command is `update` — it pulls, rebuilds if the Go
-source moved, and relinks — and `upgrade` refuses there.
+it live still works. `update` pulls there rather than downloading: same command, and the
+tree you are standing in is the installation.
 
 ### Releasing
 
@@ -123,11 +123,11 @@ tag push.
 |---|---|
 | `libretto` | the panel — needs a terminal |
 | `libretto status` | every item's state. Read-only, always. |
-| `libretto upgrade` | fetch the newest release, activate it, relink |
+
 | `libretto install` | link everything. Idempotent; non-zero exit if anything was skipped. |
 | `libretto uninstall` | show what this repo installed here — **changes nothing** |
 | `libretto uninstall --yes` | take it back out |
-| `libretto update` | in a checkout: pull, rebuild when Go changed, relink |
+| `libretto update` | bring the installation up to date — a release download, or a pull in a checkout |
 | `libretto doctor` | what needs attention, plus what the payload expects here |
 | `libretto prune` | show links whose source is gone — **changes nothing** |
 | `libretto prune --yes` | remove them |

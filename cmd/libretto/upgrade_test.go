@@ -60,7 +60,7 @@ func TestUpgradeActivatesThePayloadBeforeTheBinary(t *testing.T) {
 	f := &fakeUpgrade{latest: "v0.4.0"}
 	var out strings.Builder
 
-	if err := upgrade(context.Background(), &out, f.deps("v0.3.0")); err != nil {
+	if err := fromRelease(context.Background(), &out, f.deps("v0.3.0")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -77,7 +77,7 @@ func TestUpgradeRelinksSoNewItemsAppear(t *testing.T) {
 	f := &fakeUpgrade{latest: "v0.4.0"}
 	var out strings.Builder
 
-	if err := upgrade(context.Background(), &out, f.deps("v0.3.0")); err != nil {
+	if err := fromRelease(context.Background(), &out, f.deps("v0.3.0")); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.steps) == 0 || f.steps[len(f.steps)-1] != "relink" {
@@ -88,12 +88,12 @@ func TestUpgradeRelinksSoNewItemsAppear(t *testing.T) {
 // The complaint that produced this whole change was the word `git pull` appearing in front of
 // somebody who only wanted to use the tool. A promise about output is kept by asserting on
 // output.
-func TestUpgradeNeverMentionsGit(t *testing.T) {
+func TestUpdateFromAReleaseNeverMentionsGit(t *testing.T) {
 	for _, failAt := range []string{"", "latest", "payload", "binary", "relink"} {
 		f := &fakeUpgrade{latest: "v0.4.0", failAt: failAt}
 		var out strings.Builder
 
-		err := upgrade(context.Background(), &out, f.deps("v0.3.0"))
+		err := fromRelease(context.Background(), &out, f.deps("v0.3.0"))
 
 		said := out.String()
 		if err != nil {
@@ -116,7 +116,7 @@ func TestUpgradeReportsWhichStepFailed(t *testing.T) {
 		f := &fakeUpgrade{latest: "v0.4.0", failAt: step}
 		var out strings.Builder
 
-		err := upgrade(context.Background(), &out, f.deps("v0.3.0"))
+		err := fromRelease(context.Background(), &out, f.deps("v0.3.0"))
 		if err == nil {
 			t.Errorf("failAt=%q succeeded", step)
 			continue
@@ -134,7 +134,7 @@ func TestAFailedUpgradeLeavesThePreviousVersionActive(t *testing.T) {
 	f := &fakeUpgrade{latest: "v0.4.0", failAt: "payload"}
 	var out strings.Builder
 
-	if err := upgrade(context.Background(), &out, f.deps("v0.3.0")); err == nil {
+	if err := fromRelease(context.Background(), &out, f.deps("v0.3.0")); err == nil {
 		t.Fatal("a failed payload step was reported as success")
 	}
 	for _, step := range f.steps {
@@ -151,7 +151,7 @@ func TestUpgradeSurvivesAnUnreplaceableBinary(t *testing.T) {
 	f := &fakeUpgrade{latest: "v0.4.0", failAt: "binary"}
 	var out strings.Builder
 
-	if err := upgrade(context.Background(), &out, f.deps("v0.3.0")); err != nil {
+	if err := fromRelease(context.Background(), &out, f.deps("v0.3.0")); err != nil {
 		t.Fatalf("an unreplaceable binary failed the whole upgrade: %v", err)
 	}
 	if !strings.Contains(out.String(), "unchanged") {
@@ -169,7 +169,7 @@ func TestUpgradeOnTheNewestReleaseDoesNothing(t *testing.T) {
 	f := &fakeUpgrade{latest: "v0.4.0"}
 	var out strings.Builder
 
-	if err := upgrade(context.Background(), &out, f.deps("v0.4.0")); err != nil {
+	if err := fromRelease(context.Background(), &out, f.deps("v0.4.0")); err != nil {
 		t.Fatal(err)
 	}
 	if got := strings.Join(f.steps, " "); got != "latest" {
@@ -186,7 +186,7 @@ func TestUpgradeFromNothingInstalled(t *testing.T) {
 	f := &fakeUpgrade{latest: "v0.4.0"}
 	var out strings.Builder
 
-	if err := upgrade(context.Background(), &out, f.deps("dev")); err != nil {
+	if err := fromRelease(context.Background(), &out, f.deps("dev")); err != nil {
 		t.Fatalf("upgrading with nothing installed: %v", err)
 	}
 	if got := strings.Join(f.steps, " "); !strings.Contains(got, "payload:v0.4.0") {
@@ -194,40 +194,43 @@ func TestUpgradeFromNothingInstalled(t *testing.T) {
 	}
 }
 
-// Overwriting a developer's working tree with a release tarball is the one thing upgrade must
-// never do, so inside a checkout it refuses and names the command that belongs there.
-func TestUpgradeRefusesInsideACheckout(t *testing.T) {
-	checkout := gitDir(t)
-	t.Setenv(EnvRoot, checkout)
+// **One command, two routes.** `update` in a checkout pulls the tree; anywhere else it takes
+// the release route. There is no second command and no refusal to explain: for the person
+// typing it the meaning is one thing, and how the tool got here decides the mechanism.
+func TestUpdateTakesTheRouteThisInstallationCameBy(t *testing.T) {
+	f := newFixture(t)
 
-	err := runUpgrade(context.Background())
-	if err == nil {
-		t.Fatal("upgrade ran inside a checkout")
+	// A checkout with no remote: `update` gets far enough to prove it took the git route —
+	// the release route would never mention a remote at all.
+	checkout := gitDir(t)
+	writeFile(t, filepath.Join(checkout, "go.mod"), moduleLine+"\n")
+	if err := os.MkdirAll(filepath.Join(checkout, "skills"), 0o755); err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(err.Error(), "update") {
-		t.Errorf("the refusal does not name `update`: %v", err)
+	err := update(checkout, f.global())
+	if err != nil && strings.Contains(err.Error(), "release") {
+		t.Errorf("a checkout took the release route: %v", err)
 	}
 }
 
-// And the other direction. Not a silent alias: the two do different things, and a command that
-// quietly becomes another is a command whose output nobody can predict.
-func TestUpdateOutsideACheckoutPointsAtUpgrade(t *testing.T) {
-	notACheckout := t.TempDir()
-
-	f := newFixture(t)
-	err := update(notACheckout, f.global())
-	if err == nil {
-		t.Fatal("update ran outside a checkout")
+// The menu row names the mechanism this machine will use, so the one row is honest about what
+// pressing it does — without becoming two rows.
+func TestTheUpdateRowNamesTheMechanism(t *testing.T) {
+	if got := updateDesc(true); !strings.Contains(got, "pull") {
+		t.Errorf("in a checkout the row says %q, want it to mention the pull", got)
 	}
-	if !strings.Contains(err.Error(), "upgrade") {
-		t.Errorf("the refusal does not name `upgrade`: %v", err)
+	if got := updateDesc(false); !strings.Contains(got, "release") {
+		t.Errorf("installed, the row says %q, want it to mention the release", got)
+	}
+	if strings.Contains(updateDesc(false), "git") {
+		t.Errorf("the installed row mentions git: %q", updateDesc(false))
 	}
 }
 
 // `install` with no payload on disk explains itself instead of reporting an empty tree. A
 // fresh `go install` has a binary and nothing else, and "nothing to link" would read as
 // success.
-func TestInstallWithNoPayloadPointsAtUpgrade(t *testing.T) {
+func TestInstallWithNoPayloadPointsAtUpdate(t *testing.T) {
 	missing := fmt.Sprintf("%s/never-installed", t.TempDir())
 	t.Setenv(EnvRoot, missing)
 	t.Setenv("CLAUDE_HOME", t.TempDir())
@@ -236,8 +239,8 @@ func TestInstallWithNoPayloadPointsAtUpgrade(t *testing.T) {
 	if err == nil {
 		t.Fatal("install succeeded with no payload")
 	}
-	if !strings.Contains(err.Error(), "upgrade") {
-		t.Errorf("the error does not point at `upgrade`: %v", err)
+	if !strings.Contains(err.Error(), "update") {
+		t.Errorf("the error does not point at `update`: %v", err)
 	}
 }
 
@@ -256,8 +259,8 @@ func TestPruneWithNoPayloadRefusesInsteadOfDeletingEverything(t *testing.T) {
 	if err == nil {
 		t.Fatal("prune --yes ran with no payload on disk")
 	}
-	if !strings.Contains(err.Error(), "upgrade") {
-		t.Errorf("the refusal does not point at `upgrade`: %v", err)
+	if !strings.Contains(err.Error(), "update") {
+		t.Errorf("the refusal does not point at `update`: %v", err)
 	}
 	if _, lerr := os.Lstat(planted); lerr != nil {
 		t.Errorf("prune removed a link while the payload was missing: %v", lerr)

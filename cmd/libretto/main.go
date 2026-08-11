@@ -163,7 +163,7 @@ func run(args []string) error {
 	// promises, on a premise that is false.
 	if needsPayload(args) && !payloadPresent(root) {
 		return fmt.Errorf("no payload at %s\n"+
-			"       run `%s upgrade` — it fetches the newest release and links it",
+			"       run `%s update` — it fetches the newest release and links it",
 			root, invokedAs())
 	}
 
@@ -189,8 +189,6 @@ func run(args []string) error {
 		return uninstall(root, tg, args[1:])
 	case "update":
 		return update(root, tg)
-	case "upgrade":
-		return runUpgrade(context.Background())
 	case "models":
 		return models(root, tg, args[1:])
 	default:
@@ -325,11 +323,6 @@ func dispatch(action, root string, tg target.Target, confirm bool) error {
 		return install(root, tg)
 	case "update":
 		return update(root, tg)
-	case "upgrade":
-		// The panel's report is captured stdout, and upgrade already writes there — so this
-		// needs no second rendering of the same facts, which is the rule the whole capture
-		// mechanism exists to honour.
-		return runUpgrade(context.Background())
 	case "status":
 		return status(root, tg)
 	case "doctor":
@@ -413,8 +406,7 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 	menu := []ui.MenuItem{
 		{Label: "install", Desc: "link the score into " + shorten(active.Root()), Enabled: true},
 		{Label: "uninstall", Desc: "take it back out of " + shorten(active.Root()), Enabled: true, Destructive: true},
-		{Label: "upgrade", Desc: "fetch the newest release · relink", Enabled: !checkout},
-		{Label: "update", Desc: "pull this checkout · rebuild · relink", Enabled: checkout},
+		{Label: "update", Desc: updateDesc(checkout), Enabled: true},
 		{Label: "status", Desc: summarise(overall), Enabled: true},
 	}
 
@@ -706,16 +698,22 @@ func install(root string, tg target.Target) error {
 // relinked from source that has not been compiled — a payload from the new commit
 // linked by a binary from the old one is a state nobody asked for and nobody can
 // reason about.
+// update brings the installation up to date, by whichever route this installation came.
+//
+// One command, because for the person typing it there is one meaning: put me on the newest
+// version. An installed copy downloads the newest release; a checkout pulls and rebuilds. The
+// route is not a choice the user makes here — it is a consequence of how the tool got onto the
+// machine, which they know.
 func update(root string, tg target.Target) error {
-	// Not a silent alias for `upgrade`. The two do different things — one pulls a tree you
-	// are working in, the other downloads a published release — and a command that quietly
-	// becomes another is a command whose output nobody can predict.
 	if !isRepo(root) {
-		return fmt.Errorf("%s is not a checkout, so there is nothing to pull\n"+
-			"       use `%s upgrade` — it fetches the newest published release",
-			root, invokedAs())
+		return updateFromRelease(context.Background())
 	}
+	return updateCheckout(root, tg)
+}
 
+// updateCheckout is the developer's route: pull the tree being worked in, rebuild if the Go
+// source moved, relink.
+func updateCheckout(root string, tg target.Target) error {
 	git := repo.Shell{Root: root}
 
 	dirty, err := git.Dirty()
@@ -923,10 +921,10 @@ func doctor(root string, tg target.Target) error {
 	fmt.Println("\nrelease")
 	if isRepo(root) {
 		fmt.Println("  mode     a checkout at " + root)
-		fmt.Println("  " + releaseLine(version, "update", repo.Shell{Root: root}.LatestTag))
+		fmt.Println("  " + releaseLine(version, repo.Shell{Root: root}.LatestTag))
 	} else {
 		fmt.Println("  mode     an installed release at " + root)
-		fmt.Println("  " + releaseLine(version, "upgrade", func(ctx context.Context) (string, error) {
+		fmt.Println("  " + releaseLine(version, func(ctx context.Context) (string, error) {
 			return dist.Latest(ctx, defaultClient(), forgeHost)
 		}))
 	}
@@ -1225,8 +1223,7 @@ func usage() {
 
   %[2]s               show the panel (requires a terminal)
   %[2]s install       link every item into each target
-  %[2]s upgrade       fetch the newest release, activate it, relink
-  %[2]s update        pull this checkout, rebuild, relink
+  %[2]s update        bring the installation up to date
   %[2]s status        what is linked
   %[2]s doctor        diagnose links and repo state
   %[2]s prune         show links whose source is gone, change nothing

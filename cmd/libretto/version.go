@@ -51,15 +51,6 @@ func askLatest(ctx context.Context, root string) (string, error) {
 // braces on a directory the tool prunes is cheap.
 const checkFile = ".update-check"
 
-// upgradeCommand is the command that moves this machine forward, which is not the same command
-// in both modes. A notice naming one that would refuse is worse than no notice.
-func upgradeCommand(root string) string {
-	if isRepo(root) {
-		return "update"
-	}
-	return "upgrade"
-}
-
 // releaseNotice is the panel's row, or "" when there is nothing to say.
 //
 // Cached — the panel must not pay for a network call on every launch. `doctor` is the
@@ -75,7 +66,9 @@ func releaseNotice(root, running string) string {
 	if err != nil || !repo.IsNewer(latest, running) {
 		return ""
 	}
-	return fmt.Sprintf("%s → %s available · choose %s", running, latest, upgradeCommand(root))
+	// Always `update`, in either mode. The row does not have to name a command per machine
+	// any more, which is one of the things collapsing two commands into one bought.
+	return fmt.Sprintf("%s → %s available · choose update", running, latest)
 }
 
 // releaseLine is `doctor`'s version: one line, always something, never silence.
@@ -89,7 +82,7 @@ func releaseNotice(root, running string) string {
 // Shell.LatestTag directly rather than the cached path: it checks live, because the user is
 // waiting for a diagnosis, and going through the cache would both write a file and swallow
 // the very error this line exists to report.
-func releaseLine(running, command string, ask func(context.Context) (string, error)) string {
+func releaseLine(running string, ask func(context.Context) (string, error)) string {
 	ctx, cancel := context.WithTimeout(context.Background(), checkTimeout)
 	defer cancel()
 
@@ -100,7 +93,7 @@ func releaseLine(running, command string, ask func(context.Context) (string, err
 	case latest == "":
 		return "the remote has no releases to offer"
 	case repo.IsNewer(latest, running):
-		return fmt.Sprintf("%s → %s available · run `%s %s`", running, latest, invokedAs(), command)
+		return fmt.Sprintf("%s → %s available · run `%s update`", running, latest, invokedAs())
 	case running == latest:
 		return "up to date at " + running
 	default:

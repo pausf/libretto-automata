@@ -54,7 +54,7 @@ libretto preview
 libretto models         # which model each agent runs on, read-only
 libretto models set haiku review-lens-design review-lens-tests   # --all for every agent
 
-libretto upgrade        # fetch the newest release's payload, activate it, relink
+libretto update         # bring the installation up to date, however it got here
 libretto install --project   # <cwd>/.claude instead of ~/.claude
 libretto install --global    # the default; both flags at once is an error
 ```
@@ -189,7 +189,7 @@ it first gives you a second tag with your name on it pointing somewhere you did 
 yours is the one that loses. The target passes `--verify-tag`, which refuses instead.
 
 **A tag is not a Release.** A tag is a git ref; a Release is a GitHub object that can carry
-assets. `git push origin v0.5.0` creates the first and not the second, and `libretto upgrade`
+assets. `git push origin v0.5.0` creates the first and not the second, and `libretto update`
 reads `/releases/latest` — which, with tags and no Releases, redirects to the index and names
 no version at all. That was this repository's state at `v0.4.0`: four tags, zero Releases.
 `make release` is what closes that, so it is not optional decoration.

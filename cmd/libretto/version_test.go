@@ -88,25 +88,18 @@ func rootWithCachedTag(t *testing.T, tag string) string {
 	return root
 }
 
-// The notice names the command that will actually work, and the two modes need different ones.
-// A row naming a command that refuses is worse than no row.
+// The notice names `update`, which is the only command there is. It used to have to pick one of
+// two per machine; collapsing them removed that, and the test is kept to pin that the row does
+// not name a command nobody can type.
 func TestReleaseNoticeNamesTheCommandForTheMode(t *testing.T) {
 	checkout := rootWithCachedTag(t, "v0.3.0")
-	if got := releaseNotice(checkout, "v0.2.0"); !strings.Contains(got, "update") {
-		t.Errorf("in a checkout the notice says %q, want it to name `update`", got)
-	}
-	if got := releaseNotice(checkout, "v0.2.0"); strings.Contains(got, "upgrade") {
-		t.Errorf("in a checkout the notice names `upgrade`, which would refuse: %q", got)
-	}
 
-	// An installed copy has no .git, so `upgradeCommand` is what decides — asserted directly,
-	// because reaching releaseNotice there would need a live forge.
-	installed := t.TempDir()
-	if got := upgradeCommand(installed); got != "upgrade" {
-		t.Errorf("outside a checkout the command is %q, want upgrade", got)
+	got := releaseNotice(checkout, "v0.2.0")
+	if !strings.Contains(got, "update") {
+		t.Errorf("the notice says %q, want it to name `update`", got)
 	}
-	if got := upgradeCommand(checkout); got != "update" {
-		t.Errorf("inside a checkout the command is %q, want update", got)
+	if strings.Contains(got, "upgrade") {
+		t.Errorf("the notice names `upgrade`, which no longer exists: %q", got)
 	}
 }
 

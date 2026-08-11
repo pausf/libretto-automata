@@ -121,9 +121,20 @@ func needsPayload(args []string) bool {
 		return true // the panel shows the tree's state
 	}
 	switch args[0] {
-	case "models", "upgrade":
+	case "models", "update":
+		// `update` is what fixes a missing payload on an installed copy, so it cannot be
+		// gated on having one. In a checkout the payload is the tree and is always there.
 		return false
 	default:
 		return true
 	}
+}
+
+// updateDesc is the menu row's description, which names the mechanism this machine will
+// actually use. One row either way — the command is one command.
+func updateDesc(checkout bool) string {
+	if checkout {
+		return "pull this checkout · rebuild · relink"
+	}
+	return "fetch the newest release · relink"
 }
