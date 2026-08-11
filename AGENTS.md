@@ -169,9 +169,36 @@ off the commits it lands:
 |---|---|---|
 | only `fix:` / `refactor:` / `docs:` / `chore:` with no contract change | patch | `v0.5.0` → `v0.5.1` |
 | a `feat:`, a new capability, or a new promise in an existing spec | minor | `v0.5.0` → `v0.6.0` |
-| a promise removed or reversed | major | `v0.5.0` → `v1.0.0` |
+| **a promise removed or reversed — while this is `0.x`** | **minor** | `v0.5.0` → `v0.6.0` |
 
 Mixed merge takes the highest: one `feat:` among nine `fix:` is a minor.
+
+### `1.0.0` is a decision somebody makes. It is never the output of this table.
+
+**While the version starts with `0.`, nothing in this table produces a major**, and that is
+semver rather than a local preference: in `0.x` anything may break, and the number that carries
+a breaking change is the minor. `1.0.0` is a *declaration* — the CLI's flags, `install` and
+`prune` behaviour, and the payload's skill contracts are stable and will not move without a
+major. **Nobody has decided that here.** Until somebody does, the answer to "does this deserve
+a major" is no.
+
+Two more things follow, and the second is the expensive one:
+
+- **A promise in `.agents/specs/` is not the same kind of promise as a promise to a user.**
+  The table means the tool's contract: what `install` does, what `prune` spares, what a skill
+  guarantees. A spec describing *how this repository releases itself* can be reversed without
+  anything a user depends on moving, and reversing one is not a major even after `1.0`.
+- **A version number cannot be recalled.** `proxy.golang.org` caches a version the first time
+  anybody resolves it and serves it indefinitely by design, and `sum.golang.org` records its
+  hash permanently. Deleting the tag does not undo either. So a wrong number is not a mistake
+  you fix — it is a number burned for that content forever.
+
+**This is written from having done it.** `v1.0.0` and `v1.0.1` were published from this table
+read mechanically: a workflow reversing two promises in `.agents/specs/ci/spec.md` was labelled
+`release:major`, and the tool's contract had not moved by a line. Both were cached by the proxy
+within minutes. The tags and Releases are gone from the remote; the versions are not gone from
+the ecosystem, and neither number can ever name different content. That is the cost of reading
+this table without the paragraph above it, which is why the paragraph now exists.
 
 **The reading is yours. The typing is not.** Put a `release:patch`, `release:minor` or
 `release:major` label on the request before it merges, and `.github/workflows/release.yml`
@@ -225,7 +252,8 @@ skill whose instructions change meaningfully gets a bump; the repo tag does not 
 one.
 
 Pre-1.0, `install`/`prune` behaviour may still change. Say so in the tag message when it
-does.
+does — and note that this is the same fact the bump table depends on: while that is true, `1.0.0`
+is not available to be reached by accident.
 
 ## Commits
 
@@ -269,6 +297,10 @@ spec ships in the same commit as the code that taught it.
 - **which bump a merge deserves, when it is arguable.** Patch versus minor turns on whether a
   promise moved, and that is a reading of the specs rather than of the commit types. Say which
   one and why; do not pick the smaller one to avoid the question.
+- **`release:major`, always, with no exception while this is `0.x`.** Not announced — *asked*,
+  and waited for. Announcing a major three times and proceeding is what published `v1.0.0` off
+  a misread table, and the number cannot be recalled once the proxy has it. If the answer has
+  not arrived, the label does not go on.
 
 ### Never
 

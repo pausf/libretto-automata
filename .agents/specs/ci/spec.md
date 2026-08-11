@@ -120,9 +120,15 @@ the Release when a request merges**.
   `go test` compiles. Tagging and publishing are now in; building things to attach is not, for
   the reason the next bullet gives.
 - **Deriving the bump from the commit log.** `AGENTS.md` makes a new promise in an existing spec
-  a minor and a removed one a major, and both are readings of `.agents/specs/` rather than of
-  `type:` prefixes. A workflow reading commit types picks the floor and is wrong precisely when
-  a contract moves. The bump comes from a label on the request, and its absence stops the run.
+  a minor, and that is a reading of `.agents/specs/` rather than of `type:` prefixes. A workflow
+  reading commit types picks the floor and is wrong precisely when a contract moves. The bump
+  comes from a label on the request, and its absence stops the run.
+- **`release:major`, while this is `0.x`.** The label exists and the workflow honours it, but
+  `AGENTS.md` reserves it: in `0.x` a reversed promise is a minor, and `1.0.0` is a declaration
+  about the tool's contract that nobody has made. **This spec's own reversal is what taught
+  that** — it was labelled `release:major`, published `v1.0.0` and `v1.0.1`, and the tool's
+  contract had not moved by a line. The tags were withdrawn; the versions are cached in
+  `proxy.golang.org` permanently and neither number can ever name different content.
 - **Defaulting to patch when the label is missing.** That is the silently-wrong bump wearing a
   different hat. The run refuses and says which label to add.
 - **release assets.** Nothing is attached: the payload ships inside the Go module and the proxy
@@ -237,19 +243,22 @@ than loud:
 - **no `run:` script expands a label, a title or a body** — untrusted text arrives through `env:`
   Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowNeverExpandsUntrustedTextInsideAScript
 
-- **paid, by observation:** the gates workflow has run green on real requests, and **one real
-  merge has tagged and published** — request #25, run `31485394056`, all seven steps `success`,
-  `v1.0.0` on the remote pointing at `main`'s tip and a Release carrying the request's title.
-  `libretto version` reports `v1.0.0` from a fresh build.
+- **paid, by observation:** the gates workflow has run green on real requests, and **two real
+  merges have tagged and published** — requests #25 and #26, runs `31485394056` and
+  `31485661677`, every step `success`, the tag on the remote pointing at `main`'s tip, a Release
+  carrying the request's title, and `libretto version` reporting it from a fresh build.
+
+  **The mechanism was proven; the numbers it produced were withdrawn.** Both runs derived their
+  bump correctly from the label they were given — the labels were wrong, not the workflow. See
+  the `release:major` boundary above.
 - **still owed:** branch protection, so the gates are *required* rather than merely run. Until
   then "cannot merge until green" is a sentence in a file rather than a rule anybody is held
   to — a repository setting, not something a file in this tree can make true.
 
   **A request introducing a change to this workflow triggers the changed version on its own
   merge.** Observed, not reasoned: request #25 added `release.yml` and its own merge ran it,
-  deriving `v0.5.1 -> v1.0.0 (major)` from its `release:major` label and publishing the
-  Release. `pull_request` events run the workflow file as it exists in the request rather than
-  in the base.
+  deriving the bump from its own label and publishing the Release. `pull_request` events run the
+  workflow file as it exists in the request rather than in the base.
 
   **That is a property to be careful with, not a convenience.** A request that breaks this
   workflow breaks the release of the merge that lands it, and the evidence arrives after the
