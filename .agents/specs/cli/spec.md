@@ -23,18 +23,22 @@ plain command.
 | `models set <model> <agent>…` | write that model into each named agent; `--all` for every one |
 | `version`, `help` | say so |
 
-### Finding the clone, or making one
+### Finding the payload
 
 `go install github.com/pausf/libretto-automata/cmd/libretto@latest` is a supported way in.
-The binary arrives with no payload, and every link it makes points into a clone, so it can
-get one.
 
-**The clone is resolved in four rungs:**
+**The payload root and the checkout are two different things**, and this tool conflated them
+for as long as a clone happened to be both. `go install` breaks the coincidence: there is a
+payload and no checkout. Rungs 2 and 3 below answer both questions at once; rung 4 answers
+only the first, which is why `update` probes for a checkout before pulling and `upgrade`
+probes for one before refusing.
+
+**The payload root is resolved in four rungs:**
 
 | 1 | `LIBRETTO_ROOT` | absolute override, taken as given, unvalidated |
 | 2 | the compile-time source directory | when it has `.git` — development, `make build` |
 | 3 | the working directory | when it has `.git` **and** a `go.mod` naming this module |
-| 4 | `~/.libretto-automata` | the bootstrap clone, whether or not it exists yet |
+| 4 | `~/.local/share/libretto/current` | the activated release, whether or not it exists yet |
 
 **The probe is `.git`, not `go.mod`.** It used to be `go.mod`, and under `go install` that
 matches the read-only module cache — which would win, and every link would point into a
@@ -46,27 +50,20 @@ Rung 3 checks the module, not just the presence of a repository. Any git reposit
 satisfied the old `$PWD` fallback, so `libretto install` inside an unrelated project went
 looking for a payload that project does not have.
 
-**Nothing found means bootstrap, and bootstrap announces itself first.** The destination is
-printed before `git clone` runs. A tool that has already written a directory into somebody's
-home and then mentions it is a tool they had no chance to decline.
+**Nothing found means nothing is installed yet**, and rung 4 returns a path that does not
+exist. That is `upgrade`'s job to fix by downloading a release — **not** something any command
+fixes by cloning.
 
-Three outcomes and no fourth:
+**The clone bootstrap is gone.** For one session this rung was `~/.libretto-automata`, reached
+by a `git clone` that announced its destination first. It shipped in no tag, so `@latest` could
+never resolve to it and no machine ever had one; it was replaced rather than migrated, and
+there is nothing to migrate. The reasoning that killed it is in `distribution`: `git pull` is
+the wrong thing to say to somebody who only wanted to use the tool.
 
-| Already our clone | nothing happens, nothing is printed — narrating a no-op every launch is noise |
-| Nothing there | announce the destination and the URL, clone, report |
-| Something else | refused, named, nothing touched — the linker's promise, applied to the tool's own directory |
-
-- **A failed clone is cleaned up.** Half a clone in `~/.libretto-automata` would be a
-  foreign destination forever, and the user would have to work out for themselves that
-  deleting it is the fix.
-- **It does not report a tag.** `git clone` checks out the default branch's tip, which is
-  normally *past* the last tag, so any tag named there would describe a release the clone is
-  not at. `libretto version` answers that and cannot be wrong about it.
-- **`version` and `help` are answered before the clone is even looked for.** Cloning a
-  repository into somebody's home because they asked what version they were running would be
-  indefensible.
-- **Nothing prompts.** Every path works without a TTY, or `install` in CI breaks the day it
-  needs to bootstrap.
+- **`version` and `help` are answered before the payload is even located.** Neither reads a
+  skill, so neither should care whether one is installed — and neither writes anything
+  anywhere.
+- **Nothing prompts.** Every path works without a TTY, or `install` in CI breaks.
 
 ### The rebuild replaces the binary that is running
 
@@ -364,8 +361,9 @@ equivalent. It goes when `libretto install` has been verified against a real
 - **`go install` delivers a bootstrapper, not an embedded payload.** Asked and answered. See
   `repo-sync` for the reasoning; the consequence here is that a clone always exists behind
   the links.
-- **`~/.libretto-automata`, a dotdir in `$HOME`** — not `~/.local/share`. It is a working git
-  repository the user is expected to `cd` into and edit, not opaque application data.
+- **`~/.local/share/libretto`, not a dotdir in `$HOME`.** The reverse of where the clone
+  bootstrap put things, and correct for the reverse reason: an extracted release *is* opaque
+  application data, whereas a checkout is something you cd into and edit.
 - After a rebuild the process states that it is still the old binary, rather than
   implying the upgrade took effect mid-run — **and only when the binary was really
   replaced.** On the refused path it says the opposite.
@@ -396,7 +394,8 @@ equivalent. It goes when `libretto install` has been verified against a real
 - [x] tests for the composition — exit codes, dispatch, flags, prerequisites
 - [x] the panel opens on the destination it was left on
 - [x] `repoRoot` by `.git`, in four rungs, behind a testable seam
-- [x] bootstrap: announce, clone, refuse a foreign destination, clean up a failure
+- [x] ~~bootstrap: announce, clone, refuse a foreign destination, clean up a failure~~
+      removed again in the same session — see `distribution`
 - [x] the version fallback through build info
 - [x] the rebuild over the running executable
 - [x] `doctor`'s release line, and the panel's cached notice
@@ -471,34 +470,26 @@ Finding the clone:
 
 - **a directory with a `go.mod` and no `.git` is not the clone** — the module cache is
   exactly that, and accepting it is what would link `~/.claude` into a versioned cache
-  Proof: cmd/libretto/root_test.go TestRepoRootRequiresGitDirectory
+  Proof: cmd/libretto/root_test.go TestPayloadRootRequiresGitDirectory
 - a worktree's `.git` *file* counts as a repository
-  Proof: cmd/libretto/root_test.go TestRepoRootAcceptsAWorktreeGitFile
+  Proof: cmd/libretto/root_test.go TestPayloadRootAcceptsAWorktreeGitFile
 - the override wins over every rung and is not validated
-  Proof: cmd/libretto/root_test.go TestRepoRootPrefersEnvOverride
+  Proof: cmd/libretto/root_test.go TestPayloadRootPrefersEnvOverride
 - and `repoRoot` really reads it from the environment
-  Proof: cmd/libretto/root_test.go TestRepoRootReadsTheOverrideFromTheEnvironment
+  Proof: cmd/libretto/root_test.go TestPayloadRootReadsTheOverrideFromTheEnvironment
 - the compile-time path beats the working directory
-  Proof: cmd/libretto/root_test.go TestRepoRootPrefersTheCompileTimePathOverTheWorkingDirectory
+  Proof: cmd/libretto/root_test.go TestPayloadRootPrefersTheCompileTimePathOverTheWorkingDirectory
 - **the working directory is accepted only when its `go.mod` names this module**
-  Proof: cmd/libretto/root_test.go TestRepoRootAcceptsTheWorkingDirectoryOnlyForThisModule
+  Proof: cmd/libretto/root_test.go TestPayloadRootAcceptsTheWorkingDirectoryOnlyForThisModule
 - nothing found resolves to the bootstrap path, not to `$PWD`
-  Proof: cmd/libretto/root_test.go TestRepoRootFallsBackToBootstrapPath
+  Proof: cmd/libretto/root_test.go TestPayloadRootFallsBackToTheActivatedRelease
 
-Bootstrap:
-
-- **the destination is announced before the clone starts**, not after
-  Proof: cmd/libretto/bootstrap_test.go TestBootstrapAnnouncesDestinationBeforeCloning
-- a destination we did not create is refused, named, and left untouched
-  Proof: cmd/libretto/bootstrap_test.go TestBootstrapRefusesForeignDestination
-- an existing clone is a silent no-op, not a re-clone and not noise
-  Proof: cmd/libretto/bootstrap_test.go TestBootstrapIsIdempotent
-- **a failed clone leaves nothing behind** that a later run would refuse
-  Proof: cmd/libretto/bootstrap_test.go TestBootstrapCleansUpAfterAFailedClone
-- the requested command runs after the clone — one invocation, no "now run it again"
-  Proof: cmd/libretto/bootstrap_test.go TestBootstrapContinuesIntoRequestedCommand
-- **`version` and `help` write nothing into the home directory**
-  Proof: cmd/libretto/bootstrap_test.go TestVersionAndHelpDoNotBootstrap
+- **a checkout you are standing in still wins over the activated release**, which is what
+  keeps editing a skill and seeing it live working
+  Proof: cmd/libretto/root_test.go TestPayloadRootStillPrefersACheckoutYouAreStandingIn
+- **`version` and `help` write nothing anywhere** — they answer without the payload, so
+  neither may touch the payload root
+  Proof: cmd/libretto/root_test.go TestVersionAndHelpTouchNothing
 
 The version, and the release state:
 

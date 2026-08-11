@@ -113,9 +113,8 @@ func run(args []string) error {
 		return err
 	}
 
-	// `version` and `help` answer without the payload, and they are answered before the
-	// clone is even looked for. Cloning a repository into somebody's home because they
-	// asked what version they were running would be indefensible.
+	// `version` and `help` answer without the payload, and they are answered before it is
+	// even located. Neither reads a skill, so neither should care whether one is installed.
 	if len(args) > 0 {
 		switch args[0] {
 		case "version", "-v", "--version":
@@ -127,9 +126,8 @@ func run(args []string) error {
 		}
 	}
 
-	// Everything below links, reads or reports on the payload, so from here a clone has
-	// to exist. This is where `go install` gets one.
-	root, err := ensureClone()
+	// Everything below links, reads or reports on the payload.
+	root, err := payloadRoot()
 	if err != nil {
 		return err
 	}
@@ -1150,7 +1148,7 @@ func summarise(counts map[link.State]int) string {
 	return strings.Join(parts, " · ")
 }
 
-// repoRoot lives in root.go — it grew a rung and a bug worth its own test file.
+// payloadRoot lives in root.go — it grew a rung and a bug worth its own test file.
 
 func asciiSafe() bool { return os.Getenv(EnvASCIISafe) == "safe" }
 
@@ -1188,10 +1186,9 @@ func usage() {
 
   LIBRETTO_ASCII=safe   swap quadrant glyphs for half blocks
   LIBRETTO_THEME=dark|light  force a palette instead of detecting
-  LIBRETTO_ROOT=<path>  the payload clone; default ~/%[3]s
+  LIBRETTO_ROOT=<path>  the payload tree; default %[3]s
   CLAUDE_HOME=<path>    override Claude Code's root
 
   installed with:  go install github.com/pausf/libretto-automata/cmd/libretto@latest
-  the payload is cloned to ~/%[3]s on the first command that needs it
-`, version, n, BootstrapDir)
+`, version, n, "~/.local/share/libretto/current")
 }

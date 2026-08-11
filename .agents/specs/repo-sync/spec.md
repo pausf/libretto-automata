@@ -20,21 +20,18 @@ binary has been invalidated by what arrived, and knowing whether a newer release
   upgrade takes effect next invocation. Pretending otherwise would be a claim about
   code that is not executing.
 
-### Getting the clone in the first place
+### It does not get the clone
 
-A binary installed with `go install` arrives with no repository, and every link this tool
-makes points into one. So the clone is something this package can create.
+`Clone` and `ModuleURL` lived here for one session, to bootstrap a checkout for a binary
+installed with `go install`. Both are gone.
 
-- **`Clone` runs real `git clone`.** Same reason as the pull: the fetch has to work with
-  the user's credential helper, ssh agent and proxy.
-- **A destination holding anything is refused.** Not merged into, not forced, and the
-  refusal names what it found — "refusing to clone" alone sends someone to stare at a
-  directory whose problem is usually one `.DS_Store`. An existing *empty* directory is
-  accepted, or `mkdir ~/.libretto-automata` would break bootstrap permanently. A missing
-  destination is created, parents included.
-- **The URL is derived from the module path**, not held in a constant beside `go.mod`
-  waiting to disagree with it. A fork installed from its own module path therefore
-  bootstraps from the fork, which is what somebody working on a fork wants.
+The clone bootstrap was the wrong shape: it made `update` announce `git pull` to somebody who
+only wanted to use the tool. The payload now arrives as a published release asset — see the
+`distribution` capability — so nothing clones, and a function with no caller is a function with
+tests that prove nothing.
+
+**It shipped in no tag.** `@latest` could never resolve to it, so no promise was withdrawn from
+anybody and no version needed a major bump for the removal.
 
 ### Knowing a newer release exists
 
@@ -57,15 +54,15 @@ makes points into one. So the clone is something this package can create.
   Caching only successes means a machine with no network pays the timeout on every launch,
   which is the hang this exists to prevent arriving once per invocation instead of once a
   day. The cache lives in `.git/`, so it is never committed, needs no `.gitignore` line
-  anybody has to remember, and goes with the clone.
-- **No `.git` means ask without caching**, rather than fail. That is the bootstrap case,
-  where there is nowhere to write yet.
+  anybody has to remember, and goes with the checkout.
+- **No `.git` means ask without caching**, rather than fail. That is an installed copy, which
+  has no checkout to write into — and `distribution` is what it asks instead.
 
 ## Scope boundaries
 
 **In:** working-tree cleanliness, remote presence, HEAD, fast-forward pull, changed
-paths, the rebuild decision, cloning, the latest release tag, the semver comparison, and
-the check cache.
+paths, the rebuild decision, the latest release tag, the semver comparison, and the
+check cache.
 
 **Out:**
 
@@ -78,9 +75,8 @@ the check cache.
 - **deciding when to check, or what to say about it.** This package answers; `cli` and
   `panel` decide. A package that shells to git and also owns presentation cannot be tested
   without one of the two.
-- **anything but https for the clone.** An ssh URL depends on a key whose state this tool
-  cannot see; the user who wants one makes the clone themselves and points `LIBRETTO_ROOT`
-  at it.
+- **cloning.** It lived here for one session and is gone; nothing clones. See above.
+- **downloading a release.** That is `distribution`, which has no git in it at all.
 - **the GitHub API, the Go module proxy, and releases as an endpoint.** `ls-remote` needs
   no auth for a public repo and no second opinion about which versions exist.
 - **fetching or checking out the newer tag.** `update` already fast-forwards; a second
@@ -112,9 +108,6 @@ holds: the git-backed tests build a repository in a `t.TempDir()` and use a loca
 would be the sixth direct dependency for fifteen lines — the ladder's fourth rung losing to
 its fifth.
 
-**`Clone` is a function, not a method on `Shell`.** There is no root yet; that is the point
-of it.
-
 **A repository with no commits is dirty.** Not a corner case to tidy away: every file
 is untracked, so a pull could not be reconciled with anything.
 
@@ -131,11 +124,12 @@ one. Rename is atomic.
   turns out to need is a change to this spec first.
 - `NeedsRebuild` is a pure function over paths, so the decision is testable without a
   repository. `.go`, `go.mod` and `go.sum` invalidate the binary; nothing else does.
-- **`go install` gets a bootstrapper, not an embedded payload.** Asked and answered: the
-  installed binary clones the repo and links from there. Embedding the payload with
-  `//go:embed` would end "edit a skill and see it live", which is how the payload is
-  developed. A both-lanes design was rejected too — two code paths for every payload read,
-  and the one nobody runs is the one that breaks.
+- **Not an embedded payload, and — after one session — not a bootstrapped clone either.**
+  Embedding was rejected first and stays rejected: `//go:embed` has no path on disk, so every
+  symlink would become a copy and the ownership model would go with it. The clone bootstrap
+  replaced it and was itself replaced by a release asset, because `git pull` is the wrong
+  thing to say to somebody who only wanted to use the tool. `distribution` carries that
+  decision now.
 - **`git ls-remote` over the GitHub API and the Go module proxy**, for the release check.
   No token, no rate limit, no JSON, and it works against a fork.
 
@@ -144,7 +138,7 @@ one. Rename is atomic.
 - [x] the `Git` interface and its shell implementation
 - [x] `NeedsRebuild`
 - [x] the update flow composed in `cli`
-- [x] `Clone` and `ModuleURL`
+- [x] ~~`Clone` and `ModuleURL`~~ removed in the same session — nothing clones
 - [x] `LatestTag`, the semver comparison, and the check cache
 - [ ] **the flow's own tests.** `update`'s composed behaviour, listed under *Still owed*
       below. Not a fake — the entry that used to say "a fake `Git` and the flow's own
@@ -177,22 +171,6 @@ one. Rename is atomic.
   Proof: internal/repo/git_test.go TestPullRefusesADivergedHistory
 - outside a repository the reads error rather than answering "clean" and "no remote"
   Proof: internal/repo/git_test.go TestOutsideARepositoryTheReadsError
-
-### Cloning
-
-- a destination with anything in it is refused, and the existing file is untouched
-  Proof: internal/repo/clone_test.go TestCloneRefusesNonEmptyDestination
-- an existing *empty* directory is accepted, so `mkdir` does not break bootstrap
-  Proof: internal/repo/clone_test.go TestCloneAcceptsAnExistingEmptyDirectory
-- a missing destination is created, parents included
-  Proof: internal/repo/clone_test.go TestCloneCreatesMissingDestination
-- a cancelled context stops it
-  Proof: internal/repo/clone_test.go TestCloneHonoursACancelledContext
-- the clone URL comes from the module path
-  Proof: internal/repo/clone_test.go TestModuleURLDerivesFromBuildInfo
-- **build info that names no main module still yields a usable URL** — a test binary is
-  exactly that case, and an empty URL would reach git as something unreadable
-  Proof: internal/repo/clone_test.go TestModuleURLFallsBackWhenBuildInfoIsUseless
 
 ### The release check
 

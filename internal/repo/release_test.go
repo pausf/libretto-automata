@@ -271,3 +271,17 @@ func TestNewerIsFalseForUnparseableLatest(t *testing.T) {
 		}
 	}
 }
+
+// gitRepoWithACommit is a clonable, taggable source: a repository with one commit in it. It
+// moved here from clone_test.go when Clone was removed — the helper outlived the feature it
+// was written for, because ls-remote needs a remote with history too.
+func gitRepoWithACommit(t *testing.T) string {
+	t.Helper()
+	root := gitRepo(t)
+	if err := os.WriteFile(filepath.Join(root, "marker"), []byte("payload\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run(t, root, "add", "marker")
+	run(t, root, "commit", "-q", "-m", "first")
+	return root
+}

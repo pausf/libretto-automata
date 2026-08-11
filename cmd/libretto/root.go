@@ -6,46 +6,48 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/pausf/libretto-automata/internal/dist"
 )
 
-// EnvRoot overrides where the clone is. It is taken as given, with no validation: an
-// escape hatch that checks its answer is a hatch that can refuse the one case you
+// EnvRoot overrides where the payload root is. It is taken as given, with no validation:
+// an escape hatch that checks its answer is a hatch that can refuse the one case you
 // needed it for.
 const EnvRoot = "LIBRETTO_ROOT"
-
-// BootstrapDir is where the clone lands when there is not one already, under $HOME.
-//
-// A dotdir in $HOME rather than ~/.local/share, because this is a working git
-// repository the user is expected to cd into and edit — not opaque application data.
-const BootstrapDir = ".libretto-automata"
 
 // moduleLine identifies a clone of this project by its go.mod. Any git repository would
 // otherwise satisfy the working-directory rung, and `libretto install` run inside an
 // unrelated project would go looking for a payload that project does not have.
 const moduleLine = "module github.com/pausf/libretto-automata"
 
-// repoRoot locates the clone this binary links from, in four rungs:
+// payloadRoot locates the tree this binary links from, in four rungs:
 //
-//	1  LIBRETTO_ROOT          absolute override, unvalidated
-//	2  the compile-time path  when it is a repo — development, `make build`
-//	3  the working directory  when it is a repo of this module
-//	4  ~/.libretto-automata   the bootstrap clone, whether or not it exists yet
+//	1  LIBRETTO_ROOT                        absolute override, unvalidated
+//	2  the compile-time path                when it is a checkout — development
+//	3  the working directory                when it is a checkout of this module
+//	4  ~/.local/share/libretto/current      the activated release
 //
-// Rung 2 used to accept any directory with a go.mod beside it. Under `go install` that
-// is the read-only module cache, which has a go.mod — so it won, and every link pointed
-// into a versioned cache directory that the next install orphaned. The probe is .git
-// now, because everything this root is used for needs git: the pull, the rebuild
-// decision, the release check.
+// **The payload root and the checkout are two different things**, and this tool conflated
+// them for as long as a clone happened to be both. `go install` breaks the coincidence:
+// there is a payload and no checkout. Rungs 2 and 3 answer both questions at once and
+// rung 4 answers only the first — which is why `update` asks isRepo() before pulling and
+// `upgrade` asks it before refusing.
 //
-// Rung 4 returns a path that may not exist. That is the caller's cue to bootstrap, and
-// it beats the old fallback of returning the working directory — which quietly linked
+// Rung 2 probes for `.git`, not for a `go.mod`. Under `go install` a `go.mod` matches the
+// read-only module cache, which would win, and every link would point into a versioned
+// cache directory that the next install orphans.
+//
+// Rung 4 returns a path that may not exist: nothing has been installed yet. That is not
+// something to fix by cloning — `upgrade` downloads a release — and it still beats the
+// fallback it replaced, which returned the working directory and quietly linked
 // ~/.claude against whatever the user happened to be cd'd into.
+//
 // The rungs are resolved by resolveRoot, which takes its inputs rather than reading
 // them. runtime.Caller is fixed at compile time, so inside this repository rung 2 always
 // wins and rungs 3 and 4 are unreachable from a test — the exact rungs that only matter
 // once the binary lives somewhere else. A seam here is not ceremony; without it the
 // `go install` behaviour is the part with no proof.
-func repoRoot() (string, error) {
+func payloadRoot() (string, error) {
 	var compileTime string
 	if _, file, _, ok := runtime.Caller(0); ok {
 		// cmd/libretto/root.go -> repo root
@@ -71,9 +73,9 @@ func resolveRoot(override, compileTime, wd, home string) (string, error) {
 		return wd, nil
 	}
 	if home == "" {
-		return "", fmt.Errorf("no clone found and no home directory to bootstrap into")
+		return "", fmt.Errorf("no payload found and no home directory to look for one in")
 	}
-	return filepath.Join(home, BootstrapDir), nil
+	return dist.Current(dist.Base(home)), nil
 }
 
 // isRepo reports whether dir is the top of a git checkout.
