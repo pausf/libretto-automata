@@ -396,17 +396,20 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 		})
 	}
 
-	// Both movement commands are always listed, and the one that does not apply here is
-	// disabled rather than hidden. That is this panel's existing rule — it does not promise
-	// what it cannot do, and it does not hide what is coming — and a menu that changes shape
-	// between machines is a menu whose screenshots and instructions are wrong somewhere.
-	checkout := isRepo(root)
-
 	// The status row carries the live tally, exactly as the design mocks it.
 	menu := []ui.MenuItem{
 		{Label: "install", Desc: "link the score into " + shorten(active.Root()), Enabled: true},
 		{Label: "uninstall", Desc: "take it back out of " + shorten(active.Root()), Enabled: true, Destructive: true},
-		{Label: "update", Desc: updateDesc(checkout), Enabled: true},
+		// **Not the mechanism.** This said `pull this checkout · rebuild · relink` in a
+		// checkout and `install the newest version · relink` otherwise, on the reasoning that a
+		// row should be honest about what pressing it does. What is honest about that is the
+		// command's own output; the row is a label, and a label naming an implementation detail
+		// is the thing this whole change came from — `git pull` in front of somebody who only
+		// wanted to use the tool.
+		//
+		// One string, true either way, and it deletes the per-mode function with the reason it
+		// existed.
+		{Label: "update", Desc: "bring this installation up to date", Enabled: true},
 		{Label: "status", Desc: summarise(overall), Enabled: true},
 	}
 

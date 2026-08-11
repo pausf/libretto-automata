@@ -155,6 +155,9 @@ command can live in `$GOBIN`, rebuilding into the clone upgrades a file nobody e
   its remote what it has tagged; an installed copy asks the module proxy what the project has
   published. Two *questions*, not two answers to one, and only one is ever asked on a machine.
 - **The notice names `update`**, which is the only command there is.
+- **And nothing in the panel names a mechanism.** The `update` row reads `bring this installation
+  up to date` on every machine — see `panel`. What ran is in the command's output, where a reader
+  who wants it will look; a menu label that says `pull` is the original complaint in quieter words.
 
 ### Scope: where it writes
 
@@ -560,9 +563,8 @@ Finding the payload:
   Proof: cmd/libretto/update_release_test.go TestUpdateOnTheNewestVersionDoesNothing
 - nothing installed yet updates rather than refusing
   Proof: cmd/libretto/update_release_test.go TestUpdateFromNothingInstalled
-- **the route follows how this installation arrived**, and the menu row names the mechanism
+- **the route follows how this installation arrived**
   Proof: cmd/libretto/update_release_test.go TestUpdateTakesTheRouteThisInstallationCameBy
-  Proof: cmd/libretto/update_release_test.go TestTheUpdateRowNamesTheMechanism
 
 A missing payload:
 

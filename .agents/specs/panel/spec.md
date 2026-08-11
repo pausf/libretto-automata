@@ -341,11 +341,21 @@ default nobody chose.
   painting hangs on bad DNS; a diagnostic the user typed can afford five seconds.
 - **`UpdateNotice`, not `Update`.** A field named `Update` beside a Bubbletea `Update`
   method has to be disambiguated by type on every read.
-- **One `update` row, whose description names the mechanism this machine will use** — `pull this
-  checkout · rebuild · relink`, or `install the newest version · relink`. A draft had two rows and
-  disabled whichever did not apply; that was right for a design with two commands, and the row
-  went when the command did. It no longer says `git pull`, which is the string that started the
-  change.
+- **One `update` row, and its description names the outcome rather than the mechanism** —
+  `bring this installation up to date`, the same string on every machine.
+
+  Two drafts got this wrong in opposite directions. The first had **two rows**, one per command,
+  with the inapplicable one disabled. The second had one row whose description **changed per
+  machine** — `pull this checkout · rebuild · relink` against `install the newest version ·
+  relink` — on the reasoning that a row should be honest about what pressing it does.
+
+  What is honest about that is **the command's own output**. A menu row is a label, and a label
+  naming an implementation detail is the thing this whole change came from: `git pull` in front of
+  somebody who only wanted to use the tool. `pull this checkout` is the same mistake in quieter
+  words.
+
+  The consequence worth having: the description does not vary, so nothing computes it and nothing
+  needs to know which mode the panel is in.
 
 ## Task breakdown
 
