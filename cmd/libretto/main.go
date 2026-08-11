@@ -108,12 +108,28 @@ func openingScope(flagged target.Scope, chosen string) target.Scope {
 }
 
 func run(args []string) error {
-	root, err := repoRoot()
+	scope, chosen, args, err := scopeFlags(args)
 	if err != nil {
 		return err
 	}
 
-	scope, chosen, args, err := scopeFlags(args)
+	// `version` and `help` answer without the payload, and they are answered before the
+	// clone is even looked for. Cloning a repository into somebody's home because they
+	// asked what version they were running would be indefensible.
+	if len(args) > 0 {
+		switch args[0] {
+		case "version", "-v", "--version":
+			fmt.Println("libretto-automata", version)
+			return nil
+		case "help", "-h", "--help":
+			usage()
+			return nil
+		}
+	}
+
+	// Everything below links, reads or reports on the payload, so from here a clone has
+	// to exist. This is where `go install` gets one.
+	root, err := ensureClone()
 	if err != nil {
 		return err
 	}
@@ -156,12 +172,6 @@ func run(args []string) error {
 		return update(root, tg)
 	case "models":
 		return models(root, tg, args[1:])
-	case "version", "-v", "--version":
-		fmt.Println("libretto-automata", version)
-		return nil
-	case "help", "-h", "--help":
-		usage()
-		return nil
 	default:
 		usage()
 		return fmt.Errorf("unknown command %q", args[0])

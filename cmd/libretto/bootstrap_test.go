@@ -1,0 +1,131 @@
+package main
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// The destination is printed before the clone runs, not after. A tool that has already
+// written a directory into someone's home and then mentions it is a tool they cannot
+// decline.
+func TestBootstrapAnnouncesDestinationBeforeCloning(t *testing.T) {
+	dest := filepath.Join(t.TempDir(), "libretto-automata")
+
+	var log strings.Builder
+	cloned := false
+	clone := func(context.Context, string, string) error {
+		if !strings.Contains(log.String(), dest) {
+			t.Errorf("the clone started before the destination was announced; log so far: %q",
+				log.String())
+		}
+		cloned = true
+		return nil
+	}
+
+	if err := bootstrap(context.Background(), &log, dest, "https://example.invalid/x.git", clone); err != nil {
+		t.Fatal(err)
+	}
+	if !cloned {
+		t.Fatal("bootstrap did not clone")
+	}
+	if !strings.Contains(log.String(), dest) {
+		t.Errorf("the destination was never announced: %q", log.String())
+	}
+}
+
+// A destination that exists and is not ours is refused and nothing is touched — the same
+// promise the linker makes, applied to the tool's own directory.
+func TestBootstrapRefusesForeignDestination(t *testing.T) {
+	dest := t.TempDir()
+	stranger := filepath.Join(dest, "not-ours")
+	if err := os.WriteFile(stranger, []byte("keep me"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var log strings.Builder
+	clone := func(context.Context, string, string) error {
+		t.Error("bootstrap cloned over a directory it did not create")
+		return nil
+	}
+
+	err := bootstrap(context.Background(), &log, dest, "https://example.invalid/x.git", clone)
+	if err == nil {
+		t.Fatal("bootstrap accepted a foreign destination")
+	}
+	if !strings.Contains(err.Error(), dest) {
+		t.Errorf("the refusal does not name the destination: %v", err)
+	}
+	if body, rerr := os.ReadFile(stranger); rerr != nil || string(body) != "keep me" {
+		t.Error("the refused bootstrap touched the existing file")
+	}
+}
+
+// A destination that is already our clone is not an error and not a re-clone. This is the
+// ordinary second run, and it has to be silent.
+func TestBootstrapIsIdempotent(t *testing.T) {
+	dest := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dest, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var log strings.Builder
+	clone := func(context.Context, string, string) error {
+		t.Error("bootstrap re-cloned over an existing clone")
+		return nil
+	}
+
+	if err := bootstrap(context.Background(), &log, dest, "https://example.invalid/x.git", clone); err != nil {
+		t.Fatalf("bootstrap over an existing clone: %v", err)
+	}
+	if log.String() != "" {
+		t.Errorf("bootstrap narrated a no-op: %q", log.String())
+	}
+}
+
+// `version` and `help` answer without the payload, so they must not go looking for a
+// clone — never mind creating one. Cloning a repository into somebody's home because they
+// asked what version they were running would be indefensible.
+func TestVersionAndHelpDoNotBootstrap(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv(EnvRoot, filepath.Join(home, "nothing-here"))
+
+	for _, arg := range []string{"version", "--version", "help", "--help"} {
+		if err := run([]string{arg}); err != nil {
+			t.Errorf("run(%q): %v", arg, err)
+		}
+	}
+
+	entries, err := os.ReadDir(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("version/help wrote into the home directory: %v", entries)
+	}
+}
+
+// A failed clone leaves nothing behind that a later run would refuse. Half a clone in
+// ~/.libretto-automata would be a foreign destination forever, and the user would have to
+// work out that deleting it is the fix.
+func TestBootstrapCleansUpAfterAFailedClone(t *testing.T) {
+	dest := filepath.Join(t.TempDir(), "libretto-automata")
+
+	var log strings.Builder
+	clone := func(_ context.Context, _, dst string) error {
+		if err := os.MkdirAll(filepath.Join(dst, "partial"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return os.ErrDeadlineExceeded
+	}
+
+	if err := bootstrap(context.Background(), &log, dest, "https://example.invalid/x.git", clone); err == nil {
+		t.Fatal("a failed clone was reported as success")
+	}
+	if _, err := os.Stat(dest); !os.IsNotExist(err) {
+		t.Errorf("a failed clone left %s behind", dest)
+	}
+}
