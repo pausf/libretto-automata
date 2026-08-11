@@ -36,7 +36,7 @@ bad, you fix the libretto, not the automaton.
 
 Links are made **per item, never per directory**, so this coexists with anything else
 installed into the same folders. Anything already there that this tool did not create is
-left untouched and reported — there is no `--force`, by design.
+left untouched and reported.
 
 ## Install
 
@@ -49,22 +49,7 @@ libretto install   # symlink every item into ~/.claude
 libretto           # the panel
 ```
 
-**That is the whole install.** The payload — skills, agents and commands — ships *inside* the Go
-module, so `go install` downloads it along with the binary and verifies it against Go's checksum
-database. There is no tarball to fetch and no bootstrap step.
-
-It lands here:
-
-```
-~/go/bin/libretto                                          the command
-$GOMODCACHE/github.com/pausf/libretto-automata@v0.5.0/     the payload
-  ├── skills/  agents/  commands/
-
-~/.claude/skills/write-spec  →  …@v0.5.0/skills/write-spec
-```
-
-The version is in the path, which is what makes an update a new directory rather than an
-overwrite of the one your links point at. `LIBRETTO_ROOT` points the tool somewhere else.
+**That is the whole install.** No tarball to fetch, no bootstrap step.
 
 ### Updating
 
@@ -91,12 +76,8 @@ make build      # stamps the version from git describe
 make link       # puts `libretto` on your PATH via ~/.local/bin
 ```
 
-`make link` symlinks rather than copies, so `make build` updates the installed command and no
-stale binary can pretend to be current. It refuses to overwrite a `libretto` it did not create.
-
-A checkout you are standing in wins over the module cache, so editing a skill and seeing it live
-still works — which is the reason the payload is not compiled into the binary. `update` pulls
-there instead of downloading: same command, and the tree you are standing in is the installation.
+A checkout you are standing in wins over an installed copy, so editing a skill and seeing it
+live still works. `update` pulls there instead of downloading.
 
 ## Commands
 
@@ -135,16 +116,8 @@ the prose lenses cheap is one decision, not four.
 `--global`, `<cwd>/.claude/agents` under `--project`. Every agent there is listed and
 editable, not just the ones this repository ships.
 
-A row marked `shared` is a file this repository owns, reached from more than one
-destination: writing it changes every project on the machine. An unmarked row is a real
-file in that destination and changing it changes nothing else.
-
-`default` means no `model:` key at all — an absent key is already how the format says
-"whatever the session runs on", and two spellings of one state is a difference somebody
-eventually treats as meaningful.
-
-The values are **aliases**, so an agent file does not need editing the day a new model
-ships. The listing shows what each one resolves to, and when that was last checked:
+The values are **aliases**. The listing shows what each one resolves to, and when that was
+last checked:
 
 ```
 models available (aliases; versions as of 2026-08):
@@ -166,19 +139,11 @@ configuration every other project shares. In the panel, the strip shows both
 destinations and `tab` switches which one the keys act on — the active one is marked
 `◉` in gold.
 
-Passing both flags is an error. Two answers to one question is a mistake worth
-reporting, not one worth resolving by guessing.
+Passing both flags is an error.
 
-`prune` and `uninstall` are both dry by default. A destructive command that acts before
-being asked twice eventually deletes the wrong thing, and a pipe is no reason to be less
-careful. In the panel they show the plan and then ask — `y` to go ahead, `n` to cancel,
-and no other key carries them out.
-
-**`prune` and `uninstall` are not the same thing.** Prune cleans up after *the repo*
-changed — rename an item and the old link points at nothing, which is `stale`. Uninstall
-removes links that are **working**, because you changed your mind. Prune deliberately
-spares correct links, and that is what makes it safe to run: you clean one broken link
-without risking a whole installation.
+`prune` and `uninstall` are both dry by default — they change nothing until `--yes`. They
+are **not the same command**: prune removes links whose item is gone, uninstall removes
+links that are working.
 
 ### The five states
 
@@ -220,10 +185,6 @@ gets abandoned.
 **Ideas arrive faster than they get built.** `/libretto-queue` captures them one after
 another — a proposal with a `Queued:` date and your words verbatim, no branch and no spec
 — and `/libretto-next` picks one up later, oldest first, and takes it into the flow.
-
-Two commands and not one, because `/libretto-flow EUCAR-1234` does *that* ticket, always.
-A flow that quietly substitutes different work for what you handed it is the surprise
-nobody wants.
 
 ```bash
 /libretto-status              # what is in flight and what is queued
@@ -271,8 +232,7 @@ skills/record-work/spec-drift --anchors   # every citation resolves, test name i
 skills/record-work/spec-drift             # staged code whose owning spec did not move
 ```
 
-It warns; it never blocks. A check that stops a commit in someone else's project is a
-check that gets deleted, and a deleted check finds nothing.
+It warns; it never blocks.
 
 Work in flight lives in `.agents/changes/<change>/` and lands by applying its delta onto
 the capability spec and deleting the change folder — in the same commit as the code.

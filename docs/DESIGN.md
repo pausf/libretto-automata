@@ -331,3 +331,85 @@ Here a second target is committed, not imagined — Codex, and others after it.
 The interface is what makes that a new file instead of a refactor.
 
 If that commitment ever disappears, collapse the interface.
+
+## Why there is no `--force`
+
+Anything in a target directory that this tool did not create is left untouched and
+reported — there is no `--force`, by design.
+
+A flag that resolves a conflict is a flag that deletes somebody else's file, and the
+somebody is usually another tool's sync that will put it back. The two states this tool
+can honestly be in are *I own this link* and *I do not*, so the second one is reported and
+never acted on. Reported, never resolved.
+
+## Why `prune` and `uninstall` are different commands
+
+They look like the same operation with different words and they are not.
+
+**Prune cleans up after *the repo* changed** — rename an item and the old link points at
+nothing, which is `stale`. **Uninstall removes links that are working**, because you
+changed your mind.
+
+Prune deliberately spares correct links, and that is what makes it safe to run: you clean
+one broken link without risking a whole installation. A single command covering both would
+have to guess which of the two you meant, and it would guess at the moment the cost of
+being wrong is an entire installation.
+
+## Why both are dry by default
+
+`prune` and `uninstall` change nothing until `--yes`. A destructive command that acts
+before being asked twice eventually deletes the wrong thing, and a pipe is no reason to be
+less careful.
+
+In the panel they show the plan and then ask — `y` to go ahead, `n` to cancel, and no
+other key carries them out.
+
+## Why passing both scope flags is an error
+
+`--global` and `--project` together exits non-zero rather than picking one.
+
+Two answers to one question is a mistake worth reporting, not one worth resolving by
+guessing. Every guess here writes symlinks into a directory the user did not name.
+
+## Why the payload is not compiled into the binary
+
+The skills, agents and commands ship *inside* the Go module, so `go install` downloads
+them along with the binary and verifies them against Go's checksum database. There is no
+tarball to fetch and no bootstrap step.
+
+They are not embedded with `go:embed`, though, and that is the deliberate part:
+
+```
+~/go/bin/libretto                                          the command
+$GOMODCACHE/github.com/pausf/libretto-automata@<version>/  the payload
+  ├── skills/  agents/  commands/
+
+~/.claude/skills/write-spec  →  …@<version>/skills/write-spec
+```
+
+The version is in the path, which is what makes an update a new directory rather than an
+overwrite of the one your links point at.
+
+**And a checkout you are standing in wins over the module cache**, so editing a skill and
+seeing it live still works — which is the whole reason the payload is not compiled in. An
+embedded payload would need a rebuild to change a line of prose, and the payload *is* the
+project. `update` pulls there instead of downloading: same command, and the tree you are
+standing in is the installation.
+
+`make link` symlinks rather than copies for the same reason, so `make build` updates the
+installed command and no stale binary can pretend to be current. It refuses to overwrite a
+`libretto` it did not create.
+
+## Why models are named by alias, not by id
+
+`libretto models set haiku …` writes an alias, so an agent file does not need editing the
+day a new model ships. The listing shows what each one resolves to, and when that was last
+checked.
+
+`default` means **no `model:` key at all** — an absent key is already how the format says
+"whatever the session runs on", and two spellings of one state is a difference somebody
+eventually treats as meaningful.
+
+A row marked `shared` is a file this repository owns, reached from more than one
+destination: writing it changes every project on the machine. An unmarked row is a real
+file in that destination and changing it changes nothing else.
