@@ -182,6 +182,21 @@ func parseSemver(tag string) ([3]int, bool) {
 	return out, true
 }
 
+// IsRelease reports whether tag names a plain release.
+//
+// Exported for internal/dist, which has to decide whether a redirect's target and a
+// directory's name are versions. The alternative was a second parser there, and two
+// implementations of "what counts as a release" is two that can disagree about a prerelease.
+//
+// ponytail: dist imports repo for this and for IsNewer, and for nothing else — a package
+// about downloads depending on a package about git, at compile time only. If that coupling
+// ever costs anything, the four semver functions move to their own package and both depend
+// on it. Two exported functions is not worth a package today.
+func IsRelease(tag string) bool {
+	_, ok := parseSemver(tag)
+	return ok
+}
+
 // IsNewer reports whether latest is a release strictly ahead of running.
 //
 // Exported because cmd/libretto formats the notice and must not own a second answer to
