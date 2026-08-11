@@ -1,7 +1,6 @@
 # rewrite-readme-for-end-users
 
 Tracker: none
-Queued: 2026-08-11
 
 ## The ask, verbatim
 
