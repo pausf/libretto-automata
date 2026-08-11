@@ -158,6 +158,29 @@ command can live in `$GOBIN`, rebuilding into the clone upgrades a file nobody e
 - **And nothing in the panel names a mechanism.** The `update` row reads `bring this installation
   up to date` on every machine — see `panel`. What ran is in the command's output, where a reader
   who wants it will look; a menu label that says `pull` is the original complaint in quieter words.
+- **Every subcommand that reads the payload ends by saying it too** — `status`, `preview`,
+  `install`, `prune`, `uninstall`, `models`. The panel needs a TTY and `doctor` needs somebody to
+  already suspect there is something to diagnose; the payload is used inside Claude Code, so after
+  installing most people run neither for months and the notice sat where the user was not. Now
+  *any* run says it.
+- **On stderr, after the command's own output.** `status` output is parseable and somebody may be
+  parsing it, so stdout stays byte-identical to a run with nothing to say. After, not before,
+  because the notice is news about something else.
+- **It never changes the exit code.** Being a release behind is not an error, and `install`
+  already spends a non-zero exit on a conflict — a second meaning would make the first unreadable.
+- **Cached, and silent when there is nothing to say** — not newer, no cached answer, or a failed
+  check all print nothing. A subcommand is not a diagnostic: it does not get to pay for a network
+  call the panel would not have made, and "could not check" from a command about something else is
+  the noise that gets a notice ignored.
+- **`doctor` and `update` are excluded.** `doctor` already says something on every path, live, and
+  a second line would print the same fact twice with one copy stale. `update` *is* the update.
+- **The line is never coloured.** The panel's row is gold because it sits inside a rendered frame;
+  a line appended to a command's output is not, and colouring it buys a branch, a theme dependency
+  and a test for something nobody asked for.
+- **Ceiling, named: this reaches nobody who does not run the binary.** What is guaranteed is that
+  every run tells them. The only thing that reaches somebody who never runs it is the payload
+  saying it, and that costs `payload`'s promise that an installed skill works in a project which
+  has never heard of `libretto`. Not paid.
 
 ### Scope: where it writes
 
@@ -501,6 +524,25 @@ typing has gaps in it; the harness has to as well.
   Proof: cmd/libretto/main_test.go TestNoTTYAndNoSubcommandExitsNonZero
 - piped `status` carries no escape codes
   Proof: cmd/libretto/main_test.go TestStatusOutputHasNoEscapeCodes
+- **the release notice goes to stderr, and stdout is byte-identical to a run with nothing
+  to say** — verified by mutation: pointing the dispatch's `defer` at `os.Stdout` fails it
+  Proof: cmd/libretto/notice_test.go TestSubcommandNoticeGoesToStderr
+- **nothing is printed when there is no newer release, no cached answer, or a failed
+  check** — through the formatter itself, against a pre-answered cache rather than a stub
+  Proof: cmd/libretto/notice_test.go TestSubcommandNoticeIsSilentWithNothingToSay
+- **the exit code is whatever the subcommand returned**, on a succeeding path and on
+  `models nonesuch` — a command that both carries the notice and fails
+  Proof: cmd/libretto/notice_test.go TestSubcommandNoticeDoesNotChangeTheExitCode
+- **`doctor` and `update` do not carry it**, so the fact is never printed twice
+  Proof: cmd/libretto/notice_test.go TestDoctorAndUpdateDoNotRepeatTheNotice
+- **the line carries no escape codes**, checked against what the formatter really builds
+  Proof: cmd/libretto/notice_test.go TestSubcommandNoticeHasNoEscapeCodes
+- **the suite never reaches the module proxy for it.** The dispatch's `defer` fires for
+  every test that calls `run`, so a test that did not know about the notice inherited a
+  live lookup and a write of `.update-check` into the user's own module cache. `TestMain`
+  silences the source package-wide and tests opt in — the same reason `CLAUDE_HOME` exists,
+  applied to a directory it does not cover.
+  Proof: cmd/libretto/notice_test.go TestMain
 - **help and remedies name the command they were invoked as**, not a fixed string
   Proof: cmd/libretto/main_test.go TestOutputNamesTheInvokedCommand
 - **the prerequisite report never changes the exit code** — with an empty `PATH` and an
