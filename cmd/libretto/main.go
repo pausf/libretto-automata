@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 
@@ -1054,28 +1053,7 @@ func summarise(counts map[link.State]int) string {
 	return strings.Join(parts, " · ")
 }
 
-// repoRoot locates the repository this binary belongs to.
-//
-// The binary is expected to live under the repo (bin/libretto after `make build`), so
-// the source file's compile-time location is the reliable anchor during
-// development. LIBRETTO_ROOT overrides it.
-func repoRoot() (string, error) {
-	if r := os.Getenv("LIBRETTO_ROOT"); r != "" {
-		return r, nil
-	}
-	if _, file, _, ok := runtime.Caller(0); ok {
-		// cmd/libretto/main.go -> repo root
-		root := filepath.Dir(filepath.Dir(filepath.Dir(file)))
-		if _, err := os.Stat(filepath.Join(root, "go.mod")); err == nil {
-			return root, nil
-		}
-	}
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("cannot locate the repo: %w", err)
-	}
-	return wd, nil
-}
+// repoRoot lives in root.go — it grew a rung and a bug worth its own test file.
 
 func asciiSafe() bool { return os.Getenv(EnvASCIISafe) == "safe" }
 
