@@ -299,12 +299,22 @@ rather than fail — that is the bootstrap case, where there is nowhere to write
 **Blocked by:** **T2, T3**
 **Consumes:** `repo.Clone`, `repo.ModuleURL`, `bootstrapPath`
 
-- [ ] failing tests: the destination is printed **before** the clone runs; a destination
+- [x] failing tests: the destination is printed **before** the clone runs; a destination
       that exists and is not our clone is refused and nothing is touched; after a
       successful clone the requested command runs
-- [ ] run them, watch them fail
-- [ ] implement; `LIBRETTO_ROOT` in every test so no real `$HOME` is reachable
-- [ ] `make gates`, commit
+- [x] run them, watch them fail — `undefined: bootstrap`
+- [x] implement; `LIBRETTO_ROOT` in every test so no real `$HOME` is reachable
+- [x] `make gates`, commit — exit 0 *(T9 closed)*
+
+Two cases beyond the plan, both real. **A failed clone is cleaned up** — half a clone in
+`~/.libretto-automata` would be a foreign destination forever, and the user would have to
+work out that deleting it is the fix. And **`version`/`help` are answered before the clone
+is even looked for**, with a test asserting the home directory stays empty: cloning a
+repository into somebody's home because they asked what version they were running would be
+indefensible. That meant moving those two cases above the root resolution in `run`.
+
+`bootstrap` takes the clone function and an `io.Writer`, so no test needs git or a network.
+`ensureClone()` is what commands call now instead of `repoRoot()`.
 
 **Closes:** `TestBootstrapAnnouncesDestinationBeforeCloning` ·
 `TestBootstrapRefusesForeignDestination` · `TestBootstrapContinuesIntoRequestedCommand`
@@ -320,11 +330,14 @@ rather than fail — that is the bootstrap case, where there is nowhere to write
 empty**, so the comparison stays in `internal/repo` · `releaseMsg string` ·
 `Init() tea.Cmd`
 
-- [ ] failing tests: `Init` returns a command when the check is set and `nil` when it is
+- [x] failing tests: `Init` returns a command when the check is set and `nil` when it is
       not; the message sets `UpdateNotice`; an action's feedback does not overwrite it
-- [ ] run them, watch them fail
-- [ ] implement
-- [ ] `make gates`, commit
+- [x] run them, watch them fail — `undefined: releaseMsg`
+- [x] implement
+- [x] `make gates`, commit — exit 0 *(T10 closed)*
+
+`TestNavigationDoesNotClearUpdateNotice` went in as well: moving the cursor clears action
+feedback — existing behaviour — and must not take the news with it.
 
 **Closes:** `TestInitReturnsReleaseCheckCommand` · `TestUpdateNoticeSetFromMessage` ·
 `TestActionFeedbackDoesNotOverwriteUpdateNotice` ·
@@ -341,13 +354,21 @@ empty**, so the comparison stays in `internal/repo` · `releaseMsg string` ·
 
 The callback composes them and formats `v0.2.0 → v0.3.0 available · choose update`.
 
-- [ ] pass the callback into `NewModel(...).WithReleaseCheck(...)`
-- [ ] verify against the existing teatest flow in `cmd/libretto/panelrun_test.go`: the
-      panel paints without the check having answered
-- [ ] `make gates`, commit
+- [x] pass the callback into `NewModel(...).WithReleaseCheck(...)`
+- [x] verify against the existing teatest flow in `cmd/libretto/panelrun_test.go`: the
+      panel paints without the check having answered — those flows build the model
+      directly, so the suite never reaches a remote
+- [x] `make gates`, commit — exit 0 *(T11 closed)*
 
-**Closes:** covered by T10's proofs plus the existing panel-run flow. No new criterion —
-this task is wiring, and a task with no criterion of its own is wiring or it is scope.
+**It earned criteria after all.** The plan called this wiring with no proof of its own, and
+that was wrong: `releaseNotice` decides when to stay silent, and silence has five distinct
+cases worth pinning — up to date, ahead of the remote, unparseable, a dirty build, nothing
+cached. Tests build the notice from a pre-seeded cache file, so nothing reaches a network.
+
+```
+Proof: cmd/libretto/version_test.go TestReleaseNoticeNamesBothVersionsAndTheAction
+Proof: cmd/libretto/version_test.go TestReleaseNoticeIsSilentWhenThereIsNothingToSay
+```
 
 ---
 
@@ -357,12 +378,21 @@ this task is wiring, and a task with no criterion of its own is wiring or it is 
 **Files:** modify `cmd/libretto/main.go` (`doctor`); create `cmd/libretto/doctor_test.go`
 **Blocked by:** **T7, T8**
 
-- [ ] failing tests: a newer release is reported; a failed check says "could not check"
+- [x] failing tests: a newer release is reported; a failed check says "could not check"
       and does not set the exit code
-- [ ] run them, watch them fail
-- [ ] implement with the deadline; the cache is refreshed and nothing in a target is
-      touched
-- [ ] `make gates`, commit
+- [x] run them, watch them fail — `undefined: releaseLine`
+- [x] implement with the deadline; ~~the cache is refreshed~~ **nothing is written at all**
+- [x] `make gates`, commit — exit 0 *(T12 closed)*
+
+**The spec changed here, and for the better.** It said `doctor` refreshes the check cache,
+which meant writing a timestamp into `.git/` and then defending in prose why "it never
+writes" still held. Going live instead removes the caveat *and* fixes a second problem: the
+cache swallows the ask error by design, so a cached `doctor` could not tell "up to date"
+from "could not check" — the exact distinction the line exists to make. The `cli` delta was
+amended to match.
+
+Five outcomes, five sentences, and the fifth is the interesting one: a binary ahead of the
+remote or reporting `dev` gets the facts and **no ranking**.
 
 **Closes:** `TestDoctorReportsNewerRelease` · `TestDoctorSaysSoWhenTheCheckFails`
 
@@ -374,12 +404,17 @@ this task is wiring, and a task with no criterion of its own is wiring or it is 
 **Files:** modify `cmd/libretto/main.go` (`usage`), `README.md`
 **Blocked by:** **T9, T11, T12**
 
-- [ ] usage: the `go install` line, `LIBRETTO_ROOT`'s default documented as
-      `~/.libretto-automata`
-- [ ] `README.md`: `go install` as the install and update path, the clone location, and
+- [x] usage: the `go install` line, `LIBRETTO_ROOT`'s default documented as
+      `~/.libretto-automata` — taken from `BootstrapDir` rather than retyped, so the help
+      cannot drift from the code that creates the directory
+- [x] `README.md`: `go install` as the install and update path, the clone location, and
       that `update` is still how you move forward
-- [ ] `scripts/check-payload` — no payload item changed, but run it and read it
-- [ ] `make gates`, commit
+- [x] `scripts/check-payload` — exit 0, all checks passed
+- [x] `make gates`, commit — exit 0 *(T13 closed)*
+
+The clone survives in the README as the route for working *on* the payload, with the reason
+attached: a clone you are standing in wins over `~/.libretto-automata`, and that is what
+keeps edit-a-skill-and-see-it-live working.
 
 **Closes:** no test. Documentation that agrees with the binary is checked by reading both,
 and this is the one task in the plan whose proof is a human.
