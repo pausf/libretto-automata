@@ -154,3 +154,56 @@ func makefilePhony(makefile string) string {
 	}
 	return ""
 }
+
+// A release is the one moment where "the gates were green earlier" is not good enough, so the
+// target invokes them rather than trusting a previous run.
+func TestReleaseTargetRunsTheGatesFirst(t *testing.T) {
+	body := releaseRecipe(t)
+
+	if !strings.Contains(body, "$(MAKE) --no-print-directory gates") {
+		t.Errorf("the release target does not run the gates:\n%s", body)
+	}
+	// Before the release is created, not after. Publishing first and checking second would put
+	// out a Release page a failing gate then disowns.
+	if strings.Index(body, "gates") > strings.Index(body, "gh release create") {
+		t.Error("the gates run after the release is created")
+	}
+}
+
+// **Gone with the design: nothing is attached to a release.** The payload ships inside the Go
+// module, so there is no tarball to build, no checksum to publish and no per-platform binary —
+// `go install` brings all of it down and GOSUMDB verifies it. Two tests went with those: one
+// pinning the tarball's contents, one holding the Makefile's asset names against the names Go
+// fetched.
+
+// `gh release create` creates the tag itself when it is not on the remote, at the default
+// branch's HEAD. Without --verify-tag, running the target before pushing the tag produces a
+// second tag with your name on it pointing somewhere you did not choose — and yours is the one
+// that loses.
+func TestReleaseVerifiesTheTagRatherThanCreatingIt(t *testing.T) {
+	body := releaseRecipe(t)
+
+	if !strings.Contains(body, "--verify-tag") {
+		t.Errorf("gh release create is not passed --verify-tag:\n%s", body)
+	}
+}
+
+// releaseRecipe is the `release` target's body, from the Makefile.
+func releaseRecipe(t *testing.T) string {
+	t.Helper()
+	makefile := repoFile(t, "Makefile")
+
+	_, after, ok := strings.Cut(makefile, "\nrelease:\n")
+	if !ok {
+		t.Fatal("the Makefile has no release target")
+	}
+	// A recipe ends at the first line that is neither indented nor blank.
+	var body []string
+	for _, line := range strings.Split(after, "\n") {
+		if line != "" && !strings.HasPrefix(line, "\t") && !strings.HasPrefix(line, " ") {
+			break
+		}
+		body = append(body, line)
+	}
+	return strings.Join(body, "\n")
+}

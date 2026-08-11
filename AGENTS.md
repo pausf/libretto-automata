@@ -54,6 +54,7 @@ libretto preview
 libretto models         # which model each agent runs on, read-only
 libretto models set haiku review-lens-design review-lens-tests   # --all for every agent
 
+libretto update         # install the newest version and relink; pulls in a checkout
 libretto install --project   # <cwd>/.claude instead of ~/.claude
 libretto install --global    # the default; both flags at once is an error
 ```
@@ -63,10 +64,10 @@ libretto install --global    # the default; both flags at once is an error
 ```bash
 gofmt -l .                                       # must print nothing
 go vet ./...
-go test ./... -count=1                           # 263 test functions
+go test ./... -count=1                           # 367 test functions
 scripts/check-payload                            # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test        # 20 checks
-skills/record-work/spec-drift --anchors          # 223 citations must resolve
+skills/record-work/spec-drift --anchors          # 268 citations must resolve
 ```
 
 `spec-drift` with no flag warns about staged code whose spec did not move. It never
@@ -87,7 +88,7 @@ internal/ui/            logo, theme, panel, model, models.go (the selector scree
 internal/agentmodel/    the model: key in agents/*.md, and the catalogue of values
 skills/ agents/ commands/   THE PAYLOAD — what gets symlinked
 scripts/check-payload   repo-only tooling. Never referenced from a skill.
-.agents/specs/          the specification, one directory per capability
+.agents/specs/          the specification, one directory per capability (11)
 docs/                   FLOW.md (the flow) · DESIGN.md · PLAN.md · STATE.md · SPEC.md (index only)
 ```
 
@@ -119,10 +120,11 @@ documentation pretending to be state — which happened while building this very
 
 ## Specs
 
-Per **capability**, never per ticket, in `.agents/specs/<capability>/spec.md`. Ten of
-them: `ownership`, `link-state`, `linking`, `targets`, `repo-sync`, `panel`, `cli`,
-`payload`, `review-project`, `agent-models`. `docs/SPEC.md` is an index with no
-requirements in it.
+Per **capability**, never per ticket, in `.agents/specs/<capability>/spec.md`. `docs/SPEC.md`
+is the index and has no requirements in it — **it is also the only place the list lives.**
+This paragraph used to name them and count them, and by the time anybody noticed it said
+"ten" over eleven directories. A number kept in two places is a number that drifts, and the
+copy nobody edited is the one that reads as authoritative.
 
 Each declares what it owns and cites the test behind each criterion:
 
@@ -143,25 +145,70 @@ the capability spec and deleting the change folder, in the same commit as the fi
 Semver, from git tags. **The binary never carries a hardcoded version.**
 
 ```bash
-git tag -a v0.2.0 -m "..."     # the tag is the release
 make build                     # -ldflags stamps `git describe --tags --always --dirty`
-./bin/libretto version         # v0.2.0  ·  v0.2.0-3-gabc123  ·  v0.2.0-dirty
+./bin/libretto version         # v0.5.0  ·  v0.5.0-3-gabc123  ·  v0.5.0-dirty
 ```
+
+**There is nothing to edit to change the reported version.** It is `git describe` at build
+time, and `debug.ReadBuildInfo()` for a binary from `go install`. `v0.5.0-3-gabc123` is not a
+bug to fix — it is a correct report of three commits past a tag. Tag, rebuild, and it says
+`v0.5.0`. A constant in a source file desynchronises the moment somebody forgets it, and it
+does it silently.
 
 A plain `go build` with no ldflags reports `dev`. That is deliberate: a binary that
 cannot prove its version says so rather than claiming one.
 
-| Bump | When |
-|---|---|
-| patch | a fix with no contract change |
-| minor | a new capability, or a new promise in an existing spec |
-| major | a promise removed or reversed |
+`make release` is run by hand, by a human. Nothing publishes on a tag push — a workflow that
+released automatically would turn the decision to ship into a file nobody re-reads. **Until a
+tag exists with its payload attached, `go install ...@latest` installs the last release and
+not `main`.**
 
-**A tag is a release, not a commit marker.** Tag when the work goes out, not on the way
-there. Four tags for one unpushed feature and three fixes to it is four releases nobody
-could install — the fixes were to code that had never existed for anyone, so they need
-no patch numbers of their own. Move the tag to the tip and let it describe what actually
-shipped.
+### Every merge to `main` gets a tag. No merge leaves `main` untagged.
+
+**This is the rule, and it is not optional.** The bump comes from what the change was, read
+off the commits it lands:
+
+| The merge contains | Bump | Example |
+|---|---|---|
+| only `fix:` / `refactor:` / `docs:` / `chore:` with no contract change | patch | `v0.5.0` → `v0.5.1` |
+| a `feat:`, a new capability, or a new promise in an existing spec | minor | `v0.5.0` → `v0.6.0` |
+| a promise removed or reversed | major | `v0.5.0` → `v1.0.0` |
+
+Mixed merge takes the highest: one `feat:` among nine `fix:` is a minor.
+
+```bash
+git switch main && git pull            # the merge is in
+git tag -a v0.5.0 -m "what shipped"
+git push origin v0.5.0                 # the tag, on the remote
+make release                           # gates, then a Release page with the tag's notes
+```
+
+**The push comes before `make release`, and the order is load-bearing.** `gh release create`
+creates the tag itself when it is not on the remote, at the default branch's HEAD — so running
+it first gives you a second tag with your name on it pointing somewhere you did not choose, and
+yours is the one that loses. The target passes `--verify-tag`, which refuses instead.
+
+**A tag is not a Release**, and here only the tag is load-bearing. A tag is a git ref; a Release
+is a GitHub object. The module proxy resolves `@latest` from tags, so `go install` works with no
+Releases at all — which was this repository's state at `v0.4.0`: four tags, zero Releases,
+verified. `make release` opens a Release page carrying the tag's notes, for humans; skipping it
+costs nothing mechanical.
+
+**Branch pushes do not tag.** Push a feature branch as often as you like; push it again after
+review; none of that is a release. Only the merge is.
+
+That boundary is the whole rule, and it is where the old version of this section went wrong in
+the other direction. It said "tag when the work goes out" and left *when* to judgment — so
+work went out untagged and `main` sat ahead of its last release. And the failure it was written
+to prevent is real too: four tags for one unpushed feature is four releases nobody could
+install, because the fixes were to code that had never existed for anyone. **Tagging every
+branch push reproduces exactly that.** One tag per merge is the line that avoids both.
+
+**A tag is still a release, not a commit marker.** The difference now is that a merge *is* the
+work going out, so there is nothing left to judge.
+
+Retagging to move a tag onto a tip is gone as a practice — with one tag per merge there is
+never a stale tag to move.
 
 Retagging is only safe while the tag is unpublished. Once it is on the remote it is
 somebody's reference point and it stays where it is.
@@ -194,6 +241,9 @@ spec ships in the same commit as the code that taught it.
 - write the test in the same commit as the logic it proves
 - name a `Proof:` in the spec for a new criterion, then make it exist
 - point `CLAUDE_HOME` at a temporary directory in anything that touches a target
+- **tag `main` after every merge, and run `make release`.** The bump comes from what the
+  merge contained — see *Versioning*. A merge that leaves `main` ahead of its last tag is a
+  release nobody can install and a `libretto version` that names a tag the code is past.
 - state what was deliberately left out, and what would bring it back
 - write `ponytail:` comments in English, whatever language the session is in. The comment
   lives in the source next to English identifiers, and `ponytail-debt` harvests it into a
@@ -208,6 +258,9 @@ spec ships in the same commit as the code that taught it.
   a real `~/.claude` with a throwaway item, and that has not happened.
 - a git worktree in a project whose build needs unversioned files
 - any push
+- **which bump a merge deserves, when it is arguable.** Patch versus minor turns on whether a
+  promise moved, and that is a reading of the specs rather than of the commit types. Say which
+  one and why; do not pick the smaller one to avoid the question.
 
 ### Never
 

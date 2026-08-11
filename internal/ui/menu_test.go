@@ -134,3 +134,27 @@ func rgbOf(hex string) string {
 	}
 	return found[0]
 }
+
+// Disabled, not dimmed and not absent. Colour carries selection and nothing else, so a disabled
+// row keeps full contrast and reads as available-but-inert — which is why absence is the only way
+// it could disappear, and it must not.
+//
+// This outlived the change that added it. A draft had two movement rows and disabled whichever
+// did not apply; collapsing the commands removed the second row, and the standing rule it was
+// exercising — the panel does not hide what it cannot do — is worth a test of its own.
+func TestTheInapplicableActionIsDisabledNotHidden(t *testing.T) {
+	forceTrueColor(t)
+	p := demoPanel()
+	p.Menu = []MenuItem{
+		{Label: "upgrade", Desc: "fetch the newest release · relink", Enabled: false},
+		{Label: "status", Desc: "32 linked", Enabled: true},
+	}
+
+	out := strip(darkTheme().Render(p))
+	if !strings.Contains(out, "upgrade") {
+		t.Errorf("a disabled action was hidden:\n%s", out)
+	}
+	if !strings.Contains(out, "fetch the newest release") {
+		t.Errorf("a disabled action lost its description:\n%s", out)
+	}
+}

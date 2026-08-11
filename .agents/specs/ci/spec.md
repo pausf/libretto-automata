@@ -52,17 +52,49 @@ opened part-way through a change fails this gate until the change is consolidate
 That is the gate working. A specification citing tests that do not exist is exactly
 what should not merge.
 
+### Releasing is a `make` target, not a workflow
+
+```bash
+git tag -a v0.5.0 -m "..."
+git push origin v0.5.0
+make release
+```
+
+- **The payload is not an asset, because it does not need to be.** It ships inside the Go module,
+  so `go install <module>/cmd/libretto@latest` brings it down with the binary and checks it
+  against the checksum database. The module proxy resolves `@latest` from **tags**, which is why
+  installing works against a repository with no Releases at all.
+- **So this target is for humans:** a Release page carrying the tag's own notes, so somebody can
+  read what changed without reading the log. Skipping it costs nothing mechanical.
+- **It runs on the author's machine, not in CI.** `AGENTS.md` says a tag is a human act and this
+  spec says CI publishes nothing. A workflow releasing on tag push would make both false, and it
+  would do it by turning a judgment into an automation nobody re-reads.
+- **The push comes before the target, and the order is load-bearing.** `gh release create`
+  creates the tag itself when it is not on the remote, at the default branch's HEAD — a second
+  tag with your name on it pointing somewhere you did not choose. `--verify-tag` refuses instead.
+- **A tag is not a Release.** A tag is a git ref; a Release is a GitHub object. `git push origin
+  v0.5.0` creates the first and not the second, and this repository sat at four tags and zero
+  Releases — verified, not assumed.
+- **It refuses a dirty tree and a HEAD that is not at a tag**, and runs the six gates first. A
+  release is the one moment where "the gates were green earlier" is not good enough.
+- **Re-running is a no-op** when the Release already exists, rather than an error or a second one.
+
 ## Scope boundaries
 
-**In:** one workflow file, the six gates, per-package coverage as output, and `rg` in
-the runner.
+**In:** one workflow file, the six gates, per-package coverage as output, `rg` in the runner, and
+one `release` target with its four preconditions.
 
 **Out:**
 
 - **A coverage threshold.** See prior decisions — measurement, not a seventh gate.
-- **Building or releasing anything.** No artefacts, no `make build` beyond what
-  `go test` compiles, no tags, no publishing. The tag is a human act by `AGENTS.md`
-  and stays one.
+- **Building or releasing anything *in CI*.** No artefacts, no `make build` beyond what
+  `go test` compiles, no tags, no publishing from a workflow. The tag is a human act by
+  `AGENTS.md` and stays one — which is why `make release` exists and runs on the author's
+  machine. *Ceiling:* the day releases are frequent enough that doing it by hand gets skipped,
+  a workflow gated on a tag a human already pushed is the answer — never one that creates the tag.
+- **release assets.** Nothing is attached: the payload ships inside the Go module and the proxy
+  resolves `@latest` from tags. A draft specified a tarball, checksums and four cross-compiled
+  binaries; `distribution` records why none is needed.
 - **A matrix.** One Go version — the one `go.mod` pins. This tool runs on the
   developer's machine, not on a support matrix.
 - **Caching.** Six gates on a repository this size do not need it, and a cache that
@@ -113,6 +145,8 @@ the runner.
    `go.mod`, coverage printed, read-only permissions.
 2. `Makefile`: a `gates` target that runs the same six locally, so the workflow and the
    hand-run are the same list rather than two lists that agree today.
+3. `Makefile`: a `release` target — four preconditions, the gates, then `gh release create
+   --verify-tag --notes-from-tag`, idempotent against an existing Release.
 
 ## Verification criteria
 
@@ -129,6 +163,10 @@ request that is a claim rather than a fact. What can be checked here is checked 
   Proof: cmd/libretto/gates_test.go TestWorkflowIsReadOnly
 - `make gates` runs the same six commands as the workflow
   Proof: cmd/libretto/gates_test.go TestMakeGatesMatchesTheWorkflow
+- the release target runs the gates before it publishes anything
+  Proof: cmd/libretto/gates_test.go TestReleaseTargetRunsTheGatesFirst
+- **it verifies the tag rather than letting `gh` invent one** at the default branch's HEAD
+  Proof: cmd/libretto/gates_test.go TestReleaseVerifiesTheTagRatherThanCreatingIt
 - **owed, and not provable here:** one real request with the workflow attached, green;
   and branch protection turned on so the check is required. Until both, "cannot merge
   until green" is a sentence in a file rather than a rule anybody is held to.

@@ -10,7 +10,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-payload-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
 [![Jira CLI](https://img.shields.io/badge/Jira%20CLI-tracker-0052CC?logo=jira&logoColor=white)](https://github.com/ankitpokhrel/jira-cli)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-223%20passing-brightgreen.svg)](#gates)
+[![Tests](https://img.shields.io/badge/tests-367%20passing-brightgreen.svg)](#gates)
 
 <img src="docs/panel.svg" alt="The libretto panel: a menu with install, uninstall, update, status, models, doctor and prune, acting on a chosen destination — here ~/.claude with all 26 items linked" width="800">
 
@@ -43,24 +43,71 @@ left untouched and reported — there is no `--force`, by design.
 Requires [Go 1.26+](https://go.dev/dl/).
 
 ```bash
+go install github.com/pausf/libretto-automata/cmd/libretto@latest
+
+libretto install   # symlink every item into ~/.claude
+libretto           # the panel
+```
+
+**That is the whole install.** The payload — skills, agents and commands — ships *inside* the Go
+module, so `go install` downloads it along with the binary and verifies it against Go's checksum
+database. There is no tarball to fetch and no bootstrap step.
+
+It lands here:
+
+```
+~/go/bin/libretto                                          the command
+$GOMODCACHE/github.com/pausf/libretto-automata@v0.5.0/     the payload
+  ├── skills/  agents/  commands/
+
+~/.claude/skills/write-spec  →  …@v0.5.0/skills/write-spec
+```
+
+The version is in the path, which is what makes an update a new directory rather than an
+overwrite of the one your links point at. `LIBRETTO_ROOT` points the tool somewhere else.
+
+### Updating
+
+```bash
+libretto update
+```
+
+Installs the newest version and relinks. The relink is not redundant — a new version is a new
+directory, and a release that *adds* a skill would otherwise leave it unlinked with nothing to say
+so.
+
+The panel also tells you when a newer version exists, checked once a day and silent when it
+cannot check.
+
+### From a checkout instead
+
+For working *on* the payload rather than with it:
+
+```bash
 git clone git@github.com:pausf/libretto-automata.git ~/gitrepos/libretto-automata
 cd ~/gitrepos/libretto-automata
 
 make build      # stamps the version from git describe
 make link       # puts `libretto` on your PATH via ~/.local/bin
-libretto        # the panel
 ```
 
-`make link` symlinks rather than copies, so `make build` updates the installed command
-and no stale binary can pretend to be current. It refuses to overwrite a `libretto` it
-did not create.
+`make link` symlinks rather than copies, so `make build` updates the installed command and no
+stale binary can pretend to be current. It refuses to overwrite a `libretto` it did not create.
 
-Then install the payload:
+A checkout you are standing in wins over the module cache, so editing a skill and seeing it live
+still works — which is the reason the payload is not compiled into the binary. `update` pulls
+there instead of downloading: same command, and the tree you are standing in is the installation.
+
+### Releasing
 
 ```bash
-libretto doctor    # what is missing, and what the flow expects on this machine
-libretto install   # symlink every item into ~/.claude
+git tag -a v0.5.0 -m "..."
+git push origin v0.5.0
+make release       # gates, then a Release page carrying the tag's notes
 ```
+
+Nothing is attached to the Release — the module proxy resolves `@latest` from **tags**, so
+installing works without one. `make release` exists so a human can read what changed.
 
 ## Commands
 
@@ -68,10 +115,11 @@ libretto install   # symlink every item into ~/.claude
 |---|---|
 | `libretto` | the panel — needs a terminal |
 | `libretto status` | every item's state. Read-only, always. |
+
 | `libretto install` | link everything. Idempotent; non-zero exit if anything was skipped. |
 | `libretto uninstall` | show what this repo installed here — **changes nothing** |
 | `libretto uninstall --yes` | take it back out |
-| `libretto update` | pull, relink, rebuild when Go changed |
+| `libretto update` | install the newest version and relink — or pull, in a checkout |
 | `libretto doctor` | what needs attention, plus what the payload expects here |
 | `libretto prune` | show links whose source is gone — **changes nothing** |
 | `libretto prune --yes` | remove them |

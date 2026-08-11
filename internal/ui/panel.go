@@ -92,6 +92,18 @@ type Panel struct {
 	ModelChoices  []ModelChoice
 	ModelCursor   int
 
+	// UpdateNotice says a newer release exists, and what to do about it. Empty until the
+	// check answers, and empty forever when it cannot.
+	//
+	// Deliberately not Notice: that field is action feedback, and the first `install`
+	// overwrites it. The same overwrite once ate the selector's key legend — footer()
+	// still carries the comment about it — and news that one keypress deletes is news
+	// nobody finishes reading.
+	//
+	// Nor the footer, where the version already gets dropped when the legend and the
+	// version cannot both fit. A notice that disappears at 96 columns was never read.
+	UpdateNotice string
+
 	Notice    string // one-line feedback under the panel
 	Width     int    // terminal width; 0 means lay out at the minimum
 	Height    int    // terminal height; 0 means do not centre vertically
@@ -140,6 +152,12 @@ func (t Theme) Render(p Panel) string {
 		rows = append(rows, strings.Split(t.menu(p), "\n")...)
 	}
 	rows = append(rows, "", separator)
+	if p.UpdateNotice != "" {
+		// Gold, the attention colour, not the error colour: being one release behind is
+		// news and not a fault. Elided to the content area for the same reason report
+		// lines are — a row wider than the frame tears it.
+		rows = append(rows, "  "+Fg(t.Gold).Render(elideRight(p.UpdateNotice, cw-4)), separator)
+	}
 	rows = append(rows, strings.Split(t.targets(p), "\n")...)
 
 	if len(p.Results) > 0 {
@@ -373,7 +391,13 @@ func (t Theme) renderNarrow(p Panel) string {
 		rows[i] = Fg(colour).Render(cursor + item.Label)
 	}
 
-	return t.centre(lipgloss.JoinVertical(lipgloss.Left, head, "", strings.Join(rows, "\n")), p)
+	parts := []string{head, "", strings.Join(rows, "\n")}
+	if p.UpdateNotice != "" {
+		// The narrow layout drops the border, not the content. Degrading what the panel
+		// is telling you as well as how it is drawn is two losses for one terminal width.
+		parts = append(parts, "", Fg(t.Gold).Render(p.UpdateNotice))
+	}
+	return t.centre(lipgloss.JoinVertical(lipgloss.Left, parts...), p)
 }
 
 // centre places the block in the terminal.

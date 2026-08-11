@@ -99,6 +99,40 @@ After a successful action the figures are asked for again. They described the st
 *before* it ran, and a panel whose strip contradicts its own report is worse than one
 that shows neither.
 
+### A newer release gets one row, where it cannot vanish
+
+The row sits **inside the frame, between the menu and the destination strip**, in the
+attention colour — news, not error, because being one release behind is not a fault.
+
+**Not the footer.** The footer already drops the version when the legend and the version
+cannot both fit, and a tag name has no length limit, so a notice there would disappear at
+96 columns. A notice that can vanish is a notice that was never read.
+
+**Not `Panel.Notice` either.** That field is action feedback, and the first `install`
+overwrites it — the same overwrite that once ate the selector's key legend. News deleted by
+one keypress is news nobody finishes reading. It gets its own field, and moving the cursor
+does not clear it.
+
+- **It names both versions and the action** — `v0.2.0 → v0.3.0 available · choose update`. A
+  row saying only "an update is available" cannot be checked against `libretto version`, and
+  one with no action is a notification with nowhere to go.
+- **Silence is the default.** Nothing shows when the versions match, when the check has not
+  answered, or when it could not.
+- **It survives the narrow layout.** `renderNarrow` drops the border, not the content —
+  degrading what the panel is telling you as well as how it is drawn is two losses for one
+  terminal width.
+- **It is elided to the content area** like a report line, so a long notice cannot tear the
+  frame.
+- **The check never blocks a paint or a keypress.** `Init` returns it as a command; the panel
+  renders complete without it and re-renders when it lands. Asking inline would put a
+  subprocess and a network round trip in front of the first frame, and on bad DNS the user's
+  only recourse is ⌃C on a tool that looks broken.
+- **The callback returns the finished row, not a version.** So the semver comparison stays in
+  `repo-sync` — one implementation of "is this newer", not two that can disagree — and this
+  package keeps holding no notion of what a version is.
+- **No check configured means no command and no notice.** That is `preview` and every test
+  that does not care.
+
 ### A destructive action is asked twice, in place
 
 The first press runs it dry and shows exactly what it would remove. The second, on the
@@ -219,10 +253,20 @@ the same flag — and `tab` changes them.
 ## Scope boundaries
 
 **In:** the wordmark, palettes, contrast, layout, the fluid frame, the menu, the target
-strip, the Bubbletea model and its navigation.
+strip, the release-notice row, the Bubbletea model and its navigation.
 
 **Out:**
 
+- **checking for a release.** `repo-sync` answers and `cli` decides; this package renders a
+  string it was handed. The callback is the seam, in the shape `WithRefresh` and `WithRunner`
+  already established.
+- **a key for the update.** `update` is already a menu row with a cursor on it; an
+  accelerator is a second way to reach something one keystroke away.
+- **dismissing the notice.** State to persist and a file to write, for a row that goes away
+  when you update.
+- **a changelog, release notes, or what changed.** That is the remote's job and a browser's.
+- **a spinner or a "checking…" row.** A row that appears when there is news beats one that
+  narrates a network call nobody asked for.
 - **performing an action.** The model reports the choice; `cli` runs it. That holds
   for the selector too: its rows and its catalogue arrive through callbacks, so this
   package still knows nothing about what an agent file is — or what a symlink is — and
@@ -290,6 +334,18 @@ default nobody chose.
   criterion sampled one 22-character version and passed while 25 overflowed by a
   column. There is no longest tag name, so the sweep is over lengths and the last
   resort is dropping the version, not choosing a shorter legend.
+- **The release notice is a frame row, not a footer item — and that follows from the line
+  above.** The footer's last resort is dropping the version, so anything put beside it
+  inherits the same fate. News that disappears at 96 columns is news that was never read.
+- **Cached in the panel, live in `doctor`.** A panel that waits on the network before
+  painting hangs on bad DNS; a diagnostic the user typed can afford five seconds.
+- **`UpdateNotice`, not `Update`.** A field named `Update` beside a Bubbletea `Update`
+  method has to be disambiguated by type on every read.
+- **One `update` row, whose description names the mechanism this machine will use** — `pull this
+  checkout · rebuild · relink`, or `install the newest version · relink`. A draft had two rows and
+  disabled whichever did not apply; that was right for a design with two commands, and the row
+  went when the command did. It no longer says `git pull`, which is the string that started the
+  change.
 
 ## Task breakdown
 
@@ -300,6 +356,7 @@ default nobody chose.
 - [x] the Bubbletea model and navigation
 - [x] the active destination, visible and switchable
 - [x] 6.5 confirmation for destructive actions — in the model, not a Huh form
+- [x] the release-notice row, its field, and the `Init` seam that fills it
 - [ ] 6.6 target-strip golden files
 - [ ] 6.7 `teatest` end-to-end flow
 
@@ -517,3 +574,29 @@ Grouping, the `all` row, and the legend:
   Proof: internal/ui/panel_test.go TestTheFooterNeverOutgrowsTheFrame
 - when neither legend fits beside the version, the version goes and the legend stays
   Proof: internal/ui/panel_test.go TestTheLegendOutlivesTheVersion
+
+The release notice:
+
+- **it renders between the menu and the destination strip**, not in the footer where the
+  version already gets dropped
+  Proof: internal/ui/notice_test.go TestPanelRendersUpdateNoticeBetweenMenuAndStrip
+- an empty notice changes nothing about the panel
+  Proof: internal/ui/notice_test.go TestPanelOmitsUpdateNoticeWhenEmpty
+- **the narrow layout keeps it** — it drops the border, not the content
+  Proof: internal/ui/notice_test.go TestNarrowLayoutKeepsUpdateNotice
+- news and action feedback both render, because they are two fields
+  Proof: internal/ui/notice_test.go TestUpdateNoticeAndActionFeedbackCoexist
+- **the frame does not tear with a notice set**, at every width — the row is measured and
+  padded like any other
+  Proof: internal/ui/fluid_test.go TestFrameHoldsWithUpdateNotice
+- `Init` returns the check as a command, so the first paint never waits on it
+  Proof: internal/ui/notice_test.go TestInitReturnsReleaseCheckCommand
+- **no check configured means no command and no notice**, which is `preview`
+  Proof: internal/ui/notice_test.go TestNoReleaseCheckMeansNoCommandAndNoNotice
+- the message sets the row, and an empty answer sets nothing
+  Proof: internal/ui/notice_test.go TestUpdateNoticeSetFromMessage
+- **running an action does not clear the news** — the overwrite that once ate the
+  selector's key legend
+  Proof: internal/ui/notice_test.go TestActionFeedbackDoesNotOverwriteUpdateNotice
+- and neither does moving the cursor, which does clear action feedback
+  Proof: internal/ui/notice_test.go TestNavigationDoesNotClearUpdateNotice

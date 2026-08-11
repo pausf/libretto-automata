@@ -5,12 +5,13 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/muesli/termenv"
 
 	"github.com/pausf/libretto-automata/internal/agentmodel"
+	"github.com/pausf/libretto-automata/internal/dist"
 	"github.com/pausf/libretto-automata/internal/link"
 	"github.com/pausf/libretto-automata/internal/repo"
 	"github.com/pausf/libretto-automata/internal/target"
@@ -42,6 +44,11 @@ var version = "dev"
 const EnvASCIISafe = "LIBRETTO_ASCII"
 
 func main() {
+	// Resolved once, into the same variable everything already reads, so a binary built
+	// by `go install` reports its module version everywhere the stamped one appears —
+	// the panel footer and `version` included. See version.go.
+	version = buildVersion(version)
+
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "%s: %v\n", invokedAs(), err)
 		os.Exit(1)
@@ -103,12 +110,26 @@ func openingScope(flagged target.Scope, chosen string) target.Scope {
 }
 
 func run(args []string) error {
-	root, err := repoRoot()
+	scope, chosen, args, err := scopeFlags(args)
 	if err != nil {
 		return err
 	}
 
-	scope, chosen, args, err := scopeFlags(args)
+	// `version` and `help` answer without the payload, and they are answered before it is
+	// even located. Neither reads a skill, so neither should care whether one is installed.
+	if len(args) > 0 {
+		switch args[0] {
+		case "version", "-v", "--version":
+			fmt.Println("libretto-automata", version)
+			return nil
+		case "help", "-h", "--help":
+			usage()
+			return nil
+		}
+	}
+
+	// Everything below links, reads or reports on the payload.
+	root, err := payloadRoot()
 	if err != nil {
 		return err
 	}
@@ -124,10 +145,29 @@ func run(args []string) error {
 	tg := target.Resolve(scope, projectDir)
 
 	if len(args) == 0 {
+		// The no-TTY exit comes first, and before the payload check: a pipe with no
+		// subcommand is a usage error whatever is installed, and it has always exited 2.
 		if !isatty.IsTerminal(os.Stdout.Fd()) {
 			usage()
 			os.Exit(2)
 		}
+	}
+
+	// A fresh `go install` has a binary and nothing else, and every command that reads the
+	// payload has to say so rather than describe an empty tree — "nothing to link" is what a
+	// correctly linked machine also says.
+	//
+	// **`prune` is why this is a stop and not a warning.** With no payload every link in the
+	// target resolves to nothing, so a scan reports all of them `stale` and `prune --yes`
+	// would remove every item the user has: a destructive command doing exactly what it
+	// promises, on a premise that is false.
+	if needsPayload(args) && !payloadPresent(root) {
+		return fmt.Errorf("no payload at %s\n"+
+			"       run `%s update` — it fetches the newest release and links it",
+			root, invokedAs())
+	}
+
+	if len(args) == 0 {
 		// Only the panel remembers. `tg` above is deliberately left alone, so the
 		// subcommand paths below cannot be reached by this at all — which is the
 		// promise, not an implementation detail.
@@ -151,12 +191,6 @@ func run(args []string) error {
 		return update(root, tg)
 	case "models":
 		return models(root, tg, args[1:])
-	case "version", "-v", "--version":
-		fmt.Println("libretto-automata", version)
-		return nil
-	case "help", "-h", "--help":
-		usage()
-		return nil
 	default:
 		usage()
 		return fmt.Errorf("unknown command %q", args[0])
@@ -170,7 +204,8 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 	}
 
 	model := ui.NewModel(version, menu, targets, asciiSafe()).
-		WithRefresh(panelRefresh(root, projectDir))
+		WithRefresh(panelRefresh(root, projectDir)).
+		WithReleaseCheck(func() string { return releaseNotice(root, version) })
 
 	// Actions run inside the panel and report there, so the destination, the state
 	// and the last report stay on screen together.
@@ -361,11 +396,17 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 		})
 	}
 
+	// Both movement commands are always listed, and the one that does not apply here is
+	// disabled rather than hidden. That is this panel's existing rule — it does not promise
+	// what it cannot do, and it does not hide what is coming — and a menu that changes shape
+	// between machines is a menu whose screenshots and instructions are wrong somewhere.
+	checkout := isRepo(root)
+
 	// The status row carries the live tally, exactly as the design mocks it.
 	menu := []ui.MenuItem{
 		{Label: "install", Desc: "link the score into " + shorten(active.Root()), Enabled: true},
 		{Label: "uninstall", Desc: "take it back out of " + shorten(active.Root()), Enabled: true, Destructive: true},
-		{Label: "update", Desc: "git pull · relink · report", Enabled: true},
+		{Label: "update", Desc: updateDesc(checkout), Enabled: true},
 		{Label: "status", Desc: summarise(overall), Enabled: true},
 	}
 
@@ -657,7 +698,22 @@ func install(root string, tg target.Target) error {
 // relinked from source that has not been compiled — a payload from the new commit
 // linked by a binary from the old one is a state nobody asked for and nobody can
 // reason about.
+// update brings the installation up to date, by whichever route this installation came.
+//
+// One command, because for the person typing it there is one meaning: put me on the newest
+// version. An installed copy downloads the newest release; a checkout pulls and rebuilds. The
+// route is not a choice the user makes here — it is a consequence of how the tool got onto the
+// machine, which they know.
 func update(root string, tg target.Target) error {
+	if !isRepo(root) {
+		return updateFromRelease(context.Background())
+	}
+	return updateCheckout(root, tg)
+}
+
+// updateCheckout is the developer's route: pull the tree being worked in, rebuild if the Go
+// source moved, relink.
+func updateCheckout(root string, tg target.Target) error {
 	git := repo.Shell{Root: root}
 
 	dirty, err := git.Dirty()
@@ -703,30 +759,76 @@ func update(root string, tg target.Target) error {
 		return err
 	}
 	if repo.NeedsRebuild(changed) {
-		if err := rebuild(root); err != nil {
+		// The binary that is running, not the one in the clone. A $GOBIN install and a
+		// `make link` symlink both end up here, and both are what the user's next
+		// invocation will execute.
+		exe, err := os.Executable()
+		if err != nil {
+			return fmt.Errorf("the pull landed but the binary could not be located: %w", err)
+		}
+
+		// The clone's bin/ is the fallback: the user owns the checkout, so it is the one
+		// place a write cannot be refused.
+		note, err := rebuildOrReport(root, exe, filepath.Join(root, "bin", "libretto"))
+		if err != nil {
 			return fmt.Errorf("the pull landed but the rebuild failed: %w", err)
 		}
-		fmt.Println("rebuilt  bin/libretto")
-		fmt.Println("         this process is still the old binary — run it again to use the new one")
+		// The advice depends on whether the running binary was actually replaced. Telling
+		// somebody to "run it again to use the new one" when the rename was refused is
+		// advice that does nothing and reads as though the upgrade took.
+		if note != "" {
+			fmt.Println("rebuilt  " + note)
+			fmt.Println("         " + exe + " is unchanged and still what your PATH runs")
+		} else {
+			fmt.Println("rebuilt  " + exe)
+			fmt.Println("         this process is still the old binary — run it again to use the new one")
+		}
 	}
 
 	fmt.Println()
 	return install(root, tg)
 }
 
-// rebuild compiles the CLI to a temporary file and renames it into place.
+// rebuild compiles the CLI to a temporary file and renames it over dest.
 //
-// Writing straight over the running executable is what produces "text file busy",
-// and a half-written binary is worse than a stale one. Rename is atomic, and the
-// process already running keeps the inode it started from — which is why the
-// caller has to say so rather than pretend the upgrade took effect mid-run.
-func rebuild(root string) error {
-	dest := filepath.Join(root, "bin", "libretto")
+// dest is the binary that is *running*, not bin/libretto. Once `go install` can put the
+// command in $GOBIN, rebuilding into the clone's bin/ upgrades a file nobody executes:
+// `update` would report success and every later invocation would stay on the old version.
+// The destination is a parameter rather than read from os.Executable() inside, so a test
+// does not have to be the binary under test.
+//
+// A symlink is resolved and written through. `make link` puts one in ~/.local/bin
+// pointing at bin/libretto, and replacing that link with a regular file would sever the
+// development setup silently.
+//
+// Writing straight over the running executable is what produces "text file busy", and a
+// half-written binary is worse than a stale one. Rename is atomic, and the process
+// already running keeps the inode it started from — which is why the caller has to say so
+// rather than pretend the upgrade took effect mid-run.
+func rebuild(root, dest string) error {
+	// EvalSymlinks fails on a path that does not exist yet, which is fine: there is no
+	// link to follow, and the original is the destination.
+	if resolved, err := filepath.EvalSymlinks(dest); err == nil {
+		dest = resolved
+	}
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return err
 	}
 
+	// The temporary file goes beside the destination, not in TMPDIR: rename across
+	// filesystems fails, and $GOBIN and /tmp are routinely on different ones.
 	tmp := dest + ".new"
+
+	// Probe the write before paying for a compile. Without this the permission failure
+	// arrives as a `go build` error string — unrecognisable as a permission problem, so
+	// rebuildOrReport could not tell "you cannot write there" from "the code is broken",
+	// and a locked $GOBIN would read as a compile failure after a three-second wait.
+	probe, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY, 0o755)
+	if err != nil {
+		return err
+	}
+	probe.Close()
+
 	cmd := exec.Command("go", "build", "-o", tmp, "./cmd/libretto")
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -742,6 +844,34 @@ func rebuild(root string) error {
 		return err
 	}
 	return nil
+}
+
+// rebuildOrReport rebuilds, and turns "I could not write there" into a note instead of an
+// error.
+//
+// The pull already happened and the links are already correct. Failing the whole update
+// because a rename was refused would roll back work that succeeded, and leave the user
+// with neither the new binary nor the relink. The note has to say where the binary is, or
+// it is a dead end dressed as an explanation — and saying that means building it
+// somewhere, which is what fallback is for.
+//
+// fallback is a parameter, not derived. Otherwise the test that proves the note names a
+// real binary has to write into the clone's bin/ — the same file another test asserts is
+// left alone, so the two would collide under `go test -shuffle`.
+func rebuildOrReport(root, dest, fallback string) (string, error) {
+	err := rebuild(root, dest)
+	if err == nil {
+		return "", nil
+	}
+	if !errors.Is(err, os.ErrPermission) {
+		return "", err
+	}
+
+	if berr := rebuild(root, fallback); berr != nil {
+		return "", err
+	}
+	return fmt.Sprintf("could not replace %s — no permission\n"+
+		"         the new binary is at %s; move it there yourself", dest, fallback), nil
 }
 
 func short(rev string) string {
@@ -780,6 +910,23 @@ func doctor(root string, tg target.Target) error {
 		if clean {
 			fmt.Println("  no problems")
 		}
+	}
+
+	// Live, not cached: the user typed a diagnostic and can afford the wait. It never
+	// sets the exit code — being a release behind is news, and an unreachable remote is
+	// not this tool's fault.
+	//
+	// The mode is named because "up to date" means something different in each. A checkout
+	// three commits past a tag is up to date with its remote and behind the release.
+	fmt.Println("\nrelease")
+	if isRepo(root) {
+		fmt.Println("  mode     a checkout at " + root)
+		fmt.Println("  " + releaseLine(version, repo.Shell{Root: root}.LatestTag))
+	} else {
+		fmt.Println("  mode     an installed release at " + root)
+		fmt.Println("  " + releaseLine(version, func(ctx context.Context) (string, error) {
+			return dist.Latest(ctx, defaultClient(), dist.DefaultProxy, moduleImportPath())
+		}))
 	}
 
 	fmt.Println("\nprerequisites")
@@ -1054,28 +1201,7 @@ func summarise(counts map[link.State]int) string {
 	return strings.Join(parts, " · ")
 }
 
-// repoRoot locates the repository this binary belongs to.
-//
-// The binary is expected to live under the repo (bin/libretto after `make build`), so
-// the source file's compile-time location is the reliable anchor during
-// development. LIBRETTO_ROOT overrides it.
-func repoRoot() (string, error) {
-	if r := os.Getenv("LIBRETTO_ROOT"); r != "" {
-		return r, nil
-	}
-	if _, file, _, ok := runtime.Caller(0); ok {
-		// cmd/libretto/main.go -> repo root
-		root := filepath.Dir(filepath.Dir(filepath.Dir(file)))
-		if _, err := os.Stat(filepath.Join(root, "go.mod")); err == nil {
-			return root, nil
-		}
-	}
-	wd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("cannot locate the repo: %w", err)
-	}
-	return wd, nil
-}
+// payloadRoot lives in root.go — it grew a rung and a bug worth its own test file.
 
 func asciiSafe() bool { return os.Getenv(EnvASCIISafe) == "safe" }
 
@@ -1097,7 +1223,7 @@ func usage() {
 
   %[2]s               show the panel (requires a terminal)
   %[2]s install       link every item into each target
-  %[2]s update        pull, relink, report
+  %[2]s update        bring the installation up to date
   %[2]s status        what is linked
   %[2]s doctor        diagnose links and repo state
   %[2]s prune         show links whose source is gone, change nothing
@@ -1113,7 +1239,9 @@ func usage() {
 
   LIBRETTO_ASCII=safe   swap quadrant glyphs for half blocks
   LIBRETTO_THEME=dark|light  force a palette instead of detecting
-  LIBRETTO_ROOT=<path>  override repo location
+  LIBRETTO_ROOT=<path>  the payload tree; default %[3]s
   CLAUDE_HOME=<path>    override Claude Code's root
-`, version, n)
+
+  installed with:  go install github.com/pausf/libretto-automata/cmd/libretto@latest
+`, version, n, "~/.local/share/libretto/current")
 }
