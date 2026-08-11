@@ -64,10 +64,10 @@ libretto install --global    # the default; both flags at once is an error
 ```bash
 gofmt -l .                                       # must print nothing
 go vet ./...
-go test ./... -count=1                           # 367 test functions
+go test ./... -count=1                           # 335 test functions
 scripts/check-payload                            # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test        # 20 checks
-skills/record-work/spec-drift --anchors          # 268 citations must resolve
+skills/record-work/spec-drift --anchors          # 269 citations must resolve
 ```
 
 `spec-drift` with no flag warns about staged code whose spec did not move. It never
@@ -83,12 +83,12 @@ the file.
 cmd/libretto/           the CLI, dispatch and the scope flags
 internal/target/        what an installable destination is
 internal/link/          own.go (ownership) · scan.go state.go (read) · plan.go apply.go (write)
-internal/repo/          git, and the rebuild decision. ONE test for 155 lines — the largest gap.
+internal/repo/          git, the rebuild decision, and the newer-version check
 internal/ui/            logo, theme, panel, model, models.go (the selector screen)
 internal/agentmodel/    the model: key in agents/*.md, and the catalogue of values
 skills/ agents/ commands/   THE PAYLOAD — what gets symlinked
 scripts/check-payload   repo-only tooling. Never referenced from a skill.
-.agents/specs/          the specification, one directory per capability (11)
+.agents/specs/          the specification, one directory per capability. docs/SPEC.md lists them.
 docs/                   FLOW.md (the flow) · DESIGN.md · PLAN.md · STATE.md · SPEC.md (index only)
 ```
 
