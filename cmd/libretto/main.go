@@ -41,6 +41,11 @@ var version = "dev"
 const EnvASCIISafe = "LIBRETTO_ASCII"
 
 func main() {
+	// Resolved once, into the same variable everything already reads, so a binary built
+	// by `go install` reports its module version everywhere the stamped one appears —
+	// the panel footer and `version` included. See version.go.
+	version = buildVersion(version)
+
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "%s: %v\n", invokedAs(), err)
 		os.Exit(1)
