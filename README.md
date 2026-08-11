@@ -181,10 +181,21 @@ gets abandoned.
 `/libretto-status` runs only the first of those and stops, for when the question is just
 "what is open?"
 
+**Ideas arrive faster than they get built.** `/libretto-queue` captures them one after
+another — a proposal with a `Queued:` date and your words verbatim, no branch and no spec
+— and `/libretto-next` picks one up later, oldest first, and takes it into the flow.
+
+Two commands and not one, because `/libretto-flow EUCAR-1234` does *that* ticket, always.
+A flow that quietly substitutes different work for what you handed it is the surprise
+nobody wants.
+
 ```bash
-/libretto-status              # what is in flight, how much is left, what can start
+/libretto-status              # what is in flight and what is queued
 /libretto-flow                # find the work and take it through the phases
 /libretto-flow EUCAR-1234     # …starting from a ticket
+/libretto-queue               # capture ideas, one after another, and build none of them
+/libretto-next                # take the oldest queued idea into the flow
+/libretto-review <pr-url>     # review a PR/MR in a workspace that restores itself
 ```
 
 | | Phase | Skill |
