@@ -154,3 +154,85 @@ func makefilePhony(makefile string) string {
 	}
 	return ""
 }
+
+// A release is the one moment where "the gates were green earlier" is not good enough, so the
+// target invokes them rather than trusting a previous run.
+func TestReleaseTargetRunsTheGatesFirst(t *testing.T) {
+	body := releaseRecipe(t)
+
+	if !strings.Contains(body, "$(MAKE) --no-print-directory gates") {
+		t.Errorf("the release target does not run the gates:\n%s", body)
+	}
+	// Before the tarball, not after. Building first and checking second would publish an
+	// artefact that a failing gate then disowns.
+	if strings.Index(body, "gates") > strings.Index(body, "tar czf") {
+		t.Error("the gates run after the tarball is built")
+	}
+}
+
+// Only the payload. Not the Go sources, not docs/, and above all not .agents/ — a tarball
+// carrying the specs would ship the change folder of whatever happened to be in flight.
+func TestReleaseTarballCarriesOnlyThePayloadDirectories(t *testing.T) {
+	makefile := repoFile(t, "Makefile")
+
+	var dirs string
+	for _, line := range strings.Split(makefile, "\n") {
+		if strings.HasPrefix(line, "PAYLOAD_DIRS") {
+			_, dirs, _ = strings.Cut(line, ":=")
+		}
+	}
+	got := strings.Fields(dirs)
+
+	want := []string{"skills", "agents", "commands"}
+	if strings.Join(got, " ") != strings.Join(want, " ") {
+		t.Errorf("PAYLOAD_DIRS = %v, want %v", got, want)
+	}
+	if !strings.Contains(releaseRecipe(t), "$(PAYLOAD_DIRS)") {
+		t.Error("the tarball is not built from PAYLOAD_DIRS, so the list above is decoration")
+	}
+}
+
+// **The producer is make and the consumer is Go.** Nothing but this test holds the two asset
+// names together, and a typo in either is a release that installs on nobody's machine while
+// every gate stays green.
+func TestReleaseAssetNamesMatchWhatDistributionFetches(t *testing.T) {
+	body := releaseRecipe(t)
+
+	// dist.assetNames is unexported and in another package, so the shape it produces is
+	// reproduced from its one rule: the tag, wrapped.
+	const tag = "v9.9.9"
+	tarball := "payload-" + tag + ".tar.gz"
+	checksum := tarball + ".sha256"
+
+	// The Makefile writes the same names with a shell variable in place of the tag.
+	if !strings.Contains(body, `payload-$$TAG.tar.gz`) {
+		t.Errorf("the Makefile does not build %s (with $$TAG for the tag):\n%s", tarball, body)
+	}
+	if !strings.Contains(body, `"$$TARBALL.sha256"`) {
+		t.Errorf("the Makefile does not write %s:\n%s", checksum, body)
+	}
+	// And the digest is sha256, which is what dist verifies with.
+	if !strings.Contains(body, "shasum -a 256") {
+		t.Error("the checksum is not sha256, which is what the download verifies against")
+	}
+}
+
+// releaseRecipe is the `release` target's body, from the Makefile.
+func releaseRecipe(t *testing.T) string {
+	t.Helper()
+	makefile := repoFile(t, "Makefile")
+
+	_, after, ok := strings.Cut(makefile, "\nrelease:\n")
+	if !ok {
+		t.Fatal("the Makefile has no release target")
+	}
+	// A recipe ends at the first line that is neither indented nor blank.
+	var body []string
+	for _, line := range strings.Split(after, "\n") {
+		if line != "" && !strings.HasPrefix(line, "\t") && !strings.HasPrefix(line, " ") {
+			break
+		}
+		body = append(body, line)
+	}
+	return strings.Join(body, "\n")
+}

@@ -10,7 +10,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-payload-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
 [![Jira CLI](https://img.shields.io/badge/Jira%20CLI-tracker-0052CC?logo=jira&logoColor=white)](https://github.com/ankitpokhrel/jira-cli)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-223%20passing-brightgreen.svg)](#gates)
+[![Tests](https://img.shields.io/badge/tests-367%20passing-brightgreen.svg)](#gates)
 
 <img src="docs/panel.svg" alt="The libretto panel: a menu with install, uninstall, update, status, models, doctor and prune, acting on a chosen destination — here ~/.claude with all 26 items linked" width="800">
 
@@ -45,29 +45,47 @@ Requires [Go 1.26+](https://go.dev/dl/).
 ```bash
 go install github.com/pausf/libretto-automata/cmd/libretto@latest
 
-libretto doctor    # what is missing, and what the flow expects on this machine
-libretto install   # symlink every item into ~/.claude
+libretto upgrade   # fetch the payload from the newest release and link it
+libretto doctor    # what needs attention, and what the flow expects on this machine
 ```
 
-The first command that needs the payload clones it to `~/.libretto-automata` and says so
-before it does. That clone is what the links point at — the payload is skills, agents and
-commands on disk, not something compiled into the binary, so there has to be a checkout
-somewhere. `LIBRETTO_ROOT` points it at a different one.
+`upgrade` fetches the newest release's payload and links it. That is also how the payload
+arrives the first time — the binary comes from `go install`, the payload comes from the
+release, and the two steps are separate because they come from different places.
 
-It refuses to clone into a `~/.libretto-automata` it did not create, names what it found,
-and touches nothing.
+```
+~/.local/share/libretto/
+├── v0.3.0/          skills/ agents/ commands/
+├── v0.4.0/
+└── current  →  v0.4.0
+
+~/.claude/skills/write-spec  →  …/libretto/current/skills/write-spec
+```
+
+Links point through `current`, so activating a version is one atomic symlink swap and the
+previous one stays on disk. The payload is skills, agents and commands **on disk** rather
+than compiled into the binary — that is what lets `~/.claude` hold symlinks at all, and it is
+why this is not a self-contained executable. `LIBRETTO_ROOT` points the tool somewhere else.
 
 ### Updating
 
 ```bash
-libretto update    # git pull · rebuild if the Go source moved · relink
+libretto upgrade   # fetch the newest release · verify · activate · relink
 ```
 
-`update` replaces the binary that is **running**, wherever `go install` put it. The panel
-also says when a newer release exists — checked once a day against the remote's tags, and
-silent when it cannot check.
+The panel also says when a newer release exists, checked once a day. Silent when it cannot
+check.
 
-### From a clone instead
+Three things `upgrade` does that are worth knowing:
+
+- **the tarball's checksum is verified before anything is extracted**, and extraction refuses
+  any entry that resolves outside its destination, any symlink and anything that is not a
+  plain file or directory
+- **it relinks afterwards**, so a release that adds a new skill does not leave it unlinked
+- **it refuses inside a checkout** and points at `update` instead — overwriting your working
+  tree with a release tarball is the one thing it must never do
+
+### From a checkout instead
 
 For working *on* the payload rather than with it:
 
@@ -84,9 +102,19 @@ libretto        # the panel
 and no stale binary can pretend to be current. It refuses to overwrite a `libretto` it
 did not create.
 
-A clone you are standing in wins over `~/.libretto-automata`, so editing a skill and
-seeing it live still works — which is the reason the payload is not embedded in the
-binary.
+A checkout you are standing in wins over the installed release, so editing a skill and seeing
+it live still works. In a checkout the command is `update` — it pulls, rebuilds if the Go
+source moved, and relinks — and `upgrade` refuses there.
+
+### Releasing
+
+```bash
+git tag -a v0.4.0 -m "..."
+make release       # gates, then the payload tarball and its checksum, attached to the release
+```
+
+By hand, deliberately: a tag is a release and not a commit marker, so nothing publishes on a
+tag push.
 
 ## Commands
 
@@ -94,10 +122,11 @@ binary.
 |---|---|
 | `libretto` | the panel — needs a terminal |
 | `libretto status` | every item's state. Read-only, always. |
+| `libretto upgrade` | fetch the newest release, activate it, relink |
 | `libretto install` | link everything. Idempotent; non-zero exit if anything was skipped. |
 | `libretto uninstall` | show what this repo installed here — **changes nothing** |
 | `libretto uninstall --yes` | take it back out |
-| `libretto update` | pull, relink, rebuild when Go changed |
+| `libretto update` | in a checkout: pull, rebuild when Go changed, relink |
 | `libretto doctor` | what needs attention, plus what the payload expects here |
 | `libretto prune` | show links whose source is gone — **changes nothing** |
 | `libretto prune --yes` | remove them |

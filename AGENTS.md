@@ -54,6 +54,7 @@ libretto preview
 libretto models         # which model each agent runs on, read-only
 libretto models set haiku review-lens-design review-lens-tests   # --all for every agent
 
+libretto upgrade        # fetch the newest release's payload, activate it, relink
 libretto install --project   # <cwd>/.claude instead of ~/.claude
 libretto install --global    # the default; both flags at once is an error
 ```
@@ -63,10 +64,10 @@ libretto install --global    # the default; both flags at once is an error
 ```bash
 gofmt -l .                                       # must print nothing
 go vet ./...
-go test ./... -count=1                           # 263 test functions
+go test ./... -count=1                           # 367 test functions
 scripts/check-payload                            # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test        # 20 checks
-skills/record-work/spec-drift --anchors          # 223 citations must resolve
+skills/record-work/spec-drift --anchors          # 268 citations must resolve
 ```
 
 `spec-drift` with no flag warns about staged code whose spec did not move. It never
@@ -87,7 +88,7 @@ internal/ui/            logo, theme, panel, model, models.go (the selector scree
 internal/agentmodel/    the model: key in agents/*.md, and the catalogue of values
 skills/ agents/ commands/   THE PAYLOAD — what gets symlinked
 scripts/check-payload   repo-only tooling. Never referenced from a skill.
-.agents/specs/          the specification, one directory per capability
+.agents/specs/          the specification, one directory per capability (11)
 docs/                   FLOW.md (the flow) · DESIGN.md · PLAN.md · STATE.md · SPEC.md (index only)
 ```
 
@@ -119,10 +120,11 @@ documentation pretending to be state — which happened while building this very
 
 ## Specs
 
-Per **capability**, never per ticket, in `.agents/specs/<capability>/spec.md`. Ten of
-them: `ownership`, `link-state`, `linking`, `targets`, `repo-sync`, `panel`, `cli`,
-`payload`, `review-project`, `agent-models`. `docs/SPEC.md` is an index with no
-requirements in it.
+Per **capability**, never per ticket, in `.agents/specs/<capability>/spec.md`. `docs/SPEC.md`
+is the index and has no requirements in it — **it is also the only place the list lives.**
+This paragraph used to name them and count them, and by the time anybody noticed it said
+"ten" over eleven directories. A number kept in two places is a number that drifts, and the
+copy nobody edited is the one that reads as authoritative.
 
 Each declares what it owns and cites the test behind each criterion:
 
@@ -144,9 +146,15 @@ Semver, from git tags. **The binary never carries a hardcoded version.**
 
 ```bash
 git tag -a v0.2.0 -m "..."     # the tag is the release
+make release                   # gates, then the payload tarball + checksum onto the release
 make build                     # -ldflags stamps `git describe --tags --always --dirty`
 ./bin/libretto version         # v0.2.0  ·  v0.2.0-3-gabc123  ·  v0.2.0-dirty
 ```
+
+`make release` is run by hand, by a human. Nothing publishes on a tag push — a workflow that
+released automatically would turn the decision to ship into a file nobody re-reads. **Until a
+tag exists with its payload attached, `go install ...@latest` installs the last release and
+not `main`.**
 
 A plain `go build` with no ldflags reports `dev`. That is deliberate: a binary that
 cannot prove its version says so rather than claiming one.

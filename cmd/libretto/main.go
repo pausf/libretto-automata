@@ -1225,7 +1225,8 @@ func usage() {
 
   %[2]s               show the panel (requires a terminal)
   %[2]s install       link every item into each target
-  %[2]s update        pull, relink, report
+  %[2]s upgrade       fetch the newest release, activate it, relink
+  %[2]s update        pull this checkout, rebuild, relink
   %[2]s status        what is linked
   %[2]s doctor        diagnose links and repo state
   %[2]s prune         show links whose source is gone, change nothing
