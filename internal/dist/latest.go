@@ -78,6 +78,13 @@ func tagFromLocation(loc string) (string, error) {
 
 	i := strings.LastIndex(p, tagSegment)
 	if i < 0 {
+		// This is what a repository with tags and no published Releases actually answers:
+		// /releases/latest redirects to the /releases index rather than to a tag page. Worth
+		// its own sentence, because "no Releases" and "no tags" look identical from here and
+		// only one of them is fixed by tagging. Observed against the real forge, not guessed.
+		if strings.HasSuffix(strings.TrimSuffix(p, "/"), "/releases") {
+			return "", fmt.Errorf("no releases are published yet — a git tag is not a release")
+		}
 		return "", fmt.Errorf("the redirect does not point at a release: %s", loc)
 	}
 

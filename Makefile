@@ -114,7 +114,12 @@ clean:
 # Run it after the tag exists:
 #
 #   git tag -a v0.4.0 -m "..."
+#   git push origin v0.4.0
 #   make release
+#
+# The push comes first, and that order is load-bearing: `gh release create` creates the tag
+# itself when it is not on the remote, at the default branch's HEAD — a second tag with your
+# name on it, pointing somewhere you did not choose. --verify-tag below refuses that instead.
 release:
 	@command -v gh >/dev/null 2>&1 || { \
 		echo "gh is not installed:  brew install gh  # then: gh auth login"; exit 1; }
@@ -142,7 +147,7 @@ release:
 		echo "replaced  the assets on $$TAG"; \
 	else \
 		gh release create "$$TAG" "$$TARBALL" "$$TARBALL.sha256" \
-			--title "$$TAG" --notes "$$(git tag -l --format='%(contents)' "$$TAG")"; \
+			--verify-tag --title "$$TAG" --notes-from-tag; \
 		echo "created   $$TAG"; \
 	fi; \
 	rm -f "$$TARBALL" "$$TARBALL.sha256"

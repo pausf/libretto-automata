@@ -236,3 +236,15 @@ func releaseRecipe(t *testing.T) string {
 	}
 	return strings.Join(body, "\n")
 }
+
+// `gh release create` creates the tag itself when it is not on the remote, at the default
+// branch's HEAD. Without --verify-tag, running the target before pushing the tag produces a
+// second tag with your name on it pointing somewhere you did not choose — and yours is the one
+// that loses.
+func TestReleaseVerifiesTheTagRatherThanCreatingIt(t *testing.T) {
+	body := releaseRecipe(t)
+
+	if !strings.Contains(body, "--verify-tag") {
+		t.Errorf("gh release create is not passed --verify-tag:\n%s", body)
+	}
+}

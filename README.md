@@ -110,7 +110,8 @@ source moved, and relinks — and `upgrade` refuses there.
 
 ```bash
 git tag -a v0.4.0 -m "..."
-make release       # gates, then the payload tarball and its checksum, attached to the release
+git push origin v0.4.0
+make release       # gates, then the payload tarball and its checksum, onto a GitHub Release
 ```
 
 By hand, deliberately: a tag is a release and not a commit marker, so nothing publishes on a

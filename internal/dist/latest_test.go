@@ -90,6 +90,25 @@ func TestLatestRejectsANonSemverLocation(t *testing.T) {
 	}
 }
 
+// The case this repository was actually in: four tags, zero published Releases. GitHub
+// redirects /releases/latest to the /releases index, and the message has to distinguish that
+// from "no tags" — only one of the two is fixed by tagging. Verified against the real forge
+// before being written down.
+func TestLatestSaysSoWhenNoReleasesArePublished(t *testing.T) {
+	srv := releaseServer(t, http.StatusFound, "/pausf/libretto-automata/releases")
+
+	_, err := Latest(context.Background(), srv.Client(), srv.URL)
+	if err == nil {
+		t.Fatal("Latest accepted a redirect to the releases index")
+	}
+	if !strings.Contains(err.Error(), "no releases are published") {
+		t.Errorf("the error does not name the actual problem: %v", err)
+	}
+	if !strings.Contains(err.Error(), "not a release") {
+		t.Errorf("the error does not distinguish a tag from a release: %v", err)
+	}
+}
+
 // A repository with no releases answers 404; a proxy or an outage answers 200 with a page.
 // Neither is a version, and neither may be guessed at.
 func TestLatestOnAnUnexpectedStatusIsCouldNotTell(t *testing.T) {

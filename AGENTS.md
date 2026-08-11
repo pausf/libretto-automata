@@ -179,9 +179,20 @@ Mixed merge takes the highest: one `feat:` among nine `fix:` is a minor.
 ```bash
 git switch main && git pull            # the merge is in
 git tag -a v0.5.0 -m "what shipped"
-make release                           # gates, tarball, checksum, onto the release
-git push origin v0.5.0
+git push origin v0.5.0                 # the tag, on the remote
+make release                           # gates, tarball, checksum, onto a GitHub Release
 ```
+
+**The push comes before `make release`, and the order is load-bearing.** `gh release create`
+creates the tag itself when it is not on the remote, at the default branch's HEAD — so running
+it first gives you a second tag with your name on it pointing somewhere you did not choose, and
+yours is the one that loses. The target passes `--verify-tag`, which refuses instead.
+
+**A tag is not a Release.** A tag is a git ref; a Release is a GitHub object that can carry
+assets. `git push origin v0.5.0` creates the first and not the second, and `libretto upgrade`
+reads `/releases/latest` — which, with tags and no Releases, redirects to the index and names
+no version at all. That was this repository's state at `v0.4.0`: four tags, zero Releases.
+`make release` is what closes that, so it is not optional decoration.
 
 **Branch pushes do not tag.** Push a feature branch as often as you like; push it again after
 review; none of that is a release. Only the merge is.
