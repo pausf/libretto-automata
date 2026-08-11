@@ -8,8 +8,13 @@ Read-only. Reports; chooses nothing, changes nothing.
 Skill(skill="find-work")
 ```
 
-Invoke it in **reporting mode**: run source 1 only — scan `.agents/changes/*/plan.md`,
-count open boxes, report what remains and what each plan says can start. Then stop.
+Invoke it in **reporting mode**: two of its scans and no more — source 1
+(`.agents/changes/*/plan.md`, open boxes, what each plan says can start, and the unmerged
+branches) and **the queue** (its *captured, never started* scan). Then stop.
+
+Both are named because "source 1 only" left the queue ambiguous: the queue is not a
+source, so an agent reading that literally reported an empty house while ideas sat
+captured on disk.
 
 Do not read the tracker, do not ask what to work on, do not begin a phase.
 
@@ -29,6 +34,15 @@ Then one line for the whole picture: how many changes are open, how many boxes b
 them.
 
 Nothing in flight is a state, not an emptiness to apologise for. Say so in one line.
+
+## Then the queue, as its own section
+
+Ideas captured by `/libretto-queue` — proposals carrying a `Queued:` line — come **after**
+in flight, oldest first, name and one line each. The skill finds them; this command only
+keeps them separate.
+
+Two sections, never one list. A captured idea and a change half-built are different kinds
+of thing, and merging them makes the queue look like a backlog of stalled work.
 
 ## What not to do
 

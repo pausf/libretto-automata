@@ -4,7 +4,7 @@ description: "Trigger: starting the Libretto flow; asking what to work on; resum
 license: MIT
 metadata:
   author: pausf
-  version: "1.1"
+  version: "1.2"
 ---
 
 ## What this does
@@ -110,6 +110,31 @@ machine has.
 
 `main` here means whatever the base branch actually is. Do not hardcode it if the
 repository says otherwise.
+
+## The queue — captured, never started
+
+**This is not source 1, and it is not a fourth source.** It is a scan this skill owns so
+that nothing else has to walk the same directory: `/libretto-status` reports it,
+`/libretto-next` picks from it, and both delegate here rather than writing their own
+version. Two answers to "what is queued" is one too many, and the one that disagrees is
+always the one nobody is reading.
+
+`/libretto-queue` writes proposals carrying a `Queued:` line. **That line is the whole
+definition** — present means captured and not started, absent means the change is
+underway:
+
+```
+rg -l '^Queued:' .agents/changes/*/proposal.md
+```
+
+Run it whenever the caller asks for the queue, including in reporting mode. For each one,
+oldest `Queued:` date first: its name and what its proposal says it is for, in one line.
+
+**Never ask whether to pick one up, and never let one block.** Home first exists so
+*started* work does not get abandoned; an idea costs nothing to abandon, because nothing
+has been built on it. Making four captured ideas stand between the user and a Jira task
+would make capture punitive, and a queue that is expensive to add to is a queue nobody
+uses. Picking one up is `/libretto-next`'s job, and it asks.
 
 ## Source 3 — what the user said
 

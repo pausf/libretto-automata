@@ -63,10 +63,10 @@ libretto install --global    # the default; both flags at once is an error
 ```bash
 gofmt -l .                                       # must print nothing
 go vet ./...
-go test ./... -count=1                           # 251 tests
+go test ./... -count=1                           # 263 test functions
 scripts/check-payload                            # frontmatter, references, reachability
-skills/record-work/spec-drift --self-test        # 17 checks
-skills/record-work/spec-drift --anchors          # 208 citations must resolve
+skills/record-work/spec-drift --self-test        # 20 checks
+skills/record-work/spec-drift --anchors          # 223 citations must resolve
 ```
 
 `spec-drift` with no flag warns about staged code whose spec did not move. It never
@@ -107,6 +107,12 @@ Creating a task without a tracker *is* creating the change folder: `proposal.md`
 `add-relative-discounts`, never an invented ticket id.
 
 `/libretto-status` reports what is open and changes nothing.
+
+An idea you do not want to build yet goes in the queue: `/libretto-queue` captures it as a
+proposal carrying a `Queued:` date and nothing else, and `/libretto-next` picks the oldest
+one up when you are ready. **Queued is not in flight** — a captured idea never blocks
+source 1, because abandoning an idea costs nothing and a queue that is expensive to add to
+is a queue nobody uses.
 
 **Mark the boxes as you go.** A plan that is 11/11 open while the work is nearly done is
 documentation pretending to be state — which happened while building this very feature.

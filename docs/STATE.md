@@ -14,20 +14,27 @@ a pointer.
 **Both halves exist now, and neither has been exercised.**
 
 ```
-skills/     10 items   (7 phase skills + evidence + 2 vendored delegates)
-agents/      1 item    (spec-writer)
-commands/    2 items   (libretto-flow, libretto-status)
+skills/     20 items   (phase skills + evidence + review lenses + vendored delegates)
+agents/      7 items   (spec-writer, work-reviewer, 5 review lenses)
+commands/    5 items   (libretto-flow, libretto-status, libretto-review,
+                        libretto-queue, libretto-next)
 ```
 
 The CLI, the panel and the symlink logic are *delivery*, and they are green:
-**161 test functions pass**, `gofmt` clean, `go vet` clean. The payload — the
+**263 test functions pass**, `gofmt` clean, `go vet` clean. The payload — the
 author's own flow as skills and commands — is written and statically checked:
 `scripts/check-payload` passes, `spec-drift --self-test` passes, and
-`spec-drift --anchors` resolves **156 citations, file and test name**.
+`spec-drift --anchors` resolves **223 citations, file and test name**.
 
 What none of that proves is behaviour. A skill is a prompt and a prompt is checked
-by running it, and **the flow has never been run end to end against a real task**.
-That is the next thing, not another phase of Go.
+by running it. **The flow has now been run end to end several times** — the payload
+spec records what each run observed, and which claims are still only claims. The
+queue is the newest of those: written, statically checked, never run.
+
+**These counts go stale silently.** Nothing checks them, and they sat at 10/1/2 and
+161/156 while the real numbers doubled — noticed only because a reader asked whether
+the README had been updated. Re-measure before trusting them; the commands that
+produce them are in `AGENTS.md` under Gates.
 
 ## The open question — answered
 

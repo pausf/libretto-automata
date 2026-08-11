@@ -15,6 +15,12 @@ Installing this repository gives a working flow on a machine that has nothing el
 - `libretto-status`, read-only, reporting what is in flight
 - `libretto-review`, which reviews a forge PR/MR in a workspace that restores itself
   — its contract is the `review-project` capability spec
+- **a queue for ideas that arrive faster than they get built** — `libretto-queue`
+  captures them one after another as proposals carrying a `Queued:` date, committing
+  each on the current branch and creating no branch, no spec and no plan;
+  `libretto-next` picks one, oldest first with the user free to choose another, creates
+  the branch, removes the `Queued:` line and enters the flow at phase 2, because phase
+  1's artifact already exists
 - one skill per phase, each of which stops where its phase stops
 - **the finished work reviewed by someone who did not write it, then repaired** — in the
   seam between build and present, `review-work` launches one fresh `work-reviewer`
@@ -72,6 +78,16 @@ third-party items and their attribution.
   `skills/evidence/`, and it reaches phase 7 as found-and-not-fixed.
 - **asking about a finding**, including one that looks like a product decision. It is
   reported to phase 7, never turned back into a question.
+- **priorities, tags or reordering on the queue.** FIFO by `Queued:` date, and
+  `libretto-next` letting the user pick a different one *is* the reordering mechanism. A
+  priority field returns the day FIFO measurably hurts.
+- **a command that edits or deletes a queued idea.** They are markdown files in a
+  directory; a CRUD surface over three files is ceremony.
+- **a separate queue file.** `.agents/changes/` already holds proposals; a `queue.md`
+  beside it would be a second source of truth about what is queued.
+- **draining the queue unattended.** `libretto-next` runs one idea and the flow's own
+  stops apply. Batch execution is a different feature with different risks.
+- **the Go binary knowing about the queue.** It is payload, not delivery.
 
 ### A stop is a place where the user changes something
 
@@ -168,6 +184,18 @@ argument and offers GitHub Issues as an optional variant.
 **Reporting and choosing are one skill.** `/libretto-status` invokes phase 1 in reporting
 mode rather than scanning the same directories its own way. Two answers to "what work
 exists" is one too many, and the one that disagrees is always the one nobody is reading.
+
+**A queued idea is not a fourth source.** `find-work` owns the `Queued:` scan so that
+`/libretto-status` can report the queue and `/libretto-next` can pick from it without
+either walking the directory itself — the same single-owner rule, and the reviewer caught
+`libretto-next` breaking it on the run that landed the queue. The scan sits outside the
+Source 1 heading for a reason: nested under it, "run source 1 only" left
+`/libretto-status` unable to tell whether the queue was in scope.
+
+**Queued is reported, never blocking.** Home first exists so *started* work does not get
+abandoned; an idea costs nothing to abandon because nothing has been built on it. Four
+captured ideas standing between the user and a Jira task would make capture punitive, and
+a queue that is expensive to add to is a queue nobody uses.
 
 **Phase 1 produces an artifact, not only a report.** A source-3 request leaves
 `.agents/changes/<name>/proposal.md` on disk — `Tracker: none`, and the ask in the words
@@ -292,6 +320,20 @@ the copy stays comparable with upstream.
 - **One reviewer, not a panel.** Two runs of the same model over the same diff are
   correlation dressed as corroboration. The day reviews need lenses, that is a spec
   change, not a quiet doubling.
+- **capturing an idea and running it are two commands, not one overloaded flow** — the
+  user's call, 2026-08-11: "le pasas una tarea… no tiene sentido pasarle la tarea y que
+  haga otra". `/libretto-flow <task>` does *that* task, always; the queue drains through
+  `/libretto-next`. A flow that silently substitutes different work for what it was handed
+  is the surprise nobody wants.
+- **FIFO by a `Queued:` line in the file, not by git archaeology.** The date survives a
+  rebase and needs no `git log` walk, and its presence is also what marks the change as
+  not-started — `/libretto-next` removes it at pickup. **Ceiling named:** no priorities;
+  the replacement is a priority field the day someone reorders constantly.
+- **Captured proposals commit on the current branch, and the branch waits for
+  `/libretto-next`.** A branch per captured idea scatters the queue across N branches
+  nobody can see from the base. This does not weaken "the branch exists before the first
+  write": a queued proposal is not the change's work yet, and the change's first write is
+  the pickup.
 - **ponytail and caveman are vendored, reversing THIRD-PARTY.md's original
   not-vendored entry — the user's explicit call, 2026-08-10.** The old rationale (a
   second copy of something the user may already have chosen a version of) assumed a
@@ -316,6 +358,8 @@ the copy stays comparable with upstream.
 - [x] `record-work` — phase 8, including consolidation
 - [x] `evidence` — the standing rules
 - [x] `libretto-flow` — the routing command
+- [x] `libretto-queue` and `libretto-next` — capture the queue, drain it one at a time,
+      with `find-work` owning the scan both read
 - [x] vendored delegates with attribution
 - [x] ponytail, ponytail-debt, caveman and caveman-commit vendored, callers' prose
       reconciled, THIRD-PARTY.md and docs recording the reversal
@@ -371,6 +415,8 @@ the copy stays comparable with upstream.
 - **the status command delegates rather than restating the scan**, and every referenced
   skill survived the rename
   Proof: scripts/check-payload
+- **the queue commands delegate the scan too**, and reference only skills that exist
+  Proof: scripts/check-payload
 
 **What none of this verifies is behaviour.** A skill is a prompt, and a prompt is
 checked by running it. The static checks above catch what silently degrades one — a
@@ -412,3 +458,11 @@ prevent:
 Still unobserved, and therefore still claims rather than facts: the collapsed lane on a
 change that needs no spec, the review seam's one-line decline on that same lane, and
 every remaining failure path above.
+
+**The queue is prose and none of it has run.** Claims, not facts: capturing two ideas
+leaves two committed proposals and no branch; `/libretto-next` offers the oldest first and
+enters phase 2 on a fresh branch; `/libretto-flow` handed a key never mentions the queue;
+`/libretto-status` shows the queue as its own section. What *was* observed on the run that
+landed it is the reviewer catching three defects in the prose — a duplicated scan, a commit
+step stated in a never-does bullet instead of instructed, and a queued idea defined two
+ways in adjacent lines.
