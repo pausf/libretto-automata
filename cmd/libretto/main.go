@@ -174,6 +174,12 @@ func run(args []string) error {
 		return panelUI(root, projectDir, openingScope(scope, chosen))
 	}
 
+	// After the command, not before: the notice is news about something else, and a
+	// user watching `install` scroll should see the result first. `defer` is also what
+	// keeps it away from what the command returned — being a release behind is not an
+	// error, and `install` already uses a non-zero exit to mean a conflict.
+	defer noticeAfter(os.Stderr, args[0], root, version)
+
 	switch args[0] {
 	case "status":
 		return status(root, tg)
