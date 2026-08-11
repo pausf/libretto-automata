@@ -68,8 +68,7 @@ libretto status    # every item's state, changes nothing
 libretto update
 ```
 
-Installs the newest version and relinks. The relink is not redundant — a release that
-*adds* a skill would otherwise leave it unlinked with nothing to say so.
+Installs the newest version and relinks, so a release that *adds* a skill arrives linked.
 
 The panel also tells you when a newer version exists, checked once a day and silent when it
 cannot check.
@@ -86,8 +85,8 @@ make build      # stamps the version from git describe
 make link       # puts `libretto` on your PATH via ~/.local/bin
 ```
 
-A checkout you are standing in wins over an installed copy, so editing a skill and seeing
-it live still works. `update` pulls there instead of downloading.
+`update` pulls there instead of downloading, and the tree you are standing in is the
+installation — [why](docs/DESIGN.md#why-the-payload-is-not-compiled-into-the-binary).
 
 ## Your first run
 

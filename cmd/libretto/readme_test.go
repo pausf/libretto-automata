@@ -104,6 +104,10 @@ func TestMovedReasoningLandedInDocs(t *testing.T) {
 		{"prune and uninstall are dry by default", "being asked twice"},
 		{"two queue commands and not one", "substitutes different work"},
 		{"the payload is not compiled in", "module cache"},
+		// Two anchors for one subject, because one was defeated by paraphrase: the README
+		// kept the argument and swapped "module cache" for "an installed copy", which left
+		// the guard green. "wins over" is the load-bearing verb either way.
+		{"the payload is not compiled in, paraphrased", "wins over"},
 		{"model aliases rather than ids", "two spellings of one state"},
 		{"spec-drift warns, never blocks", "a deleted check finds nothing"},
 	} {

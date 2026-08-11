@@ -95,6 +95,20 @@ no spec governs is a path where drift is nobody's finding.
   where a *terminal* renders it, not where a document discusses it. A test asserting "only
   in README" fails on day one; the part that matters is held by the `panel` capability and
   `internal/ui/logo_test.go`.
+- **What a command *does* is a reference fact and stays; *why it is that way* is an
+  argument and goes.** The reviewer could not settle this by observation and it is the line
+  outcome 4 turns on. So: "prune removes links whose item is gone, uninstall removes links
+  that are working" stays in the README, because a command table that does not say what its
+  commands do is not a reference. "Prune deliberately spares correct links, and that is
+  what makes it safe to run" is the argument, and it is in `docs/DESIGN.md`.
+
+- **An argument survives a paraphrase, so two subjects carry two anchors.** The README kept
+  "a checkout you are standing in wins over…" and swapped *the module cache* for *an
+  installed copy*, which left `TestMovedReasoningLandedInDocs` green with the argument still
+  in place. Found by the phase-7 reviewer, not by the test. The anchor set is therefore a
+  floor and not a proof of absence — the honest ceiling of a substring check, named rather
+  than papered over.
+
 - **"Does it read well to a stranger" is verified by reading, and said out loud.** It is
   the one thing here no test can hold, and pretending otherwise is what produced the
   README this replaced — every fact in that version was correct.
