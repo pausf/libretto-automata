@@ -10,14 +10,20 @@ work on something else instead is the surprise nobody wants.
 
 ## Step 1 — Read the queue
 
-A queued idea is a `proposal.md` with a `Queued:` line and no `plan.md` beside it:
-
 ```
-rg -l '^Queued:' .agents/changes/*/proposal.md
+Skill(skill="find-work")
 ```
 
-Oldest `Queued:` date first. Nothing queued is a state, not an error — say so in one
-line, point at `/libretto-queue`, and stop.
+Ask it for **the queue only** — its *captured, never started* scan, oldest first. Not
+source 1, not the tracker, and no phase begun: this command chooses the work itself in
+step 2.
+
+The scan is the skill's, not this command's, exactly as `/libretto-status` delegates it.
+A second walk of the same directory here would be a second answer to "what is queued",
+and the one that disagrees is always the one nobody is reading.
+
+Nothing queued is a state, not an error — say so in one line, point at
+`/libretto-queue`, and stop.
 
 ## Step 2 — Which one
 

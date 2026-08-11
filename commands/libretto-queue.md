@@ -40,17 +40,25 @@ For each idea the user gives:
    **The ask goes in verbatim.** Paraphrasing loses the part you did not understand yet,
    and an idea captured now is read weeks later by someone who has forgotten the
    conversation.
-3. Say the name back in one line, then **ask for the next idea**.
+3. **Commit it**, on the current branch, docs-only:
+
+   ```
+   git add .agents/changes/<name>/proposal.md
+   git commit -m "docs(queue): capture <name>"
+   ```
+
+   No branch is created. A branch per captured idea scatters the queue across N branches
+   nobody can see from the base branch, and the branch belongs to the change's first real
+   write — which is `/libretto-next`, not here.
+4. Say the name back in one line, then **ask for the next idea**.
 
 Keep going until the user says they are done. Then report the whole queue, oldest first,
 and point at `/libretto-next`.
 
 ## What this never does
 
-- **No spec, no plan, no branch, no code.** An idea is not work started. Commit the
-  proposals on the current branch as docs-only commits so the queue is visible from the
-  base branch — a branch per captured idea scatters the queue across N branches nobody
-  can see.
+- **No spec, no plan, no branch, no code.** An idea is not work started. Step 3's commit
+  is the only write beyond the proposal itself.
 - **No tracker key as a queued idea.** A key means the tracker is already the source of
   truth: hand it to `/libretto-flow <key>` instead. Copying a ticket into a local
   proposal creates a second one that immediately starts drifting.

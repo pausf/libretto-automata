@@ -86,24 +86,6 @@ half-finished work without asking is a decision about their priorities.
 No `.agents/changes/` directory, or none with open boxes, means nothing is in flight.
 That is a state, not an error — say it in one line and move on.
 
-### A queued idea is not work in flight
-
-`/libretto-queue` writes proposals with a `Queued:` line and nothing else beside them —
-no spec, no plan, no branch. They live in the same directory as changes in flight and
-they are **not** source 1:
-
-```
-rg -l '^Queued:' .agents/changes/*/proposal.md
-```
-
-Report them, oldest `Queued:` date first, as their own short list, and point at
-`/libretto-next`. **Never ask whether to pick one up, and never let them block.**
-
-Home first exists so *started* work does not get abandoned. An idea costs nothing to
-abandon — nothing has been built on it. Making four captured ideas stand between the user
-and a Jira task would make capture punitive, and a queue that costs something to add to
-is a queue nobody uses.
-
 ### A branch is also work in flight
 
 **The scan above cannot see the trivial lane.** A change that needed no spec never creates
@@ -128,6 +110,31 @@ machine has.
 
 `main` here means whatever the base branch actually is. Do not hardcode it if the
 repository says otherwise.
+
+## The queue — captured, never started
+
+**This is not source 1, and it is not a fourth source.** It is a scan this skill owns so
+that nothing else has to walk the same directory: `/libretto-status` reports it,
+`/libretto-next` picks from it, and both delegate here rather than writing their own
+version. Two answers to "what is queued" is one too many, and the one that disagrees is
+always the one nobody is reading.
+
+`/libretto-queue` writes proposals carrying a `Queued:` line. **That line is the whole
+definition** — present means captured and not started, absent means the change is
+underway:
+
+```
+rg -l '^Queued:' .agents/changes/*/proposal.md
+```
+
+Run it whenever the caller asks for the queue, including in reporting mode. For each one,
+oldest `Queued:` date first: its name and what its proposal says it is for, in one line.
+
+**Never ask whether to pick one up, and never let one block.** Home first exists so
+*started* work does not get abandoned; an idea costs nothing to abandon, because nothing
+has been built on it. Making four captured ideas stand between the user and a Jira task
+would make capture punitive, and a queue that is expensive to add to is a queue nobody
+uses. Picking one up is `/libretto-next`'s job, and it asks.
 
 ## Source 3 — what the user said
 
