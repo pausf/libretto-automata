@@ -200,6 +200,37 @@ within minutes. The tags and Releases are gone from the remote; the versions are
 the ecosystem, and neither number can ever name different content. That is the cost of reading
 this table without the paragraph above it, which is why the paragraph now exists.
 
+### Do not delete the `v1.0.2` tag. It is load-bearing.
+
+**It has no Release and it looks like junk. It is what keeps `@latest` on the `0.5.x` line.**
+
+Deleting the two bad tags was not enough: `proxy.golang.org` had cached them, so
+`go install ...@latest` kept resolving to `v1.0.1` with the tags already gone from GitHub —
+measured, not assumed. Nothing removes a version from the proxy or from `sum.golang.org`; both
+are append-only by design, and that is the same guarantee that stops anybody's dependency
+changing underneath them.
+
+What is available is `retract`, and only the **highest** version can retract — including
+itself. So `v1.0.2` exists as a tombstone: no Release, a `retract` block in its `go.mod`
+covering `v1.0.0`, `v1.0.1` and `v1.0.2`, and **a commit deliberately on no branch**, reachable
+through the tag alone so `git describe --tags` from `main` keeps answering `0.5.x` instead of
+climbing to `v1.0.3`.
+
+Delete that tag and the retraction goes with it: the two bad versions become selectable again
+and `@latest` returns to `v1.0.1`. Measured after publishing it:
+
+```
+go list -m …@latest              → v0.5.2
+go list -m -versions …           → … v0.5.1 v0.5.2      (no v1 offered)
+go install …/cmd/libretto@latest → libretto-automata v0.5.2
+```
+
+`retract` hides them; it does not delete them. `@v1.0.1` still resolves for anyone who asks for
+it by name, marked `(retracted)` with the reason from `go.mod`. That is the whole of what the
+ecosystem allows, and wanting more of it is what re-tagging a published version looks like —
+which would change a hash the checksum database has pinned and turn a wrong number into a
+failed install for everybody.
+
 **The reading is yours. The typing is not.** Put a `release:patch`, `release:minor` or
 `release:major` label on the request before it merges, and `.github/workflows/release.yml`
 does the rest: gates, tag `main`, push it, open the Release.
