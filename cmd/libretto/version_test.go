@@ -1,7 +1,10 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"runtime/debug"
+	"strings"
 	"testing"
 )
 
@@ -33,6 +36,56 @@ func TestVersionFallsBackToBuildInfo(t *testing.T) {
 	if got := resolveVersion("", info); got != "v0.3.0" {
 		t.Errorf("resolveVersion(empty, v0.3.0) = %q, want v0.3.0", got)
 	}
+}
+
+// The notice names both versions and the action. A row saying "an update is available"
+// cannot be checked against `libretto version`, and one with no action is a notification
+// with nowhere to go.
+func TestReleaseNoticeNamesBothVersionsAndTheAction(t *testing.T) {
+	root := rootWithCachedTag(t, "v0.3.0")
+
+	got := releaseNotice(root, "v0.2.0")
+	for _, want := range []string{"v0.2.0", "v0.3.0", "update"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("notice %q does not mention %q", got, want)
+		}
+	}
+}
+
+// Silence is the default. Up to date, ahead of the remote, and a version that cannot be
+// parsed all produce no row — the last one because telling somebody running `dev` that they
+// are out of date is a guess presented as a fact.
+func TestReleaseNoticeIsSilentWhenThereIsNothingToSay(t *testing.T) {
+	cases := map[string]struct{ cached, running string }{
+		"up to date":          {"v0.3.0", "v0.3.0"},
+		"ahead of the remote": {"v0.2.0", "v0.3.0"},
+		"unidentifiable":      {"v0.3.0", "dev"},
+		"a dirty build":       {"v0.3.0", "v0.2.0-3-gabc123-dirty"},
+		"nothing cached":      {"", "v0.2.0"},
+	}
+
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := releaseNotice(rootWithCachedTag(t, c.cached), c.running); got != "" {
+				t.Errorf("notice = %q, want silence", got)
+			}
+		})
+	}
+}
+
+// rootWithCachedTag is a clone whose release check has already been answered, so the notice
+// is built without a remote, a network or a subprocess.
+func rootWithCachedTag(t *testing.T, tag string) string {
+	t.Helper()
+	root := t.TempDir()
+	git := filepath.Join(root, ".git")
+	if err := os.MkdirAll(git, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// The cache format: a unix timestamp, a space, then the tag. Far enough in the future
+	// that no TTL can expire it, so the check never reaches for a remote that is not there.
+	writeFile(t, filepath.Join(git, "libretto-update-check"), "99999999999 "+tag+"\n")
+	return root
 }
 
 // Neither source means `dev`, and `dev` is the honest answer: a binary that cannot prove

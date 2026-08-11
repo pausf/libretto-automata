@@ -185,7 +185,8 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 	}
 
 	model := ui.NewModel(version, menu, targets, asciiSafe()).
-		WithRefresh(panelRefresh(root, projectDir))
+		WithRefresh(panelRefresh(root, projectDir)).
+		WithReleaseCheck(func() string { return releaseNotice(root, version) })
 
 	// Actions run inside the panel and report there, so the destination, the state
 	// and the last report stay on screen together.

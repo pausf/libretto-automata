@@ -1,6 +1,38 @@
 package main
 
-import "runtime/debug"
+import (
+	"context"
+	"fmt"
+	"runtime/debug"
+	"time"
+
+	"github.com/pausf/libretto-automata/internal/repo"
+)
+
+// checkTimeout bounds the release check.
+//
+// Five seconds, and short on purpose: this is speculative work nobody asked for. The
+// bootstrap clone gets minutes because the user is waiting for the payload; nobody is
+// waiting to be told they are up to date.
+const checkTimeout = 5 * time.Second
+
+// releaseNotice is the panel's row, or "" when there is nothing to say.
+//
+// Cached — the panel must not pay for a network call on every launch. `doctor` is the
+// command that checks live, because the user typed a diagnostic and can afford to wait.
+//
+// The comparison is repo.IsNewer, not a second one written here. Formatting is this side's
+// job; deciding what "newer" means is not.
+func releaseNotice(root, running string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), checkTimeout)
+	defer cancel()
+
+	latest, err := repo.CheckedLatest(ctx, root, repo.CheckTTL)
+	if err != nil || !repo.IsNewer(latest, running) {
+		return ""
+	}
+	return fmt.Sprintf("%s → %s available · choose update", running, latest)
+}
 
 // resolveVersion decides what the binary reports: the ldflags stamp, then the module
 // version the toolchain recorded, then `dev`.
