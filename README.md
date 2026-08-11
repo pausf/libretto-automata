@@ -10,7 +10,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-payload-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
 [![Jira CLI](https://img.shields.io/badge/Jira%20CLI-tracker-0052CC?logo=jira&logoColor=white)](https://github.com/ankitpokhrel/jira-cli)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-367%20passing-brightgreen.svg)](#gates)
+[![Tests](https://img.shields.io/badge/tests-335%20passing-brightgreen.svg)](#gates)
 
 <img src="docs/panel.svg" alt="The libretto panel: a menu with install, uninstall, update, status, models, doctor and prune, acting on a chosen destination — here ~/.claude with all 26 items linked" width="800">
 
@@ -98,24 +98,12 @@ A checkout you are standing in wins over the module cache, so editing a skill an
 still works — which is the reason the payload is not compiled into the binary. `update` pulls
 there instead of downloading: same command, and the tree you are standing in is the installation.
 
-### Releasing
-
-```bash
-git tag -a v0.5.0 -m "..."
-git push origin v0.5.0
-make release       # gates, then a Release page carrying the tag's notes
-```
-
-Nothing is attached to the Release — the module proxy resolves `@latest` from **tags**, so
-installing works without one. `make release` exists so a human can read what changed.
-
 ## Commands
 
 | | |
 |---|---|
 | `libretto` | the panel — needs a terminal |
 | `libretto status` | every item's state. Read-only, always. |
-
 | `libretto install` | link everything. Idempotent; non-zero exit if anything was skipped. |
 | `libretto uninstall` | show what this repo installed here — **changes nothing** |
 | `libretto uninstall --yes` | take it back out |
@@ -297,10 +285,10 @@ All six pass before any commit — `make gates` runs them, and so does
 ```bash
 gofmt -l .                                  # must print nothing
 go vet ./...
-go test ./... -count=1                      # 251 tests
+go test ./... -count=1                      # 335 tests
 scripts/check-payload                       # frontmatter, references, reachability
-skills/record-work/spec-drift --self-test   # 17 checks
-skills/record-work/spec-drift --anchors     # 208 citations
+skills/record-work/spec-drift --self-test   # 20 checks
+skills/record-work/spec-drift --anchors     # 269 citations
 ```
 
 ## Built with
