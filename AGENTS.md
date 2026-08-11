@@ -64,10 +64,10 @@ libretto install --global    # the default; both flags at once is an error
 ```bash
 gofmt -l .                                       # must print nothing
 go vet ./...
-go test ./... -count=1                           # 335 test functions
+go test ./... -count=1
 scripts/check-payload                            # frontmatter, references, reachability
-skills/record-work/spec-drift --self-test        # 20 checks
-skills/record-work/spec-drift --anchors          # 269 citations must resolve
+skills/record-work/spec-drift --self-test
+skills/record-work/spec-drift --anchors          # every Proof: citation must resolve
 ```
 
 `spec-drift` with no flag warns about staged code whose spec did not move. It never
@@ -158,10 +158,7 @@ does it silently.
 A plain `go build` with no ldflags reports `dev`. That is deliberate: a binary that
 cannot prove its version says so rather than claiming one.
 
-`make release` is run by hand, by a human. Nothing publishes on a tag push — a workflow that
-released automatically would turn the decision to ship into a file nobody re-reads. **Until a
-tag exists with its payload attached, `go install ...@latest` installs the last release and
-not `main`.**
+**Until a tag exists, `go install ...@latest` installs the last release and not `main`.**
 
 ### Every merge to `main` gets a tag. No merge leaves `main` untagged.
 
@@ -176,12 +173,21 @@ off the commits it lands:
 
 Mixed merge takes the highest: one `feat:` among nine `fix:` is a minor.
 
+**The reading is yours. The typing is not.** Put a `release:patch`, `release:minor` or
+`release:major` label on the request before it merges, and `.github/workflows/release.yml`
+does the rest: gates, tag `main`, push it, open the Release.
+
 ```bash
-git switch main && git pull            # the merge is in
-git tag -a v0.5.0 -m "what shipped"
-git push origin v0.5.0                 # the tag, on the remote
-make release                           # gates, then a Release page with the tag's notes
+gh pr edit <n> --add-label release:patch   # the one decision that is not mechanical
 ```
+
+**With no label the run refuses** and names the three. That is deliberate: the bump turns on
+whether a promise moved, which is a reading of `.agents/specs/` rather than of the commit
+types, so a workflow that guessed would be wrong precisely when a contract moved. It asks
+instead of assuming, and it never assumes patch.
+
+`make release` is still there for a tag made outside this path — see below — but it is no
+longer the route.
 
 **The push comes before `make release`, and the order is load-bearing.** `gh release create`
 creates the tag itself when it is not on the remote, at the default branch's HEAD — so running
@@ -195,7 +201,8 @@ verified. `make release` opens a Release page carrying the tag's notes, for huma
 costs nothing mechanical.
 
 **Branch pushes do not tag.** Push a feature branch as often as you like; push it again after
-review; none of that is a release. Only the merge is.
+review; none of that is a release. Only the merge is — and that is now enforced rather than
+trusted: the workflow fires on a merged pull request and on nothing else.
 
 That boundary is the whole rule, and it is where the old version of this section went wrong in
 the other direction. It said "tag when the work goes out" and left *when* to judgment — so
@@ -241,9 +248,10 @@ spec ships in the same commit as the code that taught it.
 - write the test in the same commit as the logic it proves
 - name a `Proof:` in the spec for a new criterion, then make it exist
 - point `CLAUDE_HOME` at a temporary directory in anything that touches a target
-- **tag `main` after every merge, and run `make release`.** The bump comes from what the
-  merge contained — see *Versioning*. A merge that leaves `main` ahead of its last tag is a
-  release nobody can install and a `libretto version` that names a tag the code is past.
+- **label the request with its bump before it merges** — `release:patch`, `release:minor` or
+  `release:major`, read off what the merge contains. See *Versioning*. The tag and the Release
+  then happen on merge; **with no label the run refuses and `main` is left untagged**, which is
+  a release nobody can install and a `libretto version` naming a tag the code is past.
 - state what was deliberately left out, and what would bring it back
 - write `ponytail:` comments in English, whatever language the session is in. The comment
   lives in the source next to English identifiers, and `ponytail-debt` harvests it into a
