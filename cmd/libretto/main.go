@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -143,10 +144,29 @@ func run(args []string) error {
 	tg := target.Resolve(scope, projectDir)
 
 	if len(args) == 0 {
+		// The no-TTY exit comes first, and before the payload check: a pipe with no
+		// subcommand is a usage error whatever is installed, and it has always exited 2.
 		if !isatty.IsTerminal(os.Stdout.Fd()) {
 			usage()
 			os.Exit(2)
 		}
+	}
+
+	// A fresh `go install` has a binary and nothing else, and every command that reads the
+	// payload has to say so rather than describe an empty tree — "nothing to link" is what a
+	// correctly linked machine also says.
+	//
+	// **`prune` is why this is a stop and not a warning.** With no payload every link in the
+	// target resolves to nothing, so a scan reports all of them `stale` and `prune --yes`
+	// would remove every item the user has: a destructive command doing exactly what it
+	// promises, on a premise that is false.
+	if needsPayload(args) && !payloadPresent(root) {
+		return fmt.Errorf("no payload at %s\n"+
+			"       run `%s upgrade` — it fetches the newest release and links it",
+			root, invokedAs())
+	}
+
+	if len(args) == 0 {
 		// Only the panel remembers. `tg` above is deliberately left alone, so the
 		// subcommand paths below cannot be reached by this at all — which is the
 		// promise, not an implementation detail.
@@ -168,6 +188,8 @@ func run(args []string) error {
 		return uninstall(root, tg, args[1:])
 	case "update":
 		return update(root, tg)
+	case "upgrade":
+		return runUpgrade(context.Background())
 	case "models":
 		return models(root, tg, args[1:])
 	default:
@@ -672,6 +694,15 @@ func install(root string, tg target.Target) error {
 // linked by a binary from the old one is a state nobody asked for and nobody can
 // reason about.
 func update(root string, tg target.Target) error {
+	// Not a silent alias for `upgrade`. The two do different things — one pulls a tree you
+	// are working in, the other downloads a published release — and a command that quietly
+	// becomes another is a command whose output nobody can predict.
+	if !isRepo(root) {
+		return fmt.Errorf("%s is not a checkout, so there is nothing to pull\n"+
+			"       use `%s upgrade` — it fetches the newest published release",
+			root, invokedAs())
+	}
+
 	git := repo.Shell{Root: root}
 
 	dirty, err := git.Dirty()

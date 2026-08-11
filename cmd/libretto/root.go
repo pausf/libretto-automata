@@ -95,3 +95,35 @@ func isThisModule(dir string) bool {
 	}
 	return strings.HasPrefix(strings.TrimSpace(string(body)), moduleLine)
 }
+
+// payloadPresent reports whether root holds a payload to link from.
+//
+// One of the three kind directories is enough: a tree with skills/ and no commands/ is a
+// legitimate payload, and requiring all three would refuse a future release that dropped one.
+func payloadPresent(root string) bool {
+	for _, kind := range []string{"skills", "agents", "commands"} {
+		if info, err := os.Stat(filepath.Join(root, kind)); err == nil && info.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
+// needsPayload reports whether the command about to run reads the payload tree.
+//
+// The panel and every command that scans the tree do. `models` does not — it reads the
+// *target's* agents directory, so it works on a machine with nothing installed, which is
+// exactly when somebody might want to see what model an agent is on.
+//
+// `upgrade` is what fixes a missing payload, so it cannot be gated on having one.
+func needsPayload(args []string) bool {
+	if len(args) == 0 {
+		return true // the panel shows the tree's state
+	}
+	switch args[0] {
+	case "models", "upgrade":
+		return false
+	default:
+		return true
+	}
+}
