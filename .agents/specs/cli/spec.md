@@ -13,7 +13,7 @@ plain command.
 | Command | Does |
 |---|---|
 | `install` | link every item into every target |
-| `update` | pull, relink, rebuild when Go changed, report |
+| `update` | install the newest version and relink; in a checkout, pull and rebuild |
 | `status` | every item's state, read-only |
 | `doctor` | what needs attention, what the payload expects on this machine, and the release state |
 | `prune` | show links whose source is gone; `--yes` removes them |
@@ -25,49 +25,95 @@ plain command.
 
 ### Finding the payload
 
-`go install github.com/pausf/libretto-automata/cmd/libretto@latest` is a supported way in.
+```bash
+go install github.com/pausf/libretto-automata/cmd/libretto@latest
+```
+
+**That is the whole install.** The payload ships inside the Go module, so this brings it down with
+the binary and Go verifies it against the checksum database — see `distribution`.
 
 **The payload root and the checkout are two different things**, and this tool conflated them
 for as long as a clone happened to be both. `go install` breaks the coincidence: there is a
 payload and no checkout. Rungs 2 and 3 below answer both questions at once; rung 4 answers
-only the first, which is why `update` probes for a checkout before pulling and `upgrade`
-probes for one before refusing.
+only the first, which is why `update` probes for a checkout before choosing its route.
 
 **The payload root is resolved in four rungs:**
 
 | 1 | `LIBRETTO_ROOT` | absolute override, taken as given, unvalidated |
 | 2 | the compile-time source directory | when it has `.git` — development, `make build` |
 | 3 | the working directory | when it has `.git` **and** a `go.mod` naming this module |
-| 4 | `~/.local/share/libretto/current` | the activated release, whether or not it exists yet |
+| 4 | `$GOMODCACHE/<module>@<version>` | the payload `go install` brought down |
 
-**The probe is `.git`, not `go.mod`.** It used to be `go.mod`, and under `go install` that
-matches the read-only module cache — which would win, and every link would point into a
-versioned cache directory that the next install orphans. Everything the root is used for
-needs git: the pull, the rebuild decision, the release check. A `.git` **file** counts too,
-because that is what a worktree has and this flow recommends worktrees.
+**The probe is `.git`, not `go.mod`.** A `go.mod` matches the module cache, which is rung 4's
+answer and not rung 2's — so the two would be indistinguishable and the wrong one would win. A
+`.git` **file** counts too, because that is what a worktree has and this flow recommends
+worktrees.
+
+**Rung 4 is this binary's own version**, from build info. The payload it links is the one that
+shipped with the command doing the linking, so the two can never be a version apart — and the
+version being *in the path* is what makes an update a new directory rather than an overwrite of
+the one the links currently point at.
 
 Rung 3 checks the module, not just the presence of a repository. Any git repository
 satisfied the old `$PWD` fallback, so `libretto install` inside an unrelated project went
 looking for a payload that project does not have.
 
-**Nothing found means nothing is installed yet**, and rung 4 returns a path that does not
-exist. That is `upgrade`'s job to fix by downloading a release — **not** something any command
-fixes by cloning.
+**Nothing found means nothing is installed yet**, and rung 4 returns a path that may not exist
+— an interrupted `go install`, or a `go clean -modcache`. `update` is what fixes it.
 
-**The clone bootstrap is gone.** For one session this rung was `~/.libretto-automata`, reached
-by a `git clone` that announced its destination first. It shipped in no tag, so `@latest` could
-never resolve to it and no machine ever had one; it was replaced rather than migrated, and
-there is nothing to migrate. The reasoning that killed it is in `distribution`: `git pull` is
-the wrong thing to say to somebody who only wanted to use the tool.
+**Two other homes were tried in one session and both are gone.** `~/.libretto-automata` reached
+by a `git clone`, then `~/.local/share/libretto/<version>` with a release tarball extracted into
+it. Neither shipped in a tag, so nothing migrates and no machine has one. Why each lost is in
+`distribution`, recorded because a rejected design with no reason attached gets proposed again.
 
 - **`version` and `help` are answered before the payload is even located.** Neither reads a
   skill, so neither should care whether one is installed — and neither writes anything
   anywhere.
 - **Nothing prompts.** Every path works without a TTY, or `install` in CI breaks.
 
+### A missing payload is a stop, not an empty report
+
+Every command that reads the tree refuses and points at `update`, rather than describing an empty
+one. "nothing to link" is what a correctly linked machine also says.
+
+**`prune` is why this is a stop and not a warning.** With no payload every link in the target
+resolves to nothing, so a scan reports all of them `stale` — and `prune --yes` would remove every
+item the user has. A destructive command doing exactly what it promises, on a premise that is
+false.
+
+- **`models` is exempt.** It reads the *target's* agents directory, not the payload, so it works
+  on a machine with nothing installed — which is when somebody might most want it.
+- **`update` is exempt**, because it is what fixes the state.
+
+### `update` brings the installation up to date
+
+| in a checkout | pull, rebuild when Go moved, relink |
+| anywhere else | `go install` the newest version, relink |
+
+**One command, because for the person typing it there is one meaning:** put me on the newest
+version. Which mechanism runs is a consequence of how the tool got onto the machine, which they
+know.
+
+- **The release route says `git` nowhere**, in success or in any failure. A pull announced to
+  somebody who only wanted to use the tool is the complaint that produced this whole shape.
+- **It relinks the version it just installed**, not `payloadRoot()`. This process still reports
+  the old version, so resolving again would link the payload it is already on — and the update
+  would report success having changed no link at all.
+- **Relinking is not redundant.** A new version is a new directory, and a release that *adds* an
+  item leaves that item unlinked with nothing to say so.
+- **Already newest changes nothing and says so.** Nothing installed, nothing relinked.
+- **Nothing installed yet updates rather than refusing.** That is the repair path for a cleaned
+  module cache.
+
+**A draft split this into `update` and `upgrade`** and defended it: *a command whose mechanism
+depends on invisible state has unpredictable failures*. The state is not invisible — it is "did
+you clone this or install it" — and the split cost two commands, two menu rows, a pair of mutual
+refusals, a help table that changed per machine, and a function whose only job was choosing which
+of the two names to print in a notice.
+
 ### The rebuild replaces the binary that is running
 
-`update` rebuilds over `os.Executable()`, not over the clone's `bin/libretto`. Once the
+`update`'s git route rebuilds over `os.Executable()`, not over the clone's `bin/libretto`. Once the
 command can live in `$GOBIN`, rebuilding into the clone upgrades a file nobody executes —
 `update` would pull, relink, print "rebuilt" and change nothing the user runs.
 
@@ -92,7 +138,9 @@ command can live in `$GOBIN`, rebuilding into the clone upgrades a file nobody e
   afford it. It stays read-only — it asks the remote directly rather than through the cache,
   so it writes nothing at all. Going through the cache would also swallow the very error this
   line exists to report.
-- **`doctor` always says something.** Newer available, up to date, the remote has no releases,
+- **`doctor` names the mode it is in**, because "up to date" means something different in each: a
+  checkout three commits past a tag is current with its remote and behind the release.
+- **`doctor` always says something.** Newer available, up to date, none published,
   could not check, or "running X, the latest is Y" for a binary ahead of the remote or one
   whose version will not parse. Printing nothing on a failed check would read as "you are up
   to date", which is a claim nobody verified. That last case gets the facts and **no
@@ -100,9 +148,13 @@ command can live in `$GOBIN`, rebuilding into the clone upgrades a file nobody e
 - **It never sets the exit code.** Being a release behind is news, and an unreachable remote
   is not this tool's fault.
 - **The panel uses the cache, not a live call** — see `panel`. A panel that waits on the
-  network before its first paint hangs on bad DNS.
-- **The action is `update`, which already exists.** No new subcommand, no accelerator key: the
-  machinery to move to a newer tag has been there since the update flow landed.
+  network before its first paint hangs on bad DNS. Each mode keeps its answer somewhere it has: a
+  checkout in `.git/`, an installed copy in the module cache root. One TTL and one failure policy,
+  `repo`'s.
+- **Which source is asked depends on the mode, and each mode has exactly one.** A checkout asks
+  its remote what it has tagged; an installed copy asks the module proxy what the project has
+  published. Two *questions*, not two answers to one, and only one is ever asked on a machine.
+- **The notice names `update`**, which is the only command there is.
 
 ### Scope: where it writes
 
@@ -243,13 +295,13 @@ prerequisite report.
 - classification and mutation — `link-state` and `linking` own those
 - git — `repo-sync` owns it, cloning and the release check included
 - rendering — `panel` owns it
-- **`libretto self-update`, or re-running `go install` from inside the binary.** The clone
-  is the source of truth for the payload; a `$GOBIN` binary that upgraded itself while the
-  clone stayed at the old commit is two versions of one tool, with the links pointing at the
-  stale one.
-- **npm, npx, Homebrew, a tap, release archives, `goreleaser`.** One distribution channel
-  added and working before a second is discussed. Named so it is a decision and not an
-  omission.
+- **npm, npx, Homebrew, a tap, `install.sh`, per-platform binaries.** `go install` is the one
+  entry point, and it leaves nothing else to do. Each of these was considered; each adds a second
+  way in.
+- **a `sync` command.** `gentle-ai` needs one because its assets live inside its binary and have
+  to be written out. Here the payload is already files, and relinking is what `install` does.
+- **downloading or verifying anything.** `distribution` runs `go install`; the go command does
+  the rest.
 - **auto-update, and bootstrap without saying so.** Nothing moves the user's version without
   them asking.
 - **`--no-bootstrap`.** `LIBRETTO_ROOT` at an existing clone covers it, and a flag whose only
@@ -320,6 +372,10 @@ A constant drifts from the tag the moment someone forgets to bump it, and it dri
 **silently** — the binary keeps announcing a version nobody released. Asking git means
 the answer cannot be wrong.
 
+**Go is required, and that is a limit on who can use this rather than an oversight.** `go install`
+is the entry point and the update mechanism both. The audience for the payload is not necessarily
+a Go developer; named here so the constraint is visible.
+
 **But ldflags is no longer the only source.** `go install pkg@version` gets no ldflags and
 does record the module version, so the order is **ldflags → build info → `dev`** and never
 the reverse: build info knows neither the dirt nor the commits past the tag, so preferring
@@ -334,9 +390,9 @@ nothing is asserted that was not observed.
 user is waiting for the payload they asked for; the release check gets five seconds because
 nobody is waiting to be told they are up to date.
 
-**Nothing in the test suite clones to a real `~/.libretto-automata`.** `LIBRETTO_ROOT` is
-the second half of what `CLAUDE_HOME` does for targets, and `resolveRoot` takes its four
-inputs rather than reading them — `runtime.Caller` is fixed at compile time, so inside this
+**Nothing in the test suite writes to a real payload home, and nothing runs a real `go install`.**
+`LIBRETTO_ROOT` is the second half of what `CLAUDE_HOME` does for targets, and `resolveRoot` takes
+its inputs rather than reading them — `runtime.Caller` is fixed at compile time, so inside this
 repository rung 2 always wins and rungs 3 and 4 are otherwise unreachable. Those are exactly
 the rungs that exist only for a binary living somewhere else.
 
@@ -358,18 +414,15 @@ equivalent. It goes when `libretto install` has been verified against a real
   installed from outside a checkout. Its reasoning survives intact: a tool that guesses its
   repo from the working directory installs the wrong thing from the wrong place, which is why
   rung 3 requires the `go.mod` to name this module.
-- **`go install` delivers a bootstrapper, not an embedded payload.** Asked and answered. See
-  `repo-sync` for the reasoning; the consequence here is that a clone always exists behind
-  the links.
-- **`~/.local/share/libretto`, not a dotdir in `$HOME`.** The reverse of where the clone
-  bootstrap put things, and correct for the reverse reason: an extracted release *is* opaque
-  application data, whereas a checkout is something you cd into and edit.
+- **The payload ships inside the Go module.** Not embedded in the binary, not a release asset,
+  not a clone. See `distribution` for all three and why the first two lost.
+- **One `update`, not `update` and `upgrade`.** Asked and answered by the user, with the split's
+  own argument recorded above so it is not re-made.
 - After a rebuild the process states that it is still the old binary, rather than
-  implying the upgrade took effect mid-run — **and only when the binary was really
+  implying the update took effect mid-run — **and only when the binary was really
   replaced.** On the refused path it says the opposite.
-- **A clone you are standing in wins over `~/.libretto-automata`.** That is what keeps
-  editing a skill and seeing it live working, and it is the reason the payload is not
-  compiled in.
+- **A checkout you are standing in wins over the module cache.** That is what keeps editing a
+  skill and seeing it live working, and it is the reason the payload is not compiled in.
 - **The remembered destination is one machine-wide value, and only the panel reads it.**
   Per-directory was the alternative and was declined with its counter-case stated: a
   single value lets the panel open on `project` inside a repository that never asked for
@@ -395,7 +448,9 @@ equivalent. It goes when `libretto install` has been verified against a real
 - [x] the panel opens on the destination it was left on
 - [x] `repoRoot` by `.git`, in four rungs, behind a testable seam
 - [x] ~~bootstrap: announce, clone, refuse a foreign destination, clean up a failure~~
-      removed again in the same session — see `distribution`
+- [x] ~~a release tarball, downloaded, verified and extracted~~
+      both removed in the same session — see `distribution` for what replaced them
+- [x] `update`'s two routes, and the missing-payload stop
 - [x] the version fallback through build info
 - [x] the rebuild over the running executable
 - [x] `doctor`'s release line, and the panel's cached notice
@@ -466,64 +521,60 @@ typing has gaps in it; the harness has to as well.
 - no flag means global
   Proof: cmd/libretto/scope_test.go TestDefaultScopeIsGlobal
 
-Finding the clone:
+Finding the payload:
 
-- **a directory with a `go.mod` and no `.git` is not the clone** — the module cache is
-  exactly that, and accepting it is what would link `~/.claude` into a versioned cache
+- **a directory with a `go.mod` and no `.git` is not rung 2** — the module cache is exactly that,
+  and it is rung 4's answer, so accepting it earlier would make the two indistinguishable
   Proof: cmd/libretto/root_test.go TestPayloadRootRequiresGitDirectory
-- a worktree's `.git` *file* counts as a repository
+- a worktree's `.git` *file* counts as a checkout
   Proof: cmd/libretto/root_test.go TestPayloadRootAcceptsAWorktreeGitFile
 - the override wins over every rung and is not validated
   Proof: cmd/libretto/root_test.go TestPayloadRootPrefersEnvOverride
-- and `repoRoot` really reads it from the environment
+- and `payloadRoot` really reads it from the environment
   Proof: cmd/libretto/root_test.go TestPayloadRootReadsTheOverrideFromTheEnvironment
 - the compile-time path beats the working directory
   Proof: cmd/libretto/root_test.go TestPayloadRootPrefersTheCompileTimePathOverTheWorkingDirectory
 - **the working directory is accepted only when its `go.mod` names this module**
   Proof: cmd/libretto/root_test.go TestPayloadRootAcceptsTheWorkingDirectoryOnlyForThisModule
-- nothing found resolves to the bootstrap path, not to `$PWD`
+- **nothing found resolves to the module cache entry for this binary's own version**, with the
+  version in the path — not to `$PWD`, and not to either abandoned payload home
   Proof: cmd/libretto/root_test.go TestPayloadRootFallsBackToTheActivatedRelease
-
-- **a checkout you are standing in still wins over the activated release**, which is what
-  keeps editing a skill and seeing it live working
+- **a checkout you are standing in still wins**, which is what keeps editing a skill and seeing it
+  live working
   Proof: cmd/libretto/root_test.go TestPayloadRootStillPrefersACheckoutYouAreStandingIn
-- **`version` and `help` write nothing anywhere** — they answer without the payload, so
-  neither may touch the payload root
+
+`update`:
+
+- **it installs, then relinks the version it installed** — not the one the running process
+  reports, which would link the payload it is already on
+  Proof: cmd/libretto/update_release_test.go TestUpdateInstallsThenRelinksTheVersionItInstalled
+  Proof: cmd/libretto/update_release_test.go TestUpdateRelinksTheNewVersionNotTheRunningOne
+- relinking is last, so a version that adds an item does not leave it unlinked
+  Proof: cmd/libretto/update_release_test.go TestUpdateRelinksSoNewItemsAppear
+- **the release route says `git` nowhere**, in success or in any of its failures
+  Proof: cmd/libretto/update_release_test.go TestUpdateFromAReleaseNeverMentionsGit
+- a failure names which step, and changes nothing
+  Proof: cmd/libretto/update_release_test.go TestUpdateReportsWhichStepFailed
+  Proof: cmd/libretto/update_release_test.go TestAFailedUpdateLeavesThePreviousVersionActive
+- already newest is a success that changes nothing
+  Proof: cmd/libretto/update_release_test.go TestUpdateOnTheNewestVersionDoesNothing
+- nothing installed yet updates rather than refusing
+  Proof: cmd/libretto/update_release_test.go TestUpdateFromNothingInstalled
+- **the route follows how this installation arrived**, and the menu row names the mechanism
+  Proof: cmd/libretto/update_release_test.go TestUpdateTakesTheRouteThisInstallationCameBy
+  Proof: cmd/libretto/update_release_test.go TestTheUpdateRowNamesTheMechanism
+
+A missing payload:
+
+- `install` explains itself instead of reporting an empty tree
+  Proof: cmd/libretto/update_release_test.go TestInstallWithNoPayloadPointsAtUpdate
+- **`prune --yes` refuses instead of deleting every link**, which is what a scan with no payload
+  would otherwise licence it to do
+  Proof: cmd/libretto/update_release_test.go TestPruneWithNoPayloadRefusesInsteadOfDeletingEverything
+- `models` still works, because it reads the target and not the payload
+  Proof: cmd/libretto/update_release_test.go TestModelsWorksWithNoPayload
+- **`version` and `help` write nothing anywhere**
   Proof: cmd/libretto/root_test.go TestVersionAndHelpTouchNothing
-
-The version, and the release state:
-
-- a stamped version wins over build info, dirt and commit count included
-  Proof: cmd/libretto/version_test.go TestVersionPrefersLdflagsOverBuildInfo
-- `go install`'s module version fills in when ldflags said nothing
-  Proof: cmd/libretto/version_test.go TestVersionFallsBackToBuildInfo
-- neither source, or `(devel)`, means `dev`
-  Proof: cmd/libretto/version_test.go TestVersionIsDevWhenNothingKnows
-- the panel's notice names both versions and the action
-  Proof: cmd/libretto/version_test.go TestReleaseNoticeNamesBothVersionsAndTheAction
-- **and is silent in every case where a row would be a guess** — up to date, ahead of the
-  remote, unparseable, a dirty build, nothing cached
-  Proof: cmd/libretto/version_test.go TestReleaseNoticeIsSilentWhenThereIsNothingToSay
-- `doctor` reports a newer release
-  Proof: cmd/libretto/doctor_test.go TestDoctorReportsNewerRelease
-- and says so when it is up to date
-  Proof: cmd/libretto/doctor_test.go TestDoctorSaysUpToDate
-- **a failed check is stated, never silent** — printing nothing would read as up to date
-  Proof: cmd/libretto/doctor_test.go TestDoctorSaysSoWhenTheCheckFails
-- a remote with no releases is neither a failure nor an update
-  Proof: cmd/libretto/doctor_test.go TestDoctorHandlesARemoteWithNoReleases
-- **a binary whose version will not parse is given the facts and not ranked**
-  Proof: cmd/libretto/doctor_test.go TestDoctorDoesNotRankAnUnidentifiableBinary
-
-The rebuild:
-
-- **it replaces the executable it was given, and leaves the clone's `bin/` alone**
-  Proof: cmd/libretto/update_test.go TestRebuildReplacesRunningExecutable
-- a symlinked executable is written through, and stays a symlink
-  Proof: cmd/libretto/update_test.go TestRebuildResolvesSymlinkedExecutable
-- **an unwritable destination is reported with both paths and does not fail the update** —
-  what could not be written, and where the new binary is, which is stat'd
-  Proof: cmd/libretto/update_test.go TestRebuildReportsUnwritableDestinationWithoutFailing
 
 `models`:
 

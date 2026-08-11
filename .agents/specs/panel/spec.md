@@ -341,6 +341,11 @@ default nobody chose.
   painting hangs on bad DNS; a diagnostic the user typed can afford five seconds.
 - **`UpdateNotice`, not `Update`.** A field named `Update` beside a Bubbletea `Update`
   method has to be disambiguated by type on every read.
+- **One `update` row, whose description names the mechanism this machine will use** — `pull this
+  checkout · rebuild · relink`, or `install the newest version · relink`. A draft had two rows and
+  disabled whichever did not apply; that was right for a design with two commands, and the row
+  went when the command did. It no longer says `git pull`, which is the string that started the
+  change.
 
 ## Task breakdown
 

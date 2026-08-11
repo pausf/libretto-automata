@@ -1,6 +1,4 @@
-# Distribution — new capability
-
-Targets: distribution *(new)*
+# Distribution
 
 Governs: internal/dist/**
 
