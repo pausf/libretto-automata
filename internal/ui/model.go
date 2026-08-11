@@ -35,7 +35,20 @@ type Model struct {
 	modelChoices []ModelChoice
 	listAgents   ListAgents
 	applyModel   ApplyModel
+
+	// releaseCheck asks whether a newer release exists. Nil is the ordinary case.
+	releaseCheck ReleaseCheck
 }
+
+// ReleaseCheck returns the notice to show, or "" for nothing to say.
+//
+// It returns the finished row rather than a version, so the comparison stays in
+// internal/repo — one implementation of "is this newer", not two that can disagree. Which
+// also keeps this package free of any knowledge of what a version is.
+type ReleaseCheck func() string
+
+// releaseMsg carries the check's answer back into Update.
+type releaseMsg string
 
 // Runner performs a menu action and returns its report, one line per row.
 //
@@ -132,7 +145,25 @@ func (m Model) carryOut() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) Init() tea.Cmd { return nil }
+// WithReleaseCheck lets the panel say a newer release exists. Without it the panel is
+// silent on the subject, which is what `preview` and every test that does not care want.
+func (m Model) WithReleaseCheck(c ReleaseCheck) Model {
+	m.releaseCheck = c
+	return m
+}
+
+// Init runs the release check, if there is one, as a command.
+//
+// A command and not a call: the panel paints complete without the answer and re-renders
+// when it arrives. Asking inline would put a subprocess and a network round trip in front
+// of the first frame, and on bad DNS the user's only recourse is ⌃C on a tool that looks
+// broken.
+func (m Model) Init() tea.Cmd {
+	if m.releaseCheck == nil {
+		return nil
+	}
+	return func() tea.Msg { return releaseMsg(m.releaseCheck()) }
+}
 
 // Update handles navigation and selection. Kept free of I/O so state transitions
 // can be tested by calling it directly.
@@ -140,6 +171,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.panel.Width, m.panel.Height = msg.Width, msg.Height
+		return m, nil
+
+	case releaseMsg:
+		// Empty means up to date, or the check could not answer. Both are silence, and
+		// neither is worth a row.
+		m.panel.UpdateNotice = string(msg)
 		return m, nil
 
 	case tea.KeyMsg:

@@ -3,6 +3,8 @@ package ui
 import (
 	"strings"
 	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 const sampleNotice = "v0.2.0 → v0.3.0 available · choose update"
@@ -63,6 +65,88 @@ func TestNarrowLayoutKeepsUpdateNotice(t *testing.T) {
 	out := strip(darkTheme().Render(p))
 	if !strings.Contains(out, sampleNotice) {
 		t.Errorf("the narrow layout dropped the notice:\n%s", out)
+	}
+}
+
+// The check runs as a command, so the panel paints complete without it and re-renders when
+// it lands. A panel that waits on the network before its first frame hangs on bad DNS, and
+// the user's only recourse is ⌃C on a tool that looks broken.
+func TestInitReturnsReleaseCheckCommand(t *testing.T) {
+	m := NewModel("v0.2.0", nil, nil, false).
+		WithReleaseCheck(func() string { return sampleNotice })
+
+	cmd := m.Init()
+	if cmd == nil {
+		t.Fatal("Init returned no command with a check configured")
+	}
+
+	msg, ok := cmd().(releaseMsg)
+	if !ok {
+		t.Fatalf("the command produced %T, want releaseMsg", cmd())
+	}
+	if string(msg) != sampleNotice {
+		t.Errorf("releaseMsg = %q, want %q", string(msg), sampleNotice)
+	}
+}
+
+// No check configured is the ordinary case for `preview` and for every test that does not
+// care. It must produce no command and no notice — not an empty row, and not a nil-call
+// panic.
+func TestNoReleaseCheckMeansNoCommandAndNoNotice(t *testing.T) {
+	m := NewModel("v0.2.0", nil, nil, false)
+
+	if cmd := m.Init(); cmd != nil {
+		t.Error("Init returned a command with no check configured")
+	}
+	if m.panel.UpdateNotice != "" {
+		t.Errorf("UpdateNotice = %q with no check", m.panel.UpdateNotice)
+	}
+}
+
+func TestUpdateNoticeSetFromMessage(t *testing.T) {
+	m := NewModel("v0.2.0", nil, nil, false)
+
+	next, _ := m.Update(releaseMsg(sampleNotice))
+	if got := next.(Model).panel.UpdateNotice; got != sampleNotice {
+		t.Errorf("UpdateNotice = %q, want %q", got, sampleNotice)
+	}
+
+	// An empty answer — up to date, or the check failed — sets nothing.
+	blank, _ := NewModel("v0.2.0", nil, nil, false).Update(releaseMsg(""))
+	if got := blank.(Model).panel.UpdateNotice; got != "" {
+		t.Errorf("an empty releaseMsg set %q", got)
+	}
+}
+
+// The model-level half of the two-fields decision: running an action writes feedback and
+// leaves the news alone. Panel.Notice is overwritten by every action, and that overwrite
+// once ate the selector's key legend.
+func TestActionFeedbackDoesNotOverwriteUpdateNotice(t *testing.T) {
+	m := NewModel("v0.2.0", []MenuItem{{Label: "status", Enabled: true}}, nil, false).
+		WithRunner(func(string, int, bool) ([]string, error) { return []string{"12 linked"}, nil })
+
+	withNews, _ := m.Update(releaseMsg(sampleNotice))
+	afterAction, _ := withNews.(Model).Update(tea.KeyMsg{Type: tea.KeyEnter})
+
+	final := afterAction.(Model)
+	if final.panel.UpdateNotice != sampleNotice {
+		t.Errorf("the action cleared the update notice: %q", final.panel.UpdateNotice)
+	}
+	if final.notice == "" {
+		t.Error("the action produced no feedback of its own")
+	}
+}
+
+// Moving the cursor clears action feedback — that is existing behaviour — and must not
+// take the news with it.
+func TestNavigationDoesNotClearUpdateNotice(t *testing.T) {
+	m := NewModel("v0.2.0", []MenuItem{{Label: "a"}, {Label: "b"}}, nil, false)
+
+	withNews, _ := m.Update(releaseMsg(sampleNotice))
+	moved, _ := withNews.(Model).Update(tea.KeyMsg{Type: tea.KeyDown})
+
+	if got := moved.(Model).panel.UpdateNotice; got != sampleNotice {
+		t.Errorf("moving the cursor cleared the notice: %q", got)
 	}
 }
 
