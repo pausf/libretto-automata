@@ -145,31 +145,59 @@ the capability spec and deleting the change folder, in the same commit as the fi
 Semver, from git tags. **The binary never carries a hardcoded version.**
 
 ```bash
-git tag -a v0.2.0 -m "..."     # the tag is the release
-make release                   # gates, then the payload tarball + checksum onto the release
 make build                     # -ldflags stamps `git describe --tags --always --dirty`
-./bin/libretto version         # v0.2.0  ·  v0.2.0-3-gabc123  ·  v0.2.0-dirty
+./bin/libretto version         # v0.5.0  ·  v0.5.0-3-gabc123  ·  v0.5.0-dirty
 ```
+
+**There is nothing to edit to change the reported version.** It is `git describe` at build
+time, and `debug.ReadBuildInfo()` for a binary from `go install`. `v0.5.0-3-gabc123` is not a
+bug to fix — it is a correct report of three commits past a tag. Tag, rebuild, and it says
+`v0.5.0`. A constant in a source file desynchronises the moment somebody forgets it, and it
+does it silently.
+
+A plain `go build` with no ldflags reports `dev`. That is deliberate: a binary that
+cannot prove its version says so rather than claiming one.
 
 `make release` is run by hand, by a human. Nothing publishes on a tag push — a workflow that
 released automatically would turn the decision to ship into a file nobody re-reads. **Until a
 tag exists with its payload attached, `go install ...@latest` installs the last release and
 not `main`.**
 
-A plain `go build` with no ldflags reports `dev`. That is deliberate: a binary that
-cannot prove its version says so rather than claiming one.
+### Every merge to `main` gets a tag. No merge leaves `main` untagged.
 
-| Bump | When |
-|---|---|
-| patch | a fix with no contract change |
-| minor | a new capability, or a new promise in an existing spec |
-| major | a promise removed or reversed |
+**This is the rule, and it is not optional.** The bump comes from what the change was, read
+off the commits it lands:
 
-**A tag is a release, not a commit marker.** Tag when the work goes out, not on the way
-there. Four tags for one unpushed feature and three fixes to it is four releases nobody
-could install — the fixes were to code that had never existed for anyone, so they need
-no patch numbers of their own. Move the tag to the tip and let it describe what actually
-shipped.
+| The merge contains | Bump | Example |
+|---|---|---|
+| only `fix:` / `refactor:` / `docs:` / `chore:` with no contract change | patch | `v0.5.0` → `v0.5.1` |
+| a `feat:`, a new capability, or a new promise in an existing spec | minor | `v0.5.0` → `v0.6.0` |
+| a promise removed or reversed | major | `v0.5.0` → `v1.0.0` |
+
+Mixed merge takes the highest: one `feat:` among nine `fix:` is a minor.
+
+```bash
+git switch main && git pull            # the merge is in
+git tag -a v0.5.0 -m "what shipped"
+make release                           # gates, tarball, checksum, onto the release
+git push origin v0.5.0
+```
+
+**Branch pushes do not tag.** Push a feature branch as often as you like; push it again after
+review; none of that is a release. Only the merge is.
+
+That boundary is the whole rule, and it is where the old version of this section went wrong in
+the other direction. It said "tag when the work goes out" and left *when* to judgment — so
+work went out untagged and `main` sat ahead of its last release. And the failure it was written
+to prevent is real too: four tags for one unpushed feature is four releases nobody could
+install, because the fixes were to code that had never existed for anyone. **Tagging every
+branch push reproduces exactly that.** One tag per merge is the line that avoids both.
+
+**A tag is still a release, not a commit marker.** The difference now is that a merge *is* the
+work going out, so there is nothing left to judge.
+
+Retagging to move a tag onto a tip is gone as a practice — with one tag per merge there is
+never a stale tag to move.
 
 Retagging is only safe while the tag is unpublished. Once it is on the remote it is
 somebody's reference point and it stays where it is.
@@ -202,6 +230,9 @@ spec ships in the same commit as the code that taught it.
 - write the test in the same commit as the logic it proves
 - name a `Proof:` in the spec for a new criterion, then make it exist
 - point `CLAUDE_HOME` at a temporary directory in anything that touches a target
+- **tag `main` after every merge, and run `make release`.** The bump comes from what the
+  merge contained — see *Versioning*. A merge that leaves `main` ahead of its last tag is a
+  release nobody can install and a `libretto version` that names a tag the code is past.
 - state what was deliberately left out, and what would bring it back
 - write `ponytail:` comments in English, whatever language the session is in. The comment
   lives in the source next to English identifiers, and `ponytail-debt` harvests it into a
@@ -216,6 +247,9 @@ spec ships in the same commit as the code that taught it.
   a real `~/.claude` with a throwaway item, and that has not happened.
 - a git worktree in a project whose build needs unversioned files
 - any push
+- **which bump a merge deserves, when it is arguable.** Patch versus minor turns on whether a
+  promise moved, and that is a reading of the specs rather than of the commit types. Say which
+  one and why; do not pick the smaller one to avoid the question.
 
 ### Never
 
