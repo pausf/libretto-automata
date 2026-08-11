@@ -219,19 +219,10 @@ func TestUpdateTakesTheRouteThisInstallationCameBy(t *testing.T) {
 	}
 }
 
-// The menu row names the mechanism this machine will use, so the one row is honest about what
-// pressing it does — without becoming two rows.
-func TestTheUpdateRowNamesTheMechanism(t *testing.T) {
-	if got := updateDesc(true); !strings.Contains(got, "pull") {
-		t.Errorf("in a checkout the row says %q, want it to mention the pull", got)
-	}
-	if got := updateDesc(false); !strings.Contains(got, "newest version") {
-		t.Errorf("installed, the row says %q, want it to name what it installs", got)
-	}
-	if strings.Contains(updateDesc(false), "git") {
-		t.Errorf("the installed row mentions git: %q", updateDesc(false))
-	}
-}
+// **Gone with the copy: the row no longer names a mechanism.** A test pinned that it said
+// `pull` in a checkout and `release` otherwise; the row is a label now and says neither. What
+// the command actually did is in its output, which TestUpdateFromAReleaseNeverMentionsGit still
+// holds to the same standard.
 
 // `install` with no payload on disk explains itself instead of reporting an empty tree. A
 // fresh `go install` has a binary and nothing else, and "nothing to link" would read as

@@ -131,12 +131,3 @@ func needsPayload(args []string) bool {
 		return true
 	}
 }
-
-// updateDesc is the menu row's description, which names the mechanism this machine will
-// actually use. One row either way — the command is one command.
-func updateDesc(checkout bool) string {
-	if checkout {
-		return "pull this checkout · rebuild · relink"
-	}
-	return "install the newest version · relink"
-}
