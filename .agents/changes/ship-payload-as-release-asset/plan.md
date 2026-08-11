@@ -64,16 +64,28 @@ other task is cheaper to reason about once the extractor is known to be honest.
 **Refusals first, then the extractor.** An extractor written first and guarded afterwards is
 guarded against the cases its author happened to remember.
 
-- [ ] failing tests, each building its own tarball in-process: an entry resolving outside
+- [x] failing tests, each building its own tarball in-process: an entry resolving outside
       `dest` (`../../x`, `a/../../b`), an absolute path (`/etc/passwd`), a symlink entry, a
       non-regular entry (hard link, FIFO, device), one refused entry aborting the whole
       extraction, the total-size ceiling, and modes normalised with the executable bit
       dropped
-- [ ] run them, watch them fail
-- [ ] implement: whitelist `tar.TypeReg` and `tar.TypeDir`; containment by
+- [x] run them, watch them fail — `undefined: extract`
+- [x] implement: whitelist `tar.TypeReg` and `tar.TypeDir`; containment by
       `filepath.Clean` + a separator-aware prefix check against the cleaned `dest`; a
       running byte total; `0644` / `0755` regardless of the header
-- [ ] `make gates`, commit
+- [x] `make gates`, commit — exit 0 *(D3 closed)*
+
+**The containment test was proven to have teeth, not assumed to.** Made the check the naive
+`strings.HasPrefix(path, root)` and watched `TestExtractRefusesASiblingSharingThePrefix`
+fail on `/tmp/destevil` being accepted as inside `/tmp/dest`, then restored it. Worth the two
+minutes: a security test that passes for an unrelated reason is the failure the review seam
+caught last time, one level deeper.
+
+Three tests beyond the plan: the happy path (a file whose parent has no directory entry still
+lands), a sibling sharing the destination's prefix, and input that is not a gzipped tarball at
+all — which is what a truncated download and an HTML error page both look like, and neither
+may read as an empty success. `io.CopyN` rather than `io.Copy`, so a reader yielding more than
+the header declared cannot write past the ceiling just checked.
 
 **Closes:** `TestExtractRefusesAPathEscapingTheDestination` ·
 `TestExtractRefusesAnAbsolutePath` · `TestExtractRefusesASymlinkEntry` ·
@@ -97,13 +109,23 @@ test.
 `Base` takes the home directory rather than reading it, so no test can reach a real
 `~/.local/share`.
 
-- [ ] failing tests: `current` resolves to the activated version; activating twice moves it;
+- [x] failing tests: `current` resolves to the activated version; activating twice moves it;
       **`current` is never absent mid-swap** — asserted by activating over an existing
       `current` and checking it resolves throughout; only the previous version survives a
       prune; rolling back to the previous version is an `Activate` with no download
-- [ ] run them, watch them fail
-- [ ] implement: `os.Symlink` to a temporary name then `os.Rename` over `current`
-- [ ] `make gates`, commit
+- [x] run them, watch them fail — `undefined: Activate`
+- [x] implement: `os.Symlink` to a temporary name then `os.Rename` over `current`
+- [x] `make gates`, commit — exit 0 *(D1 closed)*
+
+Four beyond the plan, each closing a way to lose a payload: `Activate` refuses a version that
+is not on disk (pointing `current` at nothing is the vanishing made permanent), `Prune` never
+removes the **active** version whatever its keep-list says, `Versions` sorts numerically and
+ignores `current` and stray files, and `Base` is under `~/.local/share`.
+
+**`repo.IsRelease` was exported rather than a second semver parser written here** — the spec
+required one implementation. The coupling (a package about downloads importing one about git,
+compile-time only) is marked `ponytail:` with its upgrade path: if it ever costs anything the
+semver functions move to their own package.
 
 **Closes:** `TestCurrentPointsAtTheActivatedVersion` ·
 `TestActivateIsAtomicAndNeverLeavesCurrentMissing` · `TestOnlyThePreviousVersionIsKept` ·
@@ -122,16 +144,25 @@ with a window where `~/.claude` points at nothing.
 **Blocked by:** nothing
 **Produces:** `Latest(ctx, client *http.Client, base string) (string, error)`
 
-- [ ] failing tests, served by `httptest`: a `302` with
+- [x] failing tests, served by `httptest`: a `302` with
       `Location: /releases/tag/v0.4.0` yields `v0.4.0`; the redirect is **not** followed —
       asserted by a handler that fails the test if the tag page is requested; a `Location`
       that is not a plain `vX.Y.Z` is refused; a `200` or a `404` is "could not tell"; a
       cancelled context stops it
-- [ ] run them, watch them fail
-- [ ] implement with a client whose `CheckRedirect` returns `http.ErrUseLastResponse`, and
-      `repo.parseSemver`'s rules for what a release is — **exported if need be, never
-      reimplemented**
-- [ ] `make gates`, commit
+- [x] run them, watch them fail — `undefined: Latest`
+- [x] implement with a client whose `CheckRedirect` returns `http.ErrUseLastResponse`, and
+      `repo.IsRelease` for what a release is — exported, never reimplemented
+- [x] `make gates`, commit — exit 0 *(D2 closed)*
+
+**Also proven to have teeth.** Removed the `CheckRedirect` override and watched *two* tests
+fail with `the redirect was followed`. Without that assertion living in the handler, the
+no-follow promise is untestable.
+
+Three beyond the plan: an absolute `Location` (which is what GitHub actually sends — depending
+on the bare-path form is depending on a detail nobody promised), a `302` with no `Location` at
+all, and `Latest` handed a **default** client, because it must not depend on the caller having
+configured redirects correctly. The client is shallow-copied so the override cannot mutate one
+the caller shares.
 
 **Closes:** `TestLatestReadsTheTagFromTheRedirectLocation` ·
 `TestLatestDoesNotFollowTheRedirect` · `TestLatestRejectsANonSemverLocation` ·
