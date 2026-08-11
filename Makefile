@@ -24,7 +24,13 @@ LDFLAGS := -X main.version=$(VERSION)
 PREFIX ?= $(HOME)/.local/bin
 NAMES  ?= libretto libretto-automata
 
-.PHONY: build test test-short gates fmt vet preview clean link unlink
+.PHONY: build test test-short gates fmt vet preview clean link unlink release
+
+# What `libretto upgrade` downloads. The names are asserted against internal/dist by
+# TestReleaseAssetNamesMatchWhatDistributionFetches — the producer is make and the consumer
+# is Go, so nothing but a test holds them together and a typo in either is a release that
+# installs on nobody's machine.
+PAYLOAD_DIRS := skills agents commands
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o $(BIN) $(PKG)
@@ -97,3 +103,46 @@ unlink:
 
 clean:
 	rm -rf bin
+
+# Publish the payload for the tag HEAD is on.
+#
+# A human act, deliberately. AGENTS.md says a tag is a release and not a commit marker, and
+# .agents/specs/ci/spec.md says CI publishes nothing — a workflow releasing on tag push
+# would make both sentences false, and it would do it by turning a judgment into an
+# automation nobody re-reads.
+#
+# Run it after the tag exists:
+#
+#   git tag -a v0.4.0 -m "..."
+#   make release
+release:
+	@command -v gh >/dev/null 2>&1 || { \
+		echo "gh is not installed:  brew install gh  # then: gh auth login"; exit 1; }
+	@gh auth status >/dev/null 2>&1 || { \
+		echo "gh is not authenticated — run it yourself:  gh auth login"; exit 1; }
+	@# A release built from a dirty tree ships files that are in no commit, and nobody can
+	@# ever reconstruct what went out.
+	@test -z "$$(git status --porcelain)" || { \
+		echo "the working tree is dirty — commit or stash before releasing"; \
+		git status --short; exit 1; }
+	@# --exact-match fails unless HEAD is a tag, which is what makes "the tag is the
+	@# release" true rather than aspirational.
+	@TAG="$$(git describe --exact-match --tags 2>/dev/null)" || { \
+		echo "HEAD is not at a tag — tag the release first:  git tag -a vX.Y.Z -m '...'"; exit 1; }
+	@$(MAKE) --no-print-directory gates
+	@TAG="$$(git describe --exact-match --tags)"; \
+	TARBALL="payload-$$TAG.tar.gz"; \
+	rm -f "$$TARBALL" "$$TARBALL.sha256"; \
+	tar czf "$$TARBALL" $(PAYLOAD_DIRS); \
+	shasum -a 256 "$$TARBALL" > "$$TARBALL.sha256"; \
+	echo "built     $$TARBALL"; \
+	cat "$$TARBALL.sha256"; \
+	if gh release view "$$TAG" >/dev/null 2>&1; then \
+		gh release upload "$$TAG" "$$TARBALL" "$$TARBALL.sha256" --clobber; \
+		echo "replaced  the assets on $$TAG"; \
+	else \
+		gh release create "$$TAG" "$$TARBALL" "$$TARBALL.sha256" \
+			--title "$$TAG" --notes "$$(git tag -l --format='%(contents)' "$$TAG")"; \
+		echo "created   $$TAG"; \
+	fi; \
+	rm -f "$$TARBALL" "$$TARBALL.sha256"
