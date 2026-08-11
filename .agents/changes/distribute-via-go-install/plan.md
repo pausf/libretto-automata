@@ -207,13 +207,27 @@ from `os.Executable()` inside, so the test does not have to be the binary under 
 **The hole the bootstrapper opens.** Without this, `update` reports success and every
 later invocation stays on the old version.
 
-- [ ] failing tests: writes to the given executable path, not `bin/libretto`; a symlinked
+- [x] failing tests: writes to the given executable path, not `bin/libretto`; a symlinked
       path is resolved and the link survives as a link; an unwritable destination is
       reported and `update` still succeeds
-- [ ] run them, watch them fail
-- [ ] implement — `filepath.EvalSymlinks`, temp file, atomic rename, the unwritable branch
+- [x] run them, watch them fail — `too many arguments in call to rebuild`
+- [x] implement — `filepath.EvalSymlinks`, temp file, atomic rename, the unwritable branch
       reporting where the new binary is
-- [ ] `make gates`, commit
+- [x] `make gates`, commit — exit 0 *(T6 closed)*
+
+**The unwritable branch failed on the first attempt, and the fix is a real finding.** A
+locked destination surfaces as a `go build` error *string*, not a wrapped
+`os.ErrPermission` — the temp file is created by the compiler, inside the directory that
+refused it. So `rebuildOrReport` could not tell "you cannot write there" from "the code is
+broken", and only after paying three seconds for the compile. The write is probed with
+`os.OpenFile` first, which also means the failure is instant.
+
+The temp file stays beside the destination rather than in `TMPDIR`: rename across
+filesystems fails, and `$GOBIN` and `/tmp` are routinely on different ones.
+
+One test assertion was wrong too — "nothing was written to the clone's `bin/`" cannot be
+an existence check, because a development checkout has usually run `make build`. Compared
+by modification time instead.
 
 **Closes:** `TestRebuildReplacesRunningExecutable` · `TestRebuildResolvesSymlinkedExecutable`
 · `TestRebuildReportsUnwritableDestinationWithoutFailing`
@@ -229,11 +243,24 @@ later invocation stays on the old version.
 **Consumes:** `parseSemver`, `newer`
 **Produces:** `LatestTag(ctx) (string, error)` on `Git`
 
-- [ ] failing tests: picks the highest plain semver from `git ls-remote --tags` output;
+- [x] failing tests: picks the highest plain semver from `git ls-remote --tags` output;
       an expired deadline returns no answer and no user-facing error
-- [ ] run them, watch them fail
-- [ ] implement, add to the interface, extend the fake
-- [ ] `make gates`, commit
+- [x] run them, watch them fail — `undefined: checkedLatest`
+- [x] implement, add to the interface, ~~extend the fake~~
+- [x] `make gates`, commit — exit 0 *(T7 closed, together with T8)*
+
+**There is no fake.** The plan said to extend one; `Git`'s only implementation is `Shell`,
+and `git_test.go` says why in a comment — replacing it in tests would prove the fake works.
+`LatestTag` is tested against a real local repository used as a remote, which needs no
+network. Nothing to extend, so nothing was.
+
+**A comment claimed something the test did not prove.** `highestTag` strips the peeled
+`^{}` ref, and the first test used lightweight tags — which never emit one. Verified
+against real git that annotated tags emit two lines per tag, then switched the fixture to
+`git tag -a`, which is what `AGENTS.md` says releases are anyway.
+
+T8's tests share the file, so the two landed in one commit rather than committing a file
+whose tests do not build.
 
 **Closes:** `TestLatestTagPicksHighestPlainSemver` ·
 `TestLatestTagIgnoresPrereleaseAndNonSemverTags` · `TestLatestTagHonoursDeadline`
@@ -248,11 +275,16 @@ later invocation stays on the old version.
 **Produces:** `CheckedLatest(ctx, root string, ttl time.Duration) (string, error)` —
 cache-aware, and the only entry point the CLI calls
 
-- [ ] failing tests: no second call inside the TTL; a failure is cached too, so an offline
+- [x] failing tests: no second call inside the TTL; a failure is cached too, so an offline
       machine does not retry every launch
-- [ ] run them, watch them fail
-- [ ] implement over `.git/libretto-update-check`
-- [ ] `make gates`, commit
+- [x] run them, watch them fail
+- [x] implement over `.git/libretto-update-check`
+- [x] `make gates`, commit — exit 0, same commit as T7 *(T8 closed)*
+
+`CheckedLatest(ctx, root, ttl)` is the exported entry point; `checkedLatest` takes the clock
+and the asker so neither the wall clock nor the network is in the test. Two cases went in
+beyond the plan: the TTL expiring asks again, and **no `.git` means ask without caching**
+rather than fail — that is the bootstrap case, where there is nowhere to write yet.
 
 **Closes:** `TestCheckCacheSuppressesCallsInsideTTL` ·
 `TestCheckCacheRecordsFailureSoOfflineDoesNotRetry`

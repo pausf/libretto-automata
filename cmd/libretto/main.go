@@ -863,6 +863,12 @@ func doctor(root string, tg target.Target) error {
 		}
 	}
 
+	// Live, not cached: the user typed a diagnostic and can afford the wait. It never
+	// sets the exit code — being a release behind is news, and an unreachable remote is
+	// not this tool's fault.
+	fmt.Println("\nrelease")
+	fmt.Println("  " + releaseLine(version, repo.Shell{Root: root}.LatestTag))
+
 	fmt.Println("\nprerequisites")
 	for _, p := range prerequisites() {
 		mark := "—"

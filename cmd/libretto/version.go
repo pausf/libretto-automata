@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/pausf/libretto-automata/internal/repo"
@@ -32,6 +33,48 @@ func releaseNotice(root, running string) string {
 		return ""
 	}
 	return fmt.Sprintf("%s → %s available · choose update", running, latest)
+}
+
+// releaseLine is `doctor`'s version: one line, always something, never silence.
+//
+// The panel stays quiet when there is nothing to say; a diagnostic does not get to. The
+// user typed a command that went looking, so "I could not find out" is one of its
+// legitimate answers — and printing nothing would read as "you are up to date", which is a
+// claim nobody verified.
+//
+// ask is a parameter so this has a test that does not reach a remote. `doctor` passes
+// Shell.LatestTag directly rather than the cached path: it checks live, because the user is
+// waiting for a diagnosis, and going through the cache would both write a file and swallow
+// the very error this line exists to report.
+func releaseLine(running string, ask func(context.Context) (string, error)) string {
+	ctx, cancel := context.WithTimeout(context.Background(), checkTimeout)
+	defer cancel()
+
+	latest, err := ask(ctx)
+	switch {
+	case err != nil:
+		return "could not check for a newer release — " + firstLine(err.Error())
+	case latest == "":
+		return "the remote has no releases to offer"
+	case repo.IsNewer(latest, running):
+		return fmt.Sprintf("%s → %s available · run `%s update`", running, latest, invokedAs())
+	case running == latest:
+		return "up to date at " + running
+	default:
+		// Either ahead of the remote, or a version that will not parse. Both get the
+		// facts and no ranking: telling somebody running `dev` that they are out of date
+		// is a guess presented as a fact.
+		return fmt.Sprintf("running %s · the latest release is %s", running, latest)
+	}
+}
+
+// firstLine keeps a git error to one line. Its multi-line advice is for somebody at a
+// prompt, and doctor's report is a table.
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return s[:i]
+	}
+	return s
 }
 
 // resolveVersion decides what the binary reports: the ldflags stamp, then the module

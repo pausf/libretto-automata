@@ -62,11 +62,12 @@ outside the clone.
 - **`doctor` checks live.** The user typed a diagnostic command, so it pays for the
   network call — with the deadline, and offline is a stated "could not check", never an
   error and never silence.
-- **`doctor` stays read-only where it matters.** It refreshes the check cache inside
-  `.git/` and touches nothing else: no link, no target, no payload file. The capability
-  spec's "it never writes" is a promise about the user's config, and writing a timestamp
-  into the tool's own `.git/` is not a breach of it — but the distinction is written down
-  here so the next reader does not have to decide it alone.
+- **`doctor` stays read-only, with no exception to explain.** It asks the remote directly
+  rather than through the cache, so it writes nothing at all — the capability spec's "it
+  never writes" holds literally. Going through the cache would have meant writing a
+  timestamp into `.git/`, and defending that in prose is more expensive than not doing it.
+  It also could not distinguish "up to date" from "could not check", because the cache
+  swallows the error by design.
 - **The panel uses the cache.** See the `panel` delta.
 - **The notice points at `update`, which already does the work.** No new subcommand. The
   machinery to move to a newer tag has existed since R3.
