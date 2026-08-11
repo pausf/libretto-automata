@@ -110,8 +110,9 @@ clean:
 # So this target exists for humans: a Release page with notes, so somebody can read what changed
 # without reading the log. Skipping it costs nothing mechanical.
 #
-# A human act, deliberately. AGENTS.md says a tag is a release and not a commit marker, and
-# .agents/specs/ci/spec.md says CI publishes nothing.
+# **This is the fallback, not the route.** .github/workflows/release.yml tags and publishes on
+# merge, from a `release:` label on the request. This target is what you run for a tag made
+# outside that path — a merge that went out unlabelled, or a tag created by hand.
 #
 #   git tag -a v0.5.0 -m "..."
 #   git push origin v0.5.0

@@ -52,13 +52,31 @@ opened part-way through a change fails this gate until the change is consolidate
 That is the gate working. A specification citing tests that do not exist is exactly
 what should not merge.
 
-### Releasing is a `make` target, not a workflow
+### Releasing happens on merge, and `make release` stays as the fallback
 
-```bash
-git tag -a v0.5.0 -m "..."
-git push origin v0.5.0
-make release
+**This section used to say the opposite**, and the reversal is deliberate rather than
+forgotten. It read *"releasing is a `make` target, not a workflow"*, and it named its own
+ceiling: *the day releases are frequent enough that doing it by hand gets skipped, a workflow
+is the answer.* That day arrived and was measurable — `main` sat three commits past `v0.5.0`
+untagged, and the panel reported `v0.5.0-3-g376fc46` to a user who read it as a bug. The
+procedure was correct and nobody ran it, which is the failure mode a manual step has.
+
+What stopped being true is *"the tag is a human act"*. What is still true, and is the reason
+this is not simply automation, is that **the bump is a human judgment** — so the human still
+makes the decision, on the request, as a label, and the workflow only executes it.
+
 ```
+merge a request carrying release:patch|minor|major
+  └─ .github/workflows/release.yml
+       gates → derive the bump → tag main → push the tag → create the Release
+```
+
+`make release` is kept, unchanged, as the hand-run path for a tag created outside the flow.
+It is no longer the documented route.
+
+**A workflow that decided the bump itself would make both halves false**, and that is the line
+this design does not cross: with no label the run refuses, names the three labels, and points
+at `AGENTS.md#Versioning`. It never picks one.
 
 - **The payload is not an asset, because it does not need to be.** It ships inside the Go module,
   so `go install <module>/cmd/libretto@latest` brings it down with the binary and checks it
@@ -66,10 +84,20 @@ make release
   installing works against a repository with no Releases at all.
 - **So this target is for humans:** a Release page carrying the tag's own notes, so somebody can
   read what changed without reading the log. Skipping it costs nothing mechanical.
-- **It runs on the author's machine, not in CI.** `AGENTS.md` says a tag is a human act and this
-  spec says CI publishes nothing. A workflow releasing on tag push would make both false, and it
-  would do it by turning a judgment into an automation nobody re-reads.
-- **The push comes before the target, and the order is load-bearing.** `gh release create`
+- **The job checks out `main`, never the request's own tip.** It is the one job holding
+  `contents: write` and it is fired by a pull-request event, so running the contributor's tree
+  would put the token in reach of whoever opened the request. The merged work is already on
+  `main`, and that is what gets tagged.
+- **A closed request is not a merged one.** Without the `merged == true` guard, closing a request
+  without merging would tag `main` at whatever it happens to be.
+- **Releases are serialised.** Two merges landing together would read the same last tag and the
+  second would try to create one that exists. Never cancel-in-progress: a half-finished release
+  is worse than a queued one.
+- **Untrusted text reaches the scripts through the environment.** A label, a title and a body are
+  text somebody else wrote, and `${{ }}` expanded inside a shell line is that text becoming
+  executable.
+- **The push comes before the target, and the order is load-bearing** — in `make release`, which
+  is still there. `gh release create`
   creates the tag itself when it is not on the remote, at the default branch's HEAD — a second
   tag with your name on it pointing somewhere you did not choose. `--verify-tag` refuses instead.
 - **A tag is not a Release.** A tag is a git ref; a Release is a GitHub object. `git push origin
@@ -81,17 +109,22 @@ make release
 
 ## Scope boundaries
 
-**In:** one workflow file, the six gates, per-package coverage as output, `rg` in the runner, and
-one `release` target with its four preconditions.
+**In:** two workflow files, the six gates, per-package coverage as output, `rg` in the runner,
+the `release` target with its four preconditions, and **one job that tags `main` and publishes
+the Release when a request merges**.
 
 **Out:**
 
 - **A coverage threshold.** See prior decisions — measurement, not a seventh gate.
-- **Building or releasing anything *in CI*.** No artefacts, no `make build` beyond what
-  `go test` compiles, no tags, no publishing from a workflow. The tag is a human act by
-  `AGENTS.md` and stays one — which is why `make release` exists and runs on the author's
-  machine. *Ceiling:* the day releases are frequent enough that doing it by hand gets skipped,
-  a workflow gated on a tag a human already pushed is the answer — never one that creates the tag.
+- **Building artefacts in CI.** No tarballs, no cross-compilation, no `make build` beyond what
+  `go test` compiles. Tagging and publishing are now in; building things to attach is not, for
+  the reason the next bullet gives.
+- **Deriving the bump from the commit log.** `AGENTS.md` makes a new promise in an existing spec
+  a minor and a removed one a major, and both are readings of `.agents/specs/` rather than of
+  `type:` prefixes. A workflow reading commit types picks the floor and is wrong precisely when
+  a contract moves. The bump comes from a label on the request, and its absence stops the run.
+- **Defaulting to patch when the label is missing.** That is the silently-wrong bump wearing a
+  different hat. The run refuses and says which label to add.
 - **release assets.** Nothing is attached: the payload ships inside the Go module and the proxy
   resolves `@latest` from tags. A draft specified a tarball, checksums and four cross-compiled
   binaries; `distribution` records why none is needed.
@@ -101,8 +134,11 @@ one `release` target with its four preconditions.
   serves a stale module is a gate that passed for the wrong reason.
 - **`.gitlab-ci.yml`.** Settled in the proposal: the remote is GitHub.
 - **Turning branch protection on.** A repository setting, not a file. Named as owed.
-- **Anything that writes.** No pushes, no comments, no auto-formatting commits. A
-  workflow with write access is a workflow that can be made to write.
+- **Write access anywhere except the release job.** `gates.yml` stays `contents: read`, and
+  nothing anywhere comments, auto-formats or commits. `release.yml` gets `contents: write`
+  because a tag and a Release cannot be created without it — and it is the reason that job
+  checks out `main` rather than the request's own tip. **A workflow with write access is a
+  workflow that can be made to write, so the one that has it never runs contributor code.**
 
 ## Constraints
 
@@ -112,8 +148,17 @@ one `release` target with its four preconditions.
   `spec-drift` also calls `git`.
 - **`spec-drift` runs from the repository, not from `~/.claude`.** The installed copy
   may be a different version; CI checks the tree it was given.
-- The workflow needs **read-only** permissions. Nothing here writes to the repository.
-- No secrets. Nothing in this workflow authenticates to anything.
+- **`gates.yml` needs read-only permissions and no secrets.** Nothing in it writes to the
+  repository or authenticates to anything.
+- **`release.yml` needs `contents: write` and `GITHUB_TOKEN`, and nothing else.** No secret is
+  added to the repository for it: the token Actions already issues is enough to push a tag and
+  create a Release.
+- **A tag pushed with `GITHUB_TOKEN` does not trigger workflows.** GitHub suppresses it to stop
+  a workflow retriggering itself, so the Release must be created in the same job that pushes the
+  tag. A second workflow listening on `push: tags` would never run, and the only evidence would
+  be a tag with no Release.
+- **`fetch-depth: 0` on the release checkout.** The default is depth 1 with no tags, and
+  `git describe --tags` against that computes the next version from zero.
 - **The workflow's own tests live in `cmd/libretto/gates_test.go`.** A Go test needs a
   package, and a directory holding one test file and no code to justify it is the
   over-engineering this repository argues with elsewhere. `cmd` is already where
@@ -147,6 +192,10 @@ one `release` target with its four preconditions.
    hand-run are the same list rather than two lists that agree today.
 3. `Makefile`: a `release` target — four preconditions, the gates, then `gh release create
    --verify-tag --notes-from-tag`, idempotent against an existing Release.
+4. `.github/workflows/release.yml`: on a merged request into `main` — `main` checked out at
+   full depth, the gates, the bump read off a `release:` label or the run refused, an
+   annotated tag carrying the request's title and body, the tag pushed, and the Release
+   created in the same job.
 
 ## Verification criteria
 
@@ -159,7 +208,7 @@ request that is a claim rather than a fact. What can be checked here is checked 
 - **every gate named in `AGENTS.md` appears in the workflow**, so the two cannot drift
   apart silently
   Proof: cmd/libretto/gates_test.go TestWorkflowRunsEveryGateAgentsNames
-- the workflow asks for read-only permissions
+- the gates workflow asks for read-only permissions
   Proof: cmd/libretto/gates_test.go TestWorkflowIsReadOnly
 - `make gates` runs the same six commands as the workflow
   Proof: cmd/libretto/gates_test.go TestMakeGatesMatchesTheWorkflow
@@ -167,6 +216,36 @@ request that is a claim rather than a fact. What can be checked here is checked 
   Proof: cmd/libretto/gates_test.go TestReleaseTargetRunsTheGatesFirst
 - **it verifies the tag rather than letting `gh` invent one** at the default branch's HEAD
   Proof: cmd/libretto/gates_test.go TestReleaseVerifiesTheTagRatherThanCreatingIt
-- **owed, and not provable here:** one real request with the workflow attached, green;
-  and branch protection turned on so the check is required. Until both, "cannot merge
-  until green" is a sentence in a file rather than a rule anybody is held to.
+The release workflow's own criteria, each one a failure that is silent or dangerous rather
+than loud:
+
+- **it checks out `main` and never the request's own tip** — the job holds `contents: write`
+  Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowChecksOutMainAndNotTheRequestHead
+- **it fetches deep enough to see the tags**, so the next version is not computed from zero
+  Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowFetchesEnoughHistoryToSeeTheTags
+- **it creates the Release in the same run that pushes the tag**, because a `GITHUB_TOKEN` tag
+  push triggers no workflow
+  Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowPublishesInTheSameRunThatPushesTheTag
+- **it refuses when no `release:` label is present** rather than defaulting to patch
+  Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowRefusesWithoutABumpLabel
+- it runs the gates before it tags
+  Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowRunsTheGatesBeforeItTags
+- concurrent merges are serialised and never cancelled
+  Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowSerialisesConcurrentMerges
+- a request that was closed without merging does not tag anything
+  Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowOnlyRunsOnAMergedRequest
+- **no `run:` script expands a label, a title or a body** — untrusted text arrives through `env:`
+  Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowNeverExpandsUntrustedTextInsideAScript
+
+- **owed, and not provable here:** one real request with the gates workflow attached, green;
+  **one real merge that tags and publishes**; and branch protection turned on so the check is
+  required. Until all three, "cannot merge until green" and "every merge is tagged" are
+  sentences in a file rather than rules anybody is held to.
+
+  **Whether the request that introduces this workflow triggers it on its own merge is not
+  known here, and was not assumed either way.** `pull_request` events run the workflow file
+  as it exists in the request rather than in the base, which suggests it does fire — but that
+  was reasoned, not observed, and a spec is the wrong place to record a guess. The consequence
+  either way is the same instruction: **that request carries a `release:` label too.** If the
+  workflow fires, the label is what stops it refusing; if it does not, the tag is created by
+  hand once and every merge after it is automatic.

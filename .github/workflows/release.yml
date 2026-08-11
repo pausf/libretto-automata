@@ -1,0 +1,141 @@
+name: release
+
+# Tag `main` and publish the Release, once, when a pull request merges.
+#
+# This workflow reverses what `.agents/specs/ci/spec.md` used to promise — no tags from a
+# workflow, and nothing with write access. The reasoning for the reversal is in that spec;
+# what is here is the reasoning for the *shape*, because three of these choices fail in
+# ways that do not point at their cause.
+#
+# **The bump is not derived from the log.** AGENTS.md makes "a new promise in an existing
+# spec" a minor and "a promise removed" a major, and both are readings of .agents/specs/
+# rather than of `type:` prefixes. A workflow reading commit types picks the floor and is
+# silently wrong exactly when a contract moves. So a human labels the request and this
+# executes; with no label it refuses rather than assuming patch, because assuming patch IS
+# the silent-wrong-bump failure wearing a different hat.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  # The one job in this repository that writes. It needs `contents: write` to push a tag
+  # and to create a Release, and it gets nothing else.
+  contents: write
+
+concurrency:
+  # Two merges landing close together would read the same "last tag" and the second would
+  # try to create one that already exists. Never cancel-in-progress: a half-finished
+  # release is worse than a queued one.
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to main, never to the request's own tip. This job holds `contents: write`
+      # and is triggered by a pull-request event, so checking out the contributor's tree
+      # would run their code with the token in the environment. The merged work is already
+      # on main; that is what gets tagged.
+      #
+      # The test guarding this rejects the reference by name, which is why the name is not
+      # written here either.
+      #
+      # `fetch-depth: 0` because the default is depth 1 with no tags at all, and
+      # `git describe --tags` on that finds nothing and computes the next version from
+      # zero. The symptom is a v0.0.1 tag on a mature repository.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      # `.agents/specs/ci/spec.md`: a release is the one moment where "the gates were
+      # green earlier" is not good enough. The merge commit is a tree no gate has seen.
+      - name: gates
+        run: make gates
+
+      - name: derive the bump from the request's label
+        id: bump
+        # Through the environment, not interpolated into the script. A label is text a
+        # collaborator wrote, and `${{ }}` inside a shell line makes it executable.
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+        run: |
+          set -euo pipefail
+
+          BUMP=""
+          for label in $LABELS; do
+            case "$label" in
+              release:major|release:minor|release:patch)
+                if [ -n "$BUMP" ]; then
+                  echo "::error::two release labels on one request ($LABELS) — one bump, one label"
+                  exit 1
+                fi
+                BUMP="${label#release:}"
+                ;;
+            esac
+          done
+
+          if [ -z "$BUMP" ]; then
+            echo "::error::no release: label on this request. Add release:patch, release:minor or release:major and re-run. See AGENTS.md#Versioning for which one."
+            exit 1
+          fi
+
+          LAST="$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)"
+          IFS=. read -r MAJOR MINOR PATCH <<<"${LAST#v}"
+
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEXT="v${MAJOR}.${MINOR}.${PATCH}"
+
+          if git rev-parse -q --verify "refs/tags/$NEXT" >/dev/null; then
+            echo "::error::$NEXT already exists. The last tag reachable from main is $LAST; something tagged out of band."
+            exit 1
+          fi
+
+          echo "$LAST -> $NEXT ($BUMP)"
+          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
+
+      - name: tag and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT: ${{ steps.bump.outputs.next }}
+          # The request's own title and body become the tag message, and the tag message
+          # becomes the Release notes. Through the environment for the same reason as the
+          # labels above.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          printf '%s\n\n%s\n\nMerged in #%s.\n' "$PR_TITLE" "$PR_BODY" "$PR_NUMBER" \
+            | git tag -a "$NEXT" -F -
+
+          git push origin "$NEXT"
+
+          # In the same job, deliberately. A tag pushed with GITHUB_TOKEN does NOT trigger
+          # workflows — GitHub suppresses it to stop a workflow retriggering itself — so a
+          # second workflow on `push: tags` would never fire. The symptom is a tag with no
+          # Release and nothing in the Actions log to explain it.
+          #
+          # --verify-tag so this refuses rather than creating its own tag at the default
+          # branch's HEAD if the push above somehow did not land.
+          gh release create "$NEXT" --verify-tag --title "$NEXT" --notes-from-tag

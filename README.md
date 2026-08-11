@@ -10,7 +10,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-payload-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
 [![Jira CLI](https://img.shields.io/badge/Jira%20CLI-tracker-0052CC?logo=jira&logoColor=white)](https://github.com/ankitpokhrel/jira-cli)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-335%20passing-brightgreen.svg)](#gates)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#gates)
 
 <img src="docs/panel.svg" alt="The libretto panel: a menu with install, uninstall, update, status, models, doctor and prune, acting on a chosen destination — here ~/.claude with all 26 items linked" width="800">
 
@@ -285,10 +285,10 @@ All six pass before any commit — `make gates` runs them, and so does
 ```bash
 gofmt -l .                                  # must print nothing
 go vet ./...
-go test ./... -count=1                      # 335 tests
+go test ./... -count=1
 scripts/check-payload                       # frontmatter, references, reachability
-skills/record-work/spec-drift --self-test   # 20 checks
-skills/record-work/spec-drift --anchors     # 269 citations
+skills/record-work/spec-drift --self-test
+skills/record-work/spec-drift --anchors     # every Proof: citation resolves
 ```
 
 ## Built with
