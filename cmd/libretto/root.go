@@ -25,7 +25,7 @@ const moduleLine = "module github.com/pausf/libretto-automata"
 //	1  LIBRETTO_ROOT                        absolute override, unvalidated
 //	2  the compile-time path                when it is a checkout — development
 //	3  the working directory                when it is a checkout of this module
-//	4  ~/.local/share/libretto/current      the activated release
+//	4  $GOMODCACHE/<module>@<version>       the payload `go install` brought down
 //
 // **The payload root and the checkout are two different things**, and this tool conflated
 // them for as long as a clone happened to be both. `go install` breaks the coincidence:
@@ -37,10 +37,16 @@ const moduleLine = "module github.com/pausf/libretto-automata"
 // read-only module cache, which would win, and every link would point into a versioned
 // cache directory that the next install orphans.
 //
-// Rung 4 returns a path that may not exist: nothing has been installed yet. That is not
-// something to fix by cloning — `upgrade` downloads a release — and it still beats the
-// fallback it replaced, which returned the working directory and quietly linked
-// ~/.claude against whatever the user happened to be cd'd into.
+// **Rung 4 is the module cache, and that is the whole distribution story.** The payload ships
+// inside the Go module, so `go install <module>/cmd/libretto@latest` downloads it along with the
+// binary, checks it against the checksum database, and puts it under a path with the version in
+// it. Nothing is extracted, nothing is unpacked, and no release asset is involved.
+//
+// It resolves to *this binary's own* version, from build info — so the payload linked is the one
+// that shipped with the command doing the linking, and the two can never be a version apart.
+//
+// The path can be missing: `go clean -modcache` removes it. `libretto install` re-downloads and
+// repairs, and `doctor` reports it.
 //
 // The rungs are resolved by resolveRoot, which takes its inputs rather than reading
 // them. runtime.Caller is fixed at compile time, so inside this repository rung 2 always
@@ -55,14 +61,10 @@ func payloadRoot() (string, error) {
 	}
 	wd, _ := os.Getwd()
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("cannot locate the clone: %w", err)
-	}
-	return resolveRoot(os.Getenv(EnvRoot), compileTime, wd, home)
+	return resolveRoot(os.Getenv(EnvRoot), compileTime, wd)
 }
 
-func resolveRoot(override, compileTime, wd, home string) (string, error) {
+func resolveRoot(override, compileTime, wd string) (string, error) {
 	if override != "" {
 		return override, nil
 	}
@@ -72,10 +74,10 @@ func resolveRoot(override, compileTime, wd, home string) (string, error) {
 	if wd != "" && isRepo(wd) && isThisModule(wd) {
 		return wd, nil
 	}
-	if home == "" {
-		return "", fmt.Errorf("no payload found and no home directory to look for one in")
+	if cache := dist.ModCache(); cache != "" {
+		return dist.Dir(cache, moduleImportPath(), buildVersion(version)), nil
 	}
-	return dist.Current(dist.Base(home)), nil
+	return "", fmt.Errorf("no payload found and no module cache to look in")
 }
 
 // isRepo reports whether dir is the top of a git checkout.
@@ -136,5 +138,5 @@ func updateDesc(checkout bool) string {
 	if checkout {
 		return "pull this checkout · rebuild · relink"
 	}
-	return "fetch the newest release · relink"
+	return "install the newest version · relink"
 }

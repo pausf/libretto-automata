@@ -51,7 +51,7 @@ func TestPayloadRootPrefersEnvOverride(t *testing.T) {
 	repo := gitDir(t)
 	want := filepath.Join(t.TempDir(), "does-not-exist-yet")
 
-	got, err := resolveRoot(want, repo, repo, t.TempDir())
+	got, err := resolveRoot(want, repo, repo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,22 +76,31 @@ func TestPayloadRootReadsTheOverrideFromTheEnvironment(t *testing.T) {
 	}
 }
 
-// With no override and no checkout anywhere, the answer is the activated release — not the
-// working directory, which is what the old fallback returned and would have linked
-// ~/.claude against whatever the user happened to be cd'd into.
+// With no override and no checkout anywhere, the answer is the module cache entry for this
+// binary's own version — the payload `go install` brought down alongside it. Not the working
+// directory, which is what the old fallback returned and would have linked ~/.claude against
+// whatever the user happened to be cd'd into.
 func TestPayloadRootFallsBackToTheActivatedRelease(t *testing.T) {
-	home := t.TempDir()
+	t.Setenv("GOMODCACHE", "/tmp/fake-modcache")
 
-	got, err := resolveRoot("", t.TempDir(), t.TempDir(), home)
+	got, err := resolveRoot("", t.TempDir(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := dist.Current(dist.Base(home)); got != want {
-		t.Errorf("resolveRoot = %q, want the activated release %q", got, want)
+	want := dist.Dir("/tmp/fake-modcache", moduleImportPath(), buildVersion(version))
+	if got != want {
+		t.Errorf("resolveRoot = %q, want the module cache entry %q", got, want)
 	}
-	// And emphatically not the directory the clone bootstrap used, which this replaced.
-	if strings.Contains(got, ".libretto-automata") {
-		t.Errorf("resolveRoot still points at the removed clone directory: %q", got)
+	// The version is in the path, which is what makes an update a different directory rather
+	// than an overwrite of the one currently linked.
+	if !strings.Contains(got, "@") {
+		t.Errorf("the payload root carries no version: %q", got)
+	}
+	// And emphatically not either of the two homes this rung has had before.
+	for _, gone := range []string{".libretto-automata", ".local/share/libretto"} {
+		if strings.Contains(got, gone) {
+			t.Errorf("resolveRoot still points at a removed location (%s): %q", gone, got)
+		}
 	}
 }
 
@@ -99,11 +108,10 @@ func TestPayloadRootFallsBackToTheActivatedRelease(t *testing.T) {
 // editing a skill and seeing it live working, and it is the reason the payload is not
 // embedded in the binary.
 func TestPayloadRootStillPrefersACheckoutYouAreStandingIn(t *testing.T) {
-	home := t.TempDir()
 	wd := gitDir(t)
 	writeFile(t, filepath.Join(wd, "go.mod"), moduleLine+"\n")
 
-	got, err := resolveRoot("", t.TempDir(), wd, home)
+	got, err := resolveRoot("", t.TempDir(), wd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +149,7 @@ func TestPayloadRootPrefersTheCompileTimePathOverTheWorkingDirectory(t *testing.
 	compileTime, wd := gitDir(t), gitDir(t)
 	writeFile(t, filepath.Join(wd, "go.mod"), moduleLine+"\n")
 
-	got, err := resolveRoot("", compileTime, wd, t.TempDir())
+	got, err := resolveRoot("", compileTime, wd)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,11 +162,9 @@ func TestPayloadRootPrefersTheCompileTimePathOverTheWorkingDirectory(t *testing.
 // Any git repository would otherwise do, and `libretto install` run inside an unrelated
 // project would go looking for a payload that project does not have.
 func TestPayloadRootAcceptsTheWorkingDirectoryOnlyForThisModule(t *testing.T) {
-	home := t.TempDir()
-
 	mine := gitDir(t)
 	writeFile(t, filepath.Join(mine, "go.mod"), moduleLine+"\n")
-	got, err := resolveRoot("", t.TempDir(), mine, home)
+	got, err := resolveRoot("", t.TempDir(), mine)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +174,7 @@ func TestPayloadRootAcceptsTheWorkingDirectoryOnlyForThisModule(t *testing.T) {
 
 	other := gitDir(t)
 	writeFile(t, filepath.Join(other, "go.mod"), "module example.com/something-else\n")
-	got, err = resolveRoot("", t.TempDir(), other, home)
+	got, err = resolveRoot("", t.TempDir(), other)
 	if err != nil {
 		t.Fatal(err)
 	}

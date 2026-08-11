@@ -925,7 +925,7 @@ func doctor(root string, tg target.Target) error {
 	} else {
 		fmt.Println("  mode     an installed release at " + root)
 		fmt.Println("  " + releaseLine(version, func(ctx context.Context) (string, error) {
-			return dist.Latest(ctx, defaultClient(), forgeHost)
+			return dist.Latest(ctx, defaultClient(), dist.DefaultProxy, moduleImportPath())
 		}))
 	}
 

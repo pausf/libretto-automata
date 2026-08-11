@@ -26,11 +26,7 @@ NAMES  ?= libretto libretto-automata
 
 .PHONY: build test test-short gates fmt vet preview clean link unlink release
 
-# What `libretto upgrade` downloads. The names are asserted against internal/dist by
-# TestReleaseAssetNamesMatchWhatDistributionFetches — the producer is make and the consumer
-# is Go, so nothing but a test holds them together and a typo in either is a release that
-# installs on nobody's machine.
-PAYLOAD_DIRS := skills agents commands
+
 
 build:
 	go build -ldflags "$(LDFLAGS)" -o $(BIN) $(PKG)
@@ -104,50 +100,41 @@ unlink:
 clean:
 	rm -rf bin
 
-# Publish the payload for the tag HEAD is on.
+# Publish a release for the tag HEAD is on.
+#
+# **The payload is not attached, and does not need to be.** It ships inside the Go module, so
+# `go install <module>/cmd/libretto@latest` brings it down with the binary and checks it against
+# the checksum database. The module proxy resolves @latest from **tags**, which is why installing
+# works on a repository with no Releases at all.
+#
+# So this target exists for humans: a Release page with notes, so somebody can read what changed
+# without reading the log. Skipping it costs nothing mechanical.
 #
 # A human act, deliberately. AGENTS.md says a tag is a release and not a commit marker, and
-# .agents/specs/ci/spec.md says CI publishes nothing — a workflow releasing on tag push
-# would make both sentences false, and it would do it by turning a judgment into an
-# automation nobody re-reads.
+# .agents/specs/ci/spec.md says CI publishes nothing.
 #
-# Run it after the tag exists:
-#
-#   git tag -a v0.4.0 -m "..."
-#   git push origin v0.4.0
+#   git tag -a v0.5.0 -m "..."
+#   git push origin v0.5.0
 #   make release
 #
-# The push comes first, and that order is load-bearing: `gh release create` creates the tag
-# itself when it is not on the remote, at the default branch's HEAD — a second tag with your
-# name on it, pointing somewhere you did not choose. --verify-tag below refuses that instead.
+# The push comes first: `gh release create` creates the tag itself when it is not on the remote,
+# at the default branch's HEAD — a second tag with your name on it, pointing somewhere you did
+# not choose. --verify-tag refuses that instead.
 release:
 	@command -v gh >/dev/null 2>&1 || { \
 		echo "gh is not installed:  brew install gh  # then: gh auth login"; exit 1; }
 	@gh auth status >/dev/null 2>&1 || { \
 		echo "gh is not authenticated — run it yourself:  gh auth login"; exit 1; }
-	@# A release built from a dirty tree ships files that are in no commit, and nobody can
-	@# ever reconstruct what went out.
 	@test -z "$$(git status --porcelain)" || { \
 		echo "the working tree is dirty — commit or stash before releasing"; \
 		git status --short; exit 1; }
-	@# --exact-match fails unless HEAD is a tag, which is what makes "the tag is the
-	@# release" true rather than aspirational.
 	@TAG="$$(git describe --exact-match --tags 2>/dev/null)" || { \
 		echo "HEAD is not at a tag — tag the release first:  git tag -a vX.Y.Z -m '...'"; exit 1; }
 	@$(MAKE) --no-print-directory gates
 	@TAG="$$(git describe --exact-match --tags)"; \
-	TARBALL="payload-$$TAG.tar.gz"; \
-	rm -f "$$TARBALL" "$$TARBALL.sha256"; \
-	tar czf "$$TARBALL" $(PAYLOAD_DIRS); \
-	shasum -a 256 "$$TARBALL" > "$$TARBALL.sha256"; \
-	echo "built     $$TARBALL"; \
-	cat "$$TARBALL.sha256"; \
 	if gh release view "$$TAG" >/dev/null 2>&1; then \
-		gh release upload "$$TAG" "$$TARBALL" "$$TARBALL.sha256" --clobber; \
-		echo "replaced  the assets on $$TAG"; \
+		echo "exists    $$TAG — nothing to do"; \
 	else \
-		gh release create "$$TAG" "$$TARBALL" "$$TARBALL.sha256" \
-			--verify-tag --title "$$TAG" --notes-from-tag; \
+		gh release create "$$TAG" --verify-tag --title "$$TAG" --notes-from-tag; \
 		echo "created   $$TAG"; \
-	fi; \
-	rm -f "$$TARBALL" "$$TARBALL.sha256"
+	fi

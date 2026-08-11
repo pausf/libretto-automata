@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime/debug"
 	"strings"
@@ -32,17 +31,16 @@ func askLatest(ctx context.Context, root string) (string, error) {
 		return repo.CheckedLatest(ctx, root, repo.CheckTTL)
 	}
 
-	// The installed copy keeps its answer beside the payloads. Not in .git/ — there is no
-	// .git — and without somewhere to keep it the panel would make an HTTP call on every
-	// single launch, which is the hang the cache exists to prevent.
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
+	// The installed copy keeps its answer in the module cache root. Not in .git/ — there is no
+	// .git — and without somewhere to keep it the panel would make an HTTP call on every single
+	// launch, which is the hang the cache exists to prevent.
+	cache := dist.ModCache()
+	if cache == "" {
+		return "", fmt.Errorf("no module cache to keep the answer in")
 	}
-	base := dist.Base(home)
-	return repo.Cached(ctx, filepath.Join(base, checkFile), repo.CheckTTL,
+	return repo.Cached(ctx, filepath.Join(cache, checkFile), repo.CheckTTL,
 		func(ctx context.Context) (string, error) {
-			return dist.Latest(ctx, defaultClient(), forgeHost)
+			return dist.Latest(ctx, defaultClient(), dist.DefaultProxy, moduleImportPath())
 		})
 }
 

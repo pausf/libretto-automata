@@ -163,57 +163,28 @@ func TestReleaseTargetRunsTheGatesFirst(t *testing.T) {
 	if !strings.Contains(body, "$(MAKE) --no-print-directory gates") {
 		t.Errorf("the release target does not run the gates:\n%s", body)
 	}
-	// Before the tarball, not after. Building first and checking second would publish an
-	// artefact that a failing gate then disowns.
-	if strings.Index(body, "gates") > strings.Index(body, "tar czf") {
-		t.Error("the gates run after the tarball is built")
+	// Before the release is created, not after. Publishing first and checking second would put
+	// out a Release page a failing gate then disowns.
+	if strings.Index(body, "gates") > strings.Index(body, "gh release create") {
+		t.Error("the gates run after the release is created")
 	}
 }
 
-// Only the payload. Not the Go sources, not docs/, and above all not .agents/ — a tarball
-// carrying the specs would ship the change folder of whatever happened to be in flight.
-func TestReleaseTarballCarriesOnlyThePayloadDirectories(t *testing.T) {
-	makefile := repoFile(t, "Makefile")
+// **Gone with the design: nothing is attached to a release.** The payload ships inside the Go
+// module, so there is no tarball to build, no checksum to publish and no per-platform binary —
+// `go install` brings all of it down and GOSUMDB verifies it. Two tests went with those: one
+// pinning the tarball's contents, one holding the Makefile's asset names against the names Go
+// fetched.
 
-	var dirs string
-	for _, line := range strings.Split(makefile, "\n") {
-		if strings.HasPrefix(line, "PAYLOAD_DIRS") {
-			_, dirs, _ = strings.Cut(line, ":=")
-		}
-	}
-	got := strings.Fields(dirs)
-
-	want := []string{"skills", "agents", "commands"}
-	if strings.Join(got, " ") != strings.Join(want, " ") {
-		t.Errorf("PAYLOAD_DIRS = %v, want %v", got, want)
-	}
-	if !strings.Contains(releaseRecipe(t), "$(PAYLOAD_DIRS)") {
-		t.Error("the tarball is not built from PAYLOAD_DIRS, so the list above is decoration")
-	}
-}
-
-// **The producer is make and the consumer is Go.** Nothing but this test holds the two asset
-// names together, and a typo in either is a release that installs on nobody's machine while
-// every gate stays green.
-func TestReleaseAssetNamesMatchWhatDistributionFetches(t *testing.T) {
+// `gh release create` creates the tag itself when it is not on the remote, at the default
+// branch's HEAD. Without --verify-tag, running the target before pushing the tag produces a
+// second tag with your name on it pointing somewhere you did not choose — and yours is the one
+// that loses.
+func TestReleaseVerifiesTheTagRatherThanCreatingIt(t *testing.T) {
 	body := releaseRecipe(t)
 
-	// dist.assetNames is unexported and in another package, so the shape it produces is
-	// reproduced from its one rule: the tag, wrapped.
-	const tag = "v9.9.9"
-	tarball := "payload-" + tag + ".tar.gz"
-	checksum := tarball + ".sha256"
-
-	// The Makefile writes the same names with a shell variable in place of the tag.
-	if !strings.Contains(body, `payload-$$TAG.tar.gz`) {
-		t.Errorf("the Makefile does not build %s (with $$TAG for the tag):\n%s", tarball, body)
-	}
-	if !strings.Contains(body, `"$$TARBALL.sha256"`) {
-		t.Errorf("the Makefile does not write %s:\n%s", checksum, body)
-	}
-	// And the digest is sha256, which is what dist verifies with.
-	if !strings.Contains(body, "shasum -a 256") {
-		t.Error("the checksum is not sha256, which is what the download verifies against")
+	if !strings.Contains(body, "--verify-tag") {
+		t.Errorf("gh release create is not passed --verify-tag:\n%s", body)
 	}
 }
 
@@ -235,16 +206,4 @@ func releaseRecipe(t *testing.T) string {
 		body = append(body, line)
 	}
 	return strings.Join(body, "\n")
-}
-
-// `gh release create` creates the tag itself when it is not on the remote, at the default
-// branch's HEAD. Without --verify-tag, running the target before pushing the tag produces a
-// second tag with your name on it pointing somewhere you did not choose — and yours is the one
-// that loses.
-func TestReleaseVerifiesTheTagRatherThanCreatingIt(t *testing.T) {
-	body := releaseRecipe(t)
-
-	if !strings.Contains(body, "--verify-tag") {
-		t.Errorf("gh release create is not passed --verify-tag:\n%s", body)
-	}
 }

@@ -10,18 +10,20 @@ import (
 	"testing"
 )
 
-// fakeUpgrade is an upgrade whose every outside effect is recorded instead of performed. The
-// order of `steps` is the property most of these tests are about.
-type fakeUpgrade struct {
+// fakeUpdate is an update whose every outside effect is recorded instead of performed.
+//
+// Three effects, where the previous design had four: the binary and the payload arrive in one
+// `go install`, because they travel in the same module. The step that had to be ordered against
+// its neighbour no longer exists.
+type fakeUpdate struct {
 	steps  []string
 	latest string
 	failAt string
 }
 
-func (f *fakeUpgrade) deps(running string) upgradeDeps {
+func (f *fakeUpdate) deps(running string) upgradeDeps {
 	return upgradeDeps{
 		running: running,
-		base:    "/nowhere",
 		latest: func(context.Context) (string, error) {
 			f.steps = append(f.steps, "latest")
 			if f.failAt == "latest" {
@@ -29,22 +31,16 @@ func (f *fakeUpgrade) deps(running string) upgradeDeps {
 			}
 			return f.latest, nil
 		},
-		installPayload: func(_ context.Context, tag string) error {
-			f.steps = append(f.steps, "payload:"+tag)
-			if f.failAt == "payload" {
-				return errors.New("checksum mismatch")
+		install: func(_ context.Context, v string) error {
+			f.steps = append(f.steps, "install:"+v)
+			if f.failAt == "install" {
+				return errors.New("checksum mismatch for module")
 			}
 			return nil
 		},
-		replaceBinary: func(_ context.Context, tag string) (string, error) {
-			f.steps = append(f.steps, "binary:"+tag)
-			if f.failAt == "binary" {
-				return "", errors.New("permission denied")
-			}
-			return "", nil
-		},
-		relink: func() error {
-			f.steps = append(f.steps, "relink")
+		dirFor: func(v string) string { return "/modcache/libretto-automata@" + v },
+		relink: func(root string) error {
+			f.steps = append(f.steps, "relink:"+root)
 			if f.failAt == "relink" {
 				return errors.New("one item was not linked")
 			}
@@ -53,20 +49,40 @@ func (f *fakeUpgrade) deps(running string) upgradeDeps {
 	}
 }
 
-// The order is fixed and it is not cosmetic: a new binary reading an old payload is a state
-// nobody can reason about, which is the same argument the update flow already makes about
-// relinking before compiling.
-func TestUpgradeActivatesThePayloadBeforeTheBinary(t *testing.T) {
-	f := &fakeUpgrade{latest: "v0.4.0"}
+// One install, then a relink of the version that install brought down.
+//
+// There is no longer an ordering constraint to protect. The old design fetched a payload tarball
+// and replaced the binary as two steps, so "payload before binary" had to be enforced and tested
+// — a new binary reading an old payload is a state nobody can reason about. Shipping both in one
+// module removed the window rather than guarding it.
+func TestUpdateInstallsThenRelinksTheVersionItInstalled(t *testing.T) {
+	f := &fakeUpdate{latest: "v0.4.0"}
 	var out strings.Builder
 
 	if err := fromRelease(context.Background(), &out, f.deps("v0.3.0")); err != nil {
 		t.Fatal(err)
 	}
 
-	want := []string{"latest", "payload:v0.4.0", "binary:v0.4.0", "relink"}
-	if got := strings.Join(f.steps, " "); got != strings.Join(want, " ") {
-		t.Errorf("steps ran as %q, want %q", got, strings.Join(want, " "))
+	want := "latest install:v0.4.0 relink:/modcache/libretto-automata@v0.4.0"
+	if got := strings.Join(f.steps, " "); got != want {
+		t.Errorf("steps ran as %q, want %q", got, want)
+	}
+}
+
+// The relink uses the NEW version's directory, not payloadRoot(). This process still reports the
+// old version, so resolving again would link the payload it is already on — and the update would
+// report success having changed no link at all.
+func TestUpdateRelinksTheNewVersionNotTheRunningOne(t *testing.T) {
+	f := &fakeUpdate{latest: "v0.4.0"}
+	var out strings.Builder
+
+	if err := fromRelease(context.Background(), &out, f.deps("v0.3.0")); err != nil {
+		t.Fatal(err)
+	}
+	for _, step := range f.steps {
+		if strings.HasPrefix(step, "relink:") && strings.Contains(step, "v0.3.0") {
+			t.Errorf("relinked the running version instead of the new one: %q", step)
+		}
 	}
 }
 
@@ -74,13 +90,13 @@ func TestUpgradeActivatesThePayloadBeforeTheBinary(t *testing.T) {
 // resolving, but a version that *adds* an item leaves that item unlinked — which is the whole
 // complaint `notify-users-of-new-updates` was queued for.
 func TestUpgradeRelinksSoNewItemsAppear(t *testing.T) {
-	f := &fakeUpgrade{latest: "v0.4.0"}
+	f := &fakeUpdate{latest: "v0.4.0"}
 	var out strings.Builder
 
 	if err := fromRelease(context.Background(), &out, f.deps("v0.3.0")); err != nil {
 		t.Fatal(err)
 	}
-	if len(f.steps) == 0 || f.steps[len(f.steps)-1] != "relink" {
+	if len(f.steps) == 0 || !strings.HasPrefix(f.steps[len(f.steps)-1], "relink") {
 		t.Errorf("relink is not the last step: %v", f.steps)
 	}
 }
@@ -89,8 +105,8 @@ func TestUpgradeRelinksSoNewItemsAppear(t *testing.T) {
 // somebody who only wanted to use the tool. A promise about output is kept by asserting on
 // output.
 func TestUpdateFromAReleaseNeverMentionsGit(t *testing.T) {
-	for _, failAt := range []string{"", "latest", "payload", "binary", "relink"} {
-		f := &fakeUpgrade{latest: "v0.4.0", failAt: failAt}
+	for _, failAt := range []string{"", "latest", "install", "relink"} {
+		f := &fakeUpdate{latest: "v0.4.0", failAt: failAt}
 		var out strings.Builder
 
 		err := fromRelease(context.Background(), &out, f.deps("v0.3.0"))
@@ -110,10 +126,10 @@ func TestUpdateFromAReleaseNeverMentionsGit(t *testing.T) {
 func TestUpgradeReportsWhichStepFailed(t *testing.T) {
 	for step, want := range map[string]string{
 		"latest":  "could not find",
-		"payload": "payload",
+		"install": "nothing was changed",
 		"relink":  "link",
 	} {
-		f := &fakeUpgrade{latest: "v0.4.0", failAt: step}
+		f := &fakeUpdate{latest: "v0.4.0", failAt: step}
 		var out strings.Builder
 
 		err := fromRelease(context.Background(), &out, f.deps("v0.3.0"))
@@ -127,46 +143,36 @@ func TestUpgradeReportsWhichStepFailed(t *testing.T) {
 	}
 }
 
-// A failed payload step leaves the binary alone, which is what keeps the previous version
-// active: `dist.Install` only swaps `current` once the extraction completed, so nothing
-// downstream may run and make the machine inconsistent.
+// A failed install changes nothing and relinks nothing. The links still point at the version
+// that was working, and `go install` either completed or it did not — there is no partially
+// downloaded module to reason about, because the go command does not leave one.
 func TestAFailedUpgradeLeavesThePreviousVersionActive(t *testing.T) {
-	f := &fakeUpgrade{latest: "v0.4.0", failAt: "payload"}
+	f := &fakeUpdate{latest: "v0.4.0", failAt: "install"}
 	var out strings.Builder
 
-	if err := fromRelease(context.Background(), &out, f.deps("v0.3.0")); err == nil {
-		t.Fatal("a failed payload step was reported as success")
+	err := fromRelease(context.Background(), &out, f.deps("v0.3.0"))
+	if err == nil {
+		t.Fatal("a failed install was reported as success")
+	}
+	if !strings.Contains(err.Error(), "nothing was changed") {
+		t.Errorf("the error does not say the machine is untouched: %v", err)
 	}
 	for _, step := range f.steps {
-		if strings.HasPrefix(step, "binary") || step == "relink" {
-			t.Errorf("%q ran after the payload step failed: %v", step, f.steps)
+		if strings.HasPrefix(step, "relink") {
+			t.Errorf("relinked after the install failed: %v", f.steps)
 		}
 	}
 }
 
-// The payload upgrade still stands when the binary cannot be replaced. The same split the
-// rebuild already makes for an unwritable destination, and for the same reason: rolling back
-// a payload that installed correctly loses more than it saves.
-func TestUpgradeSurvivesAnUnreplaceableBinary(t *testing.T) {
-	f := &fakeUpgrade{latest: "v0.4.0", failAt: "binary"}
-	var out strings.Builder
-
-	if err := fromRelease(context.Background(), &out, f.deps("v0.3.0")); err != nil {
-		t.Fatalf("an unreplaceable binary failed the whole upgrade: %v", err)
-	}
-	if !strings.Contains(out.String(), "unchanged") {
-		t.Errorf("the report does not say the binary is unchanged: %q", out.String())
-	}
-	// And it still relinked: the payload is new, so the links have to be.
-	if f.steps[len(f.steps)-1] != "relink" {
-		t.Errorf("relink was skipped after the binary step failed: %v", f.steps)
-	}
-}
+// **Gone with the design: there is no half-succeeded update.** The previous version could
+// install a payload and fail to replace the binary, so it reported both and carried on. One
+// `go install` either brings down the module or it does not, which deleted that whole branch
+// and the report that explained it.
 
 // Already on the newest release is a success that changes nothing and says so. Nothing is
 // downloaded and nothing is relinked — a no-op that relinks is a no-op with a report.
 func TestUpgradeOnTheNewestReleaseDoesNothing(t *testing.T) {
-	f := &fakeUpgrade{latest: "v0.4.0"}
+	f := &fakeUpdate{latest: "v0.4.0"}
 	var out strings.Builder
 
 	if err := fromRelease(context.Background(), &out, f.deps("v0.4.0")); err != nil {
@@ -183,14 +189,14 @@ func TestUpgradeOnTheNewestReleaseDoesNothing(t *testing.T) {
 // A machine with no payload yet — a fresh `go install` — upgrades rather than refusing.
 // `libretto upgrade` is how the payload arrives the first time.
 func TestUpgradeFromNothingInstalled(t *testing.T) {
-	f := &fakeUpgrade{latest: "v0.4.0"}
+	f := &fakeUpdate{latest: "v0.4.0"}
 	var out strings.Builder
 
 	if err := fromRelease(context.Background(), &out, f.deps("dev")); err != nil {
 		t.Fatalf("upgrading with nothing installed: %v", err)
 	}
-	if got := strings.Join(f.steps, " "); !strings.Contains(got, "payload:v0.4.0") {
-		t.Errorf("steps = %q, want the payload installed", got)
+	if got := strings.Join(f.steps, " "); !strings.Contains(got, "install:v0.4.0") {
+		t.Errorf("steps = %q, want the version installed", got)
 	}
 }
 
@@ -219,8 +225,8 @@ func TestTheUpdateRowNamesTheMechanism(t *testing.T) {
 	if got := updateDesc(true); !strings.Contains(got, "pull") {
 		t.Errorf("in a checkout the row says %q, want it to mention the pull", got)
 	}
-	if got := updateDesc(false); !strings.Contains(got, "release") {
-		t.Errorf("installed, the row says %q, want it to mention the release", got)
+	if got := updateDesc(false); !strings.Contains(got, "newest version") {
+		t.Errorf("installed, the row says %q, want it to name what it installs", got)
 	}
 	if strings.Contains(updateDesc(false), "git") {
 		t.Errorf("the installed row mentions git: %q", updateDesc(false))

@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -26,10 +25,6 @@ const upgradeTimeout = 10 * time.Minute
 // failure the user can see.
 func defaultClient() *http.Client { return &http.Client{Timeout: 2 * time.Minute} }
 
-// forgeHost is where releases are published. Derived from the module path, so there is one
-// declaration of where this project lives.
-const forgeHost = "https://github.com/pausf/libretto-automata"
-
 // upgradeDeps are upgrade's four outside effects, taken as parameters.
 //
 // Not for the sake of abstraction — there is one real implementation and there will not be a
@@ -38,12 +33,15 @@ const forgeHost = "https://github.com/pausf/libretto-automata"
 // message would pass for an implementation that did it backwards and cleaned up.
 type upgradeDeps struct {
 	running string // the version this binary reports
-	base    string // where payloads live, for the report
 
-	latest         func(ctx context.Context) (string, error)
-	installPayload func(ctx context.Context, tag string) error
-	replaceBinary  func(ctx context.Context, tag string) (note string, err error)
-	relink         func() error
+	latest func(ctx context.Context) (string, error)
+	// install brings down the binary and the payload together — one `go install`, because they
+	// travel in the same module. What used to be two steps with an ordering constraint between
+	// them is one step that cannot be half-done.
+	install func(ctx context.Context, version string) error
+	// where the payload for a version lands, for the report and for the relink
+	dirFor func(version string) string
+	relink func(root string) error
 }
 
 // fromRelease moves an installed copy to the newest release.
@@ -60,42 +58,35 @@ type upgradeDeps struct {
 // It says `git` nowhere, in success or in failure. That is the whole reason this command
 // exists rather than `update` growing a branch.
 func fromRelease(ctx context.Context, out io.Writer, d upgradeDeps) error {
-	tag, err := d.latest(ctx)
+	version, err := d.latest(ctx)
 	if err != nil {
-		return fmt.Errorf("could not find the newest release: %w", err)
-	}
-	if tag == "" {
-		return fmt.Errorf("could not find the newest release: none is published")
+		return fmt.Errorf("could not find the newest version: %w", err)
 	}
 
-	if tag == d.running {
+	if version == d.running {
 		fmt.Fprintf(out, "up to date at %s\n", d.running)
 		return nil
 	}
 
 	from := d.running
 	if from == "" || from == "dev" {
-		from = "nothing installed"
+		from = "an unidentified build"
 	}
-	fmt.Fprintf(out, "upgrade  %s → %s\n", from, tag)
+	fmt.Fprintf(out, "update   %s → %s\n", from, version)
 
-	if err := d.installPayload(ctx, tag); err != nil {
-		return fmt.Errorf("the payload was not installed: %w", err)
-	}
-	fmt.Fprintf(out, "payload  %s\n", dist.VersionDir(d.base, tag))
-
-	// A binary that cannot be replaced does not undo a payload that installed correctly. The
-	// same split `rebuild` already makes for an unwritable destination, and the same reason:
-	// rolling back work that succeeded loses more than it saves.
-	if note, berr := d.replaceBinary(ctx, tag); berr != nil {
-		fmt.Fprintf(out, "binary   unchanged — %v\n", berr)
-		fmt.Fprintf(out, "         the payload is on %s; the command you run is still the old build\n", tag)
-	} else if note != "" {
-		fmt.Fprintf(out, "binary   %s\n", note)
+	// One step, and it either happened or it did not. The binary and the payload are in the same
+	// module, so there is no window where one is new and the other is old — which is the state
+	// the previous design needed a fixed step order to avoid.
+	if err := d.install(ctx, version); err != nil {
+		return fmt.Errorf("nothing was changed: %w", err)
 	}
 
-	if err := d.relink(); err != nil {
-		return fmt.Errorf("the payload is on %s but not every item could be linked: %w", tag, err)
+	root := d.dirFor(version)
+	fmt.Fprintf(out, "payload  %s\n", root)
+	fmt.Fprintln(out, "         this process is still the old binary — run it again to use the new one")
+
+	if err := d.relink(root); err != nil {
+		return fmt.Errorf("%s is installed but not every item could be linked: %w", version, err)
 	}
 	return nil
 }
@@ -113,59 +104,30 @@ func fromRelease(ctx context.Context, out io.Writer, d upgradeDeps) error {
 // it is "did you clone this or install it" — and the split bought two commands, two menu rows
 // and a pair of mutual refusals to explain.
 func updateFromRelease(ctx context.Context) error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
+	cache := dist.ModCache()
+	if cache == "" {
+		return fmt.Errorf("cannot find the module cache — set GOMODCACHE or GOPATH")
 	}
-	base := dist.Base(home)
+	module := moduleImportPath()
 
 	ctx, cancel := context.WithTimeout(ctx, upgradeTimeout)
 	defer cancel()
 
 	return fromRelease(ctx, os.Stdout, upgradeDeps{
 		running: version,
-		base:    base,
 		latest: func(ctx context.Context) (string, error) {
-			return dist.Latest(ctx, defaultClient(), forgeHost)
+			return dist.Latest(ctx, defaultClient(), dist.DefaultProxy, module)
 		},
-		installPayload: func(ctx context.Context, tag string) error {
-			return dist.Install(ctx, defaultClient(), forgeHost, base, tag)
+		install: func(ctx context.Context, v string) error {
+			return dist.Install(ctx, module, v)
 		},
-		replaceBinary: goInstall,
-		relink: func() error {
-			// Resolved again, deliberately: `current` has just moved, and the target is
-			// whatever scope the flags said.
-			newRoot, rerr := payloadRoot()
-			if rerr != nil {
-				return rerr
-			}
-			return install(newRoot, target.Resolve(target.GlobalScope, ""))
+		dirFor: func(v string) string { return dist.Dir(cache, module, v) },
+		// The new version's directory, not payloadRoot(): this process reports the old version,
+		// so resolving again would link the payload it is already on.
+		relink: func(root string) error {
+			return install(root, target.Resolve(target.GlobalScope, ""))
 		},
 	})
-}
-
-// goInstall replaces the running command with the release's build.
-//
-// `go install` rather than a published binary, because Go is present by construction — it is
-// how this command got here. Publishing per-platform binaries would remove that assumption and
-// is deliberately out of scope.
-//
-// The word `go` appears in the command and not in the report. What the user is told is the path
-// that changed.
-func goInstall(ctx context.Context, tag string) (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-
-	cmd := exec.CommandContext(ctx, "go", "install", moduleImportPath()+"/cmd/libretto@"+tag)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		if text := strings.TrimSpace(string(out)); text != "" {
-			return "", fmt.Errorf("%s", firstLine(text))
-		}
-		return "", err
-	}
-	return exe + " replaced", nil
 }
 
 // moduleImportPath is this module, taken from the one place it is written down.
