@@ -425,4 +425,12 @@ and this is the one task in the plan whose proof is a human.
 
 Phase 8's job, listed here so it is not forgotten: apply the three deltas onto
 `.agents/specs/repo-sync/spec.md`, `cli/spec.md`, `panel/spec.md`, delete this change
-folder, and confirm `spec-drift --anchors` resolves the 31 citations that arrive with them.
+folder, and confirm `spec-drift --anchors` resolves the **34** citations that arrive with
+them.
+
+**The count was wrong here, and the reviewer caught why it mattered.** It said 31, and one
+of the citations named a test that did not exist — `TestBootstrapContinuesIntoRequestedCommand`.
+`--anchors` does not scan change deltas, so nothing would have failed until the delta landed
+in `.agents/specs/cli/spec.md` and broke the gate there. Worse, `go test -run` on a name with
+no match exits 0 silently, so the citation read as satisfied. The test was written; all 34
+now resolve, verified by hand.

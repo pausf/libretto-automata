@@ -70,8 +70,15 @@ flow testable against a fake, and neither one changes the pull.
 ## Constraints
 
 - Shell out to git. Unchanged, and for the reasons already in the capability spec.
-- Every new call goes on the `Git` interface, so the fake covers it. A network call
-  reachable only through the real implementation is a network call in the test suite.
+- Every new call goes on the `Git` interface, so a caller can be handed something else.
+  **There is no fake, and there is not meant to be one** — `git_test.go` says why:
+  `Shell` exists so the invocation lives in one place, and replacing it in tests would
+  prove the fake works. An earlier draft of this delta said "so the fake covers it" and
+  added a task to extend one, which described a type this repository has never had.
+- What the constraint is actually protecting is that **no test reaches the network**, and
+  that is met by other means: `LatestTag` runs against a local path used as `origin`, and
+  `checkedLatest` takes its asker and its clock as parameters. The `internal/repo` suite
+  runs with no network at all.
 - No new dependency. `golang.org/x/mod/semver` would do the comparison and would be the
   sixth direct dependency for fifteen lines — that is the ladder's fourth rung losing to
   its fifth.
@@ -97,7 +104,7 @@ flow testable against a fake, and neither one changes the pull.
 4. `LatestTag(ctx)` on `Git`, from `git ls-remote --tags`, with a deadline.
 5. The check cache in `.git/libretto-update-check`: read, TTL, write on both success and
    failure.
-6. Extend the test fake with `LatestTag`.
+6. ~~Extend the test fake with `LatestTag`.~~ There is no fake — see constraints.
 
 ## Verification criteria
 

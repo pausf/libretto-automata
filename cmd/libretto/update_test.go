@@ -107,15 +107,27 @@ func TestRebuildReportsUnwritableDestinationWithoutFailing(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(locked, 0o700) })
 
-	note, err := rebuildOrReport(root, filepath.Join(locked, "libretto"))
+	refused := filepath.Join(locked, "libretto")
+	fallback := filepath.Join(t.TempDir(), "bin", "libretto")
+	note, err := rebuildOrReport(root, refused, fallback)
 	if err != nil {
 		t.Fatalf("an unwritable destination failed the update: %v", err)
 	}
 	if note == "" {
 		t.Fatal("no note explaining that the binary was not replaced")
 	}
-	if !strings.Contains(note, "libretto") {
-		t.Errorf("the note does not say where the new binary is: %q", note)
+
+	// Both halves, checked separately. `Contains(note, "libretto")` alone is satisfied by
+	// the refused path — every path in this test has `libretto` in it — so it passed
+	// without ever proving the note says where the new binary went.
+	if !strings.Contains(note, refused) {
+		t.Errorf("the note does not name what could not be written: %q", note)
+	}
+	if !strings.Contains(note, fallback) {
+		t.Errorf("the note does not say where the new binary is (%s): %q", fallback, note)
+	}
+	if _, err := os.Stat(fallback); err != nil {
+		t.Errorf("the note names a binary that is not there: %v", err)
 	}
 }
 

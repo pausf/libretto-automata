@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/pausf/libretto-automata/internal/repo"
 )
 
 // The destination is printed before the clone runs, not after. A tool that has already
@@ -82,6 +85,61 @@ func TestBootstrapIsIdempotent(t *testing.T) {
 	}
 	if log.String() != "" {
 		t.Errorf("bootstrap narrated a no-op: %q", log.String())
+	}
+}
+
+// Bootstrap is a step on the way to the command the user typed, not a command of its own.
+// `libretto status` on a machine with no clone clones and then reports status — one
+// invocation, no "now run it again".
+func TestBootstrapContinuesIntoRequestedCommand(t *testing.T) {
+	if testing.Short() {
+		t.Skip("real-git integration")
+	}
+
+	// A clonable source: a repository with one commit and the directories the payload
+	// scan expects.
+	upstream := t.TempDir()
+	for _, args := range [][]string{
+		{"init", "-q", "-b", "main"},
+		{"config", "user.email", "test@example.invalid"},
+		{"config", "user.name", "Test"},
+	} {
+		out, err := exec.Command("git", append([]string{"-C", upstream}, args...)...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	writeFile(t, filepath.Join(upstream, "go.mod"), moduleLine+"\n")
+	for _, args := range [][]string{{"add", "-A"}, {"commit", "-q", "-m", "payload"}} {
+		out, err := exec.Command("git", append([]string{"-C", upstream}, args...)...).CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+
+	dest := filepath.Join(t.TempDir(), "libretto-automata")
+	t.Setenv(EnvRoot, dest)
+	t.Setenv("CLAUDE_HOME", t.TempDir())
+
+	var log strings.Builder
+	if err := bootstrap(context.Background(), &log, dest, upstream, repo.Clone); err != nil {
+		t.Fatalf("bootstrap: %v", err)
+	}
+
+	// ensureClone is what commands call. After the clone above it must find the repo and
+	// return it, rather than announcing or cloning a second time.
+	root, err := ensureClone()
+	if err != nil {
+		t.Fatalf("ensureClone after bootstrap: %v", err)
+	}
+	if root != dest {
+		t.Errorf("ensureClone = %q, want the clone it just made at %q", root, dest)
+	}
+
+	// And the requested command runs against it. `status` is the read-only one, so this
+	// proves the hand-off without writing a link anywhere.
+	if err := run([]string{"status"}); err != nil {
+		t.Errorf("the requested command did not run after bootstrap: %v", err)
 	}
 }
 

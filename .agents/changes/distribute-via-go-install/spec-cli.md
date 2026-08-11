@@ -28,10 +28,15 @@ outside the clone.
 - **Bootstrap refuses a destination it did not create.** `~/.libretto-automata` that
   exists and is not our clone is reported and nothing is touched — the same promise the
   linker makes, applied to the tool's own directory.
-- **Bootstrap is not silent success either.** It reports the destination, the tag it
-  landed on, and then goes on to do what was asked. One invocation, no second round trip:
-  the user typed `go install` for this tool and there is nothing else it can do without
-  the payload.
+- **Bootstrap is not silent success either.** It reports the destination and the URL it
+  came from, then goes on to do what was asked. One invocation, no second round trip: the
+  user typed `go install` for this tool and there is nothing else it can do without the
+  payload.
+- **It does not report a tag.** An earlier draft of this delta promised "the tag it landed
+  on", which was wrong on its own terms: `git clone` checks out the default branch's tip,
+  which is normally *past* the last tag, so any tag printed there would name a release the
+  clone is not actually at. `libretto version` answers the real question and cannot be
+  wrong about it.
 
 ### The version is knowable without ldflags
 
@@ -54,8 +59,17 @@ outside the clone.
 - **Atomic rename, never a write over the running file.** Unchanged, and now it is load
   bearing: `$GOBIN/libretto` is the file executing.
 - **An unwritable destination does not fail the update.** The pull happened and the links
-  are correct; the report says where the new binary is and that the old one is still on
-  `PATH`. Rolling back a successful pull because a rename failed loses more than it saves.
+  are correct; rolling those back because a rename was refused loses more than it saves.
+  The report names **both** paths: what could not be written, and where the new binary
+  actually is. Saying where it is means building it somewhere, so the fallback is the
+  clone's `bin/` — the one place a write cannot be refused, because the user owns the
+  checkout. That location is a parameter rather than derived, so the test proving the note
+  names a real binary does not write into the same `bin/` another test asserts is left
+  alone.
+- **And the advice matches what happened.** "Run it again to use the new one" is printed
+  only when the running binary was actually replaced. On the refused path the line says the
+  opposite — that the old binary is unchanged and still what `PATH` runs — because advice
+  that does nothing reads as though the upgrade took.
 
 ### The user is told a newer release exists
 

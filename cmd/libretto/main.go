@@ -727,16 +727,22 @@ func update(root string, tg target.Target) error {
 			return fmt.Errorf("the pull landed but the binary could not be located: %w", err)
 		}
 
-		note, err := rebuildOrReport(root, exe)
+		// The clone's bin/ is the fallback: the user owns the checkout, so it is the one
+		// place a write cannot be refused.
+		note, err := rebuildOrReport(root, exe, filepath.Join(root, "bin", "libretto"))
 		if err != nil {
 			return fmt.Errorf("the pull landed but the rebuild failed: %w", err)
 		}
+		// The advice depends on whether the running binary was actually replaced. Telling
+		// somebody to "run it again to use the new one" when the rename was refused is
+		// advice that does nothing and reads as though the upgrade took.
 		if note != "" {
 			fmt.Println("rebuilt  " + note)
+			fmt.Println("         " + exe + " is unchanged and still what your PATH runs")
 		} else {
 			fmt.Println("rebuilt  " + exe)
+			fmt.Println("         this process is still the old binary — run it again to use the new one")
 		}
-		fmt.Println("         this process is still the old binary — run it again to use the new one")
 	}
 
 	fmt.Println()
@@ -806,8 +812,13 @@ func rebuild(root, dest string) error {
 // The pull already happened and the links are already correct. Failing the whole update
 // because a rename was refused would roll back work that succeeded, and leave the user
 // with neither the new binary nor the relink. The note has to say where the binary is, or
-// it is a dead end dressed as an explanation.
-func rebuildOrReport(root, dest string) (string, error) {
+// it is a dead end dressed as an explanation — and saying that means building it
+// somewhere, which is what fallback is for.
+//
+// fallback is a parameter, not derived. Otherwise the test that proves the note names a
+// real binary has to write into the clone's bin/ — the same file another test asserts is
+// left alone, so the two would collide under `go test -shuffle`.
+func rebuildOrReport(root, dest, fallback string) (string, error) {
 	err := rebuild(root, dest)
 	if err == nil {
 		return "", nil
@@ -816,8 +827,6 @@ func rebuildOrReport(root, dest string) (string, error) {
 		return "", err
 	}
 
-	// Fall back to the clone, which the user can always write to — they own the checkout.
-	fallback := filepath.Join(root, "bin", "libretto")
 	if berr := rebuild(root, fallback); berr != nil {
 		return "", err
 	}
