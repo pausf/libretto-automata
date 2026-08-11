@@ -64,7 +64,7 @@ Each omission gets both halves — **what was not built, and what would change t
 An omission with no condition is a confession, not a decision. It tells the reader
 something is missing and leaves them to work out whether it matters.
 
-If `ponytail` is installed this is where its skipped work surfaces. It answers how
+This is where `ponytail`'s skipped work surfaces — it ships with this flow. It answers how
 much gets built; this phase is where what it declined becomes visible instead of
 silently absent.
 
@@ -95,7 +95,8 @@ understood.
 Nothing here is a tour of the code. The diff is available; the reader can read it.
 What they cannot read is what was decided and what was declined.
 
-If `caveman` is installed, it governs how much gets said.
+`caveman` ships with this flow; when the user has it active, it governs how much
+gets said.
 
 ## The orchestrator presents
 

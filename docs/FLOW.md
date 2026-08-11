@@ -343,31 +343,39 @@ queue, then the parallelism.
 
 ## What ships, and what is merely used
 
-Three skills written by other people **ship with this repository** — `writing-plans`,
-`test-driven-development` and `using-git-worktrees`, from
-[obra/superpowers](https://github.com/obra/superpowers), MIT. The flow's own skills
-are thin because they delegate to those, and a thin skill whose delegate is missing
-is not thin, it is broken. Being installed on the author's machine is not the same as
-being installed on yours. See [`THIRD-PARTY.md`](../THIRD-PARTY.md).
+Seven skills written by other people **ship with this repository** — `writing-plans`,
+`test-driven-development` and `using-git-worktrees` from
+[obra/superpowers](https://github.com/obra/superpowers); `ponytail` and
+`ponytail-debt` from [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail);
+`caveman` and `caveman-commit` from
+[JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman). All MIT. The flow's
+own skills are thin because they delegate to those, and a thin skill whose delegate
+is missing is not thin, it is broken. Being installed on the author's machine is not
+the same as being installed on yours. See [`THIRD-PARTY.md`](../THIRD-PARTY.md).
 
-## Companions, not dependencies
+## The companions, and why they ship now
 
-Two other projects do things this flow deliberately does not, and are called when
-present rather than vendored. Neither is required; without them the flow works, just
-heavier.
-
-**[ponytail](https://github.com/DietrichGebert/ponytail)** decides how much should
-be built. Its ladder runs from "does this need to exist at all?" down to "only then,
-the minimum that works", and it carries the list of things that are never trimmed —
-trust boundaries, data loss, security, accessibility. This flow invokes it in phase
-2, on requirements, which is where removing work is cheapest. Its `ponytail:`
-comments and their harvested ledger feed the prior-decisions pillar. It also sets
-its own intensity; this flow reads that, it does not define one.
+**ponytail** decides how much should be built. Its ladder runs from "does this need
+to exist at all?" down to "only then, the minimum that works", and it carries the
+list of things that are never trimmed — trust boundaries, data loss, security,
+accessibility. This flow invokes it in phase 2, on requirements, which is where
+removing work is cheapest. Its `ponytail:` comments and their harvested ledger —
+`/ponytail-debt` — feed the prior-decisions pillar. It also sets its own intensity;
+this flow reads that, it does not define one.
 
 **caveman** decides how much gets said. It compresses prose, ponytail compresses
-what gets built, and they do not overlap.
+what gets built, and they do not overlap. `caveman-commit` is the same compression
+applied to commit messages, offered by phase 8.
 
-`libretto doctor` reports whether either is present. It never requires them.
+Until 2026-08-10 both were companions: called when present, never vendored, on the
+grounds that the user may already have chosen a version. That assumed a user who has
+versions of things — the flow's target is a machine with nothing on it, where every
+"if installed" was a conditional that never came true. Now the two cores, the ledger
+and the commit generator ship vendored; the rest of both plugins does not, because
+the flow calls none of it. **Shipped is still not required**: nothing fails without
+them, and `prune`/`uninstall` removes them like any other item. The upstream plugins
+remain the path to what is deliberately not vendored — always-on hook mode, and both
+copies coexist by namespace.
 
 ## Open
 

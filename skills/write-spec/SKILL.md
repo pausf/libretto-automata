@@ -54,8 +54,8 @@ between a considered skip and a forgotten one.
 The test is not the diff size — it is whether anyone could reasonably disagree about
 what "done" means. If they could, write the spec. If they could not, do not.
 
-If `ponytail` is installed, this is its first rung applied to our own artifacts.
-`ponytail:ponytail` states it as: does this need to exist at all?
+This is `ponytail`'s first rung applied to our own artifacts — it ships with this
+flow. It states it as: does this need to exist at all?
 
 ## Step 1 — One spec, or several?
 
@@ -245,7 +245,7 @@ requirement here costs a line; deleting the code it would have produced costs a
 day. So every candidate requirement gets asked whether it needs to exist at all,
 and the ones that do not become named non-goals rather than silent omissions.
 
-`ponytail:ponytail`, if installed, is the discipline for this — its ladder runs
+`ponytail`, which ships with this flow, is the discipline for this — its ladder runs
 from "does this need to exist?" down to "only then, the minimum that works". Use it
 here, on requirements, not only later on code. Applied at build time it can shrink
 how; applied here it shrinks what.
@@ -279,8 +279,8 @@ global lock, adequate below N writes a second, per-account locks if throughput
 matters" is a decision. The same shortcut with no ceiling written down is hidden
 debt, and the next session cannot tell the two apart.
 
-When `ponytail` is installed, this is the same information its `ponytail:` code
-comments carry, and `/ponytail-debt` harvests them into a ledger. Read that ledger
+This is the same information ponytail's `ponytail:` code comments carry, and
+`/ponytail-debt` — shipped alongside it — harvests them into a ledger. Read that ledger
 when writing this pillar — a shortcut already marked in the code is a prior
 decision that should not be rediscovered from scratch.
 

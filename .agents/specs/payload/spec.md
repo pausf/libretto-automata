@@ -27,6 +27,10 @@ Installing this repository gives a working flow on a machine that has nothing el
   for a change too small to have one, and phase 8's question in both
 - the vendored delegates the thin skills depend on, so a thin skill is never a broken
   one
+- **the companions the flow calls by name ship vendored too** — `ponytail`,
+  `ponytail-debt`, `caveman`, `caveman-commit` — so "how much gets built" and "how
+  much gets said" work on a machine that installed nothing else. Only what the flow
+  calls by name: the rest of both plugins stays upstream.
 - drift detection that ships with the skill that uses it
 
 **Every skill is self-sufficient once installed.** A skill that only works inside this
@@ -39,8 +43,14 @@ third-party items and their attribution.
 
 **Out:**
 
-- **requiring ponytail or caveman.** Called when present, never required. `doctor`
-  reports them; nothing fails without them.
+- **requiring ponytail or caveman.** They ship vendored, but shipped is not
+  required: nothing fails without them, and `prune`/`uninstall` removes them like
+  any other item.
+- **the companions' always-on mode.** As plugins both can inject themselves into
+  every session via hooks; this payload does not manage `settings.json` or hooks.
+  The vendored skills activate when the flow invokes them and when their
+  descriptions trigger. The upstream plugin remains the path to always-on, and the
+  two copies coexist by namespace.
 - creating a `changes/` directory in a project that has none. A staging area nobody
   empties is a second source of truth.
 - accepting a secret. No skill asks for a token, and any skill that is handed one says
@@ -282,6 +292,18 @@ the copy stays comparable with upstream.
 - **One reviewer, not a panel.** Two runs of the same model over the same diff are
   correlation dressed as corroboration. The day reviews need lenses, that is a spec
   change, not a quiet doubling.
+- **ponytail and caveman are vendored, reversing THIRD-PARTY.md's original
+  not-vendored entry — the user's explicit call, 2026-08-10.** The old rationale (a
+  second copy of something the user may already have chosen a version of) assumed a
+  user who has versions of things; the target is a machine with nothing on it, where
+  "if installed" was a conditional that never came true. The collision half was
+  already answered by naming: plugins namespace, vendored copies do not, both
+  coexist. "The installer prints the install commands" was specced first and
+  discarded — it left the fresh user one manual step from a flow that works as
+  written. The selection rule is ponytail's own first rung: only what the flow calls
+  by name. Pinned versions and update procedure live in THIRD-PARTY.md; drift from
+  upstream is the accepted cost, and `diff` against a fresh clone at the pinned
+  commit is the check when doubt arises.
 
 ## Task breakdown
 
@@ -295,6 +317,8 @@ the copy stays comparable with upstream.
 - [x] `evidence` — the standing rules
 - [x] `libretto-flow` — the routing command
 - [x] vendored delegates with attribution
+- [x] ponytail, ponytail-debt, caveman and caveman-commit vendored, callers' prose
+      reconciled, THIRD-PARTY.md and docs recording the reversal
 - [x] `spec-drift` and `check-payload`
 - [x] **the flow run end to end against a real task.** `right-size-the-flow` — phase 1
       found it in flight, 2 wrote the delta, 5 the plan, 6 closed six tasks with a commit

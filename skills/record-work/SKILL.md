@@ -129,8 +129,8 @@ Reference the tracker key so the commit points back at its origin.
 **No AI attribution.** No `Co-Authored-By` for a model, no generated-with trailer.
 The work is the author's.
 
-If `caveman-commit` is installed and the user prefers it, use it for the message —
-it produces the same shape, compressed.
+`caveman-commit` ships with this flow; if the user prefers it, use it for the
+message — it produces the same shape, compressed.
 
 ## Branches — the backstop, not the decision
 

@@ -76,8 +76,8 @@ annoyed by it first.
 weakened, skipped, deleted or wrapped in a false condition to get a green run. When
 one fails: fix the cause, or stop and say why. Those are the only two moves.
 
-If `ponytail` is installed, this is its rule that non-trivial logic leaves one
-runnable check behind and trivial one-liners leave none.
+This is `ponytail`'s rule — it ships with this flow — that non-trivial logic leaves
+one runnable check behind and trivial one-liners leave none.
 
 ## Isolate only when isolation is cheap
 

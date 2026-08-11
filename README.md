@@ -254,7 +254,7 @@ skills/record-work/spec-drift --anchors     # 208 citations
 
 ## Standing on other people's work
 
-Three skills **ship with this repository**, so the flow works on a machine that has
+Seven skills **ship with this repository**, so the flow works on a machine that has
 nothing else installed. Copied unmodified, licence and version recorded in
 [THIRD-PARTY.md](THIRD-PARTY.md):
 
@@ -262,16 +262,20 @@ nothing else installed. Copied unmodified, licence and version recorded in
   `test-driven-development`, `using-git-worktrees`. The flow's own skills are thin
   because they delegate to these, and a thin skill whose delegate is missing is not
   thin, it is broken.
+- [**DietrichGebert/ponytail**](https://github.com/DietrichGebert/ponytail) —
+  `ponytail`, `ponytail-debt`. Decides how much gets built: the ladder runs from
+  *does this need to exist at all?* down to *only then, the minimum that works*, and
+  it carries the list of things that are never trimmed: trust boundaries, data loss,
+  security, accessibility. The flow invokes it in phase 2, on requirements, because
+  that is where removing work is cheapest.
+- [**JuliusBrussee/caveman**](https://github.com/JuliusBrussee/caveman) — `caveman`,
+  `caveman-commit`. Decides how much gets said. Compresses prose; ponytail compresses
+  what gets built. No overlap.
 
-Called when present, never required. `libretto doctor` reports them:
-
-- [**ponytail**](https://github.com/DietrichGebert/ponytail) — decides how much gets
-  built. Its ladder runs from *does this need to exist at all?* down to *only then, the
-  minimum that works*, and it carries the list of things that are never trimmed: trust
-  boundaries, data loss, security, accessibility. This flow invokes it in phase 2, on
-  requirements, because that is where removing work is cheapest.
-- **caveman** — decides how much gets said. Compresses prose; ponytail compresses what
-  gets built. No overlap.
+Shipped is not required: nothing fails without them, and they prune like any other
+item. Only what the flow calls by name is vendored — the rest of both plugins,
+including always-on hook mode, stays with the upstream plugins, and the two coexist
+by namespace.
 
 ## Not managed here
 
