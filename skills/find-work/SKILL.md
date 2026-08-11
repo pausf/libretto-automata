@@ -4,7 +4,7 @@ description: "Trigger: starting the Libretto flow; asking what to work on; resum
 license: MIT
 metadata:
   author: pausf
-  version: "1.1"
+  version: "1.2"
 ---
 
 ## What this does
@@ -85,6 +85,24 @@ half-finished work without asking is a decision about their priorities.
 
 No `.agents/changes/` directory, or none with open boxes, means nothing is in flight.
 That is a state, not an error — say it in one line and move on.
+
+### A queued idea is not work in flight
+
+`/libretto-queue` writes proposals with a `Queued:` line and nothing else beside them —
+no spec, no plan, no branch. They live in the same directory as changes in flight and
+they are **not** source 1:
+
+```
+rg -l '^Queued:' .agents/changes/*/proposal.md
+```
+
+Report them, oldest `Queued:` date first, as their own short list, and point at
+`/libretto-next`. **Never ask whether to pick one up, and never let them block.**
+
+Home first exists so *started* work does not get abandoned. An idea costs nothing to
+abandon — nothing has been built on it. Making four captured ideas stand between the user
+and a Jira task would make capture punitive, and a queue that costs something to add to
+is a queue nobody uses.
 
 ### A branch is also work in flight
 

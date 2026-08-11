@@ -30,6 +30,15 @@ them.
 
 Nothing in flight is a state, not an emptiness to apologise for. Say so in one line.
 
+## Then the queue, as its own section
+
+Ideas captured by `/libretto-queue` — proposals carrying a `Queued:` line — come **after**
+in flight, oldest first, name and one line each. The skill finds them; this command only
+keeps them separate.
+
+Two sections, never one list. A captured idea and a change half-built are different kinds
+of thing, and merging them makes the queue look like a backlog of stalled work.
+
 ## What not to do
 
 **Do not offer to pick one up.** That is `/libretto-flow`'s job, and it asks first.
