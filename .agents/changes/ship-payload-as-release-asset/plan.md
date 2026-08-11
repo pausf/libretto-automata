@@ -180,11 +180,11 @@ and nobody would notice until GitHub changed the page.
 **Files:** modify `Makefile`
 **Blocked by:** nothing
 
-- [ ] the target: refuse a dirty tree, refuse a commit that is not an annotated tag, run
+- [x] the target: refuse a dirty tree, refuse a commit that is not an annotated tag, run
       `make gates`, build `payload-<tag>.tar.gz` from `skills/ agents/ commands/` only,
       write the `.sha256`, `gh release create` or replace the assets if the release exists
-- [ ] verify by reading the produced tarball's entry list — **not by publishing anything**
-- [ ] `make gates`, commit
+- [x] verify by reading the produced tarball's entry list — **not by publishing anything**
+- [x] `make gates`, commit
 
 **Closes:** the two `gates_test.go` criteria land in R2; this task is the target itself.
 
@@ -200,13 +200,13 @@ and nobody would notice until GitHub changed the page.
 
 `assetNames` is the seam R2 asserts against, so the `Makefile` and this package cannot drift.
 
-- [ ] failing tests: the checksum is fetched and compared **before** extraction is reached —
+- [x] failing tests: the checksum is fetched and compared **before** extraction is reached —
       asserted with a mismatched checksum and a spy that fails if extraction is attempted;
       a mismatch leaves nothing on disk; a version directory already present is not
       re-downloaded
-- [ ] run them, watch them fail
-- [ ] implement: `sha256` over the downloaded temp file, compared to the fetched digest
-- [ ] `make gates`, commit
+- [x] run them, watch them fail
+- [x] implement: `sha256` over the downloaded temp file, compared to the fetched digest
+- [x] `make gates`, commit
 
 **Closes:** `TestFetchVerifiesTheChecksumBeforeExtracting` ·
 `TestFetchRefusesAMismatchedChecksumAndKeepsNothing` ·
@@ -221,11 +221,11 @@ and nobody would notice until GitHub changed the page.
 **Blocked by:** **D1, D3, D4**
 **Produces:** `Install(ctx, client, base, tag string) error`
 
-- [ ] failing tests: a failure at any step leaves no partial version directory and `current`
+- [x] failing tests: a failure at any step leaves no partial version directory and `current`
       untouched; success activates the new version
-- [ ] run them, watch them fail
-- [ ] implement: extract to `<base>/.tmp-<tag>`, rename to `<base>/<tag>`, then `Activate`
-- [ ] `make gates`, commit
+- [x] run them, watch them fail
+- [x] implement: extract to `<base>/.tmp-<tag>`, rename to `<base>/<tag>`, then `Activate`
+- [x] `make gates`, commit
 
 **Closes:** `TestInstallLeavesNoPartialVersionOnFailure` · `TestInstallActivatesTheNewVersion`
 
@@ -237,11 +237,11 @@ and nobody would notice until GitHub changed the page.
 **Files:** modify `cmd/libretto/root.go`, `cmd/libretto/root_test.go`
 **Blocked by:** **D1**
 
-- [ ] failing tests: nothing found resolves to the activated release, not
+- [x] failing tests: nothing found resolves to the activated release, not
       `~/.libretto-automata`; a checkout you are standing in still wins
-- [ ] run them, watch them fail
-- [ ] rung 4 → `dist.Current(base)`; rename to say *payload root*; `BootstrapDir` goes
-- [ ] `make gates`, commit
+- [x] run them, watch them fail
+- [x] rung 4 → `dist.Current(base)`; rename to say *payload root*; `BootstrapDir` goes
+- [x] `make gates`, commit
 
 **Closes:** `TestPayloadRootFallsBackToTheActivatedRelease` ·
 `TestPayloadRootStillPrefersACheckoutYouAreStandingIn`
@@ -261,11 +261,11 @@ this change removes on purpose. `TestVersionAndHelpDoNotBootstrap` is the one to
 *intent* of — `version` and `help` must still not touch the payload root — so it moves to
 `root_test.go` rather than dying with the file.
 
-- [ ] move `TestVersionAndHelpDoNotBootstrap`'s intent into `root_test.go`, renamed for what
+- [x] move `TestVersionAndHelpDoNotBootstrap`'s intent into `root_test.go`, renamed for what
       it now guards
-- [ ] delete the file and `ensureClone`; `run` resolves the payload root directly
-- [ ] confirm no reference to `repo.Clone` survives outside its own tests
-- [ ] `make gates`, commit
+- [x] delete the file and `ensureClone`; `run` resolves the payload root directly
+- [x] confirm no reference to `repo.Clone` survives outside its own tests
+- [x] `make gates`, commit
 
 **Closes:** no new criterion. A deletion's proof is that the suite still passes with the
 behaviour gone, and the moved test.
@@ -282,14 +282,14 @@ behaviour gone, and the moved test.
 The order is fixed: **payload, then binary, then relink.** A new binary reading an old
 payload is a state nobody can reason about.
 
-- [ ] failing tests: the payload is activated before the binary is touched; it relinks
+- [x] failing tests: the payload is activated before the binary is touched; it relinks
       afterwards so a *new* item appears; a failure names which step; a failed step leaves
       the previous version active; an unreplaceable binary still leaves the payload upgraded;
       **the output never contains the word `git`**
-- [ ] run them, watch them fail
-- [ ] implement, with the binary step as `go install <module>/cmd/libretto@<tag>` behind an
+- [x] run them, watch them fail
+- [x] implement, with the binary step as `go install <module>/cmd/libretto@<tag>` behind an
       injected runner so no test installs anything
-- [ ] `make gates`, commit
+- [x] `make gates`, commit
 
 **Closes:** `TestUpgradeActivatesThePayloadBeforeTheBinary` ·
 `TestUpgradeRelinksSoNewItemsAppear` · `TestUpgradeReportsWhichStepFailed` ·
@@ -305,11 +305,11 @@ payload is a state nobody can reason about.
 `cmd/libretto/upgrade_test.go`
 **Blocked by:** **C3**
 
-- [ ] failing tests: `upgrade` inside a checkout refuses and names `update`; `update`
+- [x] failing tests: `upgrade` inside a checkout refuses and names `update`; `update`
       outside one points at `upgrade`
-- [ ] run them, watch them fail
-- [ ] implement, both on `isRepo(root)` — the probe the rungs already use
-- [ ] `make gates`, commit
+- [x] run them, watch them fail
+- [x] implement, both on `isRepo(root)` — the probe the rungs already use
+- [x] `make gates`, commit
 
 **Closes:** `TestUpgradeRefusesInsideACheckout` · `TestUpdateOutsideACheckoutPointsAtUpgrade`
 
@@ -325,11 +325,11 @@ payload is a state nobody can reason about.
 A checkout asks `repo.LatestTag`; an installed copy asks `dist.Latest`. **Two questions,
 one asked per machine** — not two answers to one question.
 
-- [ ] failing tests: the notice names `upgrade` on an installed copy and `update` in a
+- [x] failing tests: the notice names `upgrade` on an installed copy and `update` in a
       checkout; `doctor` names the mode it is in
-- [ ] run them, watch them fail
-- [ ] implement; the cache and TTL are `repo`'s existing ones, unchanged
-- [ ] `make gates`, commit
+- [x] run them, watch them fail
+- [x] implement; the cache and TTL are `repo`'s existing ones, unchanged
+- [x] `make gates`, commit
 
 **Closes:** `TestReleaseNoticeNamesTheCommandForTheMode` · `TestDoctorNamesTheModeItIsIn`
 
@@ -343,11 +343,11 @@ one asked per machine** — not two answers to one question.
 
 Both rows always present; the inapplicable one disabled, which is already `panel`'s rule.
 
-- [ ] failing tests: both `upgrade` and `update` are offered; the one that does not apply is
+- [x] failing tests: both `upgrade` and `update` are offered; the one that does not apply is
       disabled rather than absent
-- [ ] run them, watch them fail
-- [ ] implement
-- [ ] `make gates`, commit
+- [x] run them, watch them fail
+- [x] implement
+- [x] `make gates`, commit
 
 **Closes:** `TestBothUpgradeAndUpdateAreOffered` ·
 `TestTheInapplicableActionIsDisabledNotHidden`
@@ -364,11 +364,11 @@ The `Makefile` writes the asset names and Go reads them, in two languages. Nothi
 test holds them together, and a typo in either is a release that installs on nobody's
 machine.
 
-- [ ] failing tests: the release target runs the gates first; the tarball carries only the
+- [x] failing tests: the release target runs the gates first; the tarball carries only the
       three payload directories; **the names in the `Makefile` match `assetNames`**
-- [ ] run them, watch them fail
-- [ ] implement by reading the `Makefile` text, as the existing gate tests already do
-- [ ] `make gates`, commit
+- [x] run them, watch them fail
+- [x] implement by reading the `Makefile` text, as the existing gate tests already do
+- [x] `make gates`, commit
 
 **Closes:** `TestReleaseTargetRunsTheGatesFirst` ·
 `TestReleaseTarballCarriesOnlyThePayloadDirectories` ·
@@ -382,17 +382,62 @@ machine.
 **Files:** modify `cmd/libretto/main.go` (`usage`), `README.md`
 **Blocked by:** **C4, C5, P1, R2**
 
-- [ ] usage: `upgrade`, and `update` marked as the checkout command
-- [ ] `README.md`: `upgrade` replaces `git pull` in the update section; the clone section
+- [x] usage: `upgrade`, and `update` marked as the checkout command
+- [x] `README.md`: `upgrade` replaces `git pull` in the update section; the clone section
       stays as the development route; `~/.local/share/libretto` named; **the word `git` does
       not appear in the install-and-update path**
-- [ ] `AGENTS.md`: the release step — tag, then `make release`
-- [ ] `make gates` and `scripts/check-payload`, commit
+- [x] `AGENTS.md`: the release step — tag, then `make release`
+- [x] `make gates` and `scripts/check-payload`, commit
 
 **Closes:** no test. Documentation that agrees with the binary is checked by reading both,
 and `TestUpgradeNeverMentionsGit` covers the output half.
 
 ---
+
+## What the plan got wrong
+
+**Three tasks merged, each for a reason.** C1+C2: separating them leaves a commit where
+`ensureClone` would try to clone *into* the release directory. C3+C4: `upgrade` without the
+checkout guard would install a release and relink `~/.claude` away from a developer's tree, in
+silence. D4's tests share a file with D5's. In every case the intermediate commit was not just
+untidy but actively wrong, which is a different thing.
+
+**The cache had to be generalised, and that fixed a hang the plan never saw.** `repo`'s check
+cache was keyed on `root/.git`, which an installed copy does not have — so "no `.git` means ask
+without caching" meant an HTTP call on **every panel launch**, precisely the hang the cache
+exists to prevent. `repo.Cached` now takes the path; one TTL, one failure policy, two homes.
+
+**Two safety findings that were not in any spec.**
+
+`prune --yes` with no payload would have deleted every link the user has. The root points at
+`~/.local/share/libretto/current`, absent on a fresh machine, so every link scans as `stale` —
+a destructive command doing exactly what it promises on a false premise. That is why the
+missing-payload guard is a stop and not a warning, and `models` is exempt because it reads the
+target's agents rather than the payload.
+
+`dist.Prune` never removes the **active** version whatever its keep-list says. A caller with a
+wrong list should lose a spare, not the running payload.
+
+**`repo.Clone` and `repo.ModuleURL` were deleted.** Written earlier the same session, and left
+with no caller by C2. Dead code whose tests pass proves nothing. `--anchors` then caught
+thirteen citations in the landed `cli` spec — seven renamed tests and six deleted ones — which
+is the gate doing exactly what it is for.
+
+**Three tests were verified to have teeth rather than assumed to.** The containment check made
+naive (`/tmp/destevil` accepted as inside `/tmp/dest`), `CheckRedirect` removed (two tests fail
+with "the redirect was followed"), and the release asset name changed to `.tgz`. Each failed,
+then was restored.
+
+**`TestEveryMenuLabelDispatches` earned its keep.** It predates this change and caught that the
+panel dispatches through its own switch, not through `run()` — so a new menu row without a case
+there is a row that does nothing.
+
+**Two bugs of mine caught by the existing suite:** `args[0]` read before checking `len`, and the
+payload guard placed ahead of the no-TTY exit that has always been 2.
+
+**Scope that arrived unstated and stayed:** `libretto install` with no payload explains itself
+and points at `upgrade`, rather than reporting an empty tree — "nothing to link" is what a fully
+linked machine also says.
 
 ## Landing
 
