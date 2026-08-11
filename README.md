@@ -10,7 +10,7 @@
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-payload-D97757?logo=anthropic&logoColor=white)](https://claude.com/claude-code)
 [![Jira CLI](https://img.shields.io/badge/Jira%20CLI-tracker-0052CC?logo=jira&logoColor=white)](https://github.com/ankitpokhrel/jira-cli)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#gates)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](.github/workflows/gates.yml)
 
 <img src="docs/panel.svg" alt="The libretto panel: a menu with install, uninstall, update, status, models, doctor and prune, acting on a chosen destination — here ~/.claude with all 26 items linked" width="800">
 
@@ -27,44 +27,40 @@ the paper said. **If the performance was wrong, the paper was wrong.**
 That is how this works. You write the spec. The agent performs it. When the output is
 bad, you fix the libretto, not the automaton.
 
-## Two things in one repository
+## What you get
+
+Two things, and the first one is the point:
 
 | | |
 |---|---|
-| **The payload** | an eight-phase spec-driven flow, as skills and commands. **This is the point.** |
-| **The CLI** | a Go binary that symlinks the payload into `~/.claude`. This is delivery. |
+| **The payload** | an eight-phase spec-driven flow for Claude Code, as skills and commands |
+| **The CLI** | a Go binary that symlinks the payload into `~/.claude` |
+
+What changes in practice: you say what you want, and before any code exists you get a
+**contract** — what "done" means, what is deliberately out of scope, and how each promise
+will be proven. You approve that, then a plan, then the work happens against it. A fresh
+reviewer that saw none of the session checks the result, and the last question is always
+whether to push.
 
 Links are made **per item, never per directory**, so this coexists with anything else
-installed into the same folders. Anything already there that this tool did not create is
-left untouched and reported — there is no `--force`, by design.
+installed into `~/.claude`. Anything already there that this tool did not create is left
+untouched and reported.
 
 ## Install
 
-Requires [Go 1.26+](https://go.dev/dl/).
+Two commands, plus [Go 1.26+](https://go.dev/dl/).
 
 ```bash
 go install github.com/pausf/libretto-automata/cmd/libretto@latest
 
 libretto install   # symlink every item into ~/.claude
-libretto           # the panel
 ```
 
-**That is the whole install.** The payload — skills, agents and commands — ships *inside* the Go
-module, so `go install` downloads it along with the binary and verifies it against Go's checksum
-database. There is no tarball to fetch and no bootstrap step.
+**That is the whole install.** No tarball to fetch, no bootstrap step. Check it landed:
 
-It lands here:
-
+```bash
+libretto status    # every item's state, changes nothing
 ```
-~/go/bin/libretto                                          the command
-$GOMODCACHE/github.com/pausf/libretto-automata@v0.5.0/     the payload
-  ├── skills/  agents/  commands/
-
-~/.claude/skills/write-spec  →  …@v0.5.0/skills/write-spec
-```
-
-The version is in the path, which is what makes an update a new directory rather than an
-overwrite of the one your links point at. `LIBRETTO_ROOT` points the tool somewhere else.
 
 ### Updating
 
@@ -72,9 +68,7 @@ overwrite of the one your links point at. `LIBRETTO_ROOT` points the tool somewh
 libretto update
 ```
 
-Installs the newest version and relinks. The relink is not redundant — a new version is a new
-directory, and a release that *adds* a skill would otherwise leave it unlinked with nothing to say
-so.
+Installs the newest version and relinks, so a release that *adds* a skill arrives linked.
 
 The panel also tells you when a newer version exists, checked once a day and silent when it
 cannot check.
@@ -91,12 +85,66 @@ make build      # stamps the version from git describe
 make link       # puts `libretto` on your PATH via ~/.local/bin
 ```
 
-`make link` symlinks rather than copies, so `make build` updates the installed command and no
-stale binary can pretend to be current. It refuses to overwrite a `libretto` it did not create.
+`update` pulls there instead of downloading, and the tree you are standing in is the
+installation — [why](docs/DESIGN.md#why-the-payload-is-not-compiled-into-the-binary).
 
-A checkout you are standing in wins over the module cache, so editing a skill and seeing it live
-still works — which is the reason the payload is not compiled into the binary. `update` pulls
-there instead of downloading: same command, and the tree you are standing in is the installation.
+## Your first run
+
+The CLI is installed and you will not type it again for a while. **The flow lives inside
+Claude Code** — what follows are slash commands, not shell commands.
+
+1. **Say what you want.**
+
+   ```
+   /libretto-flow add a --json flag to status
+   ```
+
+   It reads the request, names the change, and writes it down before anything else. Hand it
+   a tracker key instead — `/libretto-flow EUCAR-1234` — and it reads the ticket.
+
+2. **It stops at the spec.** You get the contract: outcomes, what is out of scope, the
+   constraints it found in your code, and the test that will prove each promise. **This is
+   the cheap place to disagree** — a wrong sentence here costs a line, and the same
+   misunderstanding costs a day once it is code.
+3. **It stops at the plan.** An ordered checklist, with what can start now.
+4. **It builds**, marking boxes as it goes, and leaves a proportionate test behind — one
+   runnable check for real logic, none for a one-liner with no logic in it.
+5. **A fresh reviewer reads the result.** It saw none of the session that wrote the code,
+   which is the entire point, and it re-runs every proof the change touched.
+6. **It reports** in the spec's own terms, including what it deliberately did not build and
+   what would bring it back.
+7. **It asks once about pushing.** That answer is always yours.
+
+Nothing else to learn to start. The rest is knowing which door to use:
+
+```bash
+/libretto-status              # what is in flight and what is queued — changes nothing
+/libretto-flow                # find the work and take it through the phases
+/libretto-flow EUCAR-1234     # …starting from a ticket
+/libretto-queue               # capture ideas, one after another, and build none of them
+/libretto-next                # take the oldest queued idea into the flow
+/libretto-review <pr-url>     # review a PR/MR in a workspace that restores itself
+```
+
+**The flow does not begin at a tracker.** Phase 1 asks three sources in order — a change
+already in flight, a tracker key or URL, and what you said — and the order is the point:
+starting something new while a change sits half-finished is how the half-finished thing
+gets abandoned.
+
+| | Phase | Skill |
+|---|---|---|
+| 1 | find the work — in flight, tracker, or asked for | `find-work` |
+| 0·2·3 | does a spec even need to exist · the six pillars · one per subtask | `write-spec` |
+| 5 | the plan — live state, one writer | `write-plan` |
+| 6 | build, with proportionate checks | `build-and-check` |
+| 7 | present, including what was left out | `present-work` |
+| 8 | commit, and make the spec true again | `record-work` |
+
+Three rules hold at **every** phase, not one of them:
+
+- **ask** — with a recommended option, real alternatives, and room to answer otherwise
+- **commit** — per task, so a bisect lands somewhere meaningful
+- **evidence** — nothing is true until it has been observed
 
 ## Commands
 
@@ -115,6 +163,10 @@ there instead of downloading: same command, and the tree you are standing in is 
 | `libretto models` | which model each agent runs on. Read-only. |
 | `libretto models set <model> <agent>…` | declare it; `--all` for every agent |
 
+`prune` and `uninstall` are both dry by default — they change nothing until `--yes`. They
+are **not the same command**: prune removes links whose item is gone, uninstall removes
+links that are working.
+
 ### Choosing a model per agent
 
 Not every agent needs the same model. The review lenses that pattern-match over prose —
@@ -128,23 +180,14 @@ libretto models set default work-reviewer        # back to the session's model
 ```
 
 The panel has the same thing behind its `models` row: mark agents with `space`, or all
-of them with `a`, pick a model with `m`. One gesture for the whole set, because making
-the prose lenses cheap is one decision, not four.
+of them with `a`, pick a model with `m`.
 
 `models` acts on **the agents of the destination you name** — `~/.claude/agents` under
 `--global`, `<cwd>/.claude/agents` under `--project`. Every agent there is listed and
 editable, not just the ones this repository ships.
 
-A row marked `shared` is a file this repository owns, reached from more than one
-destination: writing it changes every project on the machine. An unmarked row is a real
-file in that destination and changing it changes nothing else.
-
-`default` means no `model:` key at all — an absent key is already how the format says
-"whatever the session runs on", and two spellings of one state is a difference somebody
-eventually treats as meaningful.
-
-The values are **aliases**, so an agent file does not need editing the day a new model
-ships. The listing shows what each one resolves to, and when that was last checked:
+The values are **aliases**. The listing shows what each one resolves to, and when that was
+last checked:
 
 ```
 models available (aliases; versions as of 2026-08):
@@ -166,19 +209,7 @@ configuration every other project shares. In the panel, the strip shows both
 destinations and `tab` switches which one the keys act on — the active one is marked
 `◉` in gold.
 
-Passing both flags is an error. Two answers to one question is a mistake worth
-reporting, not one worth resolving by guessing.
-
-`prune` and `uninstall` are both dry by default. A destructive command that acts before
-being asked twice eventually deletes the wrong thing, and a pipe is no reason to be less
-careful. In the panel they show the plan and then ask — `y` to go ahead, `n` to cancel,
-and no other key carries them out.
-
-**`prune` and `uninstall` are not the same thing.** Prune cleans up after *the repo*
-changed — rename an item and the old link points at nothing, which is `stale`. Uninstall
-removes links that are **working**, because you changed your mind. Prune deliberately
-spares correct links, and that is what makes it safe to run: you clean one broken link
-without risking a whole installation.
+Passing both flags is an error.
 
 ### The five states
 
@@ -204,100 +235,15 @@ without risking a whole installation.
 
 There is no configuration file. A value that never varies is not configuration.
 
-## The flow
-
-Eight phases, installed as skills. Start it with `/libretto-flow`, with or without a
-tracker key.
-
-**The flow does not begin at a tracker.** Phase 1 asks three sources in order — a change
-already in flight, a tracker key or URL, and what you said — and the order is the point:
-starting something new while a change sits half-finished is how the half-finished thing
-gets abandoned.
-
-`/libretto-status` runs only the first of those and stops, for when the question is just
-"what is open?"
-
-**Ideas arrive faster than they get built.** `/libretto-queue` captures them one after
-another — a proposal with a `Queued:` date and your words verbatim, no branch and no spec
-— and `/libretto-next` picks one up later, oldest first, and takes it into the flow.
-
-Two commands and not one, because `/libretto-flow EUCAR-1234` does *that* ticket, always.
-A flow that quietly substitutes different work for what you handed it is the surprise
-nobody wants.
-
-```bash
-/libretto-status              # what is in flight and what is queued
-/libretto-flow                # find the work and take it through the phases
-/libretto-flow EUCAR-1234     # …starting from a ticket
-/libretto-queue               # capture ideas, one after another, and build none of them
-/libretto-next                # take the oldest queued idea into the flow
-/libretto-review <pr-url>     # review a PR/MR in a workspace that restores itself
-```
-
-| | Phase | Skill |
-|---|---|---|
-| 1 | find the work — in flight, tracker, or asked for | `find-work` |
-| 0·2·3 | does a spec even need to exist · the six pillars · one per subtask | `write-spec` |
-| 5 | the plan — live state, one writer | `write-plan` |
-| 6 | build, with proportionate checks | `build-and-check` |
-| 7 | present, including what was left out | `present-work` |
-| 8 | commit, and make the spec true again | `record-work` |
-
-Three rules hold at **every** phase, not one of them:
-
-- **ask** — with a recommended option, real alternatives, and room to answer otherwise
-- **commit** — per task, so a bisect lands somewhere meaningful
-- **evidence** — nothing is true until it has been observed
-
-Details and reasoning: [docs/FLOW.md](docs/FLOW.md).
-
-## Specs
-
-Per **capability**, never per ticket, under [`.agents/specs/`](.agents/specs/). A
-capability spec accumulates and stays true; a spec named after a ticket is dead the day
-the ticket closes.
-
-Each declares what it owns and cites the test behind every criterion:
-
-```
-Governs: internal/link/plan.go internal/link/apply.go
-Proof:   internal/link/apply_test.go TestApplyIsIdempotent
-```
-
-Two anchors, checked mechanically:
-
-```bash
-skills/record-work/spec-drift --anchors   # every citation resolves, test name included
-skills/record-work/spec-drift             # staged code whose owning spec did not move
-```
-
-It warns; it never blocks. A check that stops a commit in someone else's project is a
-check that gets deleted, and a deleted check finds nothing.
-
-Work in flight lives in `.agents/changes/<change>/` and lands by applying its delta onto
-the capability spec and deleting the change folder — in the same commit as the code.
-
-## Gates
-
-All six pass before any commit — `make gates` runs them, and so does
-[GitHub Actions](.github/workflows/gates.yml) on every push and pull request.
-
-```bash
-gofmt -l .                                  # must print nothing
-go vet ./...
-go test ./... -count=1
-scripts/check-payload                       # frontmatter, references, reachability
-skills/record-work/spec-drift --self-test
-skills/record-work/spec-drift --anchors     # every Proof: citation resolves
-```
-
-## Built with
+## Learn more
 
 | | |
 |---|---|
-| [Go](https://go.dev) | 1.26 |
-| [Bubble Tea](https://github.com/charmbracelet/bubbletea) · [Lip Gloss](https://github.com/charmbracelet/lipgloss) · [termenv](https://github.com/muesli/termenv) | the panel |
-| [jira-cli](https://github.com/ankitpokhrel/jira-cli) | the tracker, by CLI — never MCP, never the REST API |
+| [docs/FLOW.md](docs/FLOW.md) | the eight phases, where the flow stops and why only there |
+| [docs/DESIGN.md](docs/DESIGN.md) | why it is built this way — symlinks, no `--force`, the palette |
+| [`.agents/specs/`](.agents/specs/) | the specification, one directory per capability |
+| [AGENTS.md](AGENTS.md) | working *on* this repository: the gates, the commit rules, versioning |
+| [THIRD-PARTY.md](THIRD-PARTY.md) | the vendored skills, their licences and versions |
 
 ## Standing on other people's work
 

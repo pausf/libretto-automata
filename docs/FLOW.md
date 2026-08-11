@@ -40,6 +40,20 @@ a machine may have either, both, or neither.
 Preflight belongs in `libretto doctor`, which already answers "is everything present?"
 for symlinks.
 
+### Why the queue is two commands and not one
+
+Ideas arrive faster than they get built. `/libretto-queue` captures them one after
+another — a proposal with a `Queued:` date and your words verbatim, no branch and no spec
+— and `/libretto-next` picks one up later, oldest first, and takes it into the flow.
+
+Two commands, because `/libretto-flow EUCAR-1234` does *that* ticket, always. A flow that
+quietly substitutes different work for what you handed it is the surprise nobody wants,
+and a flow that reads the queue on its own would have to decide when to override you.
+
+**Queued is not in flight.** A captured idea never blocks the first source, because
+abandoning an idea costs nothing and a queue that is expensive to add to is a queue nobody
+uses.
+
 ## 2 · Write the spec
 
 An easy task is one spec and one session.
@@ -236,8 +250,10 @@ this change teach the spec anything?
 
 `skills/record-work/spec-drift` asks it mechanically, from the staged index, and **warns rather
 than blocks** — always exit 0. Enforcement that surprises someone in their own project
-gets uninstalled, and an uninstalled gate catches nothing. Whoever wants it to block
-can wire it into a `pre-commit` hook or CI; that choice belongs to them.
+gets uninstalled, and an uninstalled gate catches nothing. A check that stops a commit in
+someone else's project is a check that gets deleted, and a deleted check finds nothing.
+Whoever wants it to block can wire it into a `pre-commit` hook or CI; that choice belongs
+to them.
 
 Being honest about the level this reaches: a warning is Spec-First discipline with a
 reminder, not the automatic barrier the Spec-Anchored definition asks for. The barrier
