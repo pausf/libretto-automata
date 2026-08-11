@@ -139,7 +139,10 @@ the Release when a request merges**.
 - **Caching.** Six gates on a repository this size do not need it, and a cache that
   serves a stale module is a gate that passed for the wrong reason.
 - **`.gitlab-ci.yml`.** Settled in the proposal: the remote is GitHub.
-- **Turning branch protection on.** A repository setting, not a file. Named as owed.
+- **Branch protection as a file.** It is a repository setting and no file in this tree can
+  express it. **It is now on** — see the criteria below for what it is set to and how that was
+  read back. It stays named here because a reader looking for it in the tree will not find it,
+  and "absent from the repository" must not read as "not done".
 - **Write access anywhere except the release job.** `gates.yml` stays `contents: read`, and
   nothing anywhere comments, auto-formats or commits. `release.yml` gets `contents: write`
   because a tag and a Release cannot be created without it — and it is the reason that job
@@ -251,9 +254,28 @@ than loud:
   **The mechanism was proven; the numbers it produced were withdrawn.** Both runs derived their
   bump correctly from the label they were given — the labels were wrong, not the workflow. See
   the `release:major` boundary above.
-- **still owed:** branch protection, so the gates are *required* rather than merely run. Until
-  then "cannot merge until green" is a sentence in a file rather than a rule anybody is held
-  to — a repository setting, not something a file in this tree can make true.
+- **branch protection is on**, so "a request cannot merge until the workflow is green" is a rule
+  and no longer a sentence. Read back from the forge rather than trusted to the call that set
+  it:
+
+  ```
+  checks: ["gates"]   pr_required: true   approvals: 0   strict: false   admins_enforced: false
+  ```
+
+  Four of those five are decisions worth stating:
+
+  - **`approvals: 0`.** A required approval on a single-maintainer repository blocks every
+    request permanently, because nobody can approve their own. Requiring the *request* is what
+    matters here — it is what routes every change past the gates.
+  - **`admins_enforced: false`** leaves an escape hatch. A protection that can lock the only
+    maintainer out of their own `main` gets switched off entirely the first time it does, and
+    then there is no protection at all.
+  - **`strict: false`** — a request does not have to be rebased onto a moved `main` before
+    merging. The gates run against the merge result regardless, and requiring a rebase per merge
+    buys friction rather than safety at this size.
+  - **Tags are not covered.** Branch protection applies to `refs/heads`, and there are no tag
+    rulesets — verified, because the release workflow pushes a tag and nothing else. Protecting
+    `main` would otherwise have silently broken every release.
 
   **A request introducing a change to this workflow triggers the changed version on its own
   merge.** Observed, not reasoned: request #25 added `release.yml` and its own merge ran it,
