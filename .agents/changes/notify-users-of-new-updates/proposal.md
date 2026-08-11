@@ -1,7 +1,6 @@
 # notify-users-of-new-updates
 
 Tracker: none
-Queued: 2026-08-11
 
 ## The ask, verbatim
 
