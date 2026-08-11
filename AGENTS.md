@@ -54,7 +54,7 @@ libretto preview
 libretto models         # which model each agent runs on, read-only
 libretto models set haiku review-lens-design review-lens-tests   # --all for every agent
 
-libretto update         # bring the installation up to date, however it got here
+libretto update         # install the newest version and relink; pulls in a checkout
 libretto install --project   # <cwd>/.claude instead of ~/.claude
 libretto install --global    # the default; both flags at once is an error
 ```
@@ -180,7 +180,7 @@ Mixed merge takes the highest: one `feat:` among nine `fix:` is a minor.
 git switch main && git pull            # the merge is in
 git tag -a v0.5.0 -m "what shipped"
 git push origin v0.5.0                 # the tag, on the remote
-make release                           # gates, tarball, checksum, onto a GitHub Release
+make release                           # gates, then a Release page with the tag's notes
 ```
 
 **The push comes before `make release`, and the order is load-bearing.** `gh release create`
@@ -188,11 +188,11 @@ creates the tag itself when it is not on the remote, at the default branch's HEA
 it first gives you a second tag with your name on it pointing somewhere you did not choose, and
 yours is the one that loses. The target passes `--verify-tag`, which refuses instead.
 
-**A tag is not a Release.** A tag is a git ref; a Release is a GitHub object that can carry
-assets. `git push origin v0.5.0` creates the first and not the second, and `libretto update`
-reads `/releases/latest` — which, with tags and no Releases, redirects to the index and names
-no version at all. That was this repository's state at `v0.4.0`: four tags, zero Releases.
-`make release` is what closes that, so it is not optional decoration.
+**A tag is not a Release**, and here only the tag is load-bearing. A tag is a git ref; a Release
+is a GitHub object. The module proxy resolves `@latest` from tags, so `go install` works with no
+Releases at all — which was this repository's state at `v0.4.0`: four tags, zero Releases,
+verified. `make release` opens a Release page carrying the tag's notes, for humans; skipping it
+costs nothing mechanical.
 
 **Branch pushes do not tag.** Push a feature branch as often as you like; push it again after
 review; none of that is a release. Only the merge is.

@@ -2,60 +2,70 @@
 
 Targets: panel
 
-The notice row is unchanged. One menu entry and one string are not.
+The notice row is unchanged. One row's description is not.
 
 ## Outcomes
 
-- **`upgrade` joins the menu**, and `update` stays. Two entries, because they are two
-  commands — see the `cli` delta. Hiding one based on mode was the alternative and it loses:
-  a menu that changes shape between machines is a menu whose screenshots and instructions
-  are wrong somewhere.
-- **The one that does not apply is shown disabled**, not hidden. That is already this
-  spec's rule — *actions that cannot run are shown disabled rather than hidden, because the
-  panel does not promise what it cannot do and does not hide what is coming* — and it
-  applies here unchanged.
-- **The notice names the command that will actually work.** `v0.3.0 → v0.4.0 available ·
-  choose upgrade` on an installed copy; `choose update` in a checkout. A row naming a
-  command that refuses is worse than no row, and the string is still handed in whole from
-  `cli` — this package continues to know nothing about which mode it is in.
+- **`update` stays one row.** An earlier draft added a second for `upgrade` and disabled whichever
+  did not apply; collapsing the two commands removed the row along with the command.
+- **The row names the mechanism this machine will use** — `pull this checkout · rebuild · relink`
+  in a checkout, `install the newest version · relink` otherwise. One row, honest about what
+  pressing it does, without becoming two.
+- **And it no longer says `git pull`.** That string in front of somebody who only wanted to use
+  the tool is the complaint this whole change came from.
+- **The notice names `update`**, which is the only command there is. It used to have to choose
+  between two names per machine.
 
-Everything else about the row stands: its position between the menu and the strip, its own
-field, the attention colour, silence by default, surviving the narrow layout, and arriving
-as a command so the first paint never waits.
+Everything else about the notice row stands: its position between the menu and the strip, its own
+field, the attention colour, silence by default, surviving the narrow layout, and arriving as a
+command so the first paint never waits.
 
 ## Scope boundaries
 
-**In:** the second menu entry, and the notice text arriving already correct.
+**In:** the `update` row's description.
 
 **Out:**
 
-- **deciding which mode the panel is in.** `cli` decides and hands over a string; this
-  package renders it. Unchanged, and the reason is unchanged: a package that renders and
-  also detects is a package that cannot be tested without a filesystem.
-- **a confirmation before upgrading.** `y/n` is for the destructive actions. An upgrade
-  keeps the previous version and rolls back with a symlink swap.
-- **progress while it downloads.** The action already reports inside the frame when it
-  finishes, and a progress bar is machinery for a tarball of markdown.
+- **deciding which mode the panel is in.** `cli` decides and hands over strings; this package
+  renders them and continues to know nothing about a filesystem.
+- **a second row, or hiding one.** Both were drafted and both are gone with the second command.
+- **a confirmation before updating.** `y/n` is for the destructive actions.
+- **progress while it installs.** The action reports inside the frame when it finishes.
   *Ceiling:* a payload large enough that the panel looks hung.
 
 ## Prior decisions
 
-- **Two entries, both always present.** Recorded because "just hide the one that does not
-  apply" is the obvious instinct and it makes the menu machine-dependent.
+- **One row, because there is one command.** Recorded because the draft that had two argued for
+  always showing both and disabling the inapplicable one — which was right, for a design that no
+  longer exists.
 
 ## Task breakdown
 
-1. The `upgrade` entry, enabled by the same mode check `cli` already computes.
-2. Nothing in the renderer changes; the notice string arrives correct.
+1. The row's description, per mode. Nothing in the renderer changes.
 
 ## Verification criteria
 
 ```
-Proof: internal/ui/menu_test.go TestBothUpgradeAndUpdateAreOffered
-Proof: internal/ui/menu_test.go TestTheInapplicableActionIsDisabledNotHidden
-Proof: cmd/libretto/version_test.go TestReleaseNoticeNamesTheCommandForTheMode
+Proof: cmd/libretto/update_release_test.go TestTheUpdateRowNamesTheMechanism
+Proof: internal/ui/notice_test.go TestPanelRendersUpdateNoticeBetweenMenuAndStrip
+Proof: internal/ui/notice_test.go TestPanelOmitsUpdateNoticeWhenEmpty
+Proof: internal/ui/notice_test.go TestNarrowLayoutKeepsUpdateNotice
+Proof: internal/ui/notice_test.go TestUpdateNoticeAndActionFeedbackCoexist
+Proof: internal/ui/notice_test.go TestInitReturnsReleaseCheckCommand
+Proof: internal/ui/notice_test.go TestNoReleaseCheckMeansNoCommandAndNoNotice
+Proof: internal/ui/notice_test.go TestUpdateNoticeSetFromMessage
+Proof: internal/ui/notice_test.go TestActionFeedbackDoesNotOverwriteUpdateNotice
+Proof: internal/ui/notice_test.go TestNavigationDoesNotClearUpdateNotice
+Proof: internal/ui/fluid_test.go TestFrameHoldsWithUpdateNotice
 ```
 
-The third is cited by the `cli` delta too, deliberately: it is one behaviour with two
-owners, and a criterion each spec states in its own terms is how both stay honest about
-depending on it.
+One of the two menu tests the draft added is gone with the row it covered. The other outlived it:
+`TestTheInapplicableActionIsDisabledNotHidden` was exercising a standing rule of this spec — the
+panel does not hide what it cannot do — and that rule did not depend on there being two rows.
+
+```
+Proof: internal/ui/menu_test.go TestTheInapplicableActionIsDisabledNotHidden
+```
+
+`internal/ui` is otherwise untouched by this change, which is the sign the seam between it and
+`cli` held: the panel never learned what a module cache is.

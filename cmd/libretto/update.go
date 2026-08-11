@@ -13,9 +13,9 @@ import (
 	"github.com/pausf/libretto-automata/internal/target"
 )
 
-// upgradeTimeout bounds the whole thing: a redirect, two downloads, an extraction and a
+// updateTimeout bounds the whole thing: a redirect, two downloads, an extraction and a
 // compile. Generous, because the user asked for it and is waiting.
-const upgradeTimeout = 10 * time.Minute
+const updateTimeout = 10 * time.Minute
 
 // defaultClient is the HTTP client every release call uses.
 //
@@ -25,13 +25,13 @@ const upgradeTimeout = 10 * time.Minute
 // failure the user can see.
 func defaultClient() *http.Client { return &http.Client{Timeout: 2 * time.Minute} }
 
-// upgradeDeps are upgrade's four outside effects, taken as parameters.
+// updateDeps are upgrade's four outside effects, taken as parameters.
 //
 // Not for the sake of abstraction — there is one real implementation and there will not be a
 // second. It is so the *order* is provable: a spy that records the steps is the only way to
 // assert that the payload is activated before the binary is touched, and asserting on an error
 // message would pass for an implementation that did it backwards and cleaned up.
-type upgradeDeps struct {
+type updateDeps struct {
 	running string // the version this binary reports
 
 	latest func(ctx context.Context) (string, error)
@@ -57,7 +57,7 @@ type upgradeDeps struct {
 //
 // It says `git` nowhere, in success or in failure. That is the whole reason this command
 // exists rather than `update` growing a branch.
-func fromRelease(ctx context.Context, out io.Writer, d upgradeDeps) error {
+func fromRelease(ctx context.Context, out io.Writer, d updateDeps) error {
 	version, err := d.latest(ctx)
 	if err != nil {
 		return fmt.Errorf("could not find the newest version: %w", err)
@@ -110,10 +110,10 @@ func updateFromRelease(ctx context.Context) error {
 	}
 	module := moduleImportPath()
 
-	ctx, cancel := context.WithTimeout(ctx, upgradeTimeout)
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
 	defer cancel()
 
-	return fromRelease(ctx, os.Stdout, upgradeDeps{
+	return fromRelease(ctx, os.Stdout, updateDeps{
 		running: version,
 		latest: func(ctx context.Context) (string, error) {
 			return dist.Latest(ctx, defaultClient(), dist.DefaultProxy, module)

@@ -394,6 +394,39 @@ and `TestUpgradeNeverMentionsGit` covers the output half.
 
 ---
 
+## The plan was overtaken, twice
+
+**Read the sections below as history, not as state.** Every box is marked because every task was
+done — and then two of them were undone by a requirement that arrived after they were built. The
+tasks are left as written rather than rewritten, because a plan edited to match the outcome cannot
+show that the outcome moved.
+
+**First collapse: `upgrade` folded into `update`.** The user asked for two commands, not three
+words. `install` links and `update` brings the installation up to date; the split cost two menu
+rows, mutual refusals and a per-machine help table, and its justification — *a command whose
+mechanism depends on invisible state has unpredictable failures* — was weaker than it sounded. The
+state is "did you clone this or install it", which the person who put the tool there knows.
+
+**Second collapse, and the large one: the release tarball was deleted entirely.** The requirement
+was that `go install <module>/cmd/libretto@latest` be the whole install, like `gentle-ai`. Checking
+whether that was possible found that **the payload already ships inside the Go module** — verified
+end to end into a temporary `GOMODCACHE`: 30 payload entries in the module zip, and the cache
+directory lands read-only, which is exactly what a symlink wants of its target.
+
+So D1–D5 and R1 — the versioned home, the atomic `current` swap, the release redirect, the
+download, the checksum, the guarded extractor with its five refusals, and the cross-compiled
+release — are gone. `internal/dist` went from ~700 lines and 31 tests to 155 and 16.
+
+**None of it was work wasted in the sense that matters.** It was over-engineering *relative to
+what the go command already does*, and `GOSUMDB` is a stronger guarantee than a checksum published
+beside the file it describes, because it is not the publisher who vouches for it. The ladder's
+first question — does this need to exist at all? — had not been asked against the module cache.
+
+What the deletion cost, named: **`go clean -modcache` removes the payload and every link breaks at
+once.** `libretto install` repairs it. That is the price of not keeping our own copy, and it is the
+right price — the alternative was owning a download-verify-extract pipeline's failure modes instead
+of the go command's.
+
 ## What the plan got wrong
 
 **Three tasks merged, each for a reason.** C1+C2: separating them leaves a commit where

@@ -21,8 +21,8 @@ type fakeUpdate struct {
 	failAt string
 }
 
-func (f *fakeUpdate) deps(running string) upgradeDeps {
-	return upgradeDeps{
+func (f *fakeUpdate) deps(running string) updateDeps {
+	return updateDeps{
 		running: running,
 		latest: func(context.Context) (string, error) {
 			f.steps = append(f.steps, "latest")
@@ -89,7 +89,7 @@ func TestUpdateRelinksTheNewVersionNotTheRunningOne(t *testing.T) {
 // Relinking after the swap is not redundant. `current` moving means existing links keep
 // resolving, but a version that *adds* an item leaves that item unlinked — which is the whole
 // complaint `notify-users-of-new-updates` was queued for.
-func TestUpgradeRelinksSoNewItemsAppear(t *testing.T) {
+func TestUpdateRelinksSoNewItemsAppear(t *testing.T) {
 	f := &fakeUpdate{latest: "v0.4.0"}
 	var out strings.Builder
 
@@ -123,7 +123,7 @@ func TestUpdateFromAReleaseNeverMentionsGit(t *testing.T) {
 
 // A failure names which step. "upgrade failed" with four possible causes is a message that
 // sends the reader to the source.
-func TestUpgradeReportsWhichStepFailed(t *testing.T) {
+func TestUpdateReportsWhichStepFailed(t *testing.T) {
 	for step, want := range map[string]string{
 		"latest":  "could not find",
 		"install": "nothing was changed",
@@ -146,7 +146,7 @@ func TestUpgradeReportsWhichStepFailed(t *testing.T) {
 // A failed install changes nothing and relinks nothing. The links still point at the version
 // that was working, and `go install` either completed or it did not — there is no partially
 // downloaded module to reason about, because the go command does not leave one.
-func TestAFailedUpgradeLeavesThePreviousVersionActive(t *testing.T) {
+func TestAFailedUpdateLeavesThePreviousVersionActive(t *testing.T) {
 	f := &fakeUpdate{latest: "v0.4.0", failAt: "install"}
 	var out strings.Builder
 
@@ -171,7 +171,7 @@ func TestAFailedUpgradeLeavesThePreviousVersionActive(t *testing.T) {
 
 // Already on the newest release is a success that changes nothing and says so. Nothing is
 // downloaded and nothing is relinked — a no-op that relinks is a no-op with a report.
-func TestUpgradeOnTheNewestReleaseDoesNothing(t *testing.T) {
+func TestUpdateOnTheNewestVersionDoesNothing(t *testing.T) {
 	f := &fakeUpdate{latest: "v0.4.0"}
 	var out strings.Builder
 
@@ -188,7 +188,7 @@ func TestUpgradeOnTheNewestReleaseDoesNothing(t *testing.T) {
 
 // A machine with no payload yet — a fresh `go install` — upgrades rather than refusing.
 // `libretto upgrade` is how the payload arrives the first time.
-func TestUpgradeFromNothingInstalled(t *testing.T) {
+func TestUpdateFromNothingInstalled(t *testing.T) {
 	f := &fakeUpdate{latest: "v0.4.0"}
 	var out strings.Builder
 

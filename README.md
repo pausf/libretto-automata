@@ -45,45 +45,39 @@ Requires [Go 1.26+](https://go.dev/dl/).
 ```bash
 go install github.com/pausf/libretto-automata/cmd/libretto@latest
 
-libretto update    # fetch the newest release and link it
-libretto doctor    # what needs attention, and what the flow expects on this machine
+libretto install   # symlink every item into ~/.claude
+libretto           # the panel
 ```
 
-`update` fetches the newest release's payload and links it. That is also how the payload
-arrives the first time — the binary comes from `go install`, the payload comes from the
-release, and the two steps are separate because they come from different places.
+**That is the whole install.** The payload — skills, agents and commands — ships *inside* the Go
+module, so `go install` downloads it along with the binary and verifies it against Go's checksum
+database. There is no tarball to fetch and no bootstrap step.
+
+It lands here:
 
 ```
-~/.local/share/libretto/
-├── v0.3.0/          skills/ agents/ commands/
-├── v0.4.0/
-└── current  →  v0.4.0
+~/go/bin/libretto                                          the command
+$GOMODCACHE/github.com/pausf/libretto-automata@v0.5.0/     the payload
+  ├── skills/  agents/  commands/
 
-~/.claude/skills/write-spec  →  …/libretto/current/skills/write-spec
+~/.claude/skills/write-spec  →  …@v0.5.0/skills/write-spec
 ```
 
-Links point through `current`, so activating a version is one atomic symlink swap and the
-previous one stays on disk. The payload is skills, agents and commands **on disk** rather
-than compiled into the binary — that is what lets `~/.claude` hold symlinks at all, and it is
-why this is not a self-contained executable. `LIBRETTO_ROOT` points the tool somewhere else.
+The version is in the path, which is what makes an update a new directory rather than an
+overwrite of the one your links point at. `LIBRETTO_ROOT` points the tool somewhere else.
 
 ### Updating
 
 ```bash
-libretto update    # fetch the newest release · verify · activate · relink
+libretto update
 ```
 
-The panel also says when a newer release exists, checked once a day. Silent when it cannot
-check.
+Installs the newest version and relinks. The relink is not redundant — a new version is a new
+directory, and a release that *adds* a skill would otherwise leave it unlinked with nothing to say
+so.
 
-Three things `update` does that are worth knowing:
-
-- **the tarball's checksum is verified before anything is extracted**, and extraction refuses
-  any entry that resolves outside its destination, any symlink and anything that is not a
-  plain file or directory
-- **it relinks afterwards**, so a release that adds a new skill does not leave it unlinked
-- **in a checkout it pulls instead**, because there the tree you are working in *is* the
-  installation — one command, and how you got the tool decides the mechanism
+The panel also tells you when a newer version exists, checked once a day and silent when it
+cannot check.
 
 ### From a checkout instead
 
@@ -95,27 +89,25 @@ cd ~/gitrepos/libretto-automata
 
 make build      # stamps the version from git describe
 make link       # puts `libretto` on your PATH via ~/.local/bin
-libretto        # the panel
 ```
 
-`make link` symlinks rather than copies, so `make build` updates the installed command
-and no stale binary can pretend to be current. It refuses to overwrite a `libretto` it
-did not create.
+`make link` symlinks rather than copies, so `make build` updates the installed command and no
+stale binary can pretend to be current. It refuses to overwrite a `libretto` it did not create.
 
-A checkout you are standing in wins over the installed release, so editing a skill and seeing
-it live still works. `update` pulls there rather than downloading: same command, and the
-tree you are standing in is the installation.
+A checkout you are standing in wins over the module cache, so editing a skill and seeing it live
+still works — which is the reason the payload is not compiled into the binary. `update` pulls
+there instead of downloading: same command, and the tree you are standing in is the installation.
 
 ### Releasing
 
 ```bash
-git tag -a v0.4.0 -m "..."
-git push origin v0.4.0
-make release       # gates, then the payload tarball and its checksum, onto a GitHub Release
+git tag -a v0.5.0 -m "..."
+git push origin v0.5.0
+make release       # gates, then a Release page carrying the tag's notes
 ```
 
-By hand, deliberately: a tag is a release and not a commit marker, so nothing publishes on a
-tag push.
+Nothing is attached to the Release — the module proxy resolves `@latest` from **tags**, so
+installing works without one. `make release` exists so a human can read what changed.
 
 ## Commands
 
@@ -127,7 +119,7 @@ tag push.
 | `libretto install` | link everything. Idempotent; non-zero exit if anything was skipped. |
 | `libretto uninstall` | show what this repo installed here — **changes nothing** |
 | `libretto uninstall --yes` | take it back out |
-| `libretto update` | bring the installation up to date — a release download, or a pull in a checkout |
+| `libretto update` | install the newest version and relink — or pull, in a checkout |
 | `libretto doctor` | what needs attention, plus what the payload expects here |
 | `libretto prune` | show links whose source is gone — **changes nothing** |
 | `libretto prune --yes` | remove them |
