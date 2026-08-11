@@ -43,6 +43,35 @@ left untouched and reported — there is no `--force`, by design.
 Requires [Go 1.26+](https://go.dev/dl/).
 
 ```bash
+go install github.com/pausf/libretto-automata/cmd/libretto@latest
+
+libretto doctor    # what is missing, and what the flow expects on this machine
+libretto install   # symlink every item into ~/.claude
+```
+
+The first command that needs the payload clones it to `~/.libretto-automata` and says so
+before it does. That clone is what the links point at — the payload is skills, agents and
+commands on disk, not something compiled into the binary, so there has to be a checkout
+somewhere. `LIBRETTO_ROOT` points it at a different one.
+
+It refuses to clone into a `~/.libretto-automata` it did not create, names what it found,
+and touches nothing.
+
+### Updating
+
+```bash
+libretto update    # git pull · rebuild if the Go source moved · relink
+```
+
+`update` replaces the binary that is **running**, wherever `go install` put it. The panel
+also says when a newer release exists — checked once a day against the remote's tags, and
+silent when it cannot check.
+
+### From a clone instead
+
+For working *on* the payload rather than with it:
+
+```bash
 git clone git@github.com:pausf/libretto-automata.git ~/gitrepos/libretto-automata
 cd ~/gitrepos/libretto-automata
 
@@ -55,12 +84,9 @@ libretto        # the panel
 and no stale binary can pretend to be current. It refuses to overwrite a `libretto` it
 did not create.
 
-Then install the payload:
-
-```bash
-libretto doctor    # what is missing, and what the flow expects on this machine
-libretto install   # symlink every item into ~/.claude
-```
+A clone you are standing in wins over `~/.libretto-automata`, so editing a skill and
+seeing it live still works — which is the reason the payload is not embedded in the
+binary.
 
 ## Commands
 

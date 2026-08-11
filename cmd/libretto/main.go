@@ -1179,7 +1179,10 @@ func usage() {
 
   LIBRETTO_ASCII=safe   swap quadrant glyphs for half blocks
   LIBRETTO_THEME=dark|light  force a palette instead of detecting
-  LIBRETTO_ROOT=<path>  override repo location
+  LIBRETTO_ROOT=<path>  the payload clone; default ~/%[3]s
   CLAUDE_HOME=<path>    override Claude Code's root
-`, version, n)
+
+  installed with:  go install github.com/pausf/libretto-automata/cmd/libretto@latest
+  the payload is cloned to ~/%[3]s on the first command that needs it
+`, version, n, BootstrapDir)
 }
