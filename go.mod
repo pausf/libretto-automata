@@ -26,3 +26,16 @@ require (
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.3.8 // indirect
 )
+
+// This project is pre-1.0 and has not declared its contract stable. These versions were
+// published from a bump table read mechanically: the merge reversed a promise in
+// .agents/specs/ci/spec.md, which describes how this repository releases itself, while the
+// tool's contract — install, prune, the flags, the payload's skills — did not move by a
+// line. In 0.x that is a minor, not a major.
+//
+// The code they carried is in v0.5.2. Nothing is missing from the 0.5.x line.
+retract (
+	v1.0.0 // not a major; the tool's contract never changed. Use v0.5.2.
+	v1.0.1 // not a major; the tool's contract never changed. Use v0.5.2.
+	v1.0.2 // exists only to carry these retractions. Never a release.
+)
