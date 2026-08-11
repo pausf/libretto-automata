@@ -76,31 +76,42 @@ func greater(a, b [3]int) bool {
 	return false
 }
 
-// CheckedLatest is LatestTag behind the cache. This is the only entry point the CLI uses.
+// CheckedLatest is LatestTag behind the cache, for a checkout. The cache goes in .git/, so it
+// is never committed and goes with the clone.
 func CheckedLatest(ctx context.Context, root string, ttl time.Duration) (string, error) {
-	return checkedLatest(ctx, root, ttl, time.Now, Shell{Root: root}.LatestTag)
+	return Cached(ctx, filepath.Join(root, ".git", checkFile), ttl, Shell{Root: root}.LatestTag)
 }
 
-// checkedLatest takes its clock and its asker, because a test that depends on the wall
-// clock behaves differently at midnight and one that depends on the network is not a test.
+// Cached puts any "what is the newest release" call behind the same one-a-day cache.
+//
+// Exported and taking the cache path because there are two such calls and one cache: a
+// checkout asks its remote with ls-remote, an installed copy asks the forge for its latest
+// release, and each keeps its answer somewhere different. Writing a second cache for the
+// second caller would be a second TTL, a second failure policy and a second thing to get
+// wrong — and the policy is the interesting part, not the storage.
+func Cached(ctx context.Context, path string, ttl time.Duration, ask func(context.Context) (string, error)) (string, error) {
+	return cached(ctx, path, ttl, time.Now, ask)
+}
+
+// cached takes its clock and its asker, because a test that depends on the wall clock behaves
+// differently at midnight and one that depends on the network is not a test.
 //
 // Failure is cached as an empty answer, deliberately. Caching only successes means a
 // machine with no network pays the timeout on every launch — the hang this exists to
 // prevent, arriving once per invocation instead of once a day. The caller sees no error
 // either way: nobody needs a panel that reports its own inability to check.
 //
-// No .git means nowhere to keep the answer, which is the bootstrap case. Ask and do not
-// cache, rather than fail.
-func checkedLatest(
+// A directory that is not there means nowhere to keep the answer. Ask and do not cache, rather
+// than fail — that is a machine with nothing installed yet.
+func cached(
 	ctx context.Context,
-	root string,
+	path string,
 	ttl time.Duration,
 	now func() time.Time,
 	ask func(context.Context) (string, error),
 ) (string, error) {
-	path := filepath.Join(root, ".git", checkFile)
 	cacheable := false
-	if info, err := os.Stat(filepath.Join(root, ".git")); err == nil && info.IsDir() {
+	if info, err := os.Stat(filepath.Dir(path)); err == nil && info.IsDir() {
 		cacheable = true
 	}
 

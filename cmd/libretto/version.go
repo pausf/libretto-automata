@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"time"
 
+	"github.com/pausf/libretto-automata/internal/dist"
 	"github.com/pausf/libretto-automata/internal/repo"
 )
 
@@ -16,6 +19,46 @@ import (
 // bootstrap clone gets minutes because the user is waiting for the payload; nobody is
 // waiting to be told they are up to date.
 const checkTimeout = 5 * time.Second
+
+// askLatest is the "what is the newest release" call for the mode this machine is in, behind
+// the shared cache.
+//
+// **Two questions, not two answers to one.** A checkout asks *its remote* what it has tagged;
+// an installed copy asks *the project* what it has released. Only one is ever asked on a given
+// machine, so these are not two implementations that can disagree — and the cache policy they
+// share is repo's, written once.
+func askLatest(ctx context.Context, root string) (string, error) {
+	if isRepo(root) {
+		return repo.CheckedLatest(ctx, root, repo.CheckTTL)
+	}
+
+	// The installed copy keeps its answer beside the payloads. Not in .git/ — there is no
+	// .git — and without somewhere to keep it the panel would make an HTTP call on every
+	// single launch, which is the hang the cache exists to prevent.
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	base := dist.Base(home)
+	return repo.Cached(ctx, filepath.Join(base, checkFile), repo.CheckTTL,
+		func(ctx context.Context) (string, error) {
+			return dist.Latest(ctx, defaultClient(), forgeHost)
+		})
+}
+
+// checkFile is where an installed copy keeps the cached answer. A dotfile, so it is not
+// mistaken for a version directory — `dist.Versions` ignores it either way, and belt and
+// braces on a directory the tool prunes is cheap.
+const checkFile = ".update-check"
+
+// upgradeCommand is the command that moves this machine forward, which is not the same command
+// in both modes. A notice naming one that would refuse is worse than no notice.
+func upgradeCommand(root string) string {
+	if isRepo(root) {
+		return "update"
+	}
+	return "upgrade"
+}
 
 // releaseNotice is the panel's row, or "" when there is nothing to say.
 //
@@ -28,11 +71,11 @@ func releaseNotice(root, running string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), checkTimeout)
 	defer cancel()
 
-	latest, err := repo.CheckedLatest(ctx, root, repo.CheckTTL)
+	latest, err := askLatest(ctx, root)
 	if err != nil || !repo.IsNewer(latest, running) {
 		return ""
 	}
-	return fmt.Sprintf("%s → %s available · choose update", running, latest)
+	return fmt.Sprintf("%s → %s available · choose %s", running, latest, upgradeCommand(root))
 }
 
 // releaseLine is `doctor`'s version: one line, always something, never silence.
@@ -46,7 +89,7 @@ func releaseNotice(root, running string) string {
 // Shell.LatestTag directly rather than the cached path: it checks live, because the user is
 // waiting for a diagnosis, and going through the cache would both write a file and swallow
 // the very error this line exists to report.
-func releaseLine(running string, ask func(context.Context) (string, error)) string {
+func releaseLine(running, command string, ask func(context.Context) (string, error)) string {
 	ctx, cancel := context.WithTimeout(context.Background(), checkTimeout)
 	defer cancel()
 
@@ -57,7 +100,7 @@ func releaseLine(running string, ask func(context.Context) (string, error)) stri
 	case latest == "":
 		return "the remote has no releases to offer"
 	case repo.IsNewer(latest, running):
-		return fmt.Sprintf("%s → %s available · run `%s update`", running, latest, invokedAs())
+		return fmt.Sprintf("%s → %s available · run `%s %s`", running, latest, invokedAs(), command)
 	case running == latest:
 		return "up to date at " + running
 	default:

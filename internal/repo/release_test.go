@@ -105,7 +105,7 @@ func TestCheckCacheSuppressesCallsInsideTTL(t *testing.T) {
 	}
 
 	for i := 0; i < 3; i++ {
-		got, err := checkedLatest(context.Background(), root, time.Hour, nowStub, ask)
+		got, err := cached(context.Background(), cachePath(root), time.Hour, nowStub, ask)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -130,11 +130,11 @@ func TestCheckCacheAsksAgainOnceTheTTLExpires(t *testing.T) {
 		return "v0.3.0", nil
 	}
 
-	if _, err := checkedLatest(context.Background(), root, time.Hour, nowStub, ask); err != nil {
+	if _, err := cached(context.Background(), cachePath(root), time.Hour, nowStub, ask); err != nil {
 		t.Fatal(err)
 	}
 	// Same clock, zero TTL: the entry is already stale.
-	if _, err := checkedLatest(context.Background(), root, 0, nowStub, ask); err != nil {
+	if _, err := cached(context.Background(), cachePath(root), 0, nowStub, ask); err != nil {
 		t.Fatal(err)
 	}
 	if calls != 2 {
@@ -157,7 +157,7 @@ func TestCheckCacheRecordsFailureSoOfflineDoesNotRetry(t *testing.T) {
 	}
 
 	for i := 0; i < 3; i++ {
-		got, err := checkedLatest(context.Background(), root, time.Hour, nowStub, ask)
+		got, err := cached(context.Background(), cachePath(root), time.Hour, nowStub, ask)
 		if err != nil {
 			t.Errorf("call %d surfaced the failure to the caller: %v", i, err)
 		}
@@ -170,8 +170,8 @@ func TestCheckCacheRecordsFailureSoOfflineDoesNotRetry(t *testing.T) {
 	}
 }
 
-// Without a .git directory there is nowhere to keep the cache. That is the bootstrap
-// case, and it means "ask, do not cache" rather than "fail".
+// With nowhere to keep the cache there is still an answer. That is a machine with nothing
+// installed yet, and it means "ask, do not cache" rather than "fail".
 func TestCheckCacheWithoutAGitDirectoryStillAnswers(t *testing.T) {
 	root := t.TempDir()
 
@@ -182,7 +182,7 @@ func TestCheckCacheWithoutAGitDirectoryStillAnswers(t *testing.T) {
 	}
 
 	for i := 0; i < 2; i++ {
-		got, err := checkedLatest(context.Background(), root, time.Hour, nowStub, ask)
+		got, err := cached(context.Background(), cachePath(root), time.Hour, nowStub, ask)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -194,6 +194,9 @@ func TestCheckCacheWithoutAGitDirectoryStillAnswers(t *testing.T) {
 		t.Errorf("asked %d times with nowhere to cache, want 2", calls)
 	}
 }
+
+// cachePath is where the checkout's answer is kept.
+func cachePath(root string) string { return filepath.Join(root, ".git", checkFile) }
 
 // nowStub is a fixed clock. Date.now in a test is a test that behaves differently at
 // midnight.

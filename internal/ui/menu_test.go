@@ -134,3 +134,42 @@ func rgbOf(hex string) string {
 	}
 	return found[0]
 }
+
+// Both movement commands are offered, always. `upgrade` fetches a published release and
+// `update` pulls a checkout; which one applies depends on the machine, and hiding the other
+// would make the menu change shape between them.
+func TestBothUpgradeAndUpdateAreOffered(t *testing.T) {
+	forceTrueColor(t)
+	p := demoPanel()
+	p.Menu = []MenuItem{
+		{Label: "upgrade", Desc: "fetch the newest release · relink", Enabled: true},
+		{Label: "update", Desc: "pull this checkout · rebuild · relink", Enabled: false},
+	}
+
+	out := strip(darkTheme().Render(p))
+	for _, label := range []string{"upgrade", "update"} {
+		if !strings.Contains(out, label) {
+			t.Errorf("the menu does not offer %q:\n%s", label, out)
+		}
+	}
+}
+
+// Disabled, not dimmed and not absent. Colour carries selection and nothing else, so a
+// disabled row keeps full contrast and reads as available-but-inert — which is why absence is
+// the only way it could disappear, and it must not.
+func TestTheInapplicableActionIsDisabledNotHidden(t *testing.T) {
+	forceTrueColor(t)
+	p := demoPanel()
+	p.Menu = []MenuItem{
+		{Label: "upgrade", Desc: "fetch the newest release · relink", Enabled: false},
+		{Label: "status", Desc: "32 linked", Enabled: true},
+	}
+
+	out := strip(darkTheme().Render(p))
+	if !strings.Contains(out, "upgrade") {
+		t.Errorf("a disabled action was hidden:\n%s", out)
+	}
+	if !strings.Contains(out, "fetch the newest release") {
+		t.Errorf("a disabled action lost its description:\n%s", out)
+	}
+}

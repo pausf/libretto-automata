@@ -22,6 +22,7 @@ import (
 	"github.com/muesli/termenv"
 
 	"github.com/pausf/libretto-automata/internal/agentmodel"
+	"github.com/pausf/libretto-automata/internal/dist"
 	"github.com/pausf/libretto-automata/internal/link"
 	"github.com/pausf/libretto-automata/internal/repo"
 	"github.com/pausf/libretto-automata/internal/target"
@@ -324,6 +325,11 @@ func dispatch(action, root string, tg target.Target, confirm bool) error {
 		return install(root, tg)
 	case "update":
 		return update(root, tg)
+	case "upgrade":
+		// The panel's report is captured stdout, and upgrade already writes there — so this
+		// needs no second rendering of the same facts, which is the rule the whole capture
+		// mechanism exists to honour.
+		return runUpgrade(context.Background())
 	case "status":
 		return status(root, tg)
 	case "doctor":
@@ -397,11 +403,18 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 		})
 	}
 
+	// Both movement commands are always listed, and the one that does not apply here is
+	// disabled rather than hidden. That is this panel's existing rule — it does not promise
+	// what it cannot do, and it does not hide what is coming — and a menu that changes shape
+	// between machines is a menu whose screenshots and instructions are wrong somewhere.
+	checkout := isRepo(root)
+
 	// The status row carries the live tally, exactly as the design mocks it.
 	menu := []ui.MenuItem{
 		{Label: "install", Desc: "link the score into " + shorten(active.Root()), Enabled: true},
 		{Label: "uninstall", Desc: "take it back out of " + shorten(active.Root()), Enabled: true, Destructive: true},
-		{Label: "update", Desc: "git pull · relink · report", Enabled: true},
+		{Label: "upgrade", Desc: "fetch the newest release · relink", Enabled: !checkout},
+		{Label: "update", Desc: "pull this checkout · rebuild · relink", Enabled: checkout},
 		{Label: "status", Desc: summarise(overall), Enabled: true},
 	}
 
@@ -904,8 +917,19 @@ func doctor(root string, tg target.Target) error {
 	// Live, not cached: the user typed a diagnostic and can afford the wait. It never
 	// sets the exit code — being a release behind is news, and an unreachable remote is
 	// not this tool's fault.
+	//
+	// The mode is named because "up to date" means something different in each. A checkout
+	// three commits past a tag is up to date with its remote and behind the release.
 	fmt.Println("\nrelease")
-	fmt.Println("  " + releaseLine(version, repo.Shell{Root: root}.LatestTag))
+	if isRepo(root) {
+		fmt.Println("  mode     a checkout at " + root)
+		fmt.Println("  " + releaseLine(version, "update", repo.Shell{Root: root}.LatestTag))
+	} else {
+		fmt.Println("  mode     an installed release at " + root)
+		fmt.Println("  " + releaseLine(version, "upgrade", func(ctx context.Context) (string, error) {
+			return dist.Latest(ctx, defaultClient(), forgeHost)
+		}))
+	}
 
 	fmt.Println("\nprerequisites")
 	for _, p := range prerequisites() {
