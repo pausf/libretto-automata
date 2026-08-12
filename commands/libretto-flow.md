@@ -61,6 +61,9 @@ A stop is where the user changes something. A stop where the only available answ
 "yes, carry on" is a round trip charged for a rubber stamp, and a flow that charges
 those gets routed around.
 
+`/libretto-attacca` is the same flow with all three answered in advance, and it owns that
+classification — including what stays a stop under it, because a gate is not one.
+
 ## 1 · Find the work
 
 ```
