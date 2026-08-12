@@ -292,10 +292,13 @@ under bash, because "refuses zero and two" is behaviour, not shape:
 - no `run:` script expands a label inline
   Proof: cmd/libretto/label_workflow_test.go TestLabelWorkflowNeverExpandsUntrustedTextInsideAScript
 
-**Not yet paid:** the check joining `gates` in the required status checks. It can only
-be required once it has run on a real request, so the setting lands after this
-change's own request is open — set via `gh api`, read back rather than trusted, and
-recorded here when it is.
+**Paid, by observation:** the check ran green on its own request (#40, the first it
+could run on), and it now sits beside `gates` in the required status checks — set via
+`gh api` after that first run, then read back from the forge rather than trusted:
+
+```
+checks: ["gates", "label"]   pr_required: true   strict: false   admins_enforced: false
+```
 
 - **paid, by observation:** the gates workflow has run green on real requests, and **two real
   merges have tagged and published** — requests #25 and #26, runs `31485394056` and
