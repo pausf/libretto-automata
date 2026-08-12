@@ -35,9 +35,30 @@ anybody and no version needed a major bump for the removal.
 
 ### Knowing a newer release exists
 
-- **`LatestTag` is the highest plain release tag on the remote**, read from
-  `git ls-remote --tags`. No token, no rate limit, no JSON, and it works against whatever
-  remote the user's git can reach.
+- **`LatestTag` is the highest plain release tag on the remote that is not retracted**,
+  read from `git ls-remote --tags`. No token, no rate limit, no JSON, and it works against
+  whatever remote the user's git can reach.
+- **A tag that retracts itself is not a release, and this had to be taught.** `v1.0.2` here
+  has no Release and exists only to carry a `retract` block covering the two bad versions
+  before it and itself. It is valid semver, so it sorted highest and was offered as an
+  update — measured, on a real clone. **The module proxy honours `retract` and answered
+  `v0.7.0` correctly the whole time; a git ref carries no retraction at all**, so the two
+  install modes disagreed and only the checkout was wrong.
+  - The candidate is opened — `git show <tag>:go.mod` — and dropped if its own `retract`
+    directives name it. All three grammar forms are read: a single directive, a
+    parenthesised block, and a `[low, high]` range, inclusive at both ends.
+  - **Hand-parsed, not through `golang.org/x/mod/modfile`.** A sixth direct dependency for
+    one predicate, when the ladder puts stdlib first.
+  - **An unreadable `go.mod` is not evidence of a retraction** and the tag is offered.
+    `ls-remote` can name a tag the local object store has never seen — one pushed since the
+    last fetch — and a tag that new is a release far more often than a tombstone. Hiding it
+    would mean a genuine release going unannounced to everyone whose tags are a day old.
+  - **No fetch to settle it.** Reaching the network for a speculative background check is
+    the hang the cache exists to prevent, arriving from another direction, and it would
+    write to the user's object store for a question nobody asked.
+  - **The walk down the tags is bounded.** Each step past the first is a `git show` on a
+    tag that turned out to be retracted, and an unbounded loop over a remote-controlled
+    list is a subprocess per line.
 - **Only plain `vX.Y.Z` counts.** A prerelease, a `git describe` string and build metadata
   are rejected rather than ranked. Invisible is the safe direction: a prerelease cannot
   claim to be newer than the release it precedes.
@@ -176,6 +197,13 @@ one. Rename is atomic.
 
 - the highest plain semver wins, from real `ls-remote` output over annotated tags
   Proof: internal/repo/release_test.go TestLatestTagPicksHighestPlainSemver
+- **a tag whose own `go.mod` retracts it is skipped** — the tombstone, offered as an update
+  until it was not
+  Proof: internal/repo/release_test.go TestLatestTagSkipsATagThatRetractsItself
+- **a tag whose `go.mod` cannot be read is offered**, because unreadable is not evidence
+  Proof: internal/repo/release_test.go TestLatestTagOffersATagWhoseGoModCannotBeRead
+- every `retract` form is read: single, block, and an inclusive `[low, high]` range
+  Proof: internal/repo/release_test.go TestRetractedReadsEveryDirectiveForm
 - a remote whose only tags are prereleases has no release to offer, and that is not an
   error
   Proof: internal/repo/release_test.go TestLatestTagIgnoresPrereleaseAndNonSemverTags

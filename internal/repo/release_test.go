@@ -26,6 +26,106 @@ func taggedRemote(t *testing.T, tags ...string) Shell {
 	return Shell{Root: local}
 }
 
+// clonedRemote is taggedRemote's sibling for the retraction tests: a real clone, so the
+// tag objects exist locally and `git show <tag>:go.mod` has something to read.
+//
+// The distinction is the whole reason this helper exists rather than a flag on the other
+// one. `ls-remote` answers about the remote; reading a retraction reads a blob, and a blob
+// has to be in the local object store. A repository that merely has `origin` set — which
+// is what taggedRemote builds — can name a tag it cannot open.
+func clonedRemote(t *testing.T, goMod map[string]string, tags ...string) Shell {
+	t.Helper()
+	upstream := gitRepoWithACommit(t)
+	for _, tag := range tags {
+		write(t, upstream, "go.mod", goMod[tag])
+		commit(t, upstream, "go.mod for "+tag)
+		run(t, upstream, "tag", "-a", tag, "-m", tag)
+	}
+
+	local := t.TempDir()
+	clone := filepath.Join(local, "clone")
+	run(t, local, "clone", "-q", upstream, clone)
+	return Shell{Root: clone}
+}
+
+const plainGoMod = "module example.invalid\n\ngo 1.26.5\n"
+
+// The tombstone case, and the reason this exists: `v1.0.2` in this repository has no
+// Release and exists only to retract itself and the two versions before it. It is a
+// perfectly valid semver tag, so it sorted highest and got offered as an update — to a
+// checkout only, because the module proxy honours `retract` and `git ls-remote` cannot.
+func TestLatestTagSkipsATagThatRetractsItself(t *testing.T) {
+	s := clonedRemote(t, map[string]string{
+		"v0.7.0": plainGoMod,
+		"v1.0.2": plainGoMod + `
+retract (
+	v1.0.0 // not a major; the tool's contract never changed.
+	v1.0.1 // not a major; the tool's contract never changed.
+	v1.0.2 // exists only to carry these retractions. Never a release.
+)
+`,
+	}, "v0.7.0", "v1.0.2")
+
+	got, err := s.LatestTag(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "v0.7.0" {
+		t.Errorf("LatestTag = %q, want v0.7.0 — the tombstone was offered as an update", got)
+	}
+}
+
+// A tag whose go.mod cannot be read is offered, not hidden.
+//
+// Both directions are wrong in some case and this one is wrong in the rarer, cheaper one.
+// `ls-remote` can name a tag the local object store has never seen — one pushed since the
+// last fetch — and a tag that new is a release far more often than it is a tombstone.
+// Hiding it would mean a genuine release going unannounced to everyone with stale tags,
+// which is everyone who has not fetched today.
+func TestLatestTagOffersATagWhoseGoModCannotBeRead(t *testing.T) {
+	// taggedRemote, deliberately: `origin` is set and the tags are not local, so every
+	// `git show` fails. That is the unreadable case, built out of the ordinary harness.
+	s := taggedRemote(t, "v0.7.0", "v1.0.2")
+
+	got, err := s.LatestTag(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "v1.0.2" {
+		t.Errorf("LatestTag = %q, want v1.0.2 — an unreadable go.mod is not evidence", got)
+	}
+}
+
+func TestRetractedReadsEveryDirectiveForm(t *testing.T) {
+	tests := []struct {
+		name  string
+		gomod string
+		tag   string
+		want  bool
+	}{
+		{"no retract block at all", plainGoMod, "v1.0.2", false},
+		{"single directive naming it", "retract v1.0.2\n", "v1.0.2", true},
+		{"single directive naming another", "retract v1.0.0\n", "v1.0.2", false},
+		{"block naming it", "retract (\n\tv1.0.0\n\tv1.0.2\n)\n", "v1.0.2", true},
+		{"block naming only others", "retract (\n\tv1.0.0\n\tv1.0.1\n)\n", "v1.0.2", false},
+		{"block with a reason comment", "retract (\n\tv1.0.2 // tombstone\n)\n", "v1.0.2", true},
+		{"a range covering it", "retract [v1.0.0, v1.0.2]\n", "v1.0.1", true},
+		{"a range at its upper bound", "retract [v1.0.0, v1.0.2]\n", "v1.0.2", true},
+		{"a range past it", "retract [v1.0.0, v1.0.2]\n", "v1.1.0", false},
+		{"a range inside a block", "retract (\n\t[v1.0.0, v1.0.2]\n)\n", "v1.0.1", true},
+		// The word appearing in a comment or a module path is not a directive.
+		{"the word in a comment", "// retract v1.0.2 one day\n", "v1.0.2", false},
+		{"a require line that merely contains it", "require retracted.dev/x v1.0.2\n", "v1.0.2", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := retracted(tt.gomod, tt.tag); got != tt.want {
+				t.Errorf("retracted(%q, %q) = %v, want %v", tt.gomod, tt.tag, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestLatestTagPicksHighestPlainSemver(t *testing.T) {
 	// Deliberately not in order, and v0.9.0 after v0.10.0: the whole point is that this
 	// is not a string sort.

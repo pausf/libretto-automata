@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -30,6 +31,12 @@ const checkFile = "libretto-update-check"
 //
 // An empty string with no error means the remote has no release to offer. A remote with
 // only prereleases, or no tags at all, is a state and not a failure.
+//
+// **A tag that retracts itself is not a release.** `v1.0.2` in this repository has no
+// Release and exists only to carry a `retract` block covering the two bad versions before
+// it and itself — and it is perfectly valid semver, so it sorted highest and got offered
+// as an update. The module proxy honours `retract` and answers `v0.7.0`; a git ref carries
+// no retraction at all, so the checkout path had to learn to open the tag and look.
 func (s Shell) LatestTag(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", s.Root, "ls-remote", "--tags", "origin")
 	out, err := cmd.CombinedOutput()
@@ -39,16 +46,45 @@ func (s Shell) LatestTag(ctx context.Context) (string, error) {
 		}
 		return "", err
 	}
-	return highestTag(string(out)), nil
+
+	candidates := descendingTags(string(out))
+	if len(candidates) > maxRetractProbes {
+		candidates = candidates[:maxRetractProbes]
+	}
+	for _, tag := range candidates {
+		if !s.retractsItself(ctx, tag) {
+			return tag, nil
+		}
+	}
+	return "", nil
 }
 
-// highestTag reads ls-remote's output: one `<sha>\trefs/tags/<name>` per line.
+// maxRetractProbes bounds the walk down a remote's tags.
+//
+// ponytail: a constant, and low. Each step past the first is a `git show` on a tag that
+// turned out to be retracted, and the real answer is one — this repository has exactly one
+// tombstone. Ten is headroom for a project that retracted a bad run of releases; a remote
+// with more than that is not one this notice can usefully summarise anyway, and an
+// unbounded loop over a remote-controlled list is a subprocess per line.
+const maxRetractProbes = 10
+
+// descendingTags reads ls-remote's output — one `<sha>\trefs/tags/<name>` per line — and
+// returns every plain release tag, newest first.
 //
 // `^{}` suffixes mark the commit an annotated tag points at, and this repository's tags
 // are annotated — so every release appears twice and the peeled line has to be dropped or
 // the name is `v0.2.0^{}`, which parses as nothing.
-func highestTag(out string) string {
-	best, bestParsed := "", [3]int{}
+//
+// It returns the whole ordered list rather than the single highest, because the highest is
+// no longer necessarily the answer: it has to be opened first, and the runner-up is what
+// the answer falls back to.
+func descendingTags(out string) []string {
+	type tag struct {
+		name   string
+		parsed [3]int
+	}
+
+	var tags []tag
 	for _, line := range strings.Split(out, "\n") {
 		_, ref, ok := strings.Cut(strings.TrimSpace(line), "\t")
 		if !ok {
@@ -60,11 +96,107 @@ func highestTag(out string) string {
 		if !ok {
 			continue
 		}
-		if best == "" || greater(parsed, bestParsed) {
-			best, bestParsed = name, parsed
+		tags = append(tags, tag{name, parsed})
+	}
+
+	sort.Slice(tags, func(i, j int) bool { return greater(tags[i].parsed, tags[j].parsed) })
+
+	names := make([]string, 0, len(tags))
+	for _, t := range tags {
+		// An annotated tag appears twice in ls-remote's output and both lines survive the
+		// peel-stripping as the same name. Dropping the repeat here keeps the probe budget
+		// counting distinct tags rather than lines.
+		if len(names) > 0 && names[len(names)-1] == t.name {
+			continue
+		}
+		names = append(names, t.name)
+	}
+	return names
+}
+
+// retractsItself reports whether tag's own go.mod retracts tag.
+//
+// The tag's own, not the working tree's: a retraction is published *with* the version it
+// withdraws, which is the only arrangement that lets the highest version retract itself.
+//
+// **An unreadable go.mod is not evidence of a retraction.** `ls-remote` can name a tag the
+// local object store has never seen — one pushed since the last fetch — and `git show`
+// fails on it. Both answers are wrong in some case and this one is wrong in the rarer,
+// cheaper one: a tag that new is a release far more often than a tombstone, and hiding it
+// would mean a genuine release going unannounced to everyone whose tags are a day old.
+//
+// ponytail: no fetch. Reaching the network to settle a speculative background check is the
+// hang the cache exists to prevent, arriving from a different direction — and it would
+// write to the user's object store for a question nobody asked.
+func (s Shell) retractsItself(ctx context.Context, tag string) bool {
+	out, err := exec.CommandContext(ctx, "git", "-C", s.Root, "show", tag+":go.mod").Output()
+	if err != nil {
+		return false
+	}
+	return retracted(string(out), tag)
+}
+
+// retracted reports whether a go.mod's retract directives cover version.
+//
+// Hand-parsed rather than through `golang.org/x/mod/modfile`, which would be a sixth direct
+// dependency for one predicate — AGENTS.md's ladder puts stdlib first and asks before
+// adding. All three forms the go.mod grammar allows are read: a single directive, a
+// parenthesised block, and a `[low, high]` range in either position.
+func retracted(gomod, version string) bool {
+	want, ok := parseSemver(version)
+	if !ok {
+		return false
+	}
+
+	inBlock := false
+	for _, raw := range strings.Split(gomod, "\n") {
+		// Comments carry the reason a version was withdrawn, and `// retract v1.0.2 one
+		// day` is a note rather than a directive.
+		line := strings.TrimSpace(raw)
+		if i := strings.Index(line, "//"); i >= 0 {
+			line = strings.TrimSpace(line[:i])
+		}
+		if line == "" {
+			continue
+		}
+
+		switch {
+		case inBlock:
+			if line == ")" {
+				inBlock = false
+				continue
+			}
+		case line == "retract (":
+			inBlock = true
+			continue
+		case strings.HasPrefix(line, "retract "):
+			line = strings.TrimSpace(strings.TrimPrefix(line, "retract "))
+		default:
+			continue
+		}
+
+		if covers(line, want) {
+			return true
 		}
 	}
-	return best
+	return false
+}
+
+// covers reads one retract entry — `v1.0.2` or `[v1.0.0, v1.0.2]` — against a version.
+func covers(entry string, want [3]int) bool {
+	if !strings.HasPrefix(entry, "[") {
+		got, ok := parseSemver(entry)
+		return ok && got == want
+	}
+
+	low, high, ok := strings.Cut(strings.Trim(entry, "[]"), ",")
+	if !ok {
+		return false
+	}
+	lo, okLo := parseSemver(strings.TrimSpace(low))
+	hi, okHi := parseSemver(strings.TrimSpace(high))
+	// Inclusive at both ends, which is what the go.mod grammar means by a range.
+	return okLo && okHi && !greater(lo, want) && !greater(want, hi)
 }
 
 func greater(a, b [3]int) bool {
