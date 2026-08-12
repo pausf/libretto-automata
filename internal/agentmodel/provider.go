@@ -107,7 +107,19 @@ var providers = []struct {
 }
 
 // anthropicAPI is what the aliases mean with nothing set.
-var anthropicAPI = map[string]string{"opus": "Opus 5", "sonnet": "Sonnet 5", "haiku": "Haiku 4.5"}
+//
+// `fable` appears here and in none of the provider tables above, and that is an answer
+// rather than an omission: those tables transcribe the host's own per-provider alias table,
+// which does not name Fable. An alias absent from a provider's map resolves to *not
+// knowable*, which is this package's standing posture towards what it cannot verify — and
+// unknown is treated as capable, so `fable` is offered all five levels there, which is what
+// Fable 5 runs anyway.
+var anthropicAPI = map[string]string{
+	"fable":  "Fable 5",
+	"opus":   "Opus 5",
+	"sonnet": "Sonnet 5",
+	"haiku":  "Haiku 4.5",
+}
 
 // DetectProvider reads the environment and reports which provider it names.
 //

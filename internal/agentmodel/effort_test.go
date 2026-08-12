@@ -336,6 +336,29 @@ func TestApplyModelKeepsEffortWhenTheModelSupportsIt(t *testing.T) {
 	}
 }
 
+// The newest alias walks the same path, and it needed saying separately: a criterion
+// about `fable` first cited the opus→sonnet test above, which passes without `fable`
+// appearing in it — a green run standing in for coverage that did not exist.
+func TestApplyModelKeepsEffortWhenMovingToFable(t *testing.T) {
+	dir := dirWithModels(t, map[string]string{"lens": "haiku"})
+	if err := Apply(dir, []string{"lens"}, "fable"); err != nil {
+		t.Fatal(err)
+	}
+	if err := SetEffort(filepath.Join(dir, "lens.md"), "max"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ApplyEffort(dir, []string{"lens"}, "max"); err != nil {
+		t.Fatalf("fable refused an effort level it runs: %v", err)
+	}
+	if got := effortOf(t, dir, "lens"); got != "max" {
+		t.Errorf("effort on fable = %q, want max", got)
+	}
+	if got := modelOf(t, dir, "lens"); got != "fable" {
+		t.Errorf("model = %q, want fable", got)
+	}
+}
+
 // The panel offers a choice off this rather than discovering the refusal after one was
 // made. A slice and not a bool because the host's own table already lists a model with
 // four of the five, so the shape has to survive one entering this catalogue.

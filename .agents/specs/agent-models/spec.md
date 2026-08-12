@@ -48,10 +48,22 @@ effort: xhigh
 
 | Value | Resolves to | Means |
 |---|---|---|
+| `fable` | Fable 5 | the deepest reasoning, and the priciest tokens here |
 | `opus` | Opus 5 | the most capable. Max plans; metered on Pro |
 | `sonnet` | Sonnet 5 | the default working model |
 | `haiku` | Haiku 4.5 | the cheap one — what this capability exists to make reachable |
 | *default* | — | no `model:` key at all: the agent runs on whatever the session runs on |
+
+**The catalogue's render order is contracted and it is the reverse of this table's.** Both
+the CLI listing and the panel selector iterate the catalogue as code holds it — cheapest
+first, session default at the top, `fable` last — because the cheap choice belongs under the
+cursor of a feature built to reduce the bill. This table reads most-capable first for a
+human; nothing renders it.
+
+**`opus`'s "the most capable" is stale prose the day `fable` exists, and it is left
+standing.** Rewriting a shipped label is a promise moving, and the ask was one entry.
+Named here so the next reader knows it was seen rather than missed; what fixes it is a pass
+over every label, which is its own change.
 
 **The value written is the alias; the version is what it means today.** `opus` keeps
 meaning "the Opus tier" after the model behind it is replaced, which is why the
@@ -106,6 +118,19 @@ follow the version:
 
 - `haiku` is Haiku 4.5 everywhere, and it appears in no row of the host's effort table:
   **none.**
+- **`fable` is in the Anthropic API column and in no other, deliberately.** Those columns
+  transcribe the host's own per-provider alias table, and it does not name Fable — so
+  everywhere else `fable` is *not knowable*, which is the same answer this capability gives
+  for a gateway. Unknown is treated as capable, so it is offered all five levels there, and
+  that happens to be what Fable 5 runs anyway.
+
+  **Ceiling, and it is visible in the listing:** when a provider cannot resolve an alias the
+  listing falls back to the catalogue's own version column and still prints
+  `resolved for Amazon Bedrock` beneath. So the `fable` row there reads `Fable 5` on the
+  catalogue's authority under a trailer implying the provider's. Pre-existing behaviour for
+  every unresolvable alias — `fable` is only the first to hit it on a *named* provider
+  rather than on a gateway. What lifts it is distinguishing "resolved here" from "the
+  catalogue's claim, unresolved here" in that column, which changes how every row renders.
 - *default* is never resolved. An agent declaring no model runs on whatever the session
   runs on, and the session is not this process. Unknowable by construction, and treated as
   capable.
@@ -281,6 +306,26 @@ and refusing everything else.
   *(Assumed, same run.)* Reasoning under outcomes. **What changes if this is wrong:** the
   strictness moves, the format does not.
 
+- **`fable` was reachable before it was selectable, and that is what the entry fixed.**
+  `pinPattern` already read `fable` out of a model id and `effortByVersion` already carried
+  `Fable 5` with all five levels — plumbing that arrived with the effort key and had nothing
+  above it. The catalogue row was the missing piece; no mechanism changed.
+
+  Three decisions here were **assumed** under `/libretto-attacca`, 2026-08-12 — nobody was
+  asked:
+
+  - **`fable` goes in no third-party provider map.** Reasoning and its ceiling under the
+    provider table above. **What changes if this is wrong:** one map entry per provider that
+    serves it, and nothing user-visible unless a provider serves a Fable with fewer than five
+    levels. None exists today.
+  - **Its label names no plan tier**, where `opus`'s names two. Which plans include Fable is
+    not verifiable without the credential this capability refuses to touch, and `opus` names
+    tiers only because those are documented. **What changes if this is wrong:** one label
+    string.
+  - **It sorts last rather than beside `opus`.** Read off the existing cheapest-first
+    contract and Fable's per-token cost. **What changes if this is wrong:** one line's
+    position, and which row the selector opens on.
+
 ## Task breakdown
 
 1. `internal/agentmodel`: read the declared model from one agent file, and report a
@@ -323,7 +368,8 @@ Writing, and the byte-for-byte promise:
 
 The catalogue, and refusing what is not in it:
 
-- the catalogue lists exactly the subscription models plus default
+- the catalogue lists exactly the subscription models plus default, **in render order** —
+  cheapest first, `fable` last, asserted as a sequence and not as a set
   Proof: internal/agentmodel/catalogue_test.go TestCatalogueListsTheSubscriptionModels
 - **every real model names the version its alias resolves to** — an alias alone does
   not say what it means
@@ -386,6 +432,11 @@ The effort catalogue:
   Proof: internal/agentmodel/effort_test.go TestUnknownEffortIsRefused
 - **`haiku` supports no effort; `opus`, `sonnet` and the session default support all five**
   Proof: internal/agentmodel/effort_test.go TestWhichModelsSupportEffort
+- **`fable` resolves to Fable 5 on the Anthropic API and runs all five levels**
+  Proof: internal/agentmodel/provider_test.go TestFableResolvesAndRunsAllFiveLevels
+- **an agent can be moved onto `fable` and carry a level, on the `Apply` path itself** —
+  the criterion first cited the opus→sonnet test, which is green without `fable` in it
+  Proof: internal/agentmodel/effort_test.go TestApplyModelKeepsEffortWhenMovingToFable
 - **the levels a given model can run are answerable before a choice is offered**, weakest
   first, and nothing at all for a model that has none
   Proof: internal/agentmodel/effort_test.go TestEffortsForNamesWhatAModelCanRun

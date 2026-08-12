@@ -213,6 +213,24 @@ func TestTheSessionDefaultIsNeverResolved(t *testing.T) {
 	}
 }
 
+// `fable` is the newest alias here and the one whose plumbing arrived before its
+// catalogue row: `pinPattern` and `effortByVersion` both knew Fable before anything could
+// select it. So what is worth pinning is that the alias resolves *at all* — an alias
+// missing from the provider map answers "not knowable", which is exactly what a typo in
+// that map also answers, and the two are indistinguishable from the outside.
+func TestFableResolvesAndRunsAllFiveLevels(t *testing.T) {
+	clearProvider(t)
+
+	p := DetectProvider()
+	got, ok := p.Resolve("fable")
+	if !ok || got != "Fable 5" {
+		t.Fatalf("fable resolves to %q (%v), want Fable 5", got, ok)
+	}
+	if levels := p.effortsFor("fable"); len(levels) != len(allFive) {
+		t.Errorf("fable offers %v, want all five", levels)
+	}
+}
+
 // Detection is os.Getenv and nothing else. The capability forbids this binary touching a
 // credential, and reading an API key's value would be touching one — so the names it
 // reads are the non-secret ones, and this test is what keeps that true as providers are
