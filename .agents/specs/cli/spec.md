@@ -724,3 +724,54 @@ A missing payload:
 - **every verb the dispatch accepts is offered by `help`**, read out of the dispatch's
   own error rather than from a list kept here
   Proof: cmd/libretto/models_test.go TestEveryModelsVerbIsInTheHelp
+
+### `loop` — one fresh session per open box
+
+- **the engine is the binary, not a skill, and that is not a preference.** A loop that
+  relaunches a session cannot *be* that session: the whole value of the pattern is a
+  fresh context per task, and a skill runs inside the context it would be trying to
+  discard. The Ralph playbook ships a `loop.sh` beside four other files, and every one of
+  those four already has a richer equivalent here — `write-plan`, `build-and-check`,
+  `AGENTS.md` and the plan's own boxes. Copying the structure would duplicate state; the
+  engine was the only piece genuinely missing.
+  Proof: cmd/libretto/loop_test.go TestTheLoopPromptRoutesAndNeverAuthorises
+- **it owns no state.** `.agents/changes/<change>/plan.md` is the state — the file phase 5
+  writes and phase 6 marks — and the loop reads the boxes and nothing else. Only the box is
+  parsed, never the task text: the flow owns the plan's shape, and a runner that understood
+  it would be a second opinion about what a task is.
+  Proof: cmd/libretto/loop_test.go TestCountBoxesReadsOnlyTheBox
+- one session per open box, and it stops when the last one closes
+  Proof: cmd/libretto/loop_test.go TestLoopStopsWhenEveryBoxIsClosed
+- **two consecutive rounds that close nothing stop the loop.** This is the guardrail the
+  whole command exists for. A session that finished no task leaves a plan the next fresh
+  session reads identically, so it makes the identically non-existent progress — forever,
+  or until the cap. One barren round is a hiccup and the counter resets; two is a loop that
+  has stopped being one, and the message says why a third is pointless.
+  Proof: cmd/libretto/loop_test.go TestLoopStopsAfterTwoRoundsThatCloseNothing
+- a single barren round does not stop it
+  Proof: cmd/libretto/loop_test.go TestOneBarrenRoundDoesNotStopTheLoop
+- **the cap is the second ceiling, and hitting it is an error naming the flag that raises
+  it.** A loop with no ceiling that never converges spends a budget silently.
+  Proof: cmd/libretto/loop_test.go TestLoopStopsAtTheCapAndSaysSo
+- **a session exiting non-zero is not a failed loop.** The plan is the state, so the next
+  round carries on from whatever this one finished; an exit code cannot tell a crash from a
+  deliberate stop, and the boxes can.
+  Proof: cmd/libretto/loop_test.go TestASessionErrorDoesNotAbortTheLoop
+- a missing plan is refused, and the refusal names the path it looked for
+  Proof: cmd/libretto/loop_test.go TestLoopRefusesAPlanThatIsNotThere
+- **a plan with prose and no boxes is refused rather than read as finished.** Zero open
+  boxes means done everywhere else in the flow; here it also means a plan phase 5 never
+  wrote, and reporting success having run nothing is the worse of the two readings.
+  Proof: cmd/libretto/loop_test.go TestLoopRefusesAPlanWithNoBoxes
+- `--dry-run` prints the prompt and starts no session, and needs no `claude` on PATH
+  Proof: cmd/libretto/loop_test.go TestDryRunPrintsThePromptAndStartsNoSession
+- flags are parsed strictly: one change, a positive `--max`, no unknown flags
+  Proof: cmd/libretto/loop_test.go TestParseLoopArgs
+- **it is not gated on the payload.** `loop` reads the *project's* plan and relaunches a
+  session that resolves its own skills; refusing without this repository's payload tree
+  would refuse on exactly the machine that installed the binary and nothing else.
+  Proof: cmd/libretto/loop_test.go TestLoopIsNotGatedOnThePayload
+- **it never pushes, merges or tags, and the prompt forbids rather than omits.** Those are
+  what `libretto-attacca` answers for one branch after a person typed it; nothing here was
+  asked, and an omission reads as an oversight to whatever is on the other end.
+  Proof: cmd/libretto/loop_test.go TestTheLoopPromptRoutesAndNeverAuthorises

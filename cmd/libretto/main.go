@@ -197,6 +197,8 @@ func run(args []string) error {
 		return update(root, tg)
 	case "models":
 		return models(root, tg, args[1:])
+	case "loop":
+		return loop(projectDir, args[1:])
 	default:
 		usage()
 		return fmt.Errorf("unknown command %q", args[0])
@@ -1269,6 +1271,8 @@ func usage() {
   %[2]s models        which model each agent runs on, and how hard it thinks
   %[2]s models set <model> <agent>…      declare the model; --all for every agent
   %[2]s models effort <level> <agent>…   declare the effort; --all for every agent
+  %[2]s loop <change>   one fresh session per open box, until the plan is done
+  %[2]s loop <change> --max 3 --dry-run   raise the cap; print the prompt, run nothing
 
   --global, -g          act on ~/.claude (the default)
   --project, -p         act on <this directory>/.claude
