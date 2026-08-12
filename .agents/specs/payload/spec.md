@@ -136,6 +136,16 @@ stops sit exactly there. **After the plan, an unsettled question becomes a findi
 reaches the phase 7 report with what was assumed in the meantime and what changes if the
 assumption is wrong, and the user meets it at phase 8 with everything else.
 
+**Phase 2 asks up to three, in one call, before it writes the spec** — so the contract is
+built by two people rather than handed over finished, and the answers sit inside it rather
+than bolted on. Three is where the questions worth a round trip run out. **Zero is a
+legitimate answer, reported in one line:** a quota manufactures questions the code already
+answers, which is the rubber-stamp round trip removed from three other phases arriving
+back through the door marked collaboration. Phase 5 stops for the order and opens no
+second tranche, and **the stop count does not move** — the questions ride the stop phase 2
+already has. The trivial lane asks nothing, because *no spec needed* means there is no
+contract to disagree about.
+
 This reverses an earlier promise that asking held at every phase, as often as needed. That
 was reasonable in every individual case and that is precisely the problem — it returns the
 flow to five, six, nine stops one defensible exception at a time. The bound is the
@@ -284,6 +294,21 @@ the copy stays comparable with upstream.
   usually the only one after the plan: a question written as a sentence is a paragraph
   the reader skims, and the flow then waits on an answer to something that read as a
   summary. Observed 2026-08-10, on the run that landed this.
+- **Phase 8 returns to the base branch when the request opens**, checking it out and
+  fast-forwarding it, on the yes path only. The user's call, 2026-08-12. A session starts
+  wherever the last one left the working directory, so a flow parked on a merged feature
+  branch hands the next phase 1 a stale base — and reading what is in flight off that base
+  is phase 1's whole job. Measured on the run that added it: phase 1 offered the user a
+  choice about a branch already merged and tagged `v0.6.1`, because local `main` was seven
+  commits behind. Fetching the ref without leaving the branch was offered and declined —
+  it fixes the ref, not the place the next session starts. **The feature branch is never
+  deleted** (the request is open, not merged, and the local copy is the only one), nothing
+  is ever merged (`--ff-only`, and a diverged base is reported rather than resolved), and a
+  dirty tree stops rather than being carried across by `git checkout`. On the no path it
+  does nothing: the branch is the only place the work exists.
+- **Up to three questions at phase 2, none forced.** The user's call, 2026-08-12: *"para
+  que el plan se cree entre los 2 y no solo tú"*. Always-three and questions-at-phase-5
+  were both offered and declined.
 - **The forge is derived, never assumed:** `git remote get-url origin`, `github.com` →
   `gh`, `gitlab` → `glab`. No remote means no question. **Ceiling named:** a substring
   test on one URL, which does not survive a self-hosted forge on a neutral domain, or
@@ -458,6 +483,14 @@ prevent:
 Still unobserved, and therefore still claims rather than facts: the collapsed lane on a
 change that needs no spec, the review seam's one-line decline on that same lane, and
 every remaining failure path above.
+
+**The two 2026-08-12 amendments are prose in a skill, and no criterion above cites a test
+for them** — a skill is a prompt, checked by running it, and a Go test named for "phase 8
+checks out the base branch" would be the fabrication `--anchors` exists to catch. What was
+observed on the run that added them: phase 2 asked three questions in one call and all
+three answers reached this spec under prior decisions. Still claims: a yes at phase 8
+ending with the tree on a current base and the feature branch intact, a no ending on the
+branch unchanged, and a phase 2 with nothing to ask saying so in one line.
 
 **The queue is prose and none of it has run.** Claims, not facts: capturing two ideas
 leaves two committed proposals and no branch; `/libretto-next` offers the oldest first and
