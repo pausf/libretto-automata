@@ -51,8 +51,9 @@ libretto prune --yes    # remove them
 libretto uninstall      # what this repo installed here; change nothing
 libretto uninstall --yes # take it back out
 libretto preview
-libretto models         # which model each agent runs on, read-only
+libretto models         # which model each agent runs on and how hard it thinks, read-only
 libretto models set haiku review-lens-design review-lens-tests   # --all for every agent
+libretto models effort xhigh review-lens-security   # the depth, not the tier. Haiku has none
 
 libretto update         # install the newest version and relink; pulls in a checkout
 libretto install --project   # <cwd>/.claude instead of ~/.claude

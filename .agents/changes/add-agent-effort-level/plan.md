@@ -101,7 +101,7 @@ and both of them can be written at once after that.
 
 ## 4 · The front door
 
-- [ ] **4.1 `README.md` and `AGENTS.md`** gain the verb in the tables that already list
+- [x] **4.1 `README.md` and `AGENTS.md`** gain the verb in the tables that already list
       `models set`, and the README's sample output gains the effort column.
       Spec: cli · task 4 · Closes: nothing enforces this — the readme gate checks payload
       slash commands, not subcommands. It is here because that is the only thing that
@@ -110,7 +110,7 @@ and both of them can be written at once after that.
 
 ## 5 · Landing
 
-- [ ] **5.1 All six gates.** `gofmt -l .`, `go vet ./...`, `go test ./... -count=1`,
+- [x] **5.1 All six gates.** `gofmt -l .`, `go vet ./...`, `go test ./... -count=1`,
       `scripts/check-payload`, `spec-drift --self-test`, `spec-drift --anchors`.
       Waits on: everything above.
 

@@ -171,8 +171,9 @@ Three rules hold at **every** phase, not one of them:
 | `libretto prune` | show links whose source is gone — **changes nothing** |
 | `libretto prune --yes` | remove them |
 | `libretto preview` | print the panel once, no TUI |
-| `libretto models` | which model each agent runs on. Read-only. |
-| `libretto models set <model> <agent>…` | declare it; `--all` for every agent |
+| `libretto models` | which model each agent runs on, and how hard it thinks. Read-only. |
+| `libretto models set <model> <agent>…` | declare the model; `--all` for every agent |
+| `libretto models effort <level> <agent>…` | declare the effort; `--all` for every agent |
 
 `prune` and `uninstall` are both dry by default — they change nothing until `--yes`. They
 are **not the same command**: prune removes links whose item is gone, uninstall removes
@@ -190,8 +191,24 @@ libretto models set haiku review-lens-design review-lens-tests
 libretto models set default work-reviewer        # back to the session's model
 ```
 
-The panel has the same thing behind its `models` row: mark agents with `space`, or all
-of them with `a`, pick a model with `m`.
+### And how hard it thinks
+
+The model is the tier. **Effort is the depth inside it** — how often and how deeply the
+model reasons on each step. They are two keys, and either moves without the other:
+keeping an agent on Opus while its effort drops is the case the option exists for.
+
+```bash
+libretto models effort xhigh review-lens-security   # deeper, on the lens that needs it
+libretto models effort low   review-lens-design     # same model, cheaper reasoning
+libretto models effort default work-reviewer        # back to the session's effort
+```
+
+**Haiku has no effort levels**, so a level written there would do nothing. It is refused
+rather than written and ignored, and moving an agent onto Haiku clears any level it
+declared — the listing says so on the row it happened to.
+
+The panel has both behind its `models` row: mark agents with `space`, or all of them with
+`a`, then `m` for the model and `e` for the effort.
 
 `models` acts on **the agents of the destination you name** — `~/.claude/agents` under
 `--global`, `<cwd>/.claude/agents` under `--project`. Every agent there is listed and
@@ -203,9 +220,17 @@ last checked:
 ```
 models available (aliases; versions as of 2026-08):
   default                 the session's model — whatever you are running
-  haiku      Haiku 4.5    cheapest; fine for pattern-matching over prose
+  haiku      Haiku 4.5    cheapest; fine for pattern-matching over prose  — no effort levels
   sonnet     Sonnet 5     the everyday working model
   opus       Opus 5       most capable; Max plans, metered on Pro
+
+effort available (weakest first; `models effort <level> <agent>…`):
+  default    no key at all: whatever the session runs at
+  low        short, scoped work that is not intelligence-sensitive
+  medium     cost-sensitive work that can trade off some intelligence
+  high       the balance point — and the host's own default
+  xhigh      deeper reasoning at higher spend
+  max        the deepest; prone to overthinking. Measure before adopting
 ```
 
 ### Where it installs
