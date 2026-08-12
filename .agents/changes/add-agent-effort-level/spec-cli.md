@@ -23,6 +23,10 @@ libretto models effort default review-lens-tests   # removes the key
 - **The listing's trailer names the levels**, the way it already names the models: the
   five, weakest first, each with the one line saying when to reach for it, under the same
   `Resolved` date.
+- **The model trailer says which model has no effort levels.** A row sitting silently
+  among three that do read as a fourth that does, and the refusal further down would then
+  arrive as a surprise. `haiku` carries `— no effort levels` in the listing that offers
+  it.
 - **`models effort` is a sibling verb of `models set`**, taking a level, then agent names
   or `--all`. Not a flag on `set`: the two keys are independent, and `set opus --effort
   xhigh` would make changing one without touching the other the awkward path.

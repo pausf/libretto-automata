@@ -433,19 +433,21 @@ func (t Theme) selector(p Panel) string {
 		return "  " + Fg(t.Muted).Render("no agents in this destination")
 	}
 
+	cw := ContentWidth(p.Width)
+
 	// The name column is measured, not borrowed. It used to reuse the main menu's
 	// constant — sized for `install` and `prune` — while agent names run past twenty
 	// characters, so the model and the `shared` warning started wherever each name
 	// happened to end. pad never truncates, by design, so a too-narrow column does
 	// not clip: it shifts everything after it.
-	width := 0
-	for _, a := range p.Agents {
-		if n := len([]rune(a.Name)); n > width {
-			width = n
-		}
-	}
-
-	cw := ContentWidth(p.Width)
+	//
+	// Measured *against the frame*, though, and that is what the effort column
+	// changed. Two value columns plus `shared` plus the longest name the payload
+	// ships came to 64 against a 58-column interior, and pad's refusal to truncate
+	// turned that into six columns of torn border on every row of the screen. So the
+	// budget is computed and the name yields to it — visibly, with an ellipsis. A
+	// name that says it was cut is a smaller lie than a frame that came apart.
+	width := nameColumn(p.Agents, cw)
 
 	rows := make([]string, 0, len(p.Agents)+len(p.ModelChoices)+4)
 
@@ -481,10 +483,13 @@ func (t Theme) selector(p Panel) string {
 		}
 		shared := ""
 		if a.Shared {
-			shared = "   shared"
+			shared = sharedNote
 		}
-		line := cursor + " " + box + " " + pad(a.Name, width+2) +
-			pad(describeModel(a.Model), 12) + pad(describeModel(a.Effort), 10) + shared
+		// width-1, because pad adds a trailing space rather than truncating when its
+		// input already fills the column — so a name elided to exactly `width` would
+		// come out one column wider and put the tear back.
+		line := cursor + " " + box + " " + pad(elide(a.Name, width-1), width) +
+			pad(describeModel(a.Model), modelCol) + pad(describeModel(a.Effort), effortCol) + shared
 		rows = append(rows, "  "+Fg(colour).Render(line))
 	}
 
@@ -495,6 +500,66 @@ func (t Theme) selector(p Panel) string {
 		rows = append(rows, t.catalogue("effort for "+strconv.Itoa(countMarked(p.Agents))+" marked:", p.EffortChoices, p.EffortCursor)...)
 	}
 	return strings.Join(rows, "\n")
+}
+
+// The selector row's fixed parts, in columns: the cursor, its space, the `[x]` box,
+// its space, and the two value columns. `(session)` is the longest thing either value
+// column holds, at nine, so ten gives each a single space of gap.
+const (
+	rowFixed   = 1 + 1 + 3 + 1
+	modelCol   = 12
+	effortCol  = 10
+	sharedNote = "   shared"
+
+	// nameFloor is the narrowest a name column may become. Below this the ellipsis is
+	// most of what is left, and a list of `revi…` rows is a list you cannot use — at
+	// that point the honest failure is a name that overflows one row, not a screen of
+	// unreadable stubs.
+	nameFloor = 12
+)
+
+// nameColumn is how many columns the agent names get: what they measure, or what the
+// frame can spare, whichever is smaller.
+//
+// `shared` is counted only when a row actually carries it. Reserving it always would
+// narrow the names on every screen to protect a warning most screens do not show.
+func nameColumn(rows []AgentRow, cw int) int {
+	measured := 0
+	shared := 0
+	for _, a := range rows {
+		if n := len([]rune(a.Name)); n > measured {
+			measured = n
+		}
+		if a.Shared {
+			shared = len([]rune(sharedNote))
+		}
+	}
+
+	// cw-2 because the caller indents every row by two columns.
+	budget := cw - 2 - rowFixed - modelCol - effortCol - shared
+	if budget < nameFloor {
+		budget = nameFloor
+	}
+	if want := measured + 2; want < budget {
+		return want
+	}
+	return budget
+}
+
+// elide shortens s to n columns, ending in `…` when it had to cut.
+//
+// The counterpart to pad, which never truncates because a column that silently cuts
+// its content lies about it. This one is not silent, which is the whole difference:
+// the ellipsis is the row saying there is more name than there is room.
+func elide(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	if n < 1 {
+		return ""
+	}
+	return string(r[:n-1]) + "…"
 }
 
 // choosing reports whether either catalogue is open over the rows.

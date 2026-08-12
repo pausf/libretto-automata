@@ -452,6 +452,13 @@ func TestModelsListsTheEffortCatalogue(t *testing.T) {
 	if !strings.Contains(out, "no effort levels") {
 		t.Errorf("the catalogue never says which model has no effort levels:\n%s", out)
 	}
+	// The levels table decays exactly as the model versions do — an organisation can
+	// cap which are available, and nothing here can ask. The date is what makes that
+	// staleness visible instead of silent, which is why one trailer carrying it and
+	// the other not was a finding.
+	if !strings.Contains(out, agentmodel.Resolved) {
+		t.Errorf("the effort trailer never states when it was last checked:\n%s", out)
+	}
 }
 
 func TestModelsEffortWritesOnlyTheNamedAgents(t *testing.T) {

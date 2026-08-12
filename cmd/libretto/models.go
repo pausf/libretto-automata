@@ -90,7 +90,7 @@ func listModels(root string, tg target.Target) error {
 	}
 
 	fmt.Println()
-	fmt.Println("effort available (weakest first; `models effort <level> <agent>…`):")
+	fmt.Printf("effort available (weakest first; as of %s; `models effort <level> <agent>…`):\n", agentmodel.Resolved)
 	fmt.Printf("  %-10s %s\n", "default", "no key at all: whatever the session runs at")
 	for _, e := range agentmodel.Efforts() {
 		fmt.Printf("  %-10s %s\n", e.Name, e.Label)

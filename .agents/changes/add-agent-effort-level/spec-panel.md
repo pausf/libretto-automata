@@ -53,9 +53,21 @@ column and one key, and nothing else about the screen moves.
   choice; `cli` runs it.
 - **Which levels a model supports is not the panel's knowledge.** It renders the refusal it
   is handed. A `haiku` check inside the UI would be the third copy of one rule.
-- **The row's width budget is already tight.** The effort column is the shortest thing that
-  distinguishes five values, and the layout tests are the gate on whether it fits rather
-  than a judgement made while typing.
+- **The row is built against the frame, not summed and hoped.** Two value columns, the
+  `shared` warning and the longest name the payload ships came to 64 columns against a
+  58-column interior, and `pad` refuses to truncate — so the overflow did not clip, it
+  tore six columns of border off every row on the screen. The name column is therefore
+  computed from what the frame can spare and the name yields to it, **visibly, with an
+  ellipsis**: a name that says it was cut is a smaller lie than a frame that came apart,
+  and it is the one column whose content the two beside it cannot be inferred from.
+
+  The value columns and the warning never yield. Dropping one to save a name would hide
+  state rather than shorten it.
+
+  The layout tests are the gate, and the one that existed was not enough: its fixture's
+  longest name was 15 runes and its border filter skipped agent rows, so it passed
+  through the tear. That is a finding about the gate, not only about the row, and the
+  criteria below name the tests that close it.
 
 ## Prior decisions
 
@@ -94,5 +106,14 @@ column and one key, and nothing else about the screen moves.
   Proof: internal/ui/models_test.go TestRowsShowTheNewEffortAfterApplying
 - **a refused apply leaves every row as it was and shows the reason**
   Proof: internal/ui/models_test.go TestARefusedEffortApplyChangesNoRow
+- applying the level every marked row already has says so and calls nothing
+  Proof: internal/ui/models_test.go TestApplyingTheEffortTheyAlreadyHaveSaysNothingChanged
 - the rows still group by model only
   Proof: internal/ui/models_test.go TestRowsStillGroupByModelAlone
+- **no row ever outgrows the frame**, at any width, with the longest name the payload
+  ships and the `shared` warning on it
+  Proof: internal/ui/models_test.go TestTheSelectorRowNeverOutgrowsTheFrameAtAnyWidth
+- a name the frame cannot afford is elided visibly, and the value columns survive
+  Proof: internal/ui/models_test.go TestALongNameIsElidedRatherThanTearingTheFrame
+- nothing is elided when there is room
+  Proof: internal/ui/models_test.go TestNamesAreNotElidedWhenThereIsRoom

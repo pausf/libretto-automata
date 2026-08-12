@@ -957,3 +957,96 @@ func TestRowsStillGroupByModelAlone(t *testing.T) {
 		}
 	}
 }
+
+// The row is built against the frame, not summed and hoped. This is the case the
+// existing flush test could not see: threeAgents() has a 15-rune longest name, which
+// fits at the floor with columns to spare, and the border-character filter skips agent
+// rows entirely. The payload's own longest agent name is 23 runes and it is shared.
+func TestTheSelectorRowNeverOutgrowsTheFrameAtAnyWidth(t *testing.T) {
+	forceTrueColor(t)
+
+	rows := []AgentRow{
+		{Name: "review-lens-reliability", Model: "sonnet", Effort: "xhigh", Shared: true},
+		{Name: "a", Model: "", Effort: ""},
+	}
+
+	for _, term := range []int{MinPanelWidth, 62, 80, 140} {
+		cw := ContentWidth(term)
+		out := strip(darkTheme().selector(Panel{
+			Width:        term,
+			Agents:       rows,
+			ModelChoices: catalogue(),
+		}))
+		for _, line := range strings.Split(out, "\n") {
+			if got := lipgloss.Width(strings.TrimRight(line, " ")); got > cw {
+				t.Errorf("term %d: a selector row is %d columns against a %d interior: %q",
+					term, got, cw, line)
+			}
+		}
+	}
+}
+
+// A cut name says it was cut. pad refuses to truncate because a column that silently
+// clips lies about it; the ellipsis is what makes this one not silent.
+func TestALongNameIsElidedRatherThanTearingTheFrame(t *testing.T) {
+	forceTrueColor(t)
+
+	out := strip(darkTheme().selector(Panel{
+		Width:        MinPanelWidth,
+		Agents:       []AgentRow{{Name: "review-lens-reliability", Model: "sonnet", Shared: true}},
+		ModelChoices: catalogue(),
+	}))
+
+	if !strings.Contains(out, "…") {
+		t.Errorf("the name was cut with no ellipsis to say so:\n%s", out)
+	}
+	// Both value columns and the warning survive the squeeze. Dropping one of those
+	// to save the name would hide state rather than shorten it.
+	for _, want := range []string{"sonnet", "shared"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("%q was squeezed off the row instead of the name:\n%s", want, out)
+		}
+	}
+}
+
+// Nothing is elided when the frame can afford the name — the squeeze is a response to
+// the width, not a permanent haircut.
+func TestNamesAreNotElidedWhenThereIsRoom(t *testing.T) {
+	forceTrueColor(t)
+
+	out := strip(darkTheme().selector(Panel{
+		Width:        140,
+		Agents:       []AgentRow{{Name: "review-lens-reliability", Model: "sonnet", Shared: true}},
+		ModelChoices: catalogue(),
+	}))
+
+	if strings.Contains(out, "…") {
+		t.Errorf("a name was elided at 140 columns:\n%s", out)
+	}
+	if !strings.Contains(out, "review-lens-reliability") {
+		t.Errorf("the full name is missing:\n%s", out)
+	}
+}
+
+// SetEffort refuses to rewrite a file that already declares the level — deliberately,
+// so the tool never dirties a git tree for nothing. From outside, though, "nothing
+// happened because nothing needed to" and "nothing happened because it is broken" look
+// identical, and the model's twin of this test records that being misread twice in one
+// session.
+func TestApplyingTheEffortTheyAlreadyHaveSaysNothingChanged(t *testing.T) {
+	m, rec := selectorModel(t, []AgentRow{
+		{Name: "one", Model: "opus", Effort: "low"},
+		{Name: "two", Model: "sonnet", Effort: "low"},
+	})
+	m = openSelector(t, m)
+
+	m = markAllAndOpenEffort(t, m)
+	m = chooseEffort(t, m, "low")
+
+	if rec.effortCalls != 0 {
+		t.Errorf("apply was called %d times for a no-op, want none", rec.effortCalls)
+	}
+	if !strings.Contains(m.Notice(), "nothing to change") {
+		t.Errorf("notice = %q, want it to say nothing changed", m.Notice())
+	}
+}
