@@ -120,6 +120,41 @@ func TestMovedReasoningLandedInDocs(t *testing.T) {
 	}
 }
 
+// A payload command that ships without reaching the README is invisible to everyone who
+// never opens `commands/`. That happened once, to `libretto-attacca`, under a spec that
+// already asked in prose for one line per command.
+//
+// The whole file, not the `## Commands` section: that table is the *binary's* subcommands,
+// and the slash commands live in the first-run door list. Writing this guard against the
+// heading that shares their name failed all six on its first run — which is the reason it
+// reads the whole README and the reason this comment exists.
+//
+// The directory is read rather than listed here on purpose: a list in this file is the same
+// failure one level down, where somebody adds a command, forgets the list, and the guard
+// stays green.
+func TestEveryCommandIsInTheReadme(t *testing.T) {
+	entries, err := os.ReadDir(filepath.Join("..", "..", "commands"))
+	if err != nil {
+		t.Fatalf("cannot read commands/: %v", err)
+	}
+
+	commands := flat(repoFile(t, "README.md"))
+	found := 0
+	for _, entry := range entries {
+		name, ok := strings.CutSuffix(entry.Name(), ".md")
+		if entry.IsDir() || !ok {
+			continue
+		}
+		found++
+		if !strings.Contains(commands, name) {
+			t.Errorf("commands/%s.md ships and the README never mentions %s", name, name)
+		}
+	}
+	if found == 0 {
+		t.Fatal("no command files matched — the directory moved, not the README")
+	}
+}
+
 // `](#anchor)` never matches: the group demands at least one character that is neither
 // `)` nor `#`.
 var readmeLink = regexp.MustCompile(`\]\(([^)#]+)(?:#[^)]*)?\)`)

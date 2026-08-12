@@ -12,13 +12,19 @@ failed once here, and the second time it fails it will be a different command.
 
 ## Outcomes
 
-1. **Every file in `commands/` has a row in the README's Commands table**, and a command
-   that arrives without one **fails `go test ./...`**. Not a warning, not a note in a
+1. **Every file in `commands/` is named somewhere in the README**, and a command that
+   arrives without a mention **fails `go test ./...`**. Not a warning, not a note in a
    review — the same gate that already refuses a broken README link.
 
-2. `/libretto-attacca` is in that table, and in the first-run walk beside the stops it
+   **The whole file, not the `## Commands` section.** That heading is the *binary's*
+   subcommands — `libretto install`, `libretto prune` — and the payload's slash commands
+   live in the first-run door list. Written against the heading that shares their name, the
+   guard failed all six on its first run. That is what phase 6 taught this outcome, which
+   originally said "a row in the Commands table".
+
+2. `/libretto-attacca` is in that door list, and in the first-run walk beside the stops it
    answers. The walk names where the flow pauses; a command whose entire subject is those
-   pauses belongs where they are described, not only in a reference list.
+   pauses belongs where they are described, not only in a list.
 
 3. The guard names the missing command in its failure, so the fix is obvious from the
    output without opening two files.

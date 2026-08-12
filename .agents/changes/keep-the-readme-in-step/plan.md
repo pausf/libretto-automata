@@ -27,18 +27,21 @@ README, because a guard written after the fix has never been observed to catch a
 
 Depends on: nothing.
 
-- [ ] `TestEveryCommandIsInTheReadme` — read `commands/` from disk with `os.ReadDir`, take
-      each `*.md` basename without its extension, and assert it appears in
-      `section(t, readme, "## Commands")`. The failure names the command that is missing.
-- [ ] **run it and watch it fail**, in the foreground, output read. Expected: one failure
-      naming `libretto-attacca`. A guard that has never been red has never been shown to
-      work.
+- [x] `TestEveryCommandIsInTheReadme` — read `commands/` from disk with `os.ReadDir`, take
+      each `*.md` basename without its extension, and assert it appears in the README. The
+      failure names the command that is missing.
+      **Corrected mid-task:** written first against `section(t, readme, "## Commands")`,
+      which is the *binary's* subcommand table — the slash commands live in the first-run
+      door list. It failed all six. Now the whole file, and the spec's outcome 1 moved with
+      it, in this commit.
+- [x] **run it and watch it fail**, in the foreground, output read. One failure naming
+      `libretto-attacca`. A guard that has never been red has never been shown to work.
 - [ ] commit the failing test on its own, so the red is in history and not only in a
       transcript.
 
-**Closes:** *a command file with no mention in the README's Commands section fails the
-suite* — Proof: `cmd/libretto/readme_test.go TestEveryCommandIsInTheReadme`. Closed on the
-green run in task 2, not here.
+**Closes:** *a command file with no mention in the README fails the suite* — Proof:
+`cmd/libretto/readme_test.go TestEveryCommandIsInTheReadme`. Closed on the green run in
+task 2, not here.
 
 ## Task 2 — the row, green
 
@@ -46,8 +49,8 @@ green run in task 2, not here.
 
 Depends on: task 1.
 
-- [ ] the `/libretto-attacca` row in the Commands table, one line, matching the shape of
-      the five beside it.
+- [ ] the `/libretto-attacca` line in the first-run door list, matching the shape of the
+      five beside it.
 - [ ] one line in **Your first run**, where the stops are walked — a command whose whole
       subject is those stops belongs where they are described.
 - [ ] run the suite and watch it pass. Same command, opposite result, both observed.
