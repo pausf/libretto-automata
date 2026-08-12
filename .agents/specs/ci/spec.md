@@ -52,6 +52,31 @@ opened part-way through a change fails this gate until the change is consolidate
 That is the gate working. A specification citing tests that do not exist is exactly
 what should not merge.
 
+### The label is required before the merge, not discovered after it
+
+`release.yml` refuses an unlabelled merge — after the merge, when `main` is already
+ahead of its last tag and nobody can install what landed. A third workflow,
+`.github/workflows/require-release-label.yml`, makes the same refusal a red check on
+the request itself:
+
+- **it triggers on `labeled` and `unlabeled`**, which are not in the default
+  `pull_request` set — without them, adding the label leaves the check red until the
+  next push, and a check only a push can satisfy is a check people learn to work
+  around. This is why it is its own file: giving those types to `gates.yml` would
+  re-run all six gates every time a label moves.
+- it fails on zero `release:patch|minor|major` labels, naming the three and
+  `AGENTS.md#Versioning`; fails on two or more; passes on exactly one.
+- **matching is by whole label name.** Names may contain spaces, so a space-joined
+  loop counts a label merely *containing* `release:patch` as the real thing. The
+  labels arrive as `toJSON` output and `jq` compares whole names.
+- **it checks nothing out and holds no permissions** (`permissions: {}`). The labels
+  are in the event payload, so the job never runs contributor code.
+- `release.yml`'s own refusal stays, as the second fence for when branch protection
+  is off. It still parses space-joined — the same word-split hole this check closed —
+  and hardening it is a follow-up, not part of this promise.
+- it never judges whether the label is the *correct* bump. That is a reading of
+  `.agents/specs/` only a human makes — the same boundary `release.yml` keeps.
+
 ### Releasing happens on merge, and `make release` stays as the fallback
 
 **This section used to say the opposite**, and the reversal is deliberate rather than
@@ -109,9 +134,10 @@ at `AGENTS.md#Versioning`. It never picks one.
 
 ## Scope boundaries
 
-**In:** two workflow files, the six gates, per-package coverage as output, `rg` in the runner,
-the `release` target with its four preconditions, and **one job that tags `main` and publishes
-the Release when a request merges**.
+**In:** three workflow files, the six gates, per-package coverage as output, `rg` in the runner,
+the `release` target with its four preconditions, **one job that tags `main` and publishes
+the Release when a request merges**, and **one check that refuses an unlabelled request
+before it can merge**.
 
 **Out:**
 
@@ -245,6 +271,34 @@ than loud:
   Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowOnlyRunsOnAMergedRequest
 - **no `run:` script expands a label, a title or a body** — untrusted text arrives through `env:`
   Proof: cmd/libretto/release_workflow_test.go TestReleaseWorkflowNeverExpandsUntrustedTextInsideAScript
+
+The label check's criteria — the script ones run the workflow's own extracted script
+under bash, because "refuses zero and two" is behaviour, not shape:
+
+- the workflow listens for label changes, so the check re-evaluates without a push
+  Proof: cmd/libretto/label_workflow_test.go TestLabelWorkflowRunsWhenLabelsChange
+- the script refuses zero release labels
+  Proof: cmd/libretto/label_workflow_test.go TestLabelScriptRefusesZeroLabels
+- the script refuses two release labels
+  Proof: cmd/libretto/label_workflow_test.go TestLabelScriptRefusesTwoLabels
+- the script accepts exactly one
+  Proof: cmd/libretto/label_workflow_test.go TestLabelScriptAcceptsExactlyOneLabel
+- matching is by whole label name, never by substring or word
+  Proof: cmd/libretto/label_workflow_test.go TestLabelScriptMatchesLabelNamesExactly
+- the workflow asks for no permissions at all
+  Proof: cmd/libretto/label_workflow_test.go TestLabelWorkflowIsReadOnly
+- the workflow never checks out contributor code
+  Proof: cmd/libretto/label_workflow_test.go TestLabelWorkflowNeedsNoCheckout
+- no `run:` script expands a label inline
+  Proof: cmd/libretto/label_workflow_test.go TestLabelWorkflowNeverExpandsUntrustedTextInsideAScript
+
+**Paid, by observation:** the check ran green on its own request (#40, the first it
+could run on), and it now sits beside `gates` in the required status checks — set via
+`gh api` after that first run, then read back from the forge rather than trusted:
+
+```
+checks: ["gates", "label"]   pr_required: true   strict: false   admins_enforced: false
+```
 
 - **paid, by observation:** the gates workflow has run green on real requests, and **two real
   merges have tagged and published** — requests #25 and #26, runs `31485394056` and

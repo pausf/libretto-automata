@@ -1,0 +1,52 @@
+name: require-release-label
+
+# The pre-merge half of the release-label rule. `release.yml` refuses a merge with no
+# `release:` label — but it learns that after the merge, when main is already ahead of
+# its last tag and nobody can install what landed. This check makes the same refusal a
+# red X on the request itself; release.yml's own refusal stays as the second fence.
+#
+# A separate file, not a job in gates.yml, because of the triggers: `labeled` and
+# `unlabeled` are not in the default pull_request set, and without them adding the
+# label would leave the check red until the next push. Giving those types to gates.yml
+# would re-run all six gates every time a label moves.
+#
+# No checkout, deliberately. The labels arrive in the event payload, so this job never
+# runs contributor code and never needs the tree — and a job that touches nothing gets
+# no permissions at all.
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: exactly one release label
+        # Through the environment, not interpolated into the script — a label is text a
+        # collaborator wrote, and `${{ }}` inside a shell line makes it executable.
+        #
+        # As JSON, not space-joined: label names may contain spaces, so a word-split
+        # loop would count a label *containing* "release:patch" as the real thing.
+        # jq compares whole names.
+        env:
+          LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -euo pipefail
+
+          COUNT="$(jq -r '[.[] | select(. == "release:patch" or . == "release:minor" or . == "release:major")] | length' <<<"$LABELS_JSON")"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::no release: label on this request. Add release:patch, release:minor or release:major before merging. See AGENTS.md#Versioning for which one."
+            exit 1
+          fi
+
+          if [ "$COUNT" -gt 1 ]; then
+            echo "::error::two release labels on one request ($LABELS_JSON) — one bump, one label"
+            exit 1
+          fi
+
+          echo "release label present"
