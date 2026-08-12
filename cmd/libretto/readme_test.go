@@ -146,7 +146,11 @@ func TestEveryCommandIsInTheReadme(t *testing.T) {
 			continue
 		}
 		found++
-		if !strings.Contains(commands, name) {
+		// Word-bounded, not `strings.Contains`: a substring match lets a new command ride
+		// on a longer name already in the file — `libretto-stat` would be satisfied by the
+		// `/libretto-status` line and ship unmentioned. `-` is not a word character here,
+		// so `libretto-stat\b` refuses `libretto-status` and accepts `/libretto-stat `.
+		if !regexp.MustCompile(`\b` + regexp.QuoteMeta(name) + `\b`).MatchString(commands) {
 			t.Errorf("commands/%s.md ships and the README never mentions %s", name, name)
 		}
 	}

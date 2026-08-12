@@ -162,6 +162,12 @@ Held by this capability going forward, not open work:
   one failure naming `libretto-attacca` against the README as it stood, then the same
   command passing once the door list gained its line.
 
+  **The match is word-bounded, not a substring.** `strings.Contains` let a new command ride
+  on a longer name already in the file — `commands/libretto-stat.md` would have been
+  satisfied by the existing `/libretto-status` line and shipped unmentioned. The reviewer
+  found it; `\blibretto-stat\b` refuses `/libretto-status` and accepts `/libretto-stat`,
+  measured before the fix landed.
+
   **Ceiling named:** it proves a *name* appears. It cannot tell a real description from a
   placeholder row, and it will not catch a row that says something false. The replacement,
   the day that matters, is a criterion about what a row must contain — not a longer regex.

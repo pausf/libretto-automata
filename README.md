@@ -115,6 +115,10 @@ Claude Code** — what follows are slash commands, not shell commands.
    what would bring it back.
 7. **It asks once about pushing.** That answer is always yours.
 
+Those are the three places it waits, and each one is a question your terminal puts in front
+of you — not a line at the bottom of a report. **`/libretto-attacca` answers all three in
+advance**, for when you want the whole thing to run without you.
+
 Nothing else to learn to start. The rest is knowing which door to use:
 
 ```bash

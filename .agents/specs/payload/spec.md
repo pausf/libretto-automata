@@ -130,11 +130,14 @@ report** — and so is phase 1's choice between work already in flight and somet
 recommended option first, saying what will actually run; the real alternatives; room to
 answer differently.
 
-The rule and its argument were written once, for the push, on 2026-08-10, and the argument
-was never push-specific: a question in prose is a paragraph the reader skims, and the flow
-then waits on an answer to something that read as a summary. Phases 2 and 5 waited the same
-way while asking in prose, including on the run that specced this — which is where the
-evidence came from. **Ceiling named:** nothing mechanical checks it. `scripts/check-payload`
+**The argument for it lives once, in `skills/record-work/`**, written for the push on
+2026-08-10 and never push-specific. Every other place states the rule and points there — a
+reason copied into six files is six things to keep in sync, and the reviewer of the run that
+landed this caught exactly that: the constraint saying *it lives once* shipped in the same
+commit as five copies of it.
+
+Phases 2 and 5 waited in prose until 2026-08-12, including on the run that specced this,
+which is where the evidence came from. **Ceiling named:** nothing mechanical checks it. `scripts/check-payload`
 cannot tell a native prompt from a paragraph. The replacement, the day it drifts, is a
 search for `AskUserQuestion` across the skills that own a stop — a string match, and it
 would have caught this one. Deliberately not built: a guard against a failure that has

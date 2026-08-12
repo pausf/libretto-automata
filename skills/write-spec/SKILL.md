@@ -458,11 +458,9 @@ Then stop, and wait for the go-ahead before the plan — unless the run is
 `/libretto-attacca`, where the go-ahead arrived with the invocation. The spec is still
 written, still committed, still reported; what is answered is the wait, never the writing.
 
-**Ask for it with `AskUserQuestion`, never as a sentence at the end of the report.** Three
-options: carry on to the plan — recommended, and saying what will actually run next —
-change the contract first, or stop here.
+**Ask for it with `AskUserQuestion`, never as a sentence at the end of the report.** Carry
+on to the plan — recommended, and saying what will actually run next — change the contract
+first, or stop here. **And room to answer differently**, because the reason to reject a
+contract is rarely one of three things somebody guessed in advance.
 
-This is the same rule `record-work` states for the push, and the argument it gives there was
-never about pushing: a question in prose is a paragraph the reader skims, and the flow then
-sits waiting on an answer to something that read as a summary. Every place the flow waits
-asks the same way.
+Same rule as every stop. The reason lives once, in `skills/record-work/`.
