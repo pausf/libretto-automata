@@ -78,12 +78,12 @@ Depends on: tasks 1 and 2.
 
 Depends on: nothing.
 
-- [ ] `write-spec` — its stop asked with `AskUserQuestion`: carry on to the plan
+- [x] `write-spec` — its stop asked with `AskUserQuestion`: carry on to the plan
       (recommended, saying what runs next), or change the contract first.
-- [ ] `write-plan` — the same shape: start the work, or change the order first.
-- [ ] each says *that* it asks natively and what its options mean, and neither restates
+- [x] `write-plan` — the same shape: start the work, or change the order first.
+- [x] each says *that* it asks natively and what its options mean, and neither restates
       `record-work`'s argument for why. That argument lives once.
-- [ ] gates, then commit.
+- [x] gates, then commit.
 
 **Closes:** *every referenced skill exists and frontmatter parses* — Proof:
 `scripts/check-payload`.

@@ -106,5 +106,13 @@ Report where the plan is, how many tasks, and which can start immediately.
 
 Then stop. Writing the plan is not starting the work.
 
+**Ask for the go-ahead with `AskUserQuestion`, never as a sentence at the end of the
+report.** Three options: start the work — recommended, and saying which task runs first —
+change the order first, or go back to the contract.
+
+Same rule as phase 2's stop and phase 8's question, for the reason `record-work` gives
+once: a question in prose is a paragraph the reader skims, and a flow waiting on an answer
+nobody realised was a question looks hung.
+
 Unless the run is `/libretto-attacca`, where the invocation already agreed the order. The
 plan is written and committed exactly the same; only the wait is answered.
