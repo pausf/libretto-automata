@@ -21,20 +21,29 @@ import (
 const Default = ""
 
 const (
-	fence = "---"
-	key   = "model:"
+	fence     = "---"
+	modelKey  = "model:"
+	effortKey = "effort:"
 )
 
 // ReadModel returns the model an agent file declares, or Default when it declares
 // none. A file with no frontmatter is an error: it is not an agent file by the same
 // rule scripts/check-payload applies, and guessing otherwise invents one.
-func ReadModel(path string) (string, error) {
+func ReadModel(path string) (string, error) { return readKey(path, modelKey) }
+
+// readKey returns the value a frontmatter key declares, or Default when it is absent.
+//
+// The key is a parameter because there are two of them now — `model:` and `effort:` —
+// and the byte-for-byte promise below is the whole value of this file. Two copies of
+// it is two places for that promise to break, and only one of them would be the one
+// anybody thought to re-read.
+func readKey(path, key string) (string, error) {
 	lines, closing, err := readFrontmatter(path)
 	if err != nil {
 		return "", err
 	}
 	for _, line := range lines[1:closing] {
-		if value, ok := modelValue(line); ok {
+		if value, ok := keyValue(line, key); ok {
 			return value, nil
 		}
 	}
@@ -56,7 +65,12 @@ func ReadModel(path string) (string, error) {
 // It does not check the model against the catalogue. Apply does, for the whole set
 // at once, before any file is opened — validating here too would put the same rule
 // in two places and let a caller reach the weaker one.
-func SetModel(path, model string) error {
+func SetModel(path, model string) error { return setKey(path, modelKey, model) }
+
+// setKey declares one frontmatter key, replacing any value already there, and removes
+// it when the value is Default. See SetModel for the reasoning; the key is a parameter
+// for the reason readKey's is.
+func setKey(path, key, value string) error {
 	lines, closing, err := readFrontmatter(path)
 	if err != nil {
 		return err
@@ -64,7 +78,7 @@ func SetModel(path, model string) error {
 
 	at := -1
 	for i := 1; i < closing; i++ {
-		if _, ok := modelValue(lines[i]); ok {
+		if _, ok := keyValue(lines[i], key); ok {
 			at = i
 			break
 		}
@@ -72,21 +86,21 @@ func SetModel(path, model string) error {
 
 	current := Default
 	if at >= 0 {
-		current, _ = modelValue(lines[at])
+		current, _ = keyValue(lines[at], key)
 	}
-	if current == model {
+	if current == value {
 		return nil
 	}
 
 	switch {
-	case model == Default:
+	case value == Default:
 		lines = append(lines[:at], lines[at+1:]...)
 	case at >= 0:
-		lines[at] = key + " " + model
+		lines[at] = key + " " + value
 	default:
 		// Last line of the block, so an insert never lands between two keys a
 		// reader expects to see together.
-		lines = append(lines[:closing], append([]string{key + " " + model}, lines[closing:]...)...)
+		lines = append(lines[:closing], append([]string{key + " " + value}, lines[closing:]...)...)
 	}
 
 	return writeInPlace(path, strings.Join(lines, "\n"))
@@ -129,8 +143,8 @@ func readFrontmatter(path string) (lines []string, closing int, err error) {
 	return nil, 0, fmt.Errorf("%s: frontmatter is not closed", path)
 }
 
-// modelValue reports whether a frontmatter line declares the model, and its value.
-func modelValue(line string) (string, bool) {
+// keyValue reports whether a frontmatter line declares key, and its value.
+func keyValue(line, key string) (string, bool) {
 	trimmed := strings.TrimRight(line, "\r")
 	if !strings.HasPrefix(trimmed, key) {
 		return "", false

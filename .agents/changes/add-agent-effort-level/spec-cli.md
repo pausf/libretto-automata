@@ -61,8 +61,10 @@ the refusals above.
 - **`cmd/libretto` has tests now** (`models_test.go`), so this arrives with them rather
   than being held up by manual runs.
 - **The word `default` is the CLI's spelling of the absent key**, for effort as it already
-  is for the model. `setModels` maps it to `agentmodel.Default` before applying; the
-  effort verb does the same to `agentmodel.EffortDefault`.
+  is for the model. Both verbs map it to the one `agentmodel.Default` — there is no
+  separate `EffortDefault`, because two names for the empty string is the same "two
+  spellings of one state" the capability already refused when it declined to write the
+  word `inherit`.
 
 ## Prior decisions
 

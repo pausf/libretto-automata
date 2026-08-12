@@ -199,7 +199,11 @@ Applying to a set:
   Proof: internal/agentmodel/effort_test.go TestApplyEffortWritesNothingWhenAnyAgentCannotRunIt
 - an agent with no declared model accepts a level
   Proof: internal/agentmodel/effort_test.go TestApplyEffortAllowsAnAgentOnTheSessionModel
+- an unknown level is refused before any file is opened
+  Proof: internal/agentmodel/effort_test.go TestApplyEffortRefusesAnUnknownLevel
 - listing reports each agent's effort beside its model
   Proof: internal/agentmodel/effort_test.go TestAgentsReportsEachCurrentEffort
 - **moving an agent to Haiku clears a declared effort rather than leaving it dead**
   Proof: internal/agentmodel/effort_test.go TestApplyModelClearsEffortWhenTheModelSupportsNone
+- **and the clearing is narrow: a model that does support effort leaves the level alone**
+  Proof: internal/agentmodel/effort_test.go TestApplyModelKeepsEffortWhenTheModelSupportsIt

@@ -9,20 +9,20 @@ and both of them can be written at once after that.
 
 ## 1 · The package — the foundation everything waits on
 
-- [ ] **1.1 Parametrise the frontmatter reader and writer by key.**
+- [x] **1.1 Parametrise the frontmatter reader and writer by key.**
       `const key = "model:"` becomes an argument; `ReadModel`/`SetModel` keep their names
       and their behaviour byte for byte.
       Spec: agent-models · task 1 · Closes: TestSetModelInsertsWithoutDisturbingTheFile
       and every existing frontmatter criterion, unchanged and still green.
       Waits on: nothing.
 
-- [ ] **1.2 The effort catalogue.** Five levels weakest first, their labels, `ValidEffort`,
+- [x] **1.2 The effort catalogue.** Five levels weakest first, their labels, `ValidEffort`,
       and which catalogue model supports effort at all — `haiku` none, the rest all five.
       Spec: agent-models · task 3 · Closes: TestEffortCatalogueListsTheFiveLevels,
       TestUnknownEffortIsRefused, TestWhichModelsSupportEffort.
       Waits on: nothing. Independent of 1.1 — different file, no shared symbol.
 
-- [ ] **1.3 `ReadEffort` and `SetEffort`** over 1.1's shared implementation.
+- [x] **1.3 `ReadEffort` and `SetEffort`** over 1.1's shared implementation.
       Spec: agent-models · task 2 · Closes: TestReadEffortReturnsTheDeclaredEffort,
       TestReadEffortReportsDefaultWhenTheKeyIsAbsent, TestReadEffortIgnoresTheBody,
       TestSetEffortInsertsWithoutDisturbingTheFile, TestSetEffortReplacesInPlace,
@@ -30,18 +30,18 @@ and both of them can be written at once after that.
       TestTheTwoKeysDoNotDisturbEachOther.
       Waits on: 1.1.
 
-- [ ] **1.4 `Agent` carries `Effort`.** One field, read in `Agents()` beside the model.
+- [x] **1.4 `Agent` carries `Effort`.** One field, read in `Agents()` beside the model.
       Spec: agent-models · task 5 · Closes: TestAgentsReportsEachCurrentEffort.
       Waits on: 1.3.
 
-- [ ] **1.5 `ApplyEffort`** — one level onto a set as one act, the level and every target
+- [x] **1.5 `ApplyEffort`** — one level onto a set as one act, the level and every target
       agent's model validated before the first file is opened.
       Spec: agent-models · task 4 · Closes: TestApplyEffortReachesEveryAgentInTheSet,
       TestApplyEffortWritesNothingWhenAnyAgentCannotRunIt,
       TestApplyEffortAllowsAnAgentOnTheSessionModel.
       Waits on: 1.2, 1.4.
 
-- [ ] **1.6 `Apply` clears a stale effort** when the model it writes supports none.
+- [x] **1.6 `Apply` clears a stale effort** when the model it writes supports none.
       Spec: agent-models · task 5 · Closes:
       TestApplyModelClearsEffortWhenTheModelSupportsNone.
       Waits on: 1.2, 1.3.
