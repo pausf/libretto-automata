@@ -187,12 +187,23 @@ conventional messages, no AI attribution.
 Pushing is asked once at the very end, with `AskUserQuestion` — never as a sentence at
 the bottom of a report. Never assumed.
 
+**When the answer is yes and the request is open, the tree returns to the base branch and
+brings it up to date** — `--ff-only`, the feature branch left alone. A session starts
+wherever the last one left the working directory, and a stale base is what phase 1 reads
+next time.
+
 ## 4 · Asking — before the plan, not after it
 
 When something is genuinely not yours to decide — a product tradeoff, two live
 precedents in the codebase, anything where guessing quietly breaks working behaviour —
 ask with `AskUserQuestion`: the option you recommend, the real alternatives, and room to
-answer differently. One question, then stop and wait.
+answer differently.
+
+**Phase 2 asks up to three, in one call, before it writes the spec** — the contract gets
+built by two people rather than handed over finished. Zero is legitimate and is said in
+one line; a quota manufactures questions the code already answers. Phase 5 stops for the
+order and opens no second tranche, and no stop is added: the questions ride the one
+phase 2 already has.
 
 **Ask it before the plan is agreed.** Phases 1, 2 and 5 are where a question is cheap,
 because nothing has been built on the answer yet. That is not a coincidence — the two
