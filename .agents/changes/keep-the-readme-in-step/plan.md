@@ -36,7 +36,7 @@ Depends on: nothing.
       it, in this commit.
 - [x] **run it and watch it fail**, in the foreground, output read. One failure naming
       `libretto-attacca`. A guard that has never been red has never been shown to work.
-- [ ] commit the failing test on its own, so the red is in history and not only in a
+- [x] commit the failing test on its own, so the red is in history and not only in a
       transcript.
 
 **Closes:** *a command file with no mention in the README fails the suite* — Proof:
@@ -49,12 +49,12 @@ task 2, not here.
 
 Depends on: task 1.
 
-- [ ] the `/libretto-attacca` line in the first-run door list, matching the shape of the
+- [x] the `/libretto-attacca` line in the first-run door list, matching the shape of the
       five beside it.
-- [ ] one line in **Your first run**, where the stops are walked — a command whose whole
+- [x] one line in **Your first run**, where the stops are walked — a command whose whole
       subject is those stops belongs where they are described.
-- [ ] run the suite and watch it pass. Same command, opposite result, both observed.
-- [ ] gates, then commit.
+- [x] run the suite and watch it pass. Same command, opposite result, both observed.
+- [x] gates, then commit.
 
 **Closes:** the same criterion, now green — plus *the sections stay in reading order*
 (Proof: `TestReadmeSectionsAreInReadingOrder`), *the first-run walk still names the flow and
