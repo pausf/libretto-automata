@@ -106,6 +106,12 @@ turns on workflow orchestration, and no frontmatter accepts it.
   built to make Haiku reachable; leaving the key would be the lie above. The clearing
   is narrow: a model that does support effort leaves the level alone, because changing
   the tier is not a request to change the depth.
+- **The levels are answerable, not only refusable.** `EffortsFor` names what a model can
+  run so a caller can offer a choice instead of discovering the refusal after one was
+  made. The panel had only the apply-time error to go on, and the cost was a menu of five
+  levels over two Haiku rows. It returns a slice rather than a bool because the host's own
+  table already lists a model with four of the five, so a bool would have to become this
+  the day one enters the catalogue.
 - **An unsupported level is never silently downgraded here.** The host itself falls
   back to the highest supported level at or below the one asked for — `xhigh` runs as
   `high` on Opus 4.6 — and this tool does not reproduce that. It writes aliases, not
@@ -332,6 +338,9 @@ The effort catalogue:
   Proof: internal/agentmodel/effort_test.go TestUnknownEffortIsRefused
 - **`haiku` supports no effort; `opus`, `sonnet` and the session default support all five**
   Proof: internal/agentmodel/effort_test.go TestWhichModelsSupportEffort
+- **the levels a given model can run are answerable before a choice is offered**, weakest
+  first, and nothing at all for a model that has none
+  Proof: internal/agentmodel/effort_test.go TestEffortsForNamesWhatAModelCanRun
 
 Applying a level to a set:
 

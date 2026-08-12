@@ -242,6 +242,58 @@ the same flag — and `tab` changes them.
   has. **`m` and `enter` keep meaning the model** — `enter` is the one gesture nobody
   reads the legend for, and rebinding it to pick up a second key would be a silent
   change to a reflex.
+- **The effort catalogue offers only what the marked set can actually run**, and refuses
+  to open when that is nothing.
+
+  Each row carries the levels its model supports, as data through the existing seam. The
+  offer is the **intersection** across the marked rows, never the union: the apply is
+  all-or-nothing, so a level offered because *one* marked row can take it is a level
+  guaranteed to be refused. An empty intersection is a notice naming the model that has
+  none and how to proceed — *"haiku has no effort levels — unmark those rows, or move
+  them off it with m"* — not a menu.
+
+  **This reverses a decision made when the column landed**, and the reversal is the
+  point: that version said which levels a model supports is not the panel's knowledge,
+  and it renders the refusal it is handed. The refusal arrives at apply time. So `e` on
+  two Haiku rows opened five levels, the user picked one, and the screen said no to a
+  choice it had just offered — reported as a bug, correctly. **A screen that offers yes
+  and then says no is worse than one that says no first**, and the layering it was
+  protecting is intact: the rule still lives in `agent-models`, it just travels as data
+  instead of as an error.
+
+  The session default survives every narrowing, because removing a key is legal on any
+  agent. A list whose only surviving entry is *remove* does not open either — a
+  one-choice menu reads as the feature being broken rather than inapplicable.
+
+  **Applying to the capable subset was the alternative and it loses on an existing
+  promise:** nothing marked means nothing happens, and a selector whose marks are
+  sometimes ignored teaches the user not to trust them. Silently skipping the Haiku rows
+  is that, with extra steps.
+- **The list is windowed to the terminal, and the window follows the cursor.**
+
+  29 agents drew 29 rows, and `PlaceVertical` centring a block taller than the screen
+  pushed the wordmark, the strip and the first rows off the top — so the rows you could
+  not reach took the ones you could with them. Reported at exactly that scale.
+
+  A bound alone would be the wrong fix. The action report is bounded because a report is
+  *read*; this list is **operated**, and a row you cannot reach is a row you cannot mark.
+  So every agent stays reachable and the window moves the least it can to keep the cursor
+  inside it.
+
+  - **It says how many rows are out of view**, at each end — the same rule as the
+    truncated report, and it matters more here because the hidden rows are reachable.
+  - **`all` is never scrolled away.** It is the master checkbox for the list under it, and
+    a checkbox that scrolls away from what it governs is a checkbox you cannot find.
+  - **An open catalogue takes its rows from the window, not from the frame.** The choices
+    are what the user is looking at while it is open.
+  - **An unknown height bounds nothing.** `preview`, a pipe and most tests never send a
+    size, and hiding rows against a height nobody gave us would be inventing one.
+  - **A group rule divides visible rows only.** A rule drawn because the row above it is
+    off screen separates nothing from nothing.
+  - **Below 36 lines with a catalogue open, the panel overflows deliberately.** 25 lines
+    of chrome, measured, plus a three-row floor, plus the widest catalogue. A screen that
+    is chrome with a peephole in it is not worth degrading into, and that terminal
+    overflowed before this change with no window at all.
 - **Rows group by model, and by nothing else.** Effort is a column, not a second
   grouping: grouping by the pair turns four groups into twenty on a screen whose whole
   argument is that a reader sees the shape at a glance. Applying a level moves no row.
@@ -582,6 +634,38 @@ The model selector:
   Proof: internal/ui/models_test.go TestApplyingTheEffortTheyAlreadyHaveSaysNothingChanged
 - the rows still group by model alone
   Proof: internal/ui/models_test.go TestRowsStillGroupByModelAlone
+
+The effort catalogue is narrowed to what the marked set can run:
+
+- **`e` over rows whose model has no levels opens nothing and names the model**
+  Proof: internal/ui/models_test.go TestEOnAModelWithNoEffortLevelsSaysSoAndOpensNothing
+- **a mixed marked set refuses rather than applying to the capable subset**
+  Proof: internal/ui/models_test.go TestAMixedMarkedSetRefusesRatherThanApplyingToTheSubset
+- unmarking the incapable row opens the catalogue — the refusal is a property of the set,
+  not a state the screen sticks in
+  Proof: internal/ui/models_test.go TestUnmarkingTheIncapableRowOpensTheCatalogue
+- **the offer is the intersection**, proven on a model with four of the five levels
+  Proof: internal/ui/models_test.go TestTheCatalogueOffersOnlyTheLevelsTheMarkedSetCanRun
+- **the cursor applies the entry under it in a narrowed list**, not the entry at that index
+  of the full catalogue
+  Proof: internal/ui/models_test.go TestTheCursorAppliesTheEntryUnderItInANarrowedCatalogue
+
+The window:
+
+- **the panel fits the terminal height**, at every height it can, with either catalogue
+  open and 29 agents
+  Proof: internal/ui/models_test.go TestTheSelectorFitsTheTerminalHeight
+- **every agent is reachable and markable below the fold**, and the row it marked is on
+  screen
+  Proof: internal/ui/models_test.go TestEveryAgentIsReachableAndMarkableBelowTheFold
+- it says how many rows are out of view, at each end, and stops claiming rows that are not
+  Proof: internal/ui/models_test.go TestTheSelectorSaysHowManyRowsAreOutOfView
+- `all` is never scrolled away
+  Proof: internal/ui/models_test.go TestTheAllRowIsNeverScrolledAway
+- an unknown height shows every row and claims nothing is hidden
+  Proof: internal/ui/models_test.go TestAnUnknownHeightShowsEveryRow
+- **the rows give way to an open catalogue, not the frame**
+  Proof: internal/ui/models_test.go TestTheWindowShrinksWhileACatalogueIsOpen
 - a failing apply reports the error and leaves the screen usable
   Proof: internal/ui/models_test.go TestFailedApplyIsReportedAndTheScreenSurvives
 - the menu row reports a tally of agents by model, not a description of itself

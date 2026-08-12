@@ -99,6 +99,17 @@ type Panel struct {
 	EffortChoices  []EffortChoice
 	EffortCursor   int
 
+	// AgentTop is the first agent index the window shows. The window exists because
+	// the list is unbounded and the terminal is not: 29 agents drew 29 rows, and
+	// PlaceVertical centring a block taller than the screen pushed the wordmark, the
+	// strip and the first rows off the top — so the rows you could not reach took the
+	// ones you could with them.
+	//
+	// It lives in the panel rather than being derived while rendering, because the
+	// renderer is pure and the cursor is what moves the window. A renderer that
+	// scrolled would be a renderer with state.
+	AgentTop int
+
 	// UpdateNotice says a newer release exists, and what to do about it. Empty until the
 	// check answers, and empty forever when it cannot.
 	//

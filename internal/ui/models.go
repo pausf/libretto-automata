@@ -26,7 +26,97 @@ const modelsAction = "models"
 const allRow = 0
 
 // selectorRows is how many rows the cursor can reach: the agents, plus `all`.
+//
+// Every agent stays reachable whether or not it is on screen — the window follows the
+// cursor rather than bounding it. A cursor that could not leave the window would make
+// the rows below the fold unmarkable, which is the bug rather than the fix.
 func selectorRows(p Panel) int { return len(p.Agents) + 1 }
+
+// windowFloor is the fewest agent rows worth showing. Below this the screen is chrome
+// with a peephole in it, and the honest failure is a panel that overflows a tiny
+// terminal rather than one that pretends to be usable in it.
+const windowFloor = 3
+
+// selectorChrome is how many lines the selector spends on everything that is not an
+// agent row: the frame, the wordmark, the destination strip, the footer, the notice, the
+// `all` row and its rule.
+//
+// ponytail: one number, and the arithmetic behind it is measured rather than estimated —
+// 25 lines observed for the frame, wordmark, strip, notice, footer, `all` row and its
+// rule, plus 2 for the out-of-view indicators, plus one rule per model boundary in the
+// window, of which the catalogue has at most three beyond the one already counted.
+//
+// Deliberately generous, because the two ways of being wrong do not cost the same: a
+// line too many is a blank line under the list, a line too few is the torn screen this
+// exists to fix. The gate is TestTheSelectorFitsTheTerminalHeight, not this comment —
+// the first guess here was 20 and the test said 26 before the arithmetic was done.
+//
+// The upgrade path, the day a destination is added or the chrome moves: render the panel
+// with no agents, measure it, and give the rows what is left. That costs a second render
+// per keystroke, which is why it is not here yet.
+const selectorChrome = 30
+
+// agentWindow is how many agent rows fit, and it is every one of them when the height is
+// unknown.
+//
+// Height 0 means nobody told us — `preview`, a pipe, most tests — and bounding a list
+// against a height we do not have would hide rows for no reason.
+func agentWindow(p Panel) int {
+	if p.Height <= 0 {
+		return len(p.Agents)
+	}
+	n := p.Height - selectorChrome
+	// An open catalogue draws its own rows below the list, and they are the thing the
+	// user is looking at while it is open.
+	if p.ChoosingModel {
+		n -= len(p.ModelChoices) + 2
+	}
+	if p.ChoosingEffort {
+		n -= len(p.EffortChoices) + 2
+	}
+	if n < windowFloor {
+		n = windowFloor
+	}
+	if n > len(p.Agents) {
+		n = len(p.Agents)
+	}
+	return n
+}
+
+// scrollToCursor moves the window the least it can to bring the cursor inside it.
+//
+// Called after every cursor move rather than inside the renderer, and it is what makes
+// the rows below the fold reachable — the whole point. `all` is cursor 0 and is never
+// windowed: it is one row, it is the master checkbox for the list under it, and a
+// checkbox that scrolls away from the list it governs is a checkbox you cannot find.
+func (m Model) scrollToCursor() Model {
+	size := agentWindow(m.panel)
+	if size >= len(m.panel.Agents) {
+		m.panel.AgentTop = 0
+		return m
+	}
+
+	// The `all` row sits at cursor 0, so agent i is at cursor i+1.
+	at := m.panel.AgentCursor - 1
+	if at < 0 {
+		m.panel.AgentTop = 0
+		return m
+	}
+
+	switch {
+	case at < m.panel.AgentTop:
+		m.panel.AgentTop = at
+	case at >= m.panel.AgentTop+size:
+		m.panel.AgentTop = at - size + 1
+	}
+	if max := len(m.panel.Agents) - size; m.panel.AgentTop > max {
+		m.panel.AgentTop = max
+	}
+	if m.panel.AgentTop < 0 {
+		m.panel.AgentTop = 0
+	}
+	return m
+}
 
 // AgentRow is one agent in the selector: what it is called, what it runs on, and
 // whether the user has marked it.
@@ -35,6 +125,17 @@ type AgentRow struct {
 	Model  string // empty means the session's model
 	Effort string // empty means the session's effort
 	Marked bool
+
+	// Efforts is the levels this row's model can run, weakest first. Empty means the
+	// model has none — Haiku, today.
+	//
+	// It arrives as data for the same reason the model catalogue does: this package
+	// deciding which models support effort would put that rule in a second place, and
+	// the copy on screen would be the one nobody updated. What it buys is the
+	// difference between offering a choice and refusing one after it was made — the
+	// first version had only the apply-time error to go on, so `e` on two Haiku rows
+	// opened a menu of five levels none of which could be written.
+	Efforts []string
 
 	// Shared marks a row whose file is one this repository owns, reached from more
 	// than one destination. Writing it changes every project on the machine;
@@ -102,15 +203,88 @@ func (m Model) ChoosingModel() bool { return m.panel.ChoosingModel }
 // ChoosingEffort reports whether the effort catalogue is open over the selector.
 func (m Model) ChoosingEffort() bool { return m.panel.ChoosingEffort }
 
-// EffortChoices exposes the effort catalogue for tests.
+// EffortChoices exposes the full effort catalogue for tests.
 func (m Model) EffortChoices() []EffortChoice { return m.effortChoices }
 
+// OpenEffortChoices exposes the narrowed list actually on screen. Distinct from
+// EffortChoices because the difference between the two is the whole of the fix: a test
+// asserting against the full catalogue would pass over a screen offering levels it
+// cannot write.
+func (m Model) OpenEffortChoices() []EffortChoice { return m.panel.EffortChoices }
+
 // ChosenEffortName is the effort entry under the cursor.
+//
+// It reads the panel's list rather than the full catalogue: the open list is narrowed to
+// what the marked set can actually run, so the cursor indexes that one. Reading the full
+// catalogue here would pick a different entry than the one under the cursor as soon as
+// the two differed, which is a wrong write with a correct-looking screen.
 func (m Model) ChosenEffortName() string {
-	if len(m.effortChoices) == 0 {
+	if len(m.panel.EffortChoices) == 0 {
 		return ""
 	}
-	return m.effortChoices[m.panel.EffortCursor].Name
+	return m.panel.EffortChoices[m.panel.EffortCursor].Name
+}
+
+// offerableEfforts narrows the catalogue to the levels every marked row can run.
+//
+// The intersection, not the union. A level offered because *some* marked row can run it
+// is a level whose apply is refused for the whole set — and the refusal is all-or-nothing
+// by contract, so the union would offer choices guaranteed to fail.
+//
+// Empty means no level applies to the whole set, which is a state the caller reports
+// rather than a menu it opens.
+func (m Model) offerableEfforts() []EffortChoice {
+	marked := 0
+	allowed := map[string]int{}
+	for _, a := range m.panel.Agents {
+		if !a.Marked {
+			continue
+		}
+		marked++
+		for _, e := range a.Efforts {
+			allowed[e]++
+		}
+	}
+	if marked == 0 {
+		return nil
+	}
+
+	out := make([]EffortChoice, 0, len(m.effortChoices))
+	for _, c := range m.effortChoices {
+		// The session default is the absence of the key, not a level, so no row has to
+		// support it — removing an effort is legal on any agent, including one whose
+		// model has none.
+		if c.Name == "" || allowed[c.Name] == marked {
+			out = append(out, c)
+		}
+	}
+
+	// Only the default survived: there is no level the whole set can run, and offering
+	// a one-entry menu whose only choice is "remove" would read as the feature being
+	// broken rather than inapplicable.
+	if len(out) <= 1 {
+		return nil
+	}
+	return out
+}
+
+// modelsWithoutEffort names the marked rows' models that have no levels, for the notice
+// that replaces the menu. The models, not the agent names: the reason is the model, and
+// eleven agent names is a sentence nobody reads to the end.
+func (m Model) modelsWithoutEffort() []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, a := range m.panel.Agents {
+		if !a.Marked || len(a.Efforts) > 0 {
+			continue
+		}
+		name := describeModel(a.Model)
+		if !seen[name] {
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	return out
 }
 
 // AgentRows exposes the rows for tests.
@@ -157,9 +331,12 @@ func (m Model) openSelector() Model {
 
 	m.panel.Agents = sortRowsByModel(rows, m.modelChoices)
 	m.panel.ModelChoices = m.modelChoices
-	m.panel.EffortChoices = m.effortChoices
+	// Not pre-populated: the open list is narrowed to what the marked set can run, and
+	// nothing is marked yet.
+	m.panel.EffortChoices = nil
 	m.panel.InSelector, m.panel.ChoosingModel, m.panel.ChoosingEffort = true, false, false
 	m.panel.AgentCursor, m.panel.ModelCursor, m.panel.EffortCursor = 0, 0, 0
+	m.panel.AgentTop = 0
 	m.notice = "space mark · a all · m model · e effort · esc back"
 	return m
 }
@@ -197,10 +374,10 @@ func (m Model) updateSelector(k string) (Model, bool) {
 			m.panel.ChoosingEffort = false
 			return m, true
 		case "up", "k":
-			m.panel.EffortCursor = wrap(m.panel.EffortCursor-1, len(m.effortChoices))
+			m.panel.EffortCursor = wrap(m.panel.EffortCursor-1, len(m.panel.EffortChoices))
 			return m, true
 		case "down", "j":
-			m.panel.EffortCursor = wrap(m.panel.EffortCursor+1, len(m.effortChoices))
+			m.panel.EffortCursor = wrap(m.panel.EffortCursor+1, len(m.panel.EffortChoices))
 			return m, true
 		case "enter":
 			return m.applyChosenEffort(), true
@@ -237,15 +414,16 @@ func (m Model) updateSelector(k string) (Model, bool) {
 		}
 		m.panel.Agents = sortRowsByModel(rows, m.modelChoices)
 		m.panel.AgentCursor, m.panel.ChoosingModel = 0, false
+		m.panel.AgentTop = 0
 		return m, true
 
 	case "up", "k":
 		m.panel.AgentCursor = wrap(m.panel.AgentCursor-1, selectorRows(m.panel))
-		return m, true
+		return m.scrollToCursor(), true
 
 	case "down", "j":
 		m.panel.AgentCursor = wrap(m.panel.AgentCursor+1, selectorRows(m.panel))
-		return m, true
+		return m.scrollToCursor(), true
 
 	case " ":
 		if len(m.panel.Agents) == 0 {
@@ -281,6 +459,21 @@ func (m Model) updateSelector(k string) (Model, bool) {
 			m.notice = "nothing marked — space marks a row, a marks all"
 			return m, true
 		}
+
+		// Measured before the menu, not after the choice. A catalogue of five levels
+		// over two Haiku rows was the reported bug, and it is worse than a plain
+		// refusal: the user picks, waits, and is told no by a screen that offered yes.
+		offer := m.offerableEfforts()
+		if len(offer) == 0 {
+			if without := m.modelsWithoutEffort(); len(without) > 0 {
+				m.notice = strings.Join(without, " and ") + " has no effort levels — unmark those rows, or move them off it with m"
+			} else {
+				m.notice = "no effort level applies to every marked row"
+			}
+			return m, true
+		}
+
+		m.panel.EffortChoices = offer
 		m.panel.ChoosingEffort, m.panel.EffortCursor = true, 0
 		return m, true
 	}
@@ -467,8 +660,26 @@ func (t Theme) selector(p Panel) string {
 		t.groupRule(cw),
 	)
 
-	for i, a := range p.Agents {
-		if i > 0 && a.Model != p.Agents[i-1].Model {
+	// The window, and what is outside it. A bounded list that does not admit it was
+	// bounded is the lie the action report already refuses to tell — and here it is
+	// worse, because the rows out of view are rows you have to reach to mark.
+	size := agentWindow(p)
+	top := p.AgentTop
+	if top > len(p.Agents)-size {
+		top = len(p.Agents) - size
+	}
+	if top < 0 {
+		top = 0
+	}
+	if above := top; above > 0 {
+		rows = append(rows, "  "+Fg(t.Dim).Render("↑ "+strconv.Itoa(above)+" more"))
+	}
+
+	for i := top; i < top+size; i++ {
+		a := p.Agents[i]
+		// Against the previous *visible* row: a rule drawn because the row above it is
+		// off screen is a rule separating nothing from nothing.
+		if i > top && a.Model != p.Agents[i-1].Model {
 			rows = append(rows, t.groupRule(cw))
 		}
 
@@ -491,6 +702,10 @@ func (t Theme) selector(p Panel) string {
 		line := cursor + " " + box + " " + pad(elide(a.Name, width-1), width) +
 			pad(describeModel(a.Model), modelCol) + pad(describeModel(a.Effort), effortCol) + shared
 		rows = append(rows, "  "+Fg(colour).Render(line))
+	}
+
+	if below := len(p.Agents) - top - size; below > 0 {
+		rows = append(rows, "  "+Fg(t.Dim).Render("↓ "+strconv.Itoa(below)+" more"))
 	}
 
 	if p.ChoosingModel {
@@ -699,4 +914,20 @@ func Tally(rows []AgentRow, order []ModelChoice) string {
 		parts = append(parts, strconv.Itoa(counts[name])+" on "+label)
 	}
 	return strings.Join(parts, " · ")
+}
+
+// VisibleAgentsForTest is the slice of rows the window is currently showing.
+//
+// Exported for tests because the alternative is asserting on rendered text, and a test
+// that counts names in a string cannot tell "the window shrank" from "the name changed".
+func (m Model) VisibleAgentsForTest() []AgentRow {
+	size := agentWindow(m.panel)
+	top := m.panel.AgentTop
+	if top+size > len(m.panel.Agents) {
+		top = len(m.panel.Agents) - size
+	}
+	if top < 0 {
+		top = 0
+	}
+	return m.panel.Agents[top : top+size]
 }

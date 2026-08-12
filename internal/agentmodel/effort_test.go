@@ -335,3 +335,24 @@ func TestApplyModelKeepsEffortWhenTheModelSupportsIt(t *testing.T) {
 		t.Errorf("effort after moving to sonnet = %q, want xhigh", got)
 	}
 }
+
+// The panel offers a choice off this rather than discovering the refusal after one was
+// made. A slice and not a bool because the host's own table already lists a model with
+// four of the five, so the shape has to survive one entering this catalogue.
+func TestEffortsForNamesWhatAModelCanRun(t *testing.T) {
+	if got := EffortsFor("haiku"); got != nil {
+		t.Errorf("EffortsFor(haiku) = %v, want nothing at all", got)
+	}
+	for _, model := range []string{"opus", "sonnet", Default} {
+		got := EffortsFor(model)
+		if len(got) != len(efforts) {
+			t.Fatalf("EffortsFor(%q) returned %d levels, want %d", model, len(got), len(efforts))
+		}
+		for i := range efforts {
+			if got[i] != efforts[i].Name {
+				t.Errorf("EffortsFor(%q)[%d] = %q, want %q — weakest first, as the catalogue is",
+					model, i, got[i], efforts[i].Name)
+			}
+		}
+	}
+}

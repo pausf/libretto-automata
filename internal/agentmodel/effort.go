@@ -78,6 +78,29 @@ func SupportsEffort(model string) bool {
 	return true
 }
 
+// EffortsFor returns the levels a catalogue model can run, weakest first, and nothing
+// at all for a model that has none.
+//
+// It exists so a caller can offer a choice instead of discovering the refusal after the
+// user has made one. The panel had only ApplyEffort's error to go on, which arrives
+// after a menu of impossible levels has been navigated — the levels have to be
+// answerable *before* the menu opens, and this is the one place that can answer.
+//
+// Every model here either supports all five or none, so the return is the whole list or
+// nil. It returns a slice rather than a bool because the host's own table already has a
+// model with four of the five, and a bool would have to become this the day one enters
+// the catalogue.
+func EffortsFor(model string) []string {
+	if !SupportsEffort(model) {
+		return nil
+	}
+	out := make([]string, 0, len(efforts))
+	for _, e := range efforts {
+		out = append(out, e.Name)
+	}
+	return out
+}
+
 // ReadEffort returns the effort an agent file declares, or Default when it declares
 // none — meaning the agent runs at whatever the session runs at, not at the host's
 // default of `high`. That distinction is the host's business; this reports the file.

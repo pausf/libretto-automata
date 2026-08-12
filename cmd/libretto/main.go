@@ -466,6 +466,10 @@ func agentRows(root string, tg target.Target) ([]ui.AgentRow, error) {
 			Name:   a.Name,
 			Model:  a.Model,
 			Effort: a.Effort,
+			// What this row's model can run, so the panel can offer a choice rather
+			// than refuse one after it was made. The rule stays in agentmodel; this
+			// carries its answer across the seam.
+			Efforts: agentmodel.EffortsFor(a.Model),
 			// Owned means the file is one of ours, reached from more than one
 			// destination — so writing it is not local to this one.
 			Shared: link.Owned(root, a.Path),
