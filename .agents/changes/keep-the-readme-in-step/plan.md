@@ -1,10 +1,13 @@
 # keep-the-readme-in-step — plan
 
-Spec: `.agents/changes/keep-the-readme-in-step/spec.md` (Targets: readme)
+Specs: `spec.md` (Targets: readme) · `spec-stops.md` (Targets: payload)
 Branch: `docs/keep-the-readme-in-step`
 
-**Goal:** the README carries every command, and a command that arrives without a row fails
-the suite.
+**Goal:** the README carries every command, a command that arrives without a row fails the
+suite, and every stop in the flow is a native question rather than a paragraph.
+
+Two deltas, one change. They share nothing but the branch — tasks 1–3 are the README, tasks
+4–6 are the stops, and neither waits on the other.
 
 **Order is the whole plan.** The guard is written first and watched failing against today's
 README, because a guard written after the fix has never been observed to catch anything.
@@ -55,19 +58,63 @@ Depends on: task 1.
 its stops* (Proof: `TestReadmeWalksAFirstRun`), and *every relative link resolves* (Proof:
 `TestReadmeLinksResolve`).
 
-## Task 3 — land it
+## Task 3 — the README delta, applied
 
 Depends on: tasks 1 and 2.
 
-- [ ] apply the delta onto `.agents/specs/readme/spec.md`: the guard as an outcome, its two
+- [ ] apply `spec.md` onto `.agents/specs/readme/spec.md`: the guard as an outcome, its two
       prior decisions with their ceiling, and the `commands/**` path if `Governs:` needs it.
-- [ ] delete `.agents/changes/keep-the-readme-in-step/`.
-- [ ] `spec-drift --anchors`, then the six gates.
-- [ ] one commit: the applied delta and the deleted folder together.
+- [ ] gates, then commit.
 
 **Closes:** *every `Proof:` citation resolves, file and test name* — Proof:
 `skills/record-work/spec-drift --anchors`.
 
+## Task 4 — the two stops that wait
+
+**Files:** modify `skills/write-spec/SKILL.md`, `skills/write-plan/SKILL.md`
+
+Depends on: nothing.
+
+- [ ] `write-spec` — its stop asked with `AskUserQuestion`: carry on to the plan
+      (recommended, saying what runs next), or change the contract first.
+- [ ] `write-plan` — the same shape: start the work, or change the order first.
+- [ ] each says *that* it asks natively and what its options mean, and neither restates
+      `record-work`'s argument for why. That argument lives once.
+- [ ] gates, then commit.
+
+**Closes:** *every referenced skill exists and frontmatter parses* — Proof:
+`scripts/check-payload`.
+
+## Task 5 — the choice phase 1 already makes
+
+**Files:** modify `skills/find-work/SKILL.md`
+
+Depends on: nothing. Independent of task 4.
+
+- [ ] the in-flight choice asked with `AskUserQuestion`, the same way the which-task
+      question three sections below it already is. It already says *never choose*; what it
+      never said is how to ask.
+- [ ] gates, then commit.
+
+**Closes:** same proof as task 4.
+
+## Task 6 — said once where the stops are argued for, then land
+
+Depends on: tasks 3, 4 and 5.
+
+- [ ] `commands/libretto-flow.md` and `docs/FLOW.md` — the stops are native questions, one
+      line each, beside the table that already lists them.
+- [ ] apply `spec-stops.md` onto `.agents/specs/payload/spec.md`, including the ceiling: no
+      check can tell a native prompt from a paragraph, and the guard that would is named
+      and deliberately not built.
+- [ ] delete `.agents/changes/keep-the-readme-in-step/`.
+- [ ] `spec-drift --anchors`, then the six gates.
+- [ ] one commit: the final prose, both applied deltas' remainder, and the deleted folder.
+
+**Closes:** *every `Proof:` citation resolves* — Proof:
+`skills/record-work/spec-drift --anchors`.
+
 ## What can start now
 
-Task 1. Task 2 waits on it by design — the point is the red — and task 3 waits on both.
+**Tasks 1 and 4 and 5**, independently. Task 2 waits on 1 by design — the point is the red
+— task 3 waits on both, and task 6 waits on everything because it deletes the folder.
