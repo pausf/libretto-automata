@@ -159,6 +159,13 @@ At the very end — after everything is committed and reported — ask once: **p
 open the pull request?** One question, one answer. A no ends it and needs no
 follow-up.
 
+**Under `/libretto-attacca` it is not asked, because it was answered when the command was
+typed.** "Never push unasked" is intact rather than overridden — the asking happened at the
+prompt. What the answer covers is this branch and this request and nothing past it: no
+merge, no tag, no release, no `release:` label. And the request's description carries every
+assumption the run made in place of a question, or the run has bought silence rather than
+speed.
+
 **Ask it with `AskUserQuestion`, never as a sentence at the end of a report.** This is
 the last question in the flow and usually the only one after the plan, so it is the one
 that must not be missable — a question in prose is a paragraph the reader can skim past,

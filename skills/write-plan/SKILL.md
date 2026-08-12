@@ -95,3 +95,6 @@ and they will disagree exactly when it matters.
 Report where the plan is, how many tasks, and which can start immediately.
 
 Then stop. Writing the plan is not starting the work.
+
+Unless the run is `/libretto-attacca`, where the invocation already agreed the order. The
+plan is written and committed exactly the same; only the wait is answered.

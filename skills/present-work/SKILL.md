@@ -42,6 +42,13 @@ attempts, or reported-not-fixed because the decision was not ours. A section sho
 only the repaired state hides that the builder got it wrong, and getting it wrong is
 the thing the seam exists to surface.
 
+And when the run is `/libretto-attacca`, a fifth: **what the invocation answered, and
+every question the run assumed past.** Each assumption with what changes if it is wrong,
+in the same words the spec recorded it in. This is the only place a reader learns which
+of the report's decisions a person made — and the report and the request description are
+the whole of the mode's visibility, so an assumption missing here is an assumption nobody
+made knowingly.
+
 ## The third one is the reason this phase exists
 
 It is the one that goes missing, and it is the one that turns a simplification into
