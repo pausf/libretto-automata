@@ -171,6 +171,30 @@ the same rule arriving at the phase that used to be written as prose, and it is 
 here because a rule written only where the *asking* is described gets read as belonging
 to phase 4 alone.
 
+### The one exception, and it is the whole of `/libretto-attacca`
+
+**Everything above — the question, the native prompt, the waiting — is the attended
+flow.** Under `/libretto-attacca` the question is not asked at all, because it was
+answered when the command was typed. "Never push unasked" is intact rather than
+overridden: the asking happened at the prompt.
+
+The answer covers **this branch and this request and nothing past it** — no merge, no tag,
+no release, no `release:` label.
+
+And it is paid for in the request's description, which carries two things or the run has
+bought silence rather than speed:
+
+- **what the invocation answered** — the two stops and the push — so a reader can tell
+  which of the decisions in front of them a person made
+- **every question the run assumed past**, each with what changes if it is wrong
+
+This section sits **below** the native-prompt paragraph deliberately. Written above it, the
+paragraph that followed read as reinstating the ask unconditionally — the reviewer's
+finding on the run that landed the mode.
+
+The yes path is the yes path: what follows below about returning to the base branch happens
+here too, because the push and the request were both confirmed.
+
 The two used to be asked separately. That bought a second round trip and no safety:
 pushing a branch and then declining to open the request for it is a state almost
 nobody wants, and the user who wants exactly that says so in the same breath. Asking

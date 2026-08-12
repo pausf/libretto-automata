@@ -346,6 +346,24 @@ continuing it or not is a choice about the user's priorities, and a missing or
 unconfigured tracker, where nothing downstream exists. Both are the input failing to
 arrive, not a phase boundary asking to be blessed.
 
+### All three answered in advance
+
+`/libretto-attacca` — the score's instruction to go on to the next movement without
+pausing — runs the same flow with the three stops answered by the invocation itself, and
+ends at a pushed branch with a request open on it. Nothing about the phases changes: the
+spec, the plan, the commits and the report are all still written.
+
+**What it cannot answer is a gate**, and the distinction is the whole of the feature. A
+stop is where the user changes something; a gate is where the code is measured. A failing
+gate still stops the run, twice on one task still stops the task, a missing credential
+still stops the phase, and no run reaches for `--force` or a weakened test to get past
+one. **A mode that answers a gate is not unattended, it is unverified.**
+
+A question the flow cannot settle from the code is not asked either — it becomes an
+assumption written into the spec marked as assumed, into the report, and into the
+request's description, with what changes if it is wrong. That is the same rule the flow
+already applies after the plan, moved to the front.
+
 ## Three rules, not phases
 
 **Ask** (4) and **commit** (8) are written above as phases because that is where

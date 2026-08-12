@@ -59,6 +59,16 @@ A box is marked the moment its task is genuinely finished — verified, not hope
 An agent joining late reads this file and believes it. That is its whole purpose,
 and a plan updated in batches is a plan that was wrong for most of its life.
 
+**A marked box that was never committed was never marked.** It ships in the same commit
+as the task that closed it, exactly as the spec does — a `git add` scoped to the code
+leaves the plan behind in the working tree, and a change that lands deletes the folder
+with every unrecorded mark still in it. That is not hypothetical: the reviewer of the run
+that added this line read six commits and found 0/24 boxes ticked on a plan whose work was
+finished, because every mark lived only in a working tree.
+
+Phase 1 reads unchecked boxes to decide what is in flight, so a plan that never moves
+reports as fully open right up until it disappears.
+
 Record three things per task and nothing more: done or not, where the evidence is,
 and — if it was stopped — why. Discussion belongs in the spec.
 
@@ -95,3 +105,6 @@ and they will disagree exactly when it matters.
 Report where the plan is, how many tasks, and which can start immediately.
 
 Then stop. Writing the plan is not starting the work.
+
+Unless the run is `/libretto-attacca`, where the invocation already agreed the order. The
+plan is written and committed exactly the same; only the wait is answered.

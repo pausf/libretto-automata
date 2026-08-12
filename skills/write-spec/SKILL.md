@@ -378,6 +378,13 @@ Do not ask what the code can tell you. Read it.
 The trivial lane asks nothing: step 0 answered *no spec needed*, so there is no
 contract to disagree about and nothing to ask about it.
 
+**Under `/libretto-attacca` the questions are not asked either — they are answered and
+marked.** For each one, take the option you would have recommended, write it under prior
+decisions **marked as assumed**, name what changes if it is wrong, and carry on. Never a
+default left silent, and never a guess written as though it were settled. The three that
+would have been asked are the three that must be findable afterwards, because nobody was
+there to answer them. The command carries why, and what it costs.
+
 ## Step 5 — Check it before handing it over
 
 Read the finished spec as an adversary and look for exactly these:
@@ -447,4 +454,6 @@ truth.
 Report which specs were written, where, and anything still unresolved that phase 5
 onward will hit.
 
-Then stop, and wait for the go-ahead before the plan.
+Then stop, and wait for the go-ahead before the plan — unless the run is
+`/libretto-attacca`, where the go-ahead arrived with the invocation. The spec is still
+written, still committed, still reported; what is answered is the wait, never the writing.
