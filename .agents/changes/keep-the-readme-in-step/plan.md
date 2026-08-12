@@ -65,9 +65,9 @@ its stops* (Proof: `TestReadmeWalksAFirstRun`), and *every relative link resolve
 
 Depends on: tasks 1 and 2.
 
-- [ ] apply `spec.md` onto `.agents/specs/readme/spec.md`: the guard as an outcome, its two
+- [x] apply `spec.md` onto `.agents/specs/readme/spec.md`: the guard as an outcome, its two
       prior decisions with their ceiling, and the `commands/**` path if `Governs:` needs it.
-- [ ] gates, then commit.
+- [x] gates, then commit.
 
 **Closes:** *every `Proof:` citation resolves, file and test name* — Proof:
 `skills/record-work/spec-drift --anchors`.
