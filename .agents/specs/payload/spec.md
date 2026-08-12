@@ -125,6 +125,24 @@ That is the whole test, and it is what the count is derived from.
 | 7 · present-work | no | — |
 | 8 · record-work | **yes, last** | whether the world sees it |
 
+**Every stop is a native question — `AskUserQuestion`, never a sentence at the end of a
+report** — and so is phase 1's choice between work already in flight and something new. The
+recommended option first, saying what will actually run; the real alternatives; room to
+answer differently.
+
+**The argument for it lives once, in `skills/record-work/`**, written for the push on
+2026-08-10 and never push-specific. Every other place states the rule and points there — a
+reason copied into six files is six things to keep in sync, and the reviewer of the run that
+landed this caught exactly that: the constraint saying *it lives once* shipped in the same
+commit as five copies of it.
+
+Phases 2 and 5 waited in prose until 2026-08-12, including on the run that specced this,
+which is where the evidence came from. **Ceiling named:** nothing mechanical checks it. `scripts/check-payload`
+cannot tell a native prompt from a paragraph. The replacement, the day it drifts, is a
+search for `AskUserQuestion` across the skills that own a stop — a string match, and it
+would have caught this one. Deliberately not built: a guard against a failure that has
+happened once.
+
 **A stop whose only available answer is "yes, carry on" is a round trip charged for a
 rubber stamp**, and calling it a decision point does not make it one. Phase 1's wait
 bought the user reading a paraphrase of their own sentence back. Phase 7's bought
@@ -447,6 +465,8 @@ the copy stays comparable with upstream.
 - [x] `libretto-flow` — the routing command
 - [x] `libretto-queue` and `libretto-next` — capture the queue, drain it one at a time,
       with `find-work` owning the scan both read
+- [x] every stop asked with `AskUserQuestion` — phases 2, 5 and 8, plus phase 1's in-flight
+      choice, with the rule stated in each skill that owns one
 - [x] `libretto-attacca` — the three stops answered by the invocation, the classification
       in one file, and the five stop-owning skills each stating what happens to their own
 - [x] vendored delegates with attribution

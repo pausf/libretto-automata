@@ -61,6 +61,11 @@ A stop is where the user changes something. A stop where the only available answ
 "yes, carry on" is a round trip charged for a rubber stamp, and a flow that charges
 those gets routed around.
 
+**All three are asked with `AskUserQuestion`, never as a sentence at the end of a report** —
+and so is phase 1's choice between work in flight and something new. The recommended option
+first, saying what will actually run; the real alternatives; room to answer differently. The
+reason lives once, in `skills/record-work/`.
+
 `/libretto-attacca` is the same flow with all three answered in advance, and it owns that
 classification — including what stays a stop under it, because a gate is not one.
 

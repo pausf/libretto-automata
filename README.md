@@ -115,6 +115,10 @@ Claude Code** — what follows are slash commands, not shell commands.
    what would bring it back.
 7. **It asks once about pushing.** That answer is always yours.
 
+Those are the three places it waits, and each one is a question your terminal puts in front
+of you — not a line at the bottom of a report. **`/libretto-attacca` answers all three in
+advance**, for when you want the whole thing to run without you.
+
 Nothing else to learn to start. The rest is knowing which door to use:
 
 ```bash
@@ -124,7 +128,14 @@ Nothing else to learn to start. The rest is knowing which door to use:
 /libretto-queue               # capture ideas, one after another, and build none of them
 /libretto-next                # take the oldest queued idea into the flow
 /libretto-review <pr-url>     # review a PR/MR in a workspace that restores itself
+/libretto-attacca             # the same flow, without stopping — straight to a pushed PR
 ```
+
+**`/libretto-attacca` answers those stops in advance.** Same phases, same spec, same plan,
+same report — it just does not wait for you at any of them, and it ends with the branch
+pushed and the request open. What it will not do is answer a *gate*: a failing check still
+stops it where it stands, and it never merges, tags or releases. `attacca` is what a score
+writes to mean *go on to the next movement without pausing*.
 
 **The flow does not begin at a tracker.** Phase 1 asks three sources in order — a change
 already in flight, a tracker key or URL, and what you said — and the order is the point:

@@ -46,6 +46,18 @@ no spec governs is a path where drift is nobody's finding.
 5. **Every relative link resolves.** A README is mostly links once the reasoning leaves it,
    and a dead link in the front door is worse than a missing paragraph.
 
+6. **Every file in `commands/` is named somewhere in `README.md`**, and one that arrives
+   without a mention fails the suite. `/libretto-attacca` shipped and the front door never
+   learned it existed — under this capability, which already asked in prose for one line per
+   command. A rule that asks a person to remember has now failed here once.
+
+   **The whole file, not the `## Commands` section.** That heading is the *binary's*
+   subcommands; the payload's slash commands live in the first-run door list. Written
+   against the heading that shares their name, the guard failed all six on its first run.
+
+   **The directory is read, never a list in the test.** A list is the same failure one level
+   down — somebody adds a command, forgets the list, and the guard stays green.
+
 ## Scope boundaries
 
 **In:** `README.md`'s structure, and the test that holds it.
@@ -141,3 +153,21 @@ Held by this capability going forward, not open work:
 
 - **Outcome 5** — every relative link resolves, and the link pattern matched something.
   Proof: cmd/libretto/readme_test.go TestReadmeLinksResolve
+
+- **Outcome 6** — every `commands/*.md` basename appears in `README.md`, the failure names
+  the missing command, and an empty directory listing fails rather than passing vacuously.
+  Proof: cmd/libretto/readme_test.go TestEveryCommandIsInTheReadme
+
+  **Watched red before green**, which is the only run that proves a guard guards anything:
+  one failure naming `libretto-attacca` against the README as it stood, then the same
+  command passing once the door list gained its line.
+
+  **The match is word-bounded, not a substring.** `strings.Contains` let a new command ride
+  on a longer name already in the file — `commands/libretto-stat.md` would have been
+  satisfied by the existing `/libretto-status` line and shipped unmentioned. The reviewer
+  found it; `\blibretto-stat\b` refuses `/libretto-status` and accepts `/libretto-stat`,
+  measured before the fix landed.
+
+  **Ceiling named:** it proves a *name* appears. It cannot tell a real description from a
+  placeholder row, and it will not catch a row that says something false. The replacement,
+  the day that matters, is a criterion about what a row must contain — not a longer regex.

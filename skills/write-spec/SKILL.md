@@ -457,3 +457,10 @@ onward will hit.
 Then stop, and wait for the go-ahead before the plan — unless the run is
 `/libretto-attacca`, where the go-ahead arrived with the invocation. The spec is still
 written, still committed, still reported; what is answered is the wait, never the writing.
+
+**Ask for it with `AskUserQuestion`, never as a sentence at the end of the report.** Carry
+on to the plan — recommended, and saying what will actually run next — change the contract
+first, or stop here. **And room to answer differently**, because the reason to reject a
+contract is rarely one of three things somebody guessed in advance.
+
+Same rule as every stop. The reason lives once, in `skills/record-work/`.
