@@ -181,6 +181,43 @@ push that printed no error is not a push that was accepted. Then read the create
 request back from the forge rather than trusting the output of the command that made
 it.
 
+### Then return to the base branch, current
+
+Once the push and the request are both confirmed, and only then:
+
+```
+git checkout <base>
+git pull --ff-only
+```
+
+The working tree ends on the base branch, up to date with the remote. **The feature
+branch is left alone** — not deleted, not merged, not rebased. The request is open, not
+merged, and a branch deleted at that moment takes the only local copy of unmerged work
+with it.
+
+The base is what the repository says it is — `git symbolic-ref refs/remotes/origin/HEAD`,
+or the branch the request was opened against. Never hardcoded to `main`.
+
+**Two conditions, and both are stops rather than fixes:**
+
+- **a dirty tree.** `git checkout` carries uncommitted work onto the base branch
+  silently, which is the "branch before the first write" failure pointed the other way.
+  Report what is uncommitted and stay put.
+- **a fast-forward that refuses.** A diverged base is a fact worth seeing. Never
+  `git pull` without `--ff-only`, and never resolve it here: a merge commit manufactured
+  on somebody's base branch by a phase whose job is bookkeeping is the surprise nobody
+  wants.
+
+**Only on the yes path.** No push means the work exists nowhere but this branch, and
+moving off it buys nothing.
+
+Why this is here at all: a session starts wherever the last one left the working
+directory, so a flow that ends on a merged feature branch hands the next phase 1 a stale
+base to read. That is not hypothetical — phase 1 of the run that added this reported a
+branch as work in flight when it had already been merged and tagged, because local `main`
+was seven commits behind. The reading was wrong, it was reported as fact, and the
+correction cost a round trip.
+
 ### Which forge, and whether there is one
 
 Derive it. Do not assume, and do not ask what the repository can answer:
@@ -230,7 +267,8 @@ Nothing is reported as recorded without having been seen:
 - the commit exists — `git log` was read, not assumed
 - the tree is clean, or what remains uncommitted is named and explained
 - the spec matches the code, or the divergence is stated
-- if pushed, the remote tip matches
+- if pushed, the remote tip matches, and the tree came back to a current base branch —
+  or the reason it did not is named
 
 Then one line per task: what it was, its commit, where its evidence is.
 
