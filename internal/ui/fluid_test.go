@@ -130,6 +130,49 @@ func TestFrameHoldsWithUpdateNotice(t *testing.T) {
 	}
 }
 
+// The banner is the only nested border on the panel, and the test above cannot see it: it
+// keys on rows whose first rune is a frame character, and the banner's rows begin with the
+// margin's spaces. So the outer frame was proven flush while the inner box was measured
+// nowhere — and a nested border is the one most likely to tear, because it inherits a width
+// it did not compute.
+//
+// Every width, not three samples. The banner's arithmetic is a subtraction from the content
+// width, so an off-by-one shows up at one width and hides at its neighbours.
+func TestBannerBoxHoldsAtEveryWidth(t *testing.T) {
+	forceTrueColor(t)
+
+	for term := MinPanelWidth; term <= MaxPanelWidth+10; term++ {
+		p := demoPanel()
+		p.Width = term
+		p.UpdateNotice = "v0.2.0 → v0.3.0 available · choose update"
+		want := ContentWidth(term) - 2*bannerMargin
+
+		// The banner is the first thing inside the frame, so its three rows are the three
+		// after the top border. Found by position rather than by content: a row matched on
+		// the text it carries stops being found the day the text changes.
+		lines := strings.Split(strip(darkTheme().Render(p)), "\n")
+		top := -1
+		for i, l := range lines {
+			if strings.Contains(l, "╭") {
+				top = i
+				break
+			}
+		}
+		if top == -1 || top+3 >= len(lines) {
+			t.Fatalf("term %d: no room for a banner under the top border", term)
+		}
+
+		for _, i := range []int{top + 1, top + 2, top + 3} {
+			// Cut the frame's own border off each side; what is left is the banner's box
+			// and the margin around it.
+			box := strings.TrimSpace(strings.Trim(strings.TrimSpace(lines[i]), "│"))
+			if got := lipgloss.Width(box); got != want {
+				t.Errorf("term %d: banner row is %d columns, want %d: %q", term, got, want, box)
+			}
+		}
+	}
+}
+
 // Past the ceiling the panel stops growing and starts centring instead.
 func TestPanelStopsGrowingAtTheCeiling(t *testing.T) {
 	forceTrueColor(t)
