@@ -78,6 +78,10 @@ back rather than trusted.
   Proof: cmd/libretto/label_workflow_test.go TestLabelScriptRefusesTwoLabels
 - the script accepts exactly one
   Proof: cmd/libretto/label_workflow_test.go TestLabelScriptAcceptsExactlyOneLabel
+- matching is by whole label name — a label merely *containing* `release:patch` does
+  not count (reviewer's finding: names may contain spaces, so a space-joined loop
+  word-splits)
+  Proof: cmd/libretto/label_workflow_test.go TestLabelScriptMatchesLabelNamesExactly
 - the workflow asks for read-only permissions
   Proof: cmd/libretto/label_workflow_test.go TestLabelWorkflowIsReadOnly
 - the workflow never checks out contributor code

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os/exec"
 	"strings"
 	"testing"
@@ -15,16 +16,20 @@ func labelWorkflow(t *testing.T) string {
 	return repoFile(t, ".github/workflows/require-release-label.yml")
 }
 
-// runLabelScript runs the workflow's own script — the same bytes CI runs — with LABELS
-// set the way the env: block would set it.
-func runLabelScript(t *testing.T, labels string) error {
+// runLabelScript runs the workflow's own script — the same bytes CI runs — with the
+// label names as the JSON array the env: block's toJSON would produce.
+func runLabelScript(t *testing.T, labels ...string) error {
 	t.Helper()
 	lines := runScriptLines(labelWorkflow(t))
 	if len(lines) == 0 {
 		t.Fatal("no run: script found in the label workflow — these tests would pass vacuously")
 	}
+	labelsJSON, err := json.Marshal(labels)
+	if err != nil {
+		t.Fatal(err)
+	}
 	cmd := exec.Command("bash", "-c", strings.Join(lines, "\n"))
-	cmd.Env = append(cmd.Environ(), "LABELS="+labels)
+	cmd.Env = append(cmd.Environ(), "LABELS_JSON="+string(labelsJSON))
 	return cmd.Run()
 }
 
@@ -43,24 +48,33 @@ func TestLabelWorkflowRunsWhenLabelsChange(t *testing.T) {
 }
 
 func TestLabelScriptRefusesZeroLabels(t *testing.T) {
-	for _, labels := range []string{"", "bug documentation"} {
-		if runLabelScript(t, labels) == nil {
-			t.Errorf("the script passed with LABELS=%q — a request with no release: label must fail the check", labels)
+	for _, labels := range [][]string{{}, {"bug", "documentation"}} {
+		if runLabelScript(t, labels...) == nil {
+			t.Errorf("the script passed with labels %q — a request with no release: label must fail the check", labels)
 		}
 	}
 }
 
 func TestLabelScriptRefusesTwoLabels(t *testing.T) {
-	if runLabelScript(t, "release:patch release:minor") == nil {
+	if runLabelScript(t, "release:patch", "release:minor") == nil {
 		t.Error("the script passed with two release labels — one bump, one label")
 	}
 }
 
 func TestLabelScriptAcceptsExactlyOneLabel(t *testing.T) {
 	for _, bump := range []string{"release:patch", "release:minor", "release:major"} {
-		if err := runLabelScript(t, bump+" bug"); err != nil {
+		if err := runLabelScript(t, bump, "bug"); err != nil {
 			t.Errorf("the script failed with exactly one release label (%s): %v", bump, err)
 		}
+	}
+}
+
+// The reviewer's finding: label names may contain spaces, so a space-joined loop counts
+// a label *containing* "release:patch" as the real thing and the check goes green with
+// no real label. Matching is by whole name.
+func TestLabelScriptMatchesLabelNamesExactly(t *testing.T) {
+	if runLabelScript(t, "not really release:patch") == nil {
+		t.Error("the script passed with a label that merely contains a release label's name — matching must be exact")
 	}
 }
 

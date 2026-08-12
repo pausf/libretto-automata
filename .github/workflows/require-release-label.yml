@@ -28,17 +28,16 @@ jobs:
       - name: exactly one release label
         # Through the environment, not interpolated into the script — a label is text a
         # collaborator wrote, and `${{ }}` inside a shell line makes it executable.
+        #
+        # As JSON, not space-joined: label names may contain spaces, so a word-split
+        # loop would count a label *containing* "release:patch" as the real thing.
+        # jq compares whole names.
         env:
-          LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+          LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
         run: |
           set -euo pipefail
 
-          COUNT=0
-          for label in $LABELS; do
-            case "$label" in
-              release:major|release:minor|release:patch) COUNT=$((COUNT + 1)) ;;
-            esac
-          done
+          COUNT="$(jq -r '[.[] | select(. == "release:patch" or . == "release:minor" or . == "release:major")] | length' <<<"$LABELS_JSON")"
 
           if [ "$COUNT" -eq 0 ]; then
             echo "::error::no release: label on this request. Add release:patch, release:minor or release:major before merging. See AGENTS.md#Versioning for which one."
@@ -46,7 +45,7 @@ jobs:
           fi
 
           if [ "$COUNT" -gt 1 ]; then
-            echo "::error::two release labels on one request ($LABELS) — one bump, one label"
+            echo "::error::two release labels on one request ($LABELS_JSON) — one bump, one label"
             exit 1
           fi
 

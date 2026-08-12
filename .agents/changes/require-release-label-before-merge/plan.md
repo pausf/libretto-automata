@@ -5,7 +5,7 @@ test in the same commit as the logic it proves.
 
 - [x] 1. `.github/workflows/require-release-label.yml` — the check itself.
       Spec: Outcomes. Criteria: all seven, written here, proven by task 2.
-      Waits on: nothing. Evidence: commit b3597fd, six gates green.
+      Waits on: nothing. Evidence: the feat(ci) commit on this branch, six gates green.
 - [x] 2. `cmd/libretto/label_workflow_test.go` — the seven proofs, static YAML reads
       plus the extracted script run under bash with 0/1/2 labels.
       Spec: Verification criteria. Waits on: task 1 (same commit).
