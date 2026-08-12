@@ -16,6 +16,7 @@ type Model struct {
 	theme   Theme
 	panel   Panel
 	notice  string // one-line feedback under the panel
+	refused bool   // the notice is something the panel declined, not something it did
 	done    bool
 	refresh Refresh
 	run     Runner
@@ -32,9 +33,11 @@ type Model struct {
 
 	// The model selector's wiring. Callbacks rather than a dependency, so this
 	// package still cannot read a file — see models.go.
-	modelChoices []ModelChoice
-	listAgents   ListAgents
-	applyModel   ApplyModel
+	modelChoices  []ModelChoice
+	effortChoices []EffortChoice
+	listAgents    ListAgents
+	applyModel    ApplyModel
+	applyEffort   ApplyEffort
 
 	// releaseCheck asks whether a newer release exists. Nil is the ordinary case.
 	releaseCheck ReleaseCheck
@@ -115,7 +118,7 @@ func (m Model) forget() Model {
 func (m Model) cancelPending() (tea.Model, tea.Cmd) {
 	label := m.pending
 	m = m.forget()
-	m.notice = label + " · cancelled, nothing changed"
+	m = m.say(label + " · cancelled, nothing changed")
 	return m, nil
 }
 
@@ -132,10 +135,10 @@ func (m Model) carryOut() (tea.Model, tea.Cmd) {
 	lines, err := m.run(label, dest, true)
 	m.panel.Results = lines
 	if err != nil {
-		m.notice = label + " · " + err.Error()
+		m = m.refuse(label + " · " + err.Error())
 		return m, nil
 	}
-	m.notice = label + " · done"
+	m = m.say(label + " · done")
 
 	if m.refresh != nil {
 		if menu, targets, rerr := m.refresh(m.activeScope()); rerr == nil {
@@ -212,12 +215,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "up", "k":
-			m.notice = ""
+			m = m.say("")
 			m.panel.Selected = wrap(m.panel.Selected-1, len(m.panel.Menu))
 			return m, nil
 
 		case "down", "j":
-			m.notice = ""
+			m = m.say("")
 			m.panel.Selected = wrap(m.panel.Selected+1, len(m.panel.Menu))
 			return m, nil
 
@@ -245,7 +248,7 @@ func (m Model) nextScope() (tea.Model, tea.Cmd) {
 	next := wrap(m.activeScope()+1, len(m.panel.Targets))
 	menu, targets, err := m.refresh(next)
 	if err != nil {
-		m.notice = "cannot read " + m.panel.Targets[next].Name + ": " + err.Error()
+		m = m.refuse("cannot read " + m.panel.Targets[next].Name + ": " + err.Error())
 		return m, nil
 	}
 
@@ -255,7 +258,7 @@ func (m Model) nextScope() (tea.Model, tea.Cmd) {
 	// `❯` stays where it was and the only other evidence is a bullet and a path
 	// that both take looking for. A key whose effect you have to hunt for is a key
 	// people report as broken.
-	m.notice = "acting on " + m.panel.Targets[next].Name
+	m = m.say("acting on " + m.panel.Targets[next].Name)
 	return m, nil
 }
 
@@ -315,22 +318,22 @@ func (m Model) selectCurrent() (tea.Model, tea.Cmd) {
 	if err != nil {
 		// The report stays. An action that half-finished has the most to say, and
 		// hiding it behind the error is hiding the part that explains it.
-		m.notice = item.Label + " · " + err.Error()
+		m = m.refuse(item.Label + " · " + err.Error())
 		return m, nil
 	}
 
 	if item.Destructive {
 		if len(lines) == 0 {
-			m.notice = item.Label + " · nothing to do"
+			m = m.say(item.Label + " · nothing to do")
 			return m, nil
 		}
 		m.pending, m.pendingScope = item.Label, m.activeScope()
 		m.panel.Confirm = "Go ahead and " + item.Label + " " +
 			m.panel.Targets[m.activeScope()].Name + "?   y / n"
-		m.notice = "nothing has changed yet"
+		m = m.refuse("nothing has changed yet")
 		return m, nil
 	}
-	m.notice = item.Label + " · done"
+	m = m.say(item.Label + " · done")
 
 	// The figures on screen describe the state before the action. Ask for them again
 	// or the panel contradicts its own report.
@@ -347,7 +350,7 @@ func (m Model) View() string {
 		return ""
 	}
 	p := m.panel
-	p.Notice = m.notice
+	p.Notice, p.Refused = m.notice, m.refused
 	return m.theme.Render(p)
 }
 
@@ -356,6 +359,29 @@ func (m Model) Selected() int { return m.panel.Selected }
 
 // Notice exposes the feedback line for tests.
 func (m Model) Notice() string { return m.notice }
+
+// Refused reports whether the current notice is a refusal, for tests.
+func (m Model) Refused() bool { return m.refused }
+
+// say records a notice about something that happened.
+//
+// refuse records one about something that did not, and the panel draws that in the error
+// colour inside its own box.
+//
+// Two setters rather than a field anybody may assign, because the message and its kind
+// going out of step is a silent failure with a bad shape: a refusal left set would paint
+// the next success red, and a success left set would draw the next refusal as one grey
+// line under a bordered panel — which is the state this pair exists to end. There are
+// twenty-odd notice sites, and the two that matter are always the ones nobody re-read.
+func (m Model) say(msg string) Model {
+	m.notice, m.refused = msg, false
+	return m
+}
+
+func (m Model) refuse(msg string) Model {
+	m.notice, m.refused = msg, true
+	return m
+}
 
 // wrap moves the cursor cyclically, so ↑ from the first row lands on the last.
 func wrap(i, n int) int {

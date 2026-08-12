@@ -92,6 +92,24 @@ type Panel struct {
 	ModelChoices  []ModelChoice
 	ModelCursor   int
 
+	// The effort catalogue, opened by `e` over the same rows. A mode rather than a
+	// third screen: a screen that navigates to another screen to change one line is a
+	// screen with a hallway in it.
+	ChoosingEffort bool
+	EffortChoices  []EffortChoice
+	EffortCursor   int
+
+	// AgentTop is the first agent index the window shows. The window exists because
+	// the list is unbounded and the terminal is not: 29 agents drew 29 rows, and
+	// PlaceVertical centring a block taller than the screen pushed the wordmark, the
+	// strip and the first rows off the top — so the rows you could not reach took the
+	// ones you could with them.
+	//
+	// It lives in the panel rather than being derived while rendering, because the
+	// renderer is pure and the cursor is what moves the window. A renderer that
+	// scrolled would be a renderer with state.
+	AgentTop int
+
 	// UpdateNotice says a newer release exists, and what to do about it. Empty until the
 	// check answers, and empty forever when it cannot.
 	//
@@ -104,9 +122,21 @@ type Panel struct {
 	// version cannot both fit. A notice that disappears at 96 columns was never read.
 	UpdateNotice string
 
-	Notice    string // one-line feedback under the panel
-	Width     int    // terminal width; 0 means lay out at the minimum
-	Height    int    // terminal height; 0 means do not centre vertically
+	Notice string // one-line feedback under the panel
+
+	// Refused marks the notice as something the panel declined to do, rather than
+	// something it did. A refusal is drawn in the error colour inside its own box; every
+	// other notice stays the muted line it was.
+	//
+	// The distinction is the whole of why this field exists. Most notices are outcomes —
+	// `install · done`, `acting on project`, `3 agent(s) → haiku`, the selector's key
+	// legend — and painting those red would make a successful apply read as a failure,
+	// which is worse than the grey it replaced. It is set through refuse() and say() so
+	// the message and its kind cannot be set apart from each other and go stale.
+	Refused bool
+
+	Width     int // terminal width; 0 means lay out at the minimum
+	Height    int // terminal height; 0 means do not centre vertically
 	ASCIISafe bool
 }
 
@@ -172,10 +202,53 @@ func (t Theme) Render(p Panel) string {
 	if p.Notice != "" {
 		// Part of the block, not appended after it, so centring accounts for it
 		// and the panel does not jump when a notice appears.
-		parts = append(parts, Fg(t.Muted).Render("      "+p.Notice))
+		if p.Refused {
+			parts = append(parts, t.refusal(p.Notice, cw))
+		} else {
+			parts = append(parts, Fg(t.Muted).Render("      "+p.Notice))
+		}
 	}
 
 	return t.centre(lipgloss.JoinVertical(lipgloss.Left, parts...), p)
+}
+
+// refusal draws a notice the panel declined to act on: the error colour, in its own box,
+// exactly as wide as the frame above it.
+//
+// Its own box rather than the muted line, because a refusal has to survive being glanced
+// past. The messages it carries are the ones that answer "why did nothing happen?" — a
+// keypress that refused, a marked set that cannot take the value — and as one grey line
+// under a bordered panel they read as decoration.
+//
+// **Exactly cw+2, the frame's own outer width.** Not narrower and not wider: a box one
+// column off under a box that is flush at every width reads as the frame having broken
+// rather than as a second box. It borrows the frame's border glyphs for the same reason,
+// which also means the existing flush tests measure this box for free — they filter rows
+// on those characters, so a width mistake here fails a test that already exists.
+//
+// The text wraps rather than eliding. A refusal names the way out — *unmark those rows,
+// or move them off it with m* — and the way out is the half an ellipsis would eat.
+func (t Theme) refusal(msg string, cw int) string {
+	edge := Fg(t.Error)
+
+	// padTo is what the frame pads its rows with, so the two boxes agree by construction
+	// rather than by two pieces of arithmetic that happen to match. Two columns of that
+	// width are the indent that keeps the text off the border.
+	inner := cw - 4
+	if inner < 1 {
+		inner = 1
+	}
+
+	body := lipgloss.NewStyle().Width(inner).Foreground(lipgloss.Color("#" + t.Error)).Render(msg)
+
+	rule := strings.Repeat("─", cw)
+	rows := []string{edge.Render("╭" + rule + "╮")}
+	for _, line := range strings.Split(body, "\n") {
+		side := edge.Render("│")
+		rows = append(rows, side+padTo("  "+line, cw)+side)
+	}
+	rows = append(rows, edge.Render("╰"+rule+"╯"))
+	return strings.Join(rows, "\n")
 }
 
 // frame draws the box around the content rows at a given content width.
@@ -335,11 +408,15 @@ func (t Theme) footer(p Panel, width int) string {
 		// While a question is open the only keys that matter are its answers.
 		// Listing the others invites pressing one by reflex.
 		hints, tight = "y yes · n no", "y yes · n no"
-	case p.ChoosingModel:
+	case p.choosing():
 		hints, tight = "↑↓ · ⏎ apply · esc back", "⏎ apply · esc"
 	case p.InSelector:
-		hints, tight = "↑↓ · space mark · a all · m model · tab scope · esc back",
-			"space · a all · m model · esc"
+		// `e effort` earns its place in both variants: a key that appears to do
+		// nothing reads as broken, which is the whole reason this legend exists. What
+		// gives way instead is the arrows in the tight form — they are the one hint a
+		// user does not need told.
+		hints, tight = "↑↓ · space mark · a all · m model · e effort · tab scope · esc back",
+			"space · a all · m model · e effort · esc"
 	}
 
 	left := strings.Repeat(" ", footerIndent) + p.Version

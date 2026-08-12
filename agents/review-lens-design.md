@@ -2,7 +2,7 @@
 name: review-lens-design
 description: The design lens of review-project. Reads one frozen diff for over-engineering, YAGNI and KISS violations, SOLID breaches and the wrong abstraction — every finding a labelled judgment call.
 tools: Read, Grep, Glob, Skill
-model: haiku
+model: sonnet
 ---
 
 You are one lens of a five-lens review. You did not write this change and you carry

@@ -2,6 +2,8 @@ package ui
 
 import (
 	"errors"
+	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -19,6 +21,13 @@ type applied struct {
 	model string
 	calls int
 	err   error
+
+	// The effort half, recorded separately. One set of fields for both keys would
+	// make "the model apply was called" and "the effort apply was called"
+	// indistinguishable, which is the only thing several of these tests assert.
+	effort      string
+	effortCalls int
+	effortErr   error
 
 	// listedFor records the destination index each listing was asked for. Without
 	// it the tab tests pass with the index hardcoded, which is how they shipped.
@@ -49,6 +58,7 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 		}).
 		WithAgents(
 			catalogue(),
+			effortCatalogue(),
 			func(dest int) ([]AgentRow, error) {
 				rec.listedFor = append(rec.listedFor, dest)
 				out := make([]AgentRow, len(agents))
@@ -70,6 +80,21 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 				}
 				return nil
 			},
+			func(_ int, names []string, effort string) error {
+				rec.effortCalls++
+				rec.names, rec.effort = names, effort
+				if rec.effortErr != nil {
+					return rec.effortErr
+				}
+				for i := range agents {
+					for _, n := range names {
+						if agents[i].Name == n {
+							agents[i].Effort = effort
+						}
+					}
+				}
+				return nil
+			},
 		)
 	return m, rec
 }
@@ -86,11 +111,26 @@ func catalogue() []ModelChoice {
 	}
 }
 
+func effortCatalogue() []EffortChoice {
+	return []EffortChoice{
+		{Name: "", Label: "whatever the session runs at"},
+		{Name: "low", Label: "short, scoped work"},
+		{Name: "medium", Label: "cost-sensitive"},
+		{Name: "high", Label: "the balance point"},
+		{Name: "xhigh", Label: "deeper reasoning"},
+		{Name: "max", Label: "the deepest"},
+	}
+}
+
+// allEfforts is what a model that supports effort reports. Named rather than repeated
+// so a fixture cannot drift from the catalogue it is meant to mirror.
+func allEfforts() []string { return []string{"low", "medium", "high", "xhigh", "max"} }
+
 func threeAgents() []AgentRow {
 	return []AgentRow{
-		{Name: "review-design", Model: "", Shared: true},
-		{Name: "review-tests", Model: ""},
-		{Name: "review-security", Model: "opus"},
+		{Name: "review-design", Model: "", Efforts: allEfforts(), Shared: true},
+		{Name: "review-tests", Model: "", Efforts: allEfforts()},
+		{Name: "review-security", Model: "opus", Efforts: allEfforts()},
 	}
 }
 
@@ -613,11 +653,12 @@ func TestTabReloadsTheSelectorForTheNewDestination(t *testing.T) {
 	}
 
 	other := []AgentRow{{Name: "sdd-apply", Model: "sonnet"}}
-	m = m.WithAgents(m.ModelChoices(),
+	m = m.WithAgents(m.ModelChoices(), m.EffortChoices(),
 		func(dest int) ([]AgentRow, error) {
 			rec.listedFor = append(rec.listedFor, dest)
 			return other, nil
 		},
+		func(int, []string, string) error { return nil },
 		func(int, []string, string) error { return nil })
 
 	m = key(m, "tab")
@@ -645,8 +686,9 @@ func TestAFailedReloadKeepsTheRowsAndSaysSo(t *testing.T) {
 	m, _ := selectorModel(t, threeAgents())
 	m = openSelector(t, m)
 
-	m = m.WithAgents(m.ModelChoices(),
+	m = m.WithAgents(m.ModelChoices(), m.EffortChoices(),
 		func(int) ([]AgentRow, error) { return nil, errors.New("unreadable") },
+		func(int, []string, string) error { return nil },
 		func(int, []string, string) error { return nil })
 	m = key(m, "tab")
 
@@ -732,5 +774,655 @@ func TestApplyingTheModelTheyAlreadyHaveSaysNothingChanged(t *testing.T) {
 	}
 	if !strings.Contains(m.Notice(), "nothing to change") {
 		t.Errorf("notice = %q, want it to say nothing changed", m.Notice())
+	}
+}
+
+func chooseEffort(t *testing.T, m Model, name string) Model {
+	t.Helper()
+
+	for i := 0; i <= len(m.EffortChoices()); i++ {
+		if m.ChosenEffortName() == name {
+			return key(m, "enter")
+		}
+		m = key(m, "down")
+	}
+	t.Fatalf("effort %q never came under the catalogue cursor", name)
+	return m
+}
+
+// markAllAndOpenEffort is the shortest route to the effort catalogue over every row.
+func markAllAndOpenEffort(t *testing.T, m Model) Model {
+	t.Helper()
+	m = key(m, "a")
+	m = key(m, "e")
+	if !m.ChoosingEffort() {
+		t.Fatal("e did not open the effort catalogue")
+	}
+	return m
+}
+
+func TestRowsShowTheirEffort(t *testing.T) {
+	forceTrueColor(t)
+
+	rows := []AgentRow{
+		{Name: "deep", Model: "opus", Effort: "xhigh"},
+		{Name: "inherits", Model: "opus"},
+	}
+	out := strip(darkTheme().selector(Panel{
+		Width:        90,
+		Agents:       rows,
+		ModelChoices: catalogue(),
+	}))
+
+	if !strings.Contains(out, "xhigh") {
+		t.Errorf("a declared effort never reaches the screen:\n%s", out)
+	}
+	// An empty column would read as a bug. The word is the same one the model column
+	// already uses, because it is the same state.
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "inherits") && strings.Count(line, "(session)") != 1 {
+			t.Errorf("a row declaring no effort should say so once:\n%s", line)
+		}
+	}
+}
+
+func TestEOpensTheEffortCatalogueAndEscapeReturns(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = markAllAndOpenEffort(t, m)
+	if m.ChoosingModel() {
+		t.Error("e opened the model catalogue as well")
+	}
+
+	m = key(m, "esc")
+	if m.ChoosingEffort() {
+		t.Error("esc did not close the effort catalogue")
+	}
+	if !m.InSelector() {
+		t.Error("esc left the selector instead of closing the catalogue")
+	}
+}
+
+// enter is the one gesture nobody reads the legend for. Rebinding it to pick up a
+// second key would be a silent change to a reflex.
+func TestEnterStillOpensTheModelCatalogue(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+	m = key(m, "a")
+
+	m = key(m, "enter")
+	if !m.ChoosingModel() {
+		t.Error("enter no longer opens the model catalogue")
+	}
+	if m.ChoosingEffort() {
+		t.Error("enter opened the effort catalogue")
+	}
+}
+
+func TestChoosingEffortWithNothingMarkedSaysSo(t *testing.T) {
+	m, rec := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = key(m, "e")
+
+	if m.ChoosingEffort() {
+		t.Error("e opened the catalogue with nothing marked")
+	}
+	if rec.effortCalls != 0 {
+		t.Errorf("apply called %d times with nothing marked, want none", rec.effortCalls)
+	}
+	if !strings.Contains(m.Notice(), "nothing marked") {
+		t.Errorf("notice = %q, want it to say nothing is marked", m.Notice())
+	}
+}
+
+func TestChosenEffortReachesOnlyTheMarkedRows(t *testing.T) {
+	m, rec := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = key(m, "down") // review-security, the lone opus row
+	m = key(m, " ")
+	m = key(m, "e")
+	if !m.ChoosingEffort() {
+		t.Fatal("e did not open the catalogue")
+	}
+	m = chooseEffort(t, m, "xhigh")
+
+	if rec.effortCalls != 1 {
+		t.Fatalf("apply called %d times, want once", rec.effortCalls)
+	}
+	if rec.effort != "xhigh" {
+		t.Errorf("applied effort = %q, want xhigh", rec.effort)
+	}
+	if len(rec.names) != 1 || rec.names[0] != "review-security" {
+		t.Errorf("applied to %v, want exactly [review-security]", rec.names)
+	}
+	// The model apply must not have been reached. Two keys, two callbacks.
+	if rec.calls != 0 {
+		t.Errorf("the model apply was called %d times by an effort change", rec.calls)
+	}
+}
+
+// A screen that needs a reopen to tell the truth is a screen the user stops believing.
+func TestRowsShowTheNewEffortAfterApplying(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = markAllAndOpenEffort(t, m)
+	m = chooseEffort(t, m, "low")
+
+	for _, r := range m.AgentRows() {
+		if r.Effort != "low" {
+			t.Errorf("%s still reads effort %q after applying low", r.Name, r.Effort)
+		}
+	}
+	if m.ChoosingEffort() {
+		t.Error("the catalogue stayed open after applying")
+	}
+}
+
+// A marked row on a model with no effort levels sends the whole apply back, and the
+// screen keeps every mark so the user can unmark that one row rather than start again.
+func TestARefusedEffortApplyChangesNoRow(t *testing.T) {
+	m, rec := selectorModel(t, threeAgents())
+	rec.effortErr = errors.New("review-security runs on haiku, which has no effort levels")
+	m = openSelector(t, m)
+
+	m = markAllAndOpenEffort(t, m)
+	m = chooseEffort(t, m, "max")
+
+	for _, r := range m.AgentRows() {
+		if r.Effort != "" {
+			t.Errorf("%s reads effort %q after a refused apply, want untouched", r.Name, r.Effort)
+		}
+	}
+	if len(m.MarkedAgents()) != 3 {
+		t.Errorf("marked = %v after a refusal, want the three still marked", m.MarkedAgents())
+	}
+	if !strings.Contains(m.Notice(), "no effort levels") {
+		t.Errorf("notice = %q, want the refusal it was handed", m.Notice())
+	}
+}
+
+// Rows group by model, cheapest first, and that stays the only grouping. Grouping by
+// the pair turns four groups into twenty on a screen whose argument is that a reader
+// sees the shape at a glance.
+func TestRowsStillGroupByModelAlone(t *testing.T) {
+	rows := sortRowsByModel([]AgentRow{
+		{Name: "b", Model: "opus", Effort: "low"},
+		{Name: "a", Model: "opus", Effort: "max"},
+		{Name: "c", Model: "haiku"},
+	}, catalogue())
+
+	want := []string{"c", "a", "b"}
+	for i, name := range want {
+		if rows[i].Name != name {
+			t.Fatalf("row %d = %q, want %q — grouped by model, then by name, and by nothing else",
+				i, rows[i].Name, name)
+		}
+	}
+}
+
+// The row is built against the frame, not summed and hoped. This is the case the
+// existing flush test could not see: threeAgents() has a 15-rune longest name, which
+// fits at the floor with columns to spare, and the border-character filter skips agent
+// rows entirely. The payload's own longest agent name is 23 runes and it is shared.
+func TestTheSelectorRowNeverOutgrowsTheFrameAtAnyWidth(t *testing.T) {
+	forceTrueColor(t)
+
+	rows := []AgentRow{
+		{Name: "review-lens-reliability", Model: "sonnet", Effort: "xhigh", Shared: true},
+		{Name: "a", Model: "", Effort: ""},
+	}
+
+	for _, term := range []int{MinPanelWidth, 62, 80, 140} {
+		cw := ContentWidth(term)
+		out := strip(darkTheme().selector(Panel{
+			Width:        term,
+			Agents:       rows,
+			ModelChoices: catalogue(),
+		}))
+		for _, line := range strings.Split(out, "\n") {
+			if got := lipgloss.Width(strings.TrimRight(line, " ")); got > cw {
+				t.Errorf("term %d: a selector row is %d columns against a %d interior: %q",
+					term, got, cw, line)
+			}
+		}
+	}
+}
+
+// A cut name says it was cut. pad refuses to truncate because a column that silently
+// clips lies about it; the ellipsis is what makes this one not silent.
+func TestALongNameIsElidedRatherThanTearingTheFrame(t *testing.T) {
+	forceTrueColor(t)
+
+	out := strip(darkTheme().selector(Panel{
+		Width:        MinPanelWidth,
+		Agents:       []AgentRow{{Name: "review-lens-reliability", Model: "sonnet", Shared: true}},
+		ModelChoices: catalogue(),
+	}))
+
+	if !strings.Contains(out, "…") {
+		t.Errorf("the name was cut with no ellipsis to say so:\n%s", out)
+	}
+	// Both value columns and the warning survive the squeeze. Dropping one of those
+	// to save the name would hide state rather than shorten it.
+	for _, want := range []string{"sonnet", "shared"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("%q was squeezed off the row instead of the name:\n%s", want, out)
+		}
+	}
+}
+
+// Nothing is elided when the frame can afford the name — the squeeze is a response to
+// the width, not a permanent haircut.
+func TestNamesAreNotElidedWhenThereIsRoom(t *testing.T) {
+	forceTrueColor(t)
+
+	out := strip(darkTheme().selector(Panel{
+		Width:        140,
+		Agents:       []AgentRow{{Name: "review-lens-reliability", Model: "sonnet", Shared: true}},
+		ModelChoices: catalogue(),
+	}))
+
+	if strings.Contains(out, "…") {
+		t.Errorf("a name was elided at 140 columns:\n%s", out)
+	}
+	if !strings.Contains(out, "review-lens-reliability") {
+		t.Errorf("the full name is missing:\n%s", out)
+	}
+}
+
+// SetEffort refuses to rewrite a file that already declares the level — deliberately,
+// so the tool never dirties a git tree for nothing. From outside, though, "nothing
+// happened because nothing needed to" and "nothing happened because it is broken" look
+// identical, and the model's twin of this test records that being misread twice in one
+// session.
+func TestApplyingTheEffortTheyAlreadyHaveSaysNothingChanged(t *testing.T) {
+	m, rec := selectorModel(t, []AgentRow{
+		{Name: "one", Model: "opus", Effort: "low", Efforts: allEfforts()},
+		{Name: "two", Model: "sonnet", Effort: "low", Efforts: allEfforts()},
+	})
+	m = openSelector(t, m)
+
+	m = markAllAndOpenEffort(t, m)
+	m = chooseEffort(t, m, "low")
+
+	if rec.effortCalls != 0 {
+		t.Errorf("apply was called %d times for a no-op, want none", rec.effortCalls)
+	}
+	if !strings.Contains(m.Notice(), "nothing to change") {
+		t.Errorf("notice = %q, want it to say nothing changed", m.Notice())
+	}
+}
+
+// The reported bug, in one test: two rows on Haiku marked, `e` pressed, and a menu of
+// five levels opened — none of which could be written. The refusal existed, at apply
+// time, after the choice. A screen that offers yes and then says no is worse than one
+// that says no first.
+func TestEOnAModelWithNoEffortLevelsSaysSoAndOpensNothing(t *testing.T) {
+	m, rec := selectorModel(t, []AgentRow{
+		{Name: "review-lens-intent", Model: "haiku"},
+		{Name: "review-lens-tests", Model: "haiku"},
+	})
+	m = openSelector(t, m)
+
+	m = key(m, "a")
+	m = key(m, "e")
+
+	if m.ChoosingEffort() {
+		t.Error("the catalogue opened over rows that cannot run any level")
+	}
+	if rec.effortCalls != 0 {
+		t.Errorf("apply was called %d times, want none", rec.effortCalls)
+	}
+	// The model, because the model is the reason. An agent name would send the reader
+	// looking for what is wrong with that agent.
+	if !strings.Contains(m.Notice(), "haiku") {
+		t.Errorf("notice = %q, want it to name the model that has no levels", m.Notice())
+	}
+	if !strings.Contains(m.Notice(), "no effort levels") {
+		t.Errorf("notice = %q, want it to say why", m.Notice())
+	}
+}
+
+// The multi-select question, answered the only way the all-or-nothing contract allows.
+// A level offered because *one* marked row can run it is a level whose apply is refused
+// for the set — so the offer is the intersection, and an empty intersection is a notice
+// rather than a menu. Applying to the capable subset was the alternative and it is
+// worse: it ignores marks, and a selector whose marks are sometimes ignored teaches the
+// user not to trust them.
+func TestAMixedMarkedSetRefusesRatherThanApplyingToTheSubset(t *testing.T) {
+	m, rec := selectorModel(t, []AgentRow{
+		{Name: "capable", Model: "sonnet", Efforts: allEfforts()},
+		{Name: "cheap", Model: "haiku"},
+	})
+	m = openSelector(t, m)
+
+	m = key(m, "a")
+	m = key(m, "e")
+
+	if m.ChoosingEffort() {
+		t.Error("the catalogue opened over a set containing a row that cannot run a level")
+	}
+	if rec.effortCalls != 0 {
+		t.Error("a level was applied to part of the marked set")
+	}
+	if !strings.Contains(m.Notice(), "haiku") {
+		t.Errorf("notice = %q, want the offending model named", m.Notice())
+	}
+	// The way out has to be in the message. A refusal with no next move is a dead end
+	// on the one screen whose whole job is changing these two fields.
+	if !strings.Contains(m.Notice(), "unmark") {
+		t.Errorf("notice = %q, want it to say how to proceed", m.Notice())
+	}
+	// One model, so the singular. "haiku and sonnet has no effort levels" is what the
+	// first version rendered, and a refusal is read at the moment something went wrong —
+	// the worst moment to be reading broken English.
+	if !strings.Contains(m.Notice(), "haiku has") {
+		t.Errorf("notice = %q, want the singular verb for one model", m.Notice())
+	}
+}
+
+// Unmarking the row that cannot take a level opens the menu. The refusal is a property
+// of the marked set, not a state the screen gets stuck in.
+func TestUnmarkingTheIncapableRowOpensTheCatalogue(t *testing.T) {
+	m, _ := selectorModel(t, []AgentRow{
+		{Name: "capable", Model: "sonnet", Efforts: allEfforts()},
+		{Name: "cheap", Model: "haiku"},
+	})
+	m = openSelector(t, m)
+
+	m = key(m, "a")
+	m = key(m, "e")
+	if m.ChoosingEffort() {
+		t.Fatal("the catalogue opened over the mixed set")
+	}
+
+	// Rows group by model, cheapest first: `cheap` on haiku is the first agent row.
+	m = key(m, "down")
+	m = key(m, " ")
+	if got := m.MarkedAgents(); len(got) != 1 || got[0] != "capable" {
+		t.Fatalf("marked = %v, want [capable] after unmarking the haiku row", got)
+	}
+
+	m = key(m, "e")
+	if !m.ChoosingEffort() {
+		t.Error("the catalogue stayed shut after the incapable row was unmarked")
+	}
+}
+
+// The list is the model's, not a constant. A model with four of the five — the host's
+// own table already has one — must offer four, and this is the test that says the
+// narrowing is real rather than a haiku special case.
+func TestTheCatalogueOffersOnlyTheLevelsTheMarkedSetCanRun(t *testing.T) {
+	m, _ := selectorModel(t, []AgentRow{
+		{Name: "older", Model: "opus-4.6", Efforts: []string{"low", "medium", "high", "max"}},
+		{Name: "newer", Model: "opus", Efforts: allEfforts()},
+	})
+	m = openSelector(t, m)
+
+	m = key(m, "a")
+	m = key(m, "e")
+	if !m.ChoosingEffort() {
+		t.Fatal("the catalogue did not open over a set with four levels in common")
+	}
+
+	var offered []string
+	for _, c := range m.OpenEffortChoices() {
+		offered = append(offered, c.Name)
+	}
+	want := []string{"", "low", "medium", "high", "max"}
+	if len(offered) != len(want) {
+		t.Fatalf("offered %v, want %v — the intersection, not the union", offered, want)
+	}
+	for i := range want {
+		if offered[i] != want[i] {
+			t.Errorf("offered[%d] = %q, want %q", i, offered[i], want[i])
+		}
+	}
+}
+
+// The cursor indexes the open list, so a narrowed catalogue must apply the entry under
+// the cursor and not the one at that index in the full one. Getting this wrong writes a
+// level the user did not choose, off a screen that looks correct.
+func TestTheCursorAppliesTheEntryUnderItInANarrowedCatalogue(t *testing.T) {
+	m, rec := selectorModel(t, []AgentRow{
+		{Name: "older", Model: "opus-4.6", Efforts: []string{"low", "max"}},
+	})
+	m = openSelector(t, m)
+
+	m = key(m, "a")
+	m = key(m, "e")
+	if !m.ChoosingEffort() {
+		t.Fatal("the catalogue did not open")
+	}
+
+	// default, low, max. Two downs is `max` — which sits at index 5 of the full
+	// catalogue, so a stale read would apply something else or panic.
+	m = key(m, "down")
+	m = key(m, "down")
+	if got := m.ChosenEffortName(); got != "max" {
+		t.Fatalf("cursor is on %q, want max", got)
+	}
+	m = key(m, "enter")
+
+	if rec.effort != "max" {
+		t.Errorf("applied %q, want max", rec.effort)
+	}
+}
+
+// manyAgents is the reported scale: 29 agents in ~/.claude/agents, which drew 29 rows
+// into a terminal that holds far fewer.
+func manyAgents(n int) []AgentRow {
+	// Spread across the whole catalogue, because each model boundary costs a group rule
+	// and a fixture on one model would under-count the chrome the window has to leave
+	// room for. Names are zero-padded so screen order matches numeric order — the first
+	// version was not, and `agent-28` sorted between `agent-27` and `agent-3`, which is
+	// how a correct cursor looked broken.
+	models := []string{"", "haiku", "sonnet", "opus"}
+	rows := make([]AgentRow, n)
+	for i := range rows {
+		model := models[i%len(models)]
+		rows[i] = AgentRow{
+			Name:  fmt.Sprintf("agent-%02d", i),
+			Model: model,
+		}
+		if model != "haiku" {
+			rows[i].Efforts = allEfforts()
+		}
+	}
+	return rows
+}
+
+// The bug, at the scale it was reported. Unbounded rows plus PlaceVertical centring a
+// block taller than the terminal did not merely hide the last agents — it pushed the
+// wordmark, the strip and the first rows off the top, so the rows you could not reach
+// took the ones you could with them.
+func TestTheSelectorFitsTheTerminalHeight(t *testing.T) {
+	forceTrueColor(t)
+
+	// From the real floor upward, and the floor is arithmetic rather than taste: 25
+	// lines of chrome, measured, plus the 3-row window floor, plus 8 for the widest open
+	// catalogue. Below 36 the panel overflows deliberately — a screen that is chrome with
+	// a peephole in it is not a screen worth degrading into, and the same terminal
+	// overflowed before this change with no window at all.
+	//
+	// Stated so the lower bound is a decision and not a gap in the sweep. The first
+	// version of this test swept from 32 and failed, which is how the number got
+	// measured instead of assumed.
+	for _, height := range []int{36, 40, 50, 60, 80} {
+		for _, open := range []string{"", "m", "e"} {
+			m, _ := selectorModel(t, manyAgents(29))
+			m = openSelector(t, m)
+			next, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: height})
+			m = next.(Model)
+			if open != "" {
+				// Mark one row that can take a level, so `e` actually opens.
+				m = key(m, "down")
+				m = key(m, " ")
+				m = key(m, open)
+			}
+
+			if got := len(strings.Split(m.View(), "\n")); got > height {
+				t.Errorf("height %d, catalogue %q: the panel drew %d lines", height, open, got)
+			}
+		}
+	}
+}
+
+// A bound alone would be the wrong fix: a report is read, a selector is operated, and a
+// row you cannot reach is a row you cannot mark. So the window follows the cursor all
+// the way to the last agent.
+func TestEveryAgentIsReachableAndMarkableBelowTheFold(t *testing.T) {
+	m, _ := selectorModel(t, manyAgents(29))
+	m = openSelector(t, m)
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	m = next.(Model)
+
+	// The last row in screen order, read off the model rather than assumed from the
+	// fixture: the rows are grouped by model, so the last agent added is not the last
+	// agent shown.
+	rows := m.AgentRows()
+	last := rows[len(rows)-1].Name
+
+	// Down through every row: `all` plus 29 agents.
+	for i := 0; i < 29; i++ {
+		m = key(m, "down")
+	}
+	m = key(m, " ")
+
+	if got := m.MarkedAgents(); len(got) != 1 || got[0] != last {
+		t.Fatalf("marked = %v, want [%s] — the window did not follow the cursor", got, last)
+	}
+
+	// And the row it marked is on screen. A mark applied to something invisible is a
+	// mark the user cannot verify.
+	forceTrueColor(t)
+	if !strings.Contains(strip(m.View()), last) {
+		t.Errorf("the cursor reached %s and the window did not show it", last)
+	}
+}
+
+// A truncated list that does not admit it is a list that lies — the rule the action
+// report already follows, and it matters more here because the hidden rows are reachable.
+func TestTheSelectorSaysHowManyRowsAreOutOfView(t *testing.T) {
+	forceTrueColor(t)
+
+	m, _ := selectorModel(t, manyAgents(29))
+	m = openSelector(t, m)
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	m = next.(Model)
+
+	// Anchored to the indicator's own shape. Matching a bare arrow found the footer's
+	// `↑↓` legend instead and reported the opposite of the truth.
+	above := regexp.MustCompile(`↑ \d+ more`)
+	below := regexp.MustCompile(`↓ \d+ more`)
+
+	out := strip(m.View())
+	if !below.MatchString(out) {
+		t.Fatalf("29 agents in 30 lines and nothing says rows are hidden below:\n%s", out)
+	}
+	if above.MatchString(out) {
+		t.Errorf("the window opens at the top and claims rows above it:\n%s", out)
+	}
+
+	for i := 0; i < 29; i++ {
+		m = key(m, "down")
+	}
+	got := strip(m.View())
+	if !above.MatchString(got) {
+		t.Errorf("at the bottom, nothing says there are rows above:\n%s", got)
+	}
+	if below.MatchString(got) {
+		t.Errorf("at the bottom, it still claims rows below:\n%s", got)
+	}
+}
+
+// `all` is the master checkbox for the list under it. A checkbox that scrolls away from
+// what it governs is a checkbox you cannot find.
+func TestTheAllRowIsNeverScrolledAway(t *testing.T) {
+	forceTrueColor(t)
+
+	m, _ := selectorModel(t, manyAgents(29))
+	m = openSelector(t, m)
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	m = next.(Model)
+
+	for i := 0; i < 29; i++ {
+		m = key(m, "down")
+	}
+	if !strings.Contains(strip(m.View()), "all") {
+		t.Error("the all row disappeared once the list scrolled")
+	}
+}
+
+// An unknown height bounds nothing. `preview`, a pipe and most tests never send a
+// WindowSizeMsg, and hiding rows against a height nobody gave us would be inventing one.
+func TestAnUnknownHeightShowsEveryRow(t *testing.T) {
+	forceTrueColor(t)
+
+	out := strip(darkTheme().selector(Panel{
+		Width:        100,
+		Agents:       manyAgents(29),
+		ModelChoices: catalogue(),
+	}))
+
+	for _, name := range []string{"agent-0", "agent-28"} {
+		if !strings.Contains(out, name) {
+			t.Errorf("%s is missing with no height given:\n%s", name, out)
+		}
+	}
+	if strings.Contains(out, "more") {
+		t.Error("rows were hidden against a height nobody supplied")
+	}
+}
+
+// An open catalogue draws its own rows below the list, and they are what the user is
+// looking at while it is open. The window gives way to it rather than the frame doing.
+func TestTheWindowShrinksWhileACatalogueIsOpen(t *testing.T) {
+	forceTrueColor(t)
+
+	m, _ := selectorModel(t, manyAgents(29))
+	m = openSelector(t, m)
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+	m = next.(Model)
+
+	before := len(strings.Split(m.View(), "\n"))
+	m = key(m, "a")
+	m = key(m, "m")
+	if !m.ChoosingModel() {
+		t.Fatal("the catalogue did not open")
+	}
+
+	if got := len(strings.Split(m.View(), "\n")); got > 40 {
+		t.Errorf("with the catalogue open the panel drew %d lines against a 40-line terminal", got)
+	}
+	if before > 40 {
+		t.Errorf("the panel was already over budget before the catalogue opened: %d lines", before)
+	}
+	// The rows gave way, not the frame. A window that ignored the catalogue would keep
+	// its size and push the choices off the bottom — the list you are not looking at
+	// surviving at the cost of the one you are.
+	if after := len(m.VisibleAgentsForTest()); after >= len(m.AgentRows()) {
+		t.Errorf("the window showed %d of %d rows with the catalogue open — it did not shrink",
+			after, len(m.AgentRows()))
+	}
+}
+
+// Two models with no levels take the plural. Seen in a rendered panel, not reasoned
+// about: the first version said "haiku and sonnet has no effort levels".
+func TestTheRefusalAgreesInNumber(t *testing.T) {
+	m, _ := selectorModel(t, []AgentRow{
+		{Name: "one", Model: "haiku"},
+		{Name: "two", Model: "ancient"},
+	})
+	m = openSelector(t, m)
+	m = key(m, "a")
+	m = key(m, "e")
+
+	if got := m.Notice(); !strings.Contains(got, "have no effort levels") {
+		t.Errorf("notice = %q, want the plural verb for two models", got)
 	}
 }

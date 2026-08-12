@@ -21,11 +21,13 @@ func writable(path string) error {
 	return f.Close()
 }
 
-// Agent is one payload agent and the model it currently runs on.
+// Agent is one payload agent, the model it currently runs on, and how hard that
+// model is told to think.
 type Agent struct {
-	Name  string
-	Model string
-	Path  string
+	Name   string
+	Model  string
+	Effort string
+	Path   string
 }
 
 // Agents lists every agent file in a directory, sorted by name.
@@ -77,10 +79,17 @@ func Agents(dir string) (agents []Agent, unreadable []string, err error) {
 			}
 			return nil, nil, err
 		}
+		// The file has already been read and its frontmatter proven, so the second
+		// read cannot fail for a reason the first survived.
+		effort, err := ReadEffort(path)
+		if err != nil {
+			return nil, nil, err
+		}
 		agents = append(agents, Agent{
-			Name:  strings.TrimSuffix(name, ".md"),
-			Model: model,
-			Path:  path,
+			Name:   strings.TrimSuffix(name, ".md"),
+			Model:  model,
+			Effort: effort,
+			Path:   path,
 		})
 	}
 
@@ -109,9 +118,38 @@ func Apply(dir string, names []string, model string) error {
 		return fmt.Errorf("unknown model %q", model)
 	}
 
-	agents, _, err := Agents(dir)
+	targets, err := resolve(dir, names)
 	if err != nil {
 		return err
+	}
+
+	for _, a := range targets {
+		if err := SetModel(a.Path, model); err != nil {
+			return err
+		}
+		// A model with no effort levels makes any declared effort inert, and a key
+		// that claims a setting the model has no concept of is a lie left in a
+		// prompt file. Dropping it is the honest half of the same act; the callers
+		// report the row it happened on, because a silent edit is the other
+		// failure.
+		if !SupportsEffort(model) && a.Effort != Default {
+			if err := SetEffort(a.Path, Default); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// resolve turns a list of agent names into the agents themselves, refusing the whole
+// set if any name is unknown or any file cannot be written.
+//
+// Shared by Apply and ApplyEffort. The all-or-nothing guarantee is the same guarantee
+// in both, and two copies of it is one place for the two to drift apart.
+func resolve(dir string, names []string) ([]Agent, error) {
+	agents, _, err := Agents(dir)
+	if err != nil {
+		return nil, err
 	}
 	known := make(map[string]Agent, len(agents))
 	for _, a := range agents {
@@ -122,22 +160,16 @@ func Apply(dir string, names []string, model string) error {
 	for _, name := range names {
 		a, ok := known[name]
 		if !ok {
-			return fmt.Errorf("no such agent: %s", name)
+			return nil, fmt.Errorf("no such agent: %s", name)
 		}
 		// Agents() already read this file's frontmatter, so a broken one has
 		// failed above. Readable is not writable, though, and a read-only file in
 		// the middle of the set would strand the ones before it — so ask now,
 		// while refusing is still free.
 		if err := writable(a.Path); err != nil {
-			return err
+			return nil, err
 		}
 		targets = append(targets, a)
 	}
-
-	for _, a := range targets {
-		if err := SetModel(a.Path, model); err != nil {
-			return err
-		}
-	}
-	return nil
+	return targets, nil
 }

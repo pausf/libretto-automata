@@ -49,6 +49,12 @@ const Resolved = "2026-08"
 // Order is contracted, not incidental: the panel and the CLI both render it, and a
 // list whose first entry is the most expensive model puts the costly choice under
 // the cursor of a feature whose whole purpose is to reduce the bill.
+// The Version column is what the alias means **on the Anthropic API**, which is the
+// common case and is stated here rather than left implied. Elsewhere it differs — on
+// Amazon Bedrock `sonnet` is Sonnet 4.5 — and provider.go resolves that from the
+// environment. Whether a model runs effort levels is derived from the resolved version
+// rather than carried here as a second fact: this column and an effort flag beside it
+// would be two places to remember, and the one nobody edited would be the one on screen.
 var catalogue = []Model{
 	{Default, "", "the session's model — whatever you are running"},
 	{"haiku", "Haiku 4.5", "cheapest; fine for pattern-matching over prose"},

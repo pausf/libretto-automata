@@ -19,8 +19,9 @@ plain command.
 | `prune` | show links whose source is gone; `--yes` removes them |
 | `uninstall` | show what this repo installed here; `--yes` removes it |
 | `preview` | print the panel once, no TUI |
-| `models` | list every agent with the model it runs on, read-only |
+| `models` | list every agent with the model it runs on and the effort it runs at, read-only |
 | `models set <model> <agent>…` | write that model into each named agent; `--all` for every one |
+| `models effort <level> <agent>…` | write that effort level into each named agent; `--all` for every one |
 | `version`, `help` | say so |
 
 ### Finding the payload
@@ -206,6 +207,43 @@ A command acts on exactly one scope. Nothing iterates destinations.
 **`models` acts on the agents directory of the selected target** — `~/.claude/agents`
 under `--global`, `<cwd>/.claude/agents` under `--project`. Every `*.md` there is
 listed, whether libretto created it or not.
+
+**A verb the dispatch accepts, `help` offers.** `models effort` shipped working — the
+command, the panel key, the footer legend — and was reported as missing, because `help`
+listed `models set` and stopped there. A feature nobody can find is a feature that was
+not delivered, and the help text is the door people try. The check reads the verbs out of
+the dispatch's own unknown-command error rather than from a second list, so a third verb
+added without a help line fails rather than passing quietly.
+
+**The model and the effort are two verbs, not one verb with a flag.** `models set` writes
+the tier; `models effort` writes the depth. `set opus --effort xhigh` was the alternative
+and it forces the model to be restated to change the effort, which is a write nobody
+asked for — the keys are independent and the surface says so. Both take agent names or
+`--all`, both refuse when given neither, and that refusal is one implementation rather
+than two: it is the thing standing between a forgotten argument and every agent on the
+machine becoming the same thing.
+
+Three things the listing says that it would be dishonest to leave out:
+
+- **`(session)` in both value columns** for an agent declaring neither key. An empty
+  column reads as a bug, and it is one word for one state.
+- **which model has no effort levels at all, and which has only some.** `haiku` carries
+  `— no effort levels`; a model with four of the five carries `— effort: low medium high
+  max`. A row sitting silently among others that support effort reads as a fourth that
+  does, and the refusal further down would then arrive as a surprise.
+- **which provider the versions were resolved for**, on its own line. The version column
+  is only checkable against something: a reader who disagrees with `sonnet · Sonnet 4.5`
+  needs to know it was read off the Amazon Bedrock row, and the provider is that row. It
+  is derived from the environment — see `agent-models` — so it changes with the machine
+  rather than with this table.
+- **when the effort table was last checked**, under the same `Resolved` date as the model
+  versions. It decays for the same reason — an organisation can cap which levels are
+  available and nothing here can ask — and a trailer that carries the date next to one
+  that does not is a claim about which of the two is current.
+
+**`models set` reports a cleared effort on the row it cleared.** Moving an agent to a
+model with no effort support drops its `effort:` key, and a drop the user cannot see is a
+silent edit to a prompt file.
 
 An agent file in a target is one of two things, and they behave differently:
 
@@ -654,3 +692,35 @@ A missing payload:
   Proof: cmd/libretto/models_test.go TestModelsWithNoAgentsSaysSo
 - piped `models` carries no escape codes
   Proof: cmd/libretto/models_test.go TestModelsOutputHasNoEscapeCodes
+
+`models effort`:
+
+- the listing shows each agent's effort, and `(session)` when it declares none
+  Proof: cmd/libretto/models_test.go TestModelsListsEffortBesideTheModel
+- the trailer names the five levels, says which model has none, and states when it was
+  last checked
+  Proof: cmd/libretto/models_test.go TestModelsListsTheEffortCatalogue
+- **the listing names the provider it resolved the versions for**
+  Proof: cmd/libretto/models_test.go TestModelsNamesTheProviderItResolvedFor
+- **under a provider where `sonnet` is older, the listing says so and offers it no levels**
+  Proof: cmd/libretto/models_test.go TestModelsReflectsTheProviderInTheVersionColumn
+- **the refusal follows the provider and not the alias** — `xhigh` on a sonnet agent is
+  accepted on the Anthropic API and refused under Amazon Bedrock
+  Proof: cmd/libretto/models_test.go TestModelsEffortFollowsTheProviderNotTheAlias
+- `effort` writes the level to the named agents and no others
+  Proof: cmd/libretto/models_test.go TestModelsEffortWritesOnlyTheNamedAgents
+- `effort --all` reaches every agent in the destination
+  Proof: cmd/libretto/models_test.go TestModelsEffortAllReachesEveryAgent
+- **no agents named and no `--all` is refused, and nothing is written**
+  Proof: cmd/libretto/models_test.go TestModelsEffortRefusesWithNothingNamed
+- an unknown level is refused and the refusal names the five
+  Proof: cmd/libretto/models_test.go TestModelsEffortRefusesAnUnknownLevel
+- **an agent on Haiku is refused by name and the whole set is left alone**
+  Proof: cmd/libretto/models_test.go TestModelsEffortRefusesAnAgentThatCannotRunTheLevel
+- `default` removes the key rather than writing a word
+  Proof: cmd/libretto/models_test.go TestModelsEffortDefaultRemovesTheKey
+- **`models set haiku` on an agent declaring an effort reports the clearing**
+  Proof: cmd/libretto/models_test.go TestModelsSetReportsAClearedEffort
+- **every verb the dispatch accepts is offered by `help`**, read out of the dispatch's
+  own error rather than from a list kept here
+  Proof: cmd/libretto/models_test.go TestEveryModelsVerbIsInTheHelp
