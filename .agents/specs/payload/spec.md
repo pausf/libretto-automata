@@ -548,6 +548,24 @@ the copy stays comparable with upstream.
   reviewer editing the contract it reviews is the author twice over. Skipped entirely on the
   trivial lane, which has no contract.
   Proof: scripts/check-payload
+- **a bug amends the contract before it touches the code.** A bug is a hole in the
+  specification — behaviour happened that some capability permitted, failed to forbid, or
+  forbade in words no run could have failed — so phase 2 names the criterion that would have
+  caught it and writes its `Proof:` as a test that **fails when written, for the reason the
+  bug exists**. Watching it fail is evidence obtainable only before the fix. Reversed, the
+  criterion is written to describe the fix rather than the failure: it passes on its first
+  run, nothing ever proved it could fail, and the spec gained a sentence that cannot catch
+  the bug it was written for. Almost always an amendment to the capability whose `Governs:`
+  owns the broken path — a new spec directory per failure is a ticket spec, dead the day the
+  fix ships. No capability owning the path is itself the finding.
+  Proof: scripts/check-payload
+- **phase 1 says whether the work is a bug, and never infers it from a summary.** The branch
+  above cannot fire on work that arrived as generic, and "discount wrong on bundles" is a bug
+  or a change of intent — opposite pieces of work behind one sentence. The reading names it
+  in one line and `proposal.md` records the observed behaviour, the expected behaviour and
+  what produced it, in the reporter's words: paraphrasing costs the reproduction, and with no
+  reproduction there is no failing test, so the criterion is a sentence somebody hopes is true.
+  Proof: scripts/check-payload
 - **the mechanical half is delegated, not restated.** `review-spec` runs `--trace` first and
   reads the spec for what a script cannot see: whether a `Proof:` names a test that could
   actually fail. A citation pointing at a test that only asserts the code ran is untestable
