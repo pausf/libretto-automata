@@ -1262,8 +1262,9 @@ func usage() {
   %[2]s uninstall     show what this repo installed here, change nothing
   %[2]s uninstall --yes  remove it
   %[2]s preview       print the panel once, no TUI
-  %[2]s models        which model each agent runs on
-  %[2]s models set <model> <agent>…   declare it; --all for every agent
+  %[2]s models        which model each agent runs on, and how hard it thinks
+  %[2]s models set <model> <agent>…      declare the model; --all for every agent
+  %[2]s models effort <level> <agent>…   declare the effort; --all for every agent
 
   --global, -g          act on ~/.claude (the default)
   --project, -p         act on <this directory>/.claude

@@ -208,6 +208,13 @@ A command acts on exactly one scope. Nothing iterates destinations.
 under `--global`, `<cwd>/.claude/agents` under `--project`. Every `*.md` there is
 listed, whether libretto created it or not.
 
+**A verb the dispatch accepts, `help` offers.** `models effort` shipped working — the
+command, the panel key, the footer legend — and was reported as missing, because `help`
+listed `models set` and stopped there. A feature nobody can find is a feature that was
+not delivered, and the help text is the door people try. The check reads the verbs out of
+the dispatch's own unknown-command error rather than from a second list, so a third verb
+added without a help line fails rather than passing quietly.
+
 **The model and the effort are two verbs, not one verb with a flag.** `models set` writes
 the tier; `models effort` writes the depth. `set opus --effort xhigh` was the alternative
 and it forces the model to be restated to change the effort, which is a write nobody
@@ -701,3 +708,6 @@ A missing payload:
   Proof: cmd/libretto/models_test.go TestModelsEffortDefaultRemovesTheKey
 - **`models set haiku` on an agent declaring an effort reports the clearing**
   Proof: cmd/libretto/models_test.go TestModelsSetReportsAClearedEffort
+- **every verb the dispatch accepts is offered by `help`**, read out of the dispatch's
+  own error rather than from a list kept here
+  Proof: cmd/libretto/models_test.go TestEveryModelsVerbIsInTheHelp

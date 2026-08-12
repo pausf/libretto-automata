@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -599,5 +600,40 @@ func TestModelsSetReportsAClearedEffort(t *testing.T) {
 	}
 	if !strings.Contains(out, "cleared") {
 		t.Errorf("the clearing happened and the report never said so:\n%s", out)
+	}
+}
+
+// A verb the binary accepts and the help never mentions is a verb nobody finds. That
+// is not hypothetical: `models effort` shipped working — the panel key, the footer, the
+// command — and was reported as missing, because `libretto help` listed `models set`
+// and stopped there.
+//
+// The list is not maintained here. It is read out of the dispatch's own unknown-command
+// error, which already names every verb it accepts, so a third verb added there without
+// a line in the help fails this rather than passing quietly.
+func TestEveryModelsVerbIsInTheHelp(t *testing.T) {
+	f := newFixture(t)
+
+	_, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"nonesuch"})
+	})
+	if err == nil {
+		t.Fatal("an unknown models verb was accepted")
+	}
+
+	// Anchored to the backtick the error quotes each form in. Unanchored, the pattern
+	// captured `command` out of the error's own "unknown models command" prefix and
+	// then failed looking for it in the help — which is the test finding a bug in
+	// itself, and the reason this comment names the anchor rather than assuming it.
+	verbs := regexp.MustCompile("`models ([a-z]+)").FindAllStringSubmatch(err.Error(), -1)
+	if len(verbs) == 0 {
+		t.Fatalf("the dispatch error names no verbs, so this test proves nothing: %v", err)
+	}
+
+	_, help, _ := capture(t, func() error { usage(); return nil })
+	for _, v := range verbs {
+		if !strings.Contains(help, "models "+v[1]) {
+			t.Errorf("the dispatch accepts `models %s` and the help never offers it:\n%s", v[1], help)
+		}
 	}
 }
