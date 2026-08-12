@@ -224,7 +224,7 @@ models available (aliases; versions as of 2026-08):
   sonnet     Sonnet 5     the everyday working model
   opus       Opus 5       most capable; Max plans, metered on Pro
 
-effort available (weakest first; `models effort <level> <agent>…`):
+effort available (weakest first; as of 2026-08; `models effort <level> <agent>…`):
   default    no key at all: whatever the session runs at
   low        short, scoped work that is not intelligence-sensitive
   medium     cost-sensitive work that can trade off some intelligence
