@@ -94,10 +94,10 @@ Depends on: nothing.
 
 Depends on: nothing. Independent of task 4.
 
-- [ ] the in-flight choice asked with `AskUserQuestion`, the same way the which-task
+- [x] the in-flight choice asked with `AskUserQuestion`, the same way the which-task
       question three sections below it already is. It already says *never choose*; what it
       never said is how to ask.
-- [ ] gates, then commit.
+- [x] gates, then commit.
 
 **Closes:** same proof as task 4.
 

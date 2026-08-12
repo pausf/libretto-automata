@@ -83,6 +83,11 @@ A change with open boxes is work waiting. For each one, report:
 Then ask: continue one, or begin something else. **Never choose.** Picking up somebody's
 half-finished work without asking is a decision about their priorities.
 
+**Ask it with `AskUserQuestion`** — each open change as an option, the one with the fewest
+boxes left recommended, and room to start something else. The same native prompt the
+which-task question below already uses: one skill asking two ways is what makes the prose
+version look acceptable everywhere else.
+
 **Under `/libretto-attacca` this one is already answered:** with a task given, that task;
 with none, the oldest change with open boxes. Nothing else changes here — a tracker CLI
 that is missing or unauthorised still stops, because that is the input failing to arrive
