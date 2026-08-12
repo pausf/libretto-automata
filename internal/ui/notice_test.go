@@ -9,37 +9,75 @@ import (
 
 const sampleNotice = "v0.2.0 → v0.3.0 available · choose update"
 
-// The row goes between the menu and the destination strip. Not in the footer: the footer
-// already drops p.Version when the legend and the version cannot both fit, so a notice
-// there would vanish at 96 columns. Not on a target row either — the strip is about where
-// links go.
-func TestPanelRendersUpdateNoticeBetweenMenuAndStrip(t *testing.T) {
+// The banner goes above the logo, which is the first thing read. It used to sit between
+// the menu and the destination strip, where it was correct, unmissable in a test and
+// invisible in practice: in the same register as a target row, it read as one more line
+// rather than as news.
+//
+// Not the footer, still — the footer drops p.Version when the legend and the version
+// cannot both fit, so a notice there would vanish at 96 columns.
+func TestUpdateNoticeRendersAboveTheLogo(t *testing.T) {
 	forceTrueColor(t)
 	p := demoPanel()
 	p.UpdateNotice = sampleNotice
 
 	lines := strings.Split(strip(darkTheme().Render(p)), "\n")
 
-	notice, menu, targets := -1, -1, -1
+	notice, logo := -1, -1
 	for i, l := range lines {
 		switch {
-		case strings.Contains(l, sampleNotice):
+		case strings.Contains(l, sampleNotice) && notice == -1:
 			notice = i
-		case strings.Contains(l, "status") && menu == -1:
-			menu = i
-		// `codex`, not `claude`: the install row's description contains `~/.claude` and
-		// would match eight rows above the strip.
-		case strings.Contains(l, "codex") && targets == -1:
-			targets = i
+		// The shading rail opens the logo block, and nothing above it is the logo.
+		case strings.Contains(l, "░▒▓█") && logo == -1:
+			logo = i
 		}
 	}
 
 	if notice == -1 {
 		t.Fatalf("the notice is not in the panel:\n%s", strings.Join(lines, "\n"))
 	}
-	if !(menu < notice && notice < targets) {
-		t.Errorf("notice at row %d, want between the menu (%d) and the strip (%d)",
-			notice, menu, targets)
+	if logo == -1 {
+		t.Fatalf("the logo is not in the panel:\n%s", strings.Join(lines, "\n"))
+	}
+	if notice > logo {
+		t.Errorf("notice at row %d, logo at row %d — want the notice first", notice, logo)
+	}
+}
+
+// A bare gold line was already gold and already inside the frame, and it still read as a
+// row. The box is what separates news from content: its own border, and a caption in the
+// top edge saying what the box is for before the version numbers have to be parsed.
+func TestUpdateNoticeBannerIsBoxedAndCaptioned(t *testing.T) {
+	forceTrueColor(t)
+	p := demoPanel()
+	p.UpdateNotice = sampleNotice
+
+	lines := strings.Split(strip(darkTheme().Render(p)), "\n")
+
+	text := -1
+	for i, l := range lines {
+		if strings.Contains(l, sampleNotice) {
+			text = i
+			break
+		}
+	}
+	if text == -1 || text == 0 || text+1 >= len(lines) {
+		t.Fatalf("no room for a box around the notice:\n%s", strings.Join(lines, "\n"))
+	}
+
+	if !strings.Contains(lines[text-1], bannerCaption) {
+		t.Errorf("the row above the notice carries no caption:\n%s", lines[text-1])
+	}
+	if !strings.Contains(lines[text-1], "╭") {
+		t.Errorf("the notice has no box above it:\n%s", lines[text-1])
+	}
+	if !strings.Contains(lines[text+1], "╰") {
+		t.Errorf("the notice has no box below it:\n%s", lines[text+1])
+	}
+	// The text sits inside its own border, not just between two rules.
+	if !strings.Contains(lines[text], "│ "+sampleNotice) {
+		t.Errorf("the notice is not inside the box:\n%s", lines[text])
 	}
 }
 
@@ -56,6 +94,9 @@ func TestPanelOmitsUpdateNoticeWhenEmpty(t *testing.T) {
 
 // The narrow layout drops the border, not the content. A degraded layout that also
 // degrades what it is telling you is two losses for one terminal width.
+//
+// So it keeps the notice and it keeps the *order* — first, as in the wide layout — and
+// drops only the box, which is the one thing this width has no room for.
 func TestNarrowLayoutKeepsUpdateNotice(t *testing.T) {
 	forceTrueColor(t)
 	p := demoPanel()
@@ -65,6 +106,26 @@ func TestNarrowLayoutKeepsUpdateNotice(t *testing.T) {
 	out := strip(darkTheme().Render(p))
 	if !strings.Contains(out, sampleNotice) {
 		t.Errorf("the narrow layout dropped the notice:\n%s", out)
+	}
+
+	lines := strings.Split(out, "\n")
+	notice, mark := -1, -1
+	for i, l := range lines {
+		switch {
+		case strings.Contains(l, sampleNotice) && notice == -1:
+			notice = i
+		case strings.Contains(l, "LIBRETTO") && mark == -1:
+			mark = i
+		}
+	}
+	if mark == -1 {
+		t.Fatalf("no wordmark in the narrow layout:\n%s", out)
+	}
+	if notice > mark {
+		t.Errorf("notice at row %d, wordmark at row %d — want the notice first", notice, mark)
+	}
+	if strings.Contains(lines[notice], "╭") || strings.Contains(lines[notice], "│") {
+		t.Errorf("the narrow layout drew a box it has no room for:\n%s", lines[notice])
 	}
 }
 

@@ -174,6 +174,9 @@ func (t Theme) Render(p Panel) string {
 	cw := ContentWidth(p.Width)
 
 	var rows []string
+	if p.UpdateNotice != "" {
+		rows = append(rows, t.banner(p.UpdateNotice, cw)...)
+	}
 	rows = append(rows, strings.Split(t.Logo(cw, p.ASCIISafe), "\n")...)
 	rows = append(rows, separator, "")
 	if p.InSelector {
@@ -182,12 +185,6 @@ func (t Theme) Render(p Panel) string {
 		rows = append(rows, strings.Split(t.menu(p), "\n")...)
 	}
 	rows = append(rows, "", separator)
-	if p.UpdateNotice != "" {
-		// Gold, the attention colour, not the error colour: being one release behind is
-		// news and not a fault. Elided to the content area for the same reason report
-		// lines are — a row wider than the frame tears it.
-		rows = append(rows, "  "+Fg(t.Gold).Render(elideRight(p.UpdateNotice, cw-4)), separator)
-	}
 	rows = append(rows, strings.Split(t.targets(p), "\n")...)
 
 	if len(p.Results) > 0 {
@@ -249,6 +246,56 @@ func (t Theme) refusal(msg string, cw int) string {
 	}
 	rows = append(rows, edge.Render("╰"+rule+"╯"))
 	return strings.Join(rows, "\n")
+}
+
+// bannerCaption names the box before its contents have to be parsed. English, like every
+// other string on the panel.
+const bannerCaption = "NEW VERSION"
+
+// bannerMargin is the gap between the banner's box and the frame it sits inside, on each
+// side. Two columns, the same indent every content row already uses.
+const bannerMargin = 2
+
+// banner draws the update notice as its own box at the top of the frame.
+//
+// A box rather than a filled tag, and that is the whole of why this is not one gold line
+// any more. The line was correct — inside the frame, in the attention colour, elided so it
+// could not tear anything — and it still read as a row, because below the menu it sat in
+// the same register as a target. Weight had to come from somewhere, and the two candidates
+// were a background colour or a border.
+//
+// The border wins on a constraint rather than on taste: Fg is the only helper the theme
+// has, and every value in both palettes was measured at 4.5:1 as a *foreground*. A filled
+// tag needs an ink/background pair measured again, in two palettes, for the loudest
+// element on the screen — and the palette that shipped at 1.4:1 is why that is not done in
+// passing.
+//
+// ponytail: no new palette values. The day somebody wants the filled sticker, it is a
+// Tag(ink, bg) helper and two colours, each measured against its terminal background
+// before it ships — not a Background() call bolted onto Fg.
+func (t Theme) banner(text string, cw int) []string {
+	gold := Fg(t.Gold)
+	box := cw - 2*bannerMargin
+	pad := strings.Repeat(" ", bannerMargin)
+
+	// The caption lives in the top edge, costing its own length plus the corner, the
+	// lead-in rule and a space either side.
+	//
+	// ponytail: no fallback for a box too narrow to carry it. `box` is `ContentWidth`
+	// minus the margins, and `ContentWidth` floors at `MinContentWidth` — which is
+	// `ArtWidth`, 58 — so the narrowest box this can be handed is 54 against a caption
+	// needing 16. Anything narrower went to `renderNarrow`, which draws no box at all.
+	// The guard that was here was unreachable by construction, and unreachable code that
+	// looks defensive is worse than none: it reads as a case somebody handled.
+	// Drop `MinContentWidth` below 20 and `TestBannerBoxHoldsAtEveryWidth` is what says so.
+	top := "╭─ " + bannerCaption + " " +
+		strings.Repeat("─", box-len(bannerCaption)-5) + "╮"
+
+	return []string{
+		pad + gold.Render(top),
+		pad + gold.Render("│ "+padTo(elideRight(text, box-4), box-4)+" │"),
+		pad + gold.Render("╰"+strings.Repeat("─", box-2)+"╯"),
+	}
 }
 
 // frame draws the box around the content rows at a given content width.
@@ -468,12 +515,16 @@ func (t Theme) renderNarrow(p Panel) string {
 		rows[i] = Fg(colour).Render(cursor + item.Label)
 	}
 
-	parts := []string{head, "", strings.Join(rows, "\n")}
+	var parts []string
 	if p.UpdateNotice != "" {
 		// The narrow layout drops the border, not the content. Degrading what the panel
 		// is telling you as well as how it is drawn is two losses for one terminal width.
-		parts = append(parts, "", Fg(t.Gold).Render(p.UpdateNotice))
+		//
+		// It keeps the order too — first, as in the wide layout. What it drops is the box,
+		// which is the one part of the banner this width genuinely has no room for.
+		parts = append(parts, Fg(t.Gold).Render(p.UpdateNotice), "")
 	}
+	parts = append(parts, head, "", strings.Join(rows, "\n"))
 	return t.centre(lipgloss.JoinVertical(lipgloss.Left, parts...), p)
 }
 

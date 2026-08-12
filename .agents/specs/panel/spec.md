@@ -99,10 +99,24 @@ After a successful action the figures are asked for again. They described the st
 *before* it ran, and a panel whose strip contradicts its own report is worse than one
 that shows neither.
 
-### A newer release gets one row, where it cannot vanish
+### A newer release gets a banner, above everything
 
-The row sits **inside the frame, between the menu and the destination strip**, in the
-attention colour — news, not error, because being one release behind is not a fault.
+The notice opens the frame: **its own box, above the logo**, captioned `NEW VERSION` in its
+top edge, in the attention colour — news, not error, because being one release behind is
+not a fault.
+
+**It used to be one gold line between the menu and the destination strip**, and every
+argument for that placement was sound except the one that mattered. It was inside the
+frame, in the right colour, elided so it could not tear anything — and sitting below the
+menu it was in the same visual register as a target row, so it read as one more line. A
+user who could not see it at all was the report that moved it.
+
+**A box, not a filled tag.** The reference was a filled label, and the terminal analogue is
+a background colour with ink on it. `Fg` is the only helper the theme has, and every value
+in both palettes was measured at 4.5:1 as a *foreground* — a filled tag needs an
+ink/background pair measured again, in two palettes, for the loudest element on the screen.
+The palette that shipped at 1.4:1 is why that is not done in passing. The border reuses
+`Gold` and adds no contrast risk.
 
 **Not the footer.** The footer already drops the version when the legend and the version
 cannot both fit, and a tag name has no length limit, so a notice there would disappear at
@@ -120,9 +134,17 @@ does not clear it.
   answered, or when it could not.
 - **It survives the narrow layout.** `renderNarrow` drops the border, not the content —
   degrading what the panel is telling you as well as how it is drawn is two losses for one
-  terminal width.
-- **It is elided to the content area** like a report line, so a long notice cannot tear the
-  frame.
+  terminal width. It keeps the *order* too, and drops only the box, which is the one part
+  this width genuinely has no room for.
+- **It is elided to its own box** like a report line is to the frame, so a long notice
+  cannot tear either border — **and both borders are measured**, not just the frame's. The
+  banner is the only nested border on the panel, and a nested border is the one most likely
+  to tear because it inherits a width it did not compute.
+- **The caption always fits, by construction rather than by a guard.** The narrowest box
+  this can be handed is `MinContentWidth` less its margins — 54 against a caption needing
+  16 — and anything narrower went to `renderNarrow`, which draws no box. A fallback for
+  that width was written, was unreachable, and was removed: unreachable code that looks
+  defensive reads as a case somebody handled.
 - **The check never blocks a paint or a keypress.** `Init` returns it as a command; the panel
   renders complete without it and re-renders when it lands. Asking inline would put a
   subprocess and a network round trip in front of the first frame, and on bad DNS the user's
@@ -319,6 +341,13 @@ the same flag — and `tab` changes them.
   because it is broken" are the same picture. Twice in one session the first was read
   as the second.
 - An empty or absent agents directory shows a plain line saying so, not an empty box.
+- **The panel has two boxes that are not the frame, and they are deliberately different
+  widths.** The refusal sits *below* the frame at exactly its outer width, borrowing its
+  glyphs so the existing flush tests measure it for free. The banner sits *inside* the
+  frame, so it takes the content width less a margin on each side and needs its own sweep,
+  `TestBannerBoxHoldsAtEveryWidth`. Unifying them would put one of the two at a width its
+  container cannot hold — a box below the frame that is inset reads as misaligned, and a
+  box inside the frame that is flush with it reads as the frame having broken.
 - **A refusal is red and boxed; an outcome is not.** The notice line carries both — what
   the panel did and what it declined to do — and the two do not look alike. A refusal is
   the answer to *why did nothing happen?*, and as one grey line under a bordered panel it
@@ -351,7 +380,7 @@ the same flag — and `tab` changes them.
 ## Scope boundaries
 
 **In:** the wordmark, palettes, contrast, layout, the fluid frame, the menu, the target
-strip, the release-notice row, the Bubbletea model and its navigation.
+strip, the release banner, the Bubbletea model and its navigation.
 
 **Out:**
 
@@ -443,6 +472,10 @@ default nobody chose.
 - **The release notice is a frame row, not a footer item — and that follows from the line
   above.** The footer's last resort is dropping the version, so anything put beside it
   inherits the same fate. News that disappears at 96 columns is news that was never read.
+- **Inside the frame is not the same as visible.** The notice spent a release as a gold
+  line below the menu — correct by every rule written above it, and still unread, because
+  position carries as much weight as colour and it had the position of a target row. Being
+  in the right container is not evidence of being seen.
 - **Cached in the panel, live in `doctor`.** A panel that waits on the network before
   painting hangs on bad DNS; a diagnostic the user typed can afford five seconds.
 - **`UpdateNotice`, not `Update`.** A field named `Update` beside a Bubbletea `Update`
@@ -472,7 +505,7 @@ default nobody chose.
 - [x] the Bubbletea model and navigation
 - [x] the active destination, visible and switchable
 - [x] 6.5 confirmation for destructive actions — in the model, not a Huh form
-- [x] the release-notice row, its field, and the `Init` seam that fills it
+- [x] the release banner, its field, and the `Init` seam that fills it
 - [ ] 6.6 target-strip golden files
 - [ ] 6.7 `teatest` end-to-end flow
 
@@ -763,18 +796,23 @@ Grouping, the `all` row, and the legend:
 
 The release notice:
 
-- **it renders between the menu and the destination strip**, not in the footer where the
-  version already gets dropped
-  Proof: internal/ui/notice_test.go TestPanelRendersUpdateNoticeBetweenMenuAndStrip
+- **it renders above the logo**, not below the menu where it read as a target row, and not
+  in the footer where the version already gets dropped
+  Proof: internal/ui/notice_test.go TestUpdateNoticeRendersAboveTheLogo
+- **it is boxed and captioned** — its own border inside the frame, carrying `NEW VERSION`
+  Proof: internal/ui/notice_test.go TestUpdateNoticeBannerIsBoxedAndCaptioned
 - an empty notice changes nothing about the panel
   Proof: internal/ui/notice_test.go TestPanelOmitsUpdateNoticeWhenEmpty
-- **the narrow layout keeps it** — it drops the border, not the content
+- **the narrow layout keeps it and keeps its order** — it drops the box, not the content
   Proof: internal/ui/notice_test.go TestNarrowLayoutKeepsUpdateNotice
 - news and action feedback both render, because they are two fields
   Proof: internal/ui/notice_test.go TestUpdateNoticeAndActionFeedbackCoexist
 - **the frame does not tear with a notice set**, at every width — the row is measured and
   padded like any other
   Proof: internal/ui/fluid_test.go TestFrameHoldsWithUpdateNotice
+- **and neither does the banner's own box**, swept at every width from the floor past the
+  ceiling — the test above keys on rows opening with a frame character and cannot see it
+  Proof: internal/ui/fluid_test.go TestBannerBoxHoldsAtEveryWidth
 - `Init` returns the check as a command, so the first paint never waits on it
   Proof: internal/ui/notice_test.go TestInitReturnsReleaseCheckCommand
 - **no check configured means no command and no notice**, which is `preview`
