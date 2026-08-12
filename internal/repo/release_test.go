@@ -77,22 +77,28 @@ retract (
 
 // A tag whose go.mod cannot be read is offered, not hidden.
 //
-// Both directions are wrong in some case and this one is wrong in the rarer, cheaper one.
-// `ls-remote` can name a tag the local object store has never seen — one pushed since the
-// last fetch — and a tag that new is a release far more often than it is a tombstone.
-// Hiding it would mean a genuine release going unannounced to everyone with stale tags,
-// which is everyone who has not fetched today.
-func TestLatestTagOffersATagWhoseGoModCannotBeRead(t *testing.T) {
+// **This test asserted the opposite until the tombstone reached a user, and the reversal is
+// deliberate rather than a weakened test.** It used to require an unreadable `go.mod` to be
+// read as permission to offer the tag, on the reasoning that a tag too new to have been
+// fetched is a release far more often than a tombstone.
+//
+// That reasoning holds in general and fails here permanently: this repository's tombstone is
+// the highest tag by design and stays there, so "rare and transient" is certain and forever
+// for any clone lacking that one blob. The old rule therefore guaranteed the one outcome it
+// was written to prevent, and the spec criterion moved with the code.
+func TestLatestTagDoesNotOfferATagWhoseGoModCannotBeRead(t *testing.T) {
 	// taggedRemote, deliberately: `origin` is set and the tags are not local, so every
-	// `git show` fails. That is the unreadable case, built out of the ordinary harness.
+	// `git show` fails. That is a `--no-tags` or shallow clone, built out of the ordinary
+	// harness.
 	s := taggedRemote(t, "v0.7.0", "v1.0.2")
 
 	got, err := s.LatestTag(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != "v1.0.2" {
-		t.Errorf("LatestTag = %q, want v1.0.2 — an unreadable go.mod is not evidence", got)
+	if got != "" {
+		t.Errorf("LatestTag = %q, want \"\" — nothing here is verifiable, so there is "+
+			"nothing to offer", got)
 	}
 }
 
@@ -129,7 +135,18 @@ func TestRetractedReadsEveryDirectiveForm(t *testing.T) {
 func TestLatestTagPicksHighestPlainSemver(t *testing.T) {
 	// Deliberately not in order, and v0.9.0 after v0.10.0: the whole point is that this
 	// is not a string sort.
-	s := taggedRemote(t, "v0.1.0", "v0.10.0", "v0.9.0", "v0.2.0")
+	//
+	// clonedRemote rather than taggedRemote: since an unverifiable tag is skipped, a
+	// fixture whose tag objects are absent answers "" for every ordering question and the
+	// test would pass or fail for a reason unrelated to sorting.
+	// The go.mod bodies differ only by a comment: clonedRemote commits between tags, and
+	// an identical file is nothing to commit.
+	s := clonedRemote(t, map[string]string{
+		"v0.1.0":  plainGoMod + "// v0.1.0\n",
+		"v0.10.0": plainGoMod + "// v0.10.0\n",
+		"v0.9.0":  plainGoMod + "// v0.9.0\n",
+		"v0.2.0":  plainGoMod + "// v0.2.0\n",
+	}, "v0.1.0", "v0.10.0", "v0.9.0", "v0.2.0")
 
 	got, err := s.LatestTag(context.Background())
 	if err != nil {
@@ -387,4 +404,36 @@ func gitRepoWithACommit(t *testing.T) string {
 	run(t, root, "add", "marker")
 	run(t, root, "commit", "-q", "-m", "first")
 	return root
+}
+
+// The hole the tombstone fell through, reversing a prior decision in the repo-sync spec.
+//
+// `taggedRemote` builds what a `--no-tags` or shallow clone looks like: `ls-remote` names
+// every tag on the remote and the local object store holds none of their objects, so
+// `git show <tag>:go.mod` fails on all of them.
+//
+// The old rule offered such a tag, reasoning that a tag too new to be fetched is a release
+// far more often than a tombstone. True in general, and wrong here in a way that does not
+// self-correct: **this repository's tombstone is the highest tag permanently, by design**,
+// so the "rare and transient" case is certain and forever for anyone whose store lacks that
+// object. Reproduced on a real clone before this test existed — `LatestTag` returned
+// `v1.0.2`, which is the one version that must never be offered.
+//
+// The two errors are not symmetric. A missed notice is repaired by the next fetch, and
+// `update` fetches. A notice naming a retracted version is wrong every time it prints, and
+// it points at a number that can never be un-published.
+func TestAnUnverifiableTagIsNotOffered(t *testing.T) {
+	s := taggedRemote(t, "v0.9.0", "v1.0.2")
+
+	got, err := s.LatestTag(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got == "v1.0.2" {
+		t.Fatalf("offered the tombstone: a tag whose go.mod cannot be read must not be " +
+			"offered as an update")
+	}
+	if got != "" {
+		t.Fatalf("no tag here is verifiable, so there is nothing to offer; got %q", got)
+	}
 }

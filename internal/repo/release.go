@@ -52,7 +52,7 @@ func (s Shell) LatestTag(ctx context.Context) (string, error) {
 		candidates = candidates[:maxRetractProbes]
 	}
 	for _, tag := range candidates {
-		if !s.retractsItself(ctx, tag) {
+		if s.offerable(ctx, tag) {
 			return tag, nil
 		}
 	}
@@ -114,26 +114,43 @@ func descendingTags(out string) []string {
 	return names
 }
 
-// retractsItself reports whether tag's own go.mod retracts tag.
+// offerable reports whether tag can be offered as an update: its own go.mod is readable
+// and does not retract it.
 //
 // The tag's own, not the working tree's: a retraction is published *with* the version it
 // withdraws, which is the only arrangement that lets the highest version retract itself.
 //
-// **An unreadable go.mod is not evidence of a retraction.** `ls-remote` can name a tag the
-// local object store has never seen — one pushed since the last fetch — and `git show`
-// fails on it. Both answers are wrong in some case and this one is wrong in the rarer,
-// cheaper one: a tag that new is a release far more often than a tombstone, and hiding it
-// would mean a genuine release going unannounced to everyone whose tags are a day old.
+// **An unreadable go.mod is not permission to offer the tag, and this reverses the
+// original decision.** `ls-remote` names every tag on the remote; `git show` needs the
+// object locally. A `--no-tags` or shallow clone has all the names and none of the
+// objects, so every candidate is unverifiable there.
 //
-// ponytail: no fetch. Reaching the network to settle a speculative background check is the
-// hang the cache exists to prevent, arriving from a different direction — and it would
-// write to the user's object store for a question nobody asked.
-func (s Shell) retractsItself(ctx context.Context, tag string) bool {
+// The first version of this offered such a tag, reasoning that a tag too new to have been
+// fetched is a release far more often than a tombstone. True in general — and wrong here in
+// a way that never self-corrects, because **this repository's tombstone is the highest tag
+// permanently, by design**. What was filed as rare and transient is certain and forever for
+// anyone whose object store lacks that one blob, which is how `v1.0.2 available` reached a
+// user against a `go install` that had been resolving 0.x correctly the whole time.
+//
+// The two errors are not symmetric, and that is the whole argument:
+//
+//   - A missed notice is repaired by the next fetch, and `update` fetches. Cost: one day
+//     of not knowing about a release.
+//   - A notice naming a retracted version is wrong every time it prints, and it points at
+//     a number that can never be un-published. `sum.golang.org` is append-only.
+//
+// So an unverifiable candidate is skipped rather than offered, and the walk falls through
+// to the next one — a blanket refusal would throw away a perfectly good lower tag.
+//
+// ponytail: still no fetch. Reaching the network to settle a speculative background check
+// is the hang the cache exists to prevent, arriving from a different direction, and it
+// would write to the user's object store for a question nobody asked.
+func (s Shell) offerable(ctx context.Context, tag string) bool {
 	out, err := exec.CommandContext(ctx, "git", "-C", s.Root, "show", tag+":go.mod").Output()
 	if err != nil {
 		return false
 	}
-	return retracted(string(out), tag)
+	return !retracted(string(out), tag)
 }
 
 // retracted reports whether a go.mod's retract directives cover version.
