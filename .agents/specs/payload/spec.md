@@ -22,6 +22,12 @@ Installing this repository gives a working flow on a machine that has nothing el
   the branch, removes the `Queued:` line and enters the flow at phase 2, because phase
   1's artifact already exists
 - one skill per phase, each of which stops where its phase stops
+- **the same flow with its three stops answered in advance** — `libretto-attacca`, the
+  score's instruction to go on without pausing, running phases 1 to 8 and ending at a
+  pushed branch with a request open on it. It writes everything the attended flow writes;
+  what the invocation answers is the waiting. **What it cannot answer is a gate**, and a
+  question no reading of the code settles becomes an assumption recorded in the spec, the
+  report and the request rather than a prompt
 - **the finished work reviewed by someone who did not write it, then repaired** — in the
   seam between build and present, `review-work` launches one fresh `work-reviewer`
   subagent with none of the session's context; it re-runs every proof the change
@@ -86,7 +92,21 @@ third-party items and their attribution.
 - **a separate queue file.** `.agents/changes/` already holds proposals; a `queue.md`
   beside it would be a second source of truth about what is queued.
 - **draining the queue unattended.** `libretto-next` runs one idea and the flow's own
-  stops apply. Batch execution is a different feature with different risks.
+  stops apply, and `libretto-attacca` does not reopen it: one invocation is one piece of
+  work. Batch execution is a different feature with different risks.
+- **an unattended run merging, tagging, releasing, or labelling the request.** It ends at
+  a request open for review. The bump is a reading of `.agents/specs/` rather than of the
+  commits, `release:major` is asked-and-waited-for by standing rule, and a version number
+  cannot be recalled once the proxy has cached it.
+- **skipping, reordering or softening a gate**, and `--force`, `--no-verify` or anything
+  else that buys a green result. Unattended removes waits, never checks.
+- **a second door into the unattended mode.** One command, no flag on `libretto-flow`
+  doing the same thing: two entry points drift, and the argument-shaped one is the one
+  that gets typed by accident. For the same reason `libretto-attacca` describes no phase —
+  it delegates to the same skills and restates none of them.
+- **an unattended `libretto-next` or `libretto-review`**, and **a setting, profile or env
+  var for the mode.** Consent is for one run, and consent that persists is consent nobody
+  remembers giving.
 - **the Go binary knowing about the queue.** It is payload, not delivery.
 
 ### A stop is a place where the user changes something
@@ -113,6 +133,15 @@ to change your mind, guarded as though it were a deployment.
 continuing it or not is a choice about the user's priorities, and a missing or
 unconfigured tracker, where nothing downstream exists. Both are the input failing to
 arrive rather than a phase boundary asking to be blessed.
+
+**And the table is what `libretto-attacca` is defined over.** The unattended mode is a
+second reading of this same list rather than a feature of its own: the three stops are
+answered by the invocation, phase 1's in-flight choice resolves to the oldest change with
+open boxes, and everything not in the table is untouched. **A gate is not a stop and
+cannot be answered** — a failing one still stops the run, two on one task still stop the
+task, and a missing credential still stops the phase, because that is the input failing to
+arrive and no invocation supplies it. A mode that answered a gate would not be unattended,
+it would be unverified.
 
 When phase 2 answers **no spec needed** both remaining stops collapse with it — there is
 no plan either — and phases 6, 7 and 8 run in one turn. **Phase 8's question survives
@@ -334,6 +363,30 @@ the copy stays comparable with upstream.
   nobody can see from the base. This does not weaken "the branch exists before the first
   write": a queued proposal is not the change's work yet, and the change's first write is
   the pickup.
+- **the unattended mode is its own command, not a flag** — the user's call, 2026-08-12,
+  reversing the reading the change was first specced with. "No second flow for small work"
+  above refuses a second *flow*; this is a second *door* onto the same one, and the
+  precedent that governs it is `libretto-next`, which is its own command because an
+  invocation that behaves differently must be unmistakable in the history rather than an
+  argument that can be typed by accident. What the refused rule still binds is the shape:
+  it delegates and describes nothing.
+- **`attacca` because it is the instruction, not a metaphor for it** — what a score writes
+  to mean *go on to the next movement without pausing*. The cost is opacity to a reader
+  who does not read music, paid by one line of `description:`. `auto` was rejected for
+  saying something is automatic without saying what still stops, `solo` for pointing at a
+  prominent voice rather than an absent pause.
+- **Under the unattended mode a question the flow cannot derive is assumed, recorded and
+  carried on from** — the user's call, 2026-08-12. Stopping to ask makes the mode
+  unreliable in exactly the case it exists for; stopping without asking trades a wait for
+  a dead run. The mechanism is not new — the flow already turns an unsettled post-plan
+  question into a finding carrying what was assumed and what changes if it is wrong — and
+  this moves that rule to the front. **Ceiling named:** an assumption is only as visible as
+  the report and the request carrying it, so a run nobody reads has bought silence rather
+  than speed. The replacement that day is refusing to open the request when an assumption
+  was made, never a prompt mid-run.
+- **Push and the request are answered by the invocation, never assumed.** "Never push
+  unasked" is intact: the asking happened at the prompt. The consent covers that branch and
+  that request and nothing past it.
 - **ponytail and caveman are vendored, reversing THIRD-PARTY.md's original
   not-vendored entry — the user's explicit call, 2026-08-10.** The old rationale (a
   second copy of something the user may already have chosen a version of) assumed a
@@ -360,6 +413,8 @@ the copy stays comparable with upstream.
 - [x] `libretto-flow` — the routing command
 - [x] `libretto-queue` and `libretto-next` — capture the queue, drain it one at a time,
       with `find-work` owning the scan both read
+- [x] `libretto-attacca` — the three stops answered by the invocation, the classification
+      in one file, and the five stop-owning skills each stating what happens to their own
 - [x] vendored delegates with attribution
 - [x] ponytail, ponytail-debt, caveman and caveman-commit vendored, callers' prose
       reconciled, THIRD-PARTY.md and docs recording the reversal
@@ -458,6 +513,17 @@ prevent:
 Still unobserved, and therefore still claims rather than facts: the collapsed lane on a
 change that needs no spec, the review seam's one-line decline on that same lane, and
 every remaining failure path above.
+
+**The unattended mode is prose and none of it has run either**, and it is the one where
+that gap costs the most, because every claim is about what happens when nobody is
+watching. Claims, not facts: that a run passes the spec stop and the plan stop with both
+artifacts on disk; that it ends at a pushed branch with a request whose description names
+what the invocation answered; that **a failing gate stops it on its branch with no request
+opened**; that an absent `gh` stops it with the install line and nothing else; and that a
+question it could not derive appears as a marked assumption in the spec, the report and
+the request, and nowhere as a prompt. The third of those is the one to run first — it is
+the case where the mode must look exactly like the attended flow, and the only one whose
+failure is silent.
 
 **The queue is prose and none of it has run.** Claims, not facts: capturing two ideas
 leaves two committed proposals and no branch; `/libretto-next` offers the oldest first and
