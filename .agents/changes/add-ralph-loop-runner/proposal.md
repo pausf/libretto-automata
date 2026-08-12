@@ -24,6 +24,14 @@ OUTSIDE the session it relaunches, so a skill/command cannot BE the loop,
 which points at a `libretto loop <change>` Go subcommand (ships in the binary,
 nothing to symlink). Decide in phase 2, not here.
 
+Researched (2026-08-12): the canonical Ralph playbook (paddo.dev, endorsed by
+Huntley) does create a file structure — loop.sh, PROMPT_plan.md,
+PROMPT_build.md, AGENTS.md, IMPLEMENTATION_PLAN.md, specs/*.md. Every one of
+those except loop.sh already has a richer Libretto equivalent (the write-plan
+and build-and-check skills, AGENTS.md gates, plan.md checkboxes,
+.agents/specs/). Copying the structure would duplicate state; the only
+genuinely missing artifact is the loop engine itself.
+
 Guardrails from the sources, to keep: machine-verifiable done (boxes + gates),
 iteration cap, stuck detection (same box unchecked two rounds → stop and
 report), never push/merge/tag beyond what attacca already answers.
