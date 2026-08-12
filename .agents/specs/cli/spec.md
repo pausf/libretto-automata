@@ -724,3 +724,137 @@ A missing payload:
 - **every verb the dispatch accepts is offered by `help`**, read out of the dispatch's
   own error rather than from a list kept here
   Proof: cmd/libretto/models_test.go TestEveryModelsVerbIsInTheHelp
+
+### `loop` — one fresh session per open box
+
+- **the engine is the binary, not a skill, and that is not a preference.** A loop that
+  relaunches a session cannot *be* that session: the whole value of the pattern is a
+  fresh context per task, and a skill runs inside the context it would be trying to
+  discard. The Ralph playbook ships a `loop.sh` beside four other files, and every one of
+  those four already has a richer equivalent here — `write-plan`, `build-and-check`,
+  `AGENTS.md` and the plan's own boxes. Copying the structure would duplicate state; the
+  engine was the only piece genuinely missing.
+  Proof: cmd/libretto/loop_test.go TestTheLoopPromptRoutesAndNeverAuthorises
+- **it owns no state.** `.agents/changes/<change>/plan.md` is the state — the file phase 5
+  writes and phase 6 marks — and the loop reads the boxes and nothing else. Only the box is
+  parsed, never the task text: the flow owns the plan's shape, and a runner that understood
+  it would be a second opinion about what a task is.
+  Proof: cmd/libretto/loop_test.go TestCountBoxesReadsOnlyTheBox
+- one session per open box, and it stops when the last one closes
+  Proof: cmd/libretto/loop_test.go TestLoopStopsWhenEveryBoxIsClosed
+- **two consecutive rounds that close nothing stop the loop.** This is the guardrail the
+  whole command exists for. A session that finished no task leaves a plan the next fresh
+  session reads identically, so it makes the identically non-existent progress — forever,
+  or until the cap. One barren round is a hiccup and the counter resets; two is a loop that
+  has stopped being one, and the message says why a third is pointless.
+  Proof: cmd/libretto/loop_test.go TestLoopStopsAfterTwoRoundsThatCloseNothing
+- a single barren round does not stop it
+  Proof: cmd/libretto/loop_test.go TestOneBarrenRoundDoesNotStopTheLoop
+- **progress is boxes closed, never boxes remaining.** A session that finishes one task and
+  splits another in two leaves the open count unchanged, and reading that as no progress
+  stops the loop reporting "two rounds closed nothing" when two things were done. A plan is
+  allowed to grow: phase 6 discovering a task is the flow working.
+  Proof: cmd/libretto/loop_test.go TestAPlanThatGrowsIsProgressNotAStall
+- **the missing plan is reported before the missing dependency.** `loop <typo>` on a machine
+  without `claude` named the dependency rather than the mistake actually made.
+  Proof: cmd/libretto/loop_test.go TestTheMissingPlanIsReportedBeforeTheMissingDependency
+- **`--dry-run` works with an empty PATH**, proved through `loop` rather than `runLoop` —
+  the guard sits above `runLoop`, so a test calling it directly proves nothing about it.
+  Proof: cmd/libretto/loop_test.go TestDryRunNeedsNoClaudeOnPath
+- **the cap is the second ceiling, and hitting it is an error naming the flag that raises
+  it.** A loop with no ceiling that never converges spends a budget silently.
+  Proof: cmd/libretto/loop_test.go TestLoopStopsAtTheCapAndSaysSo
+- **a session exiting non-zero is not a failed loop.** The plan is the state, so the next
+  round carries on from whatever this one finished; an exit code cannot tell a crash from a
+  deliberate stop, and the boxes can.
+  Proof: cmd/libretto/loop_test.go TestASessionErrorDoesNotAbortTheLoop
+- a missing plan is refused, and the refusal names the path it looked for
+  Proof: cmd/libretto/loop_test.go TestLoopRefusesAPlanThatIsNotThere
+- **a plan with prose and no boxes is refused rather than read as finished.** Zero open
+  boxes means done everywhere else in the flow; here it also means a plan phase 5 never
+  wrote, and reporting success having run nothing is the worse of the two readings.
+  Proof: cmd/libretto/loop_test.go TestLoopRefusesAPlanWithNoBoxes
+- `--dry-run` prints the prompt and starts no session, and needs no `claude` on PATH
+  Proof: cmd/libretto/loop_test.go TestDryRunPrintsThePromptAndStartsNoSession
+- flags are parsed strictly: one change, a positive `--max`, no unknown flags
+  Proof: cmd/libretto/loop_test.go TestParseLoopArgs
+- **it is not gated on the payload.** `loop` reads the *project's* plan and relaunches a
+  session that resolves its own skills; refusing without this repository's payload tree
+  would refuse on exactly the machine that installed the binary and nothing else.
+  Proof: cmd/libretto/loop_test.go TestLoopIsNotGatedOnThePayload
+- **it never pushes, merges or tags, and the prompt forbids rather than omits.** Those are
+  what `libretto-attacca` answers for one branch after a person typed it; nothing here was
+  asked, and an omission reads as an oversight to whatever is on the other end.
+  Proof: cmd/libretto/loop_test.go TestTheLoopPromptRoutesAndNeverAuthorises
+
+### `metrics` — what the flow cost, derived and never recorded
+
+- **nothing is instrumented.** The obvious build has each phase write a timestamp and the
+  report read them back; that costs a new artifact in every change folder which eight
+  skills have to remember, and a metric collected only when somebody remembers has holes
+  exactly where the interesting runs are. Git already holds the answer: a change folder's
+  first and last commits are the wall clock, the commits between are the iterations, and
+  `plan.md`'s diffs are the churn. It works retroactively on every change ever landed.
+  Proof: cmd/libretto/metrics_test.go TestChangeNamesSeesLandedChangesNotJustOpenOnes
+- **`--full-history` on every query, and it is load-bearing.** Git's default history
+  simplification prunes commits that do not change a path's *final* state, and a landed
+  change's final state is "does not exist" — so the entire history of every change this
+  report exists to measure is simplified away. Measured, not reasoned: without it this
+  repository reported 12 changes instead of 22, two of them with no history at all, and
+  **no `plan.md` was found for any of them**, so every churn column read as "no plan" on
+  changes that plainly had one.
+  Proof: cmd/libretto/metrics_test.go TestChangeNamesSeesLandedChangesNotJustOpenOnes
+- **the churn query excludes deletions, or every number inverts.** A change lands by
+  deleting its folder, and that commit's diff removes every line of `plan.md` — so every
+  box ever closed also appears as a removed `[x]`, and the report reads as 0 closed and 52
+  reopened on a change that had neither. `--diff-filter=AM`. **Both of these were found by
+  running it against real history, not by the fixtures**, which is why the fixtures now
+  refuse a query missing either flag.
+  Proof: cmd/libretto/metrics_test.go TestReopenedBoxesAreCountedSeparatelyFromClosedOnes
+- **a reopened box is counted apart from a closed one.** Closed-then-reopened means a task
+  was called done before it was, which is the one thing in a plan's history worth knowing,
+  and a net count is precisely what hides it.
+  Proof: cmd/libretto/metrics_test.go TestReopenedBoxesAreCountedSeparatelyFromClosedOnes
+- git log is newest-first, and reading it as oldest-first inverts the span into a negative
+  duration that prints as a plausible number
+  Proof: cmd/libretto/metrics_test.go TestMeasureReadsSpanAndCommitsOldestLast
+- **a change with no plan reports a dash, never a zero.** "No plan existed" and "a plan
+  existed and nothing was finished" are different facts, and one of them is an accusation.
+  Proof: cmd/libretto/metrics_test.go TestAChangeWithNoPlanReportsADashNotAZero
+- **an unreadable change prints a row rather than being skipped.** The footer counts names,
+  so a silent skip makes the total disagree with the rows above it — a report claiming
+  twelve while showing ten is worse than one admitting it could not read two.
+  Proof: cmd/libretto/metrics_test.go TestAnUnreadableChangePrintsARowRatherThanVanishing
+- **a reworded or deleted finished task is not a reopening.** The churn arithmetic is net
+  per commit, not summed per line, and that is the whole correctness argument: rewording a
+  closed box emits a removed `[x]` and an added one in the same commit, so line-counting
+  reported one close and one reopen for a typo fix. A reopening is the accusation "this was
+  called done before it was" and it has to be earned. Net zero within a commit means the
+  text moved and the state did not.
+  Proof: cmd/libretto/metrics_test.go TestRewordingAndDeletingAFinishedTaskAreNotReopenings
+- **the two commands read a checkbox identically.** `metrics` counted a box anywhere in a
+  line while `loop` anchors to the start, so one `plan.md` gave two different totals
+  depending on which command read it. `metrics` strips the diff marker and asks `loop`'s
+  parser; there is one definition of a box.
+  Proof: cmd/libretto/metrics_test.go TestBoxInReadsOnlyRealCheckboxes
+- **a truncated diff line does not panic.** The bounds guard was off by one — `i+4 > len(l)`
+  where it needed `>=` — so a line ending one character after `- [` indexed past the end.
+  The table that was meant to cover it stopped exactly one character short of the crash,
+  which is a boundary case that reads as covered and is not.
+  Proof: cmd/libretto/metrics_test.go TestBoxInReadsOnlyRealCheckboxes
+- **it asks git for the repository root rather than trusting the cwd.** git pathspecs and
+  `os.Stat` are both cwd-relative, so run from a subdirectory this reported "no changes in
+  this repository's history yet" — plausible, and false.
+  Proof: cmd/libretto/metrics_test.go TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne
+- **the report names the two things it cannot measure.** Per-phase duration and
+  `review-work` finding counts both need a phase to write them down: phases 1 to 7 happen
+  in one session and leave one commit, and a finding is repaired before anything lands so
+  only the repair is in the diff. A metrics command silently omitting two of the three
+  things asked of it reads as having measured them and found nothing.
+  Proof: cmd/libretto/metrics_test.go TestTheReportNamesWhatItCannotMeasure
+- a span drops precision it does not have — days, not minutes, on a multi-day change
+  Proof: cmd/libretto/metrics_test.go TestHumanSpanDropsPrecisionItDoesNotHave
+- one change may be named; an unknown one and an unknown flag are both refused
+  Proof: cmd/libretto/metrics_test.go TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne
+- it reads the project's git history, so it is not gated on the payload
+  Proof: cmd/libretto/metrics_test.go TestMetricsIsNotGatedOnThePayload

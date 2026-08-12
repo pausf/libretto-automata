@@ -16,15 +16,28 @@ says what is done and what is next.
 structure, the no-placeholders rule and self-review. Invoke it for how a plan is
 written — it ships with this repository, see `THIRD-PARTY.md`.
 
-**Two things it decides that this flow overrides.** Delegation without stated
+**What it decides that this flow overrides.** Delegation without stated
 overrides is two skills quietly disagreeing:
 
 | It says | Here | Why |
 |---|---|---|
 | save to `docs/superpowers/plans/<date>-<name>.md` | `.agents/changes/<change>/plan.md` | the plan belongs inside the change it belongs to, beside the proposal and the delta, and it disappears with them when the change lands |
 | the plan is the handoff to execution | the plan is **live state** | several agents read it while the work runs, so it is written continuously, not handed over once |
+| the worktree came from `superpowers:using-git-worktrees` | `using-git-worktrees` | the payload ships that skill unnamespaced. The namespace names a plugin the user may not have; the skill itself is right here |
+| execution needs `superpowers:subagent-driven-development` or `superpowers:executing-plans` | `build-and-check`, phase 6 | **neither is shipped, by anybody, on a machine that installed only this.** A plan whose header demands a skill that does not exist is a plan that stalls on its own first line |
+
+**Write the header without those two names.** `writing-plans` mandates a header
+naming `superpowers:subagent-driven-development`; here the plan is live state that
+phase 6 reads, so the header names `build-and-check` and nothing else. Same for the
+execution-handoff question at the end — the flow already routed, so there is no
+choice left to offer.
 
 Everything else it says stands. What follows is only what it does not cover.
+
+**The vendored copy is not edited to say this.** `THIRD-PARTY.md` keeps it byte-comparable
+with upstream, so a divergence has exactly one place to live and it is this table. The
+repository's payload gate enforces it: a namespaced skill a vendored copy cites, which the
+payload does not ship, has to be answered here or the gate fails.
 
 ## The plan is derived, not invented
 

@@ -66,6 +66,12 @@ invoked even when its answer is "nothing here".
 Skill(skill="find-work")          1 · with a task given, that task; with none, home first —
                                       the oldest change with open boxes
 Skill(skill="write-spec")         2–3 · then carry on
+Skill(skill="review-spec")        3→5 · reads the contract, only when one was written.
+                                      **Here it matters more than in the attended flow**:
+                                      nobody is reading the spec at the stop, so this is
+                                      the only thing between an unfailable criterion and
+                                      a plan built on it. It still only reports — see
+                                      below for who acts on it
 Skill(skill="write-plan")         5 · then carry on
 Skill(skill="build-and-check")    6
 Skill(skill="review-work")        6→7 · it already fixes rather than asks
@@ -77,6 +83,22 @@ Skill(skill="record-work")        8 · push and open the request, both already a
 A change phase 2 decides needs no spec collapses the same way it always does. There was
 nothing to wait for here either; what collapses is the writing, and phase 7 still says
 everything.
+
+### Who acts on `review-spec`'s findings
+
+**The reviewer reports and never edits the spec — that rule does not bend here.** What is
+different is who is left holding the report. In the attended flow it is the phase-3 author
+at the stop; unattended there is no stop, so **this run is the phase-3 author** and amends
+its own spec before phase 5 reads it.
+
+That is not the same as the reviewer fixing its own findings, and the distinction is the
+one that keeps the review worth running: a reviewer that edits what it reviews has no
+independent reading left to report. Reviewer reports, author amends, and unattended those
+are two roles held by one run rather than two.
+
+**A finding acted on is named in the phase 7 report and in the request**, exactly like an
+assumption — for the same reason. A contract quietly rewritten between review and plan is
+a contract nobody agreed to.
 
 ## Never
 

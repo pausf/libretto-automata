@@ -521,10 +521,83 @@ the copy stays comparable with upstream.
   Proof: skills/record-work/spec-drift --self-test
 - every `Proof:` citation in every spec resolves, file and test name
   Proof: skills/record-work/spec-drift --anchors
+- **the whole tree is traceable, not only what is staged.** Both existing modes are scoped
+  to a commit — one to staged paths, one to citations that already exist — so **code that
+  was never staged while a spec existed is invisible to both, forever.** In a repository
+  whose specs arrived after its code that is most of the repository, and the contract can
+  pass every check while governing a third of the tree. `--trace` reads the tracked tree
+  and names orphan code, a `Governs:` glob matching nothing, and a criterion under
+  *Verification criteria* with no `Proof:` beneath it. **It exits 0 unconditionally**: the
+  first run here found sixteen orphans and sixteen unproven bullets, which is the honest
+  state rather than a regression, and a report that fails the build the day it lands is a
+  report somebody deletes.
+  Proof: skills/record-work/spec-drift --self-test
+- **a criterion is a column-0 bullet under the criteria heading, and nothing else.** Its
+  `Proof:` survives the continuation lines beneath it and ends at the next such bullet or
+  the next heading. Reading every bullet in the document instead buries the real findings
+  under the Outcomes section, which has no `Proof:` by design.
+  Proof: skills/record-work/spec-drift --self-test
+- **the contract is reviewed before a plan is built on it.** Every other review in the flow
+  reads code and all of them run after the code exists, so a criterion no run could fail is
+  agreed at the phase-3 stop, becomes tasks, becomes code, and is then measured against a
+  sentence nobody could have failed — the work passes and the promise was never real.
+  `review-spec` runs in the 3→5 seam over ambiguity that forks the work, criteria that
+  cannot fail, `Governs:` boundaries describing nothing, and a criterion another capability
+  contradicts. **Before the stop, not after**, because the findings have to be on the table
+  while the agreement is still being made. It reports and never rewrites the spec — a
+  reviewer editing the contract it reviews is the author twice over. Skipped entirely on the
+  trivial lane, which has no contract.
+  **The proof is the wiring, not the behaviour**, and the difference is stated because
+  citing a static checker for a prompt's conduct is a citation that can never fail: review
+  deleted every `review-spec` line from the flow and this script stayed green. What is
+  checked is that the phase exists, that both commands route to it, and that the decisive
+  words are still in the file that owns them.
+  Proof: scripts/check-payload
+- **a bug amends the contract before it touches the code.** A bug is a hole in the
+  specification — behaviour happened that some capability permitted, failed to forbid, or
+  forbade in words no run could have failed — so phase 2 names the criterion that would have
+  caught it and writes its `Proof:` as a test that **fails when written, for the reason the
+  bug exists**. Watching it fail is evidence obtainable only before the fix. Reversed, the
+  criterion is written to describe the fix rather than the failure: it passes on its first
+  run, nothing ever proved it could fail, and the spec gained a sentence that cannot catch
+  the bug it was written for. Almost always an amendment to the capability whose `Governs:`
+  owns the broken path — a new spec directory per failure is a ticket spec, dead the day the
+  fix ships. No capability owning the path is itself the finding. **Proved as wiring only** —
+  that the branch and its red-test-first demand are still in `write-spec`, not that a session
+  obeyed them.
+  Proof: scripts/check-payload
+- **phase 1 says whether the work is a bug, and never infers it from a summary.** The branch
+  above cannot fire on work that arrived as generic, and "discount wrong on bundles" is a bug
+  or a change of intent — opposite pieces of work behind one sentence. The reading names it
+  in one line and `proposal.md` records the observed behaviour, the expected behaviour and
+  what produced it, in the reporter's words: paraphrasing costs the reproduction, and with no
+  reproduction there is no failing test, so the criterion is a sentence somebody hopes is true.
+  **Proved as wiring only**, same as above.
+  Proof: scripts/check-payload
+- **the mechanical half is delegated, not restated.** `review-spec` runs `--trace` first and
+  reads the spec for what a script cannot see: whether a `Proof:` names a test that could
+  actually fail. A citation pointing at a test that only asserts the code ran is untestable
+  with a citation attached, which reads as proven and is therefore worse than none.
+  Proof: scripts/check-payload
 - **the status command delegates rather than restating the scan**, and every referenced
   skill survived the rename
   Proof: scripts/check-payload
 - **the queue commands delegate the scan too**, and reference only skills that exist
+  Proof: scripts/check-payload
+- **a vendored skill's namespaced reference is either shipped or answered.** `writing-plans`
+  opens every plan it writes with a header demanding `superpowers:subagent-driven-development`
+  and offers `superpowers:executing-plans`; `test-driven-development` cites
+  `superpowers:writing-skills`. **The payload ships none of the three, and neither does a
+  machine that installed only this** — so the flow's own phase-5 output has instructed its
+  reader to invoke a skill that does not exist since the day the copies landed. Nothing read
+  the namespace, so nothing noticed. The fix is never an edit to the vendored copy, because
+  `THIRD-PARTY.md` promises it stays comparable with upstream and a divergence needs exactly
+  one home: the Libretto skill that delegates to it states the override — `write-plan` for
+  the two execution skills and the worktree one, `build-and-check` for the test-prose one.
+  The check reads refs only inside vendored directories, listed from `THIRD-PARTY.md` rather
+  than hardcoded, and requires each to resolve to a shipped skill or be named by a skill that
+  is not the vendored one. **A ref inside a Libretto skill is the answer, never the fault** —
+  scoping it the other way made the override itself the failure.
   Proof: scripts/check-payload
 
 **What none of this verifies is behaviour.** A skill is a prompt, and a prompt is

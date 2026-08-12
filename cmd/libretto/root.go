@@ -123,9 +123,14 @@ func needsPayload(args []string) bool {
 		return true // the panel shows the tree's state
 	}
 	switch args[0] {
-	case "models", "update":
+	case "models", "update", "loop", "metrics":
 		// `update` is what fixes a missing payload on an installed copy, so it cannot be
 		// gated on having one. In a checkout the payload is the tree and is always there.
+		//
+		// `loop` reads the *project's* .agents/changes/<change>/plan.md and relaunches a
+		// session that resolves its own skills. Gating it on this repository's payload tree
+		// would refuse the loop on every machine that installed the binary and nothing else
+		// — which is the machine the loop is for.
 		return false
 	default:
 		return true

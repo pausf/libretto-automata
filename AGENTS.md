@@ -55,6 +55,14 @@ libretto models         # which model each agent runs on and how hard it thinks,
 libretto models set haiku review-lens-design review-lens-tests   # --all for every agent
 libretto models effort xhigh review-lens-security   # the depth, not the tier. Haiku has none
 
+libretto loop <change>  # one fresh session per open box in that change's plan.md,
+                        # until every box is closed. Stops after two rounds that close
+                        # nothing, and at --max (10). Never pushes.
+libretto loop <change> --dry-run --max 3
+libretto metrics        # what every change cost — commits, span, boxes closed and
+                        # reopened — derived from git, instrumented nowhere. Read-only.
+libretto metrics <change>
+
 libretto update         # install the newest version and relink; pulls in a checkout
 libretto install --project   # <cwd>/.claude instead of ~/.claude
 libretto install --global    # the default; both flags at once is an error

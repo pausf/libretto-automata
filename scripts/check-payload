@@ -93,6 +93,87 @@ else
   done <<< "$refs"
 fi
 
+printf '\n── namespaced refs the payload does not ship are overridden ──\n'
+# A `plugin:skill` reference names something installed under a namespace this payload
+# has no control over. The vendored skills carry three of them, and a user who installed
+# only this repository has none — so the plan they generate opens by demanding a skill
+# that does not exist, and the flow stalls on its own first line. That shipped for
+# months without anybody noticing, because nothing read the namespace.
+#
+# The vendored copies stay byte-comparable with upstream (THIRD-PARTY.md), so the fix is
+# never an edit to them: the Libretto skill that delegates to one states the override.
+# So this only reads refs inside vendored skills, and requires each to be answered by a
+# skill that is not vendored. A ref inside a Libretto skill IS the answer, never the fault.
+# The namespace is not hardcoded. `superpowers:` was, and four of the seven vendored
+# skills come from two other upstreams — so a `obra:phantom-skill` in writing-plans passed
+# silently. Any `namespace:skill-name` token counts. Measured across all seven vendored
+# directories, that pattern finds exactly the four real refs and no prose: `Trigger: x`
+# and friends have a space after the colon and cannot match.
+vendored_refs() {
+  rg -oNI --no-heading '\b[a-z][a-z0-9-]*:[a-z][a-z0-9-]*' "$1" -g '*.md' 2>/dev/null | sort -u
+}
+
+vendored=$(rg -oN '^\| `skills/[a-z0-9-]+/`' THIRD-PARTY.md | rg -oN 'skills/[a-z0-9-]+' | sort -u)
+if [ -z "$vendored" ]; then
+  fail 'no vendored skills read from THIRD-PARTY.md — the grep is probably wrong'
+fi
+# The answer has to come from a Libretto skill, so every vendored directory is excluded
+# from the search and not merely the one citing the ref. Excluding only the citing
+# directory let one vendored skill answer for another: `superpowers:ghost-skill` added to
+# both writing-plans/ and ponytail/ passed, each counting as the other's override.
+libretto_skills=$(printf '%s\n' skills/*/SKILL.md)
+for v in $vendored; do
+  libretto_skills=$(printf '%s\n' "$libretto_skills" | rg -v "^$v/" || true)
+done
+[ -n "$libretto_skills" ] || fail 'every skill reads as vendored — the THIRD-PARTY.md parse is wrong'
+
+ns_fails=0
+ns_seen=
+for v in $vendored; do
+  while IFS= read -r hit; do
+    [ -z "$hit" ] && continue
+    bare=${hit##*:}
+    if [ -d "skills/$bare" ]; then
+      ok "$hit — payload ships $bare"
+    # shellcheck disable=SC2086  # the file list is newline-separated on purpose
+    elif [ -n "$libretto_skills" ] && rg -qN "$hit" $libretto_skills 2>/dev/null; then
+      ok "$hit — not shipped, answered by a Libretto skill"
+    else
+      fail "vendored ref the payload does not ship and no skill answers: $v cites $hit"
+      ns_fails=1
+    fi
+  done <<< "$(vendored_refs "$v")"
+  ns_seen=1
+done
+[ -n "$ns_seen" ] || ok 'no vendored skills to check'
+# No `fails` bump here: `fail` already counted each one. The herestring loop above runs in
+# this shell, not a subshell, so its increments survive — unlike the stray-files block,
+# which pipes into `while` and does need the manual bump. Copying that line here inflated
+# the summary count without changing the exit code, which is the kind of wrong number a
+# checker should not be the source of.
+
+printf '\n── the wiring a criterion claims exists ──\n'
+# A payload criterion about prompt *behaviour* cannot be machine-checked, and citing this
+# script for one is a citation that reads as proven and can never fail. Review caught three
+# of those: deleting every review-spec line from the flow and every bug branch from
+# write-spec and find-work left this script green.
+#
+# What IS checkable is the wiring — that the phase exists, is reachable from the command
+# that routes to it, and that the branch's decisive words are still in the file that owns
+# them. That is not proof the prompt behaves; it is proof the prompt is still there to.
+# Each row: <file> <pattern> <what the criterion promises>
+check_wiring() {  # <file> <pattern> <description>
+  if rg -qN -- "$2" "$1" 2>/dev/null; then ok "$3"
+  else fail "$3 — $1 no longer contains /$2/"; fi
+}
+check_wiring commands/libretto-flow.md   'Skill\(skill="review-spec"\)' 'the flow routes to review-spec'
+check_wiring commands/libretto-attacca.md 'Skill\(skill="review-spec"\)' 'attacca routes to review-spec too'
+check_wiring commands/libretto-flow.md   'before the stop, not after'   'review-spec runs before the contract stop'
+check_wiring skills/review-spec/SKILL.md 'never rewrites the spec'      'review-spec reports and does not rewrite'
+check_wiring skills/write-spec/SKILL.md  'the work is a bug'       'write-spec carries the bug branch'
+check_wiring skills/write-spec/SKILL.md  'fails right now'              'the bug branch demands a red test first'
+check_wiring skills/find-work/SKILL.md   'whether it is a bug'          'phase 1 names bug-or-not'
+
 printf '\n── skills never point at an executable that is not installed ──\n'
 # `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
 # telling the user to run scripts/foo is broken for everyone who installed it:

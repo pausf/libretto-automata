@@ -163,6 +163,26 @@ wrong becomes a spec that is confidently wrong — but the spec is where that ge
 and phase 2 stops for exactly this. Saying the reading out loud is what makes the wrong
 one visible; waiting for a yes is what makes it expensive.
 
+### Say whether it is a bug, and say it here
+
+**A bug arriving as generic work is how the contract stops growing.** Whatever the source
+— a tracker key, a branch, a sentence — the reading has to name it: *this is a report that
+something already built behaved wrong*, as against something not built yet.
+
+It costs one line and it changes phase 2's whole shape. A bug is a hole in the contract,
+so the criterion that would have caught it comes before the fix, with a `Proof:` that is
+red when it is written. Phase 2 knows how; it cannot apply it to work that never
+announced itself as a failure.
+
+**And record it in `proposal.md` in the reporter's own words** — the observed behaviour,
+the expected behaviour, and what produced it. Paraphrasing costs the reproduction, and
+without a reproduction there is no failing test, so there is no proof and the criterion
+is a sentence somebody hopes is true.
+
+The steps below make the same demand of a tracker issue: read its type, and do not infer
+one from the summary. "Discount wrong on bundles" is a bug or a change of intent, and
+those are opposite pieces of work.
+
 ## Source 2 — a tracker key or URL
 
 Everything below goes through the `jira` CLI (ankitpokhrel/jira-cli). Never reach for an

@@ -21,6 +21,14 @@ proof that it works.
 
 Both ship with this repository; see `THIRD-PARTY.md`.
 
+**One thing `test-driven-development` says that this flow overrides.** Its
+`writing-good-tests.md` cites `superpowers:writing-skills` for the prose-versus-behaviour
+distinction. **The payload does not ship it and neither does anything else on a machine
+that installed only this**, so the citation resolves to nothing. Read the sentence it
+supports and ignore the name: a test asserts behaviour an agent can fail, never prose a
+human reads. The vendored copy is left byte-comparable with upstream on purpose —
+`THIRD-PARTY.md` says where a divergence lives, and it is here.
+
 `skills/evidence/` governs everything here. Read it first.
 
 What follows is only what those do not decide: where the work lands, how much to

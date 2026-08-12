@@ -57,6 +57,39 @@ what "done" means. If they could, write the spec. If they could not, do not.
 This is `ponytail`'s first rung applied to our own artifacts — it ships with this
 flow. It states it as: does this need to exist at all?
 
+### When the work is a bug, the answer to Step 0 is almost always yes
+
+**A bug is a hole in the contract.** Something happened that the spec permitted, or
+failed to forbid, or forbade in words no run could have failed. The code is where it
+surfaced; it is not where it started.
+
+So the criterion comes first, and it is not ceremony:
+
+1. **Name the criterion that would have caught it**, in the capability that owns the
+   broken path. `Governs:` tells you which one — that is what it is for.
+2. **Write its `Proof:` as a test that fails right now**, for the reason the bug exists.
+   Watch it fail. A red test is the only evidence the criterion describes the actual
+   bug rather than a neighbouring one, and it is the evidence you can only collect
+   before the fix.
+3. **Then fix the code**, and the test going green is the fix's proof and the
+   criterion's, at once.
+
+Reversed — fix first, criterion after — the criterion gets written to describe the fix
+that exists rather than the failure that happened. It passes on the first run, so
+nothing ever proved it could fail, and the spec grew a sentence that cannot catch the
+bug it was written for. **That is the whole reason the order is fixed.**
+
+**This is Step 0's exception, not its contradiction.** The size test still applies to
+everything else, and a bug can still be too small for a contract — a typo in a log line
+is a typo. The question is whether anything about *behaviour* was wrong. If it was, some
+capability promised otherwise or promised nothing, and both are worth a sentence.
+
+**Almost always an amendment, almost never a new capability.** A bug lands inside
+something that already exists; a new spec directory for one failure is a ticket spec
+wearing a capability's clothes, and it is dead the day the fix ships. If no existing
+capability owns the path, that is itself the finding — say so, because unowned code is
+how a bug got there unmeasured.
+
 ## Step 1 — One spec, or several?
 
 Ask what the shape is before writing anything.
