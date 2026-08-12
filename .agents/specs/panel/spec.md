@@ -177,12 +177,12 @@ the same flag — and `tab` changes them.
 ```
   ❯ [ ] all
     ──────────────────────────────────────
-    [x] review-lens-design   haiku        shared
-    [x] sdd-apply            sonnet
+    [x] review-lens-design   haiku        (session)   shared
+    [x] sdd-apply            sonnet       low
     ──────────────────────────────────────
-    [ ] review-risk          opus
+    [ ] review-risk          opus         xhigh
     ──────────────────────────────────────
-    [ ] jd-judge-a           (session)
+    [ ] jd-judge-a           (session)    (session)
 ```
 
 - **The rows are grouped by model**, in the catalogue's order — cheapest first, the
@@ -234,10 +234,33 @@ the same flag — and `tab` changes them.
   rows below belong to another — the exact divergence the strip exists to prevent,
   produced by the code meant to honour it. Found in review, after a test that passed
   with the destination index hardcoded.
-- **The name column is measured from the longest name**, not borrowed from the main
-  menu's constant. `pad` never truncates by design, so a column too narrow does not
-  clip — it shifts everything after it, and the `shared` warning lands somewhere
-  different on every row.
+- **Effort is a second value column, and one more key.** Every row shows the level it
+  declares, or the session word when it declares none — the same rendering the model
+  column uses for the same state. `e` opens the effort catalogue over the marked rows,
+  exactly as `m` opens the model one: same cursor, same escape, same nothing-marked
+  notice, same one-act apply, same refusal to write a value every marked row already
+  has. **`m` and `enter` keep meaning the model** — `enter` is the one gesture nobody
+  reads the legend for, and rebinding it to pick up a second key would be a silent
+  change to a reflex.
+- **Rows group by model, and by nothing else.** Effort is a column, not a second
+  grouping: grouping by the pair turns four groups into twenty on a screen whose whole
+  argument is that a reader sees the shape at a glance. Applying a level moves no row.
+- **The row is built against the frame, not summed and hoped.** The name column is
+  measured from the longest name — not borrowed from the main menu's constant — and then
+  measured *against what the frame can spare*. `pad` never truncates by design, so a row
+  wider than the interior does not clip: it shifts everything after it and tears the
+  border off every row on the screen. Two value columns, the `shared` warning and the
+  longest name the payload ships came to 64 columns against a 58-column interior, and
+  that is exactly what happened. So the name yields to the budget, **visibly, with an
+  ellipsis** — a name that says it was cut is a smaller lie than a frame that came
+  apart, and it is the one column whose content the two beside it cannot be inferred
+  from. The value columns and the warning never yield: dropping one to save a name hides
+  state rather than shortening it.
+
+  Found by review, and the gate that should have caught it passed through the tear —
+  its fixture's longest name was 15 runes and its border filter skipped agent rows
+  entirely. That is a finding about the gate as much as about the row, which is why
+  three criteria below name the row's width directly rather than only the frame's.
 - **Applying the model every marked row already has says so and writes nothing.**
   `SetModel` will not rewrite a file that already declares the model, deliberately —
   but from outside, "nothing happened because nothing needed to" and "nothing happened
@@ -279,7 +302,15 @@ strip, the release-notice row, the Bubbletea model and its navigation.
   order, and it is the one that answers the question the screen was opened with.
 - **a header naming each group's model, and collapsing a group.** Every row already
   carries its model in the model column, so a header would print it twice and cost a
-  row per group. Seven rows fit.
+  row per group. Seven rows fit. The same holds for the effort column.
+- **grouping the rows by effort, or by the pair.** Named above: twenty groups is a
+  different screen.
+- **a third screen for the effort.** The catalogue is a mode over the same rows, like the
+  model's. A screen that navigates to another screen to change one line is a screen with
+  a hallway in it.
+- **confirming an effort change.** `y/n` is for the destructive actions. Writing a line
+  into a file the user can read is not one.
+- **`ultracode` as a choice.** Not an effort level, and not something a file can declare.
 - **confirming a model change.** `y/n` is for the destructive actions. Writing a
   frontmatter key is reversible in one keystroke.
 - **dimming disabled rows.** Colour carries selection and nothing else, so a disabled
@@ -526,6 +557,31 @@ The model selector:
   Proof: internal/ui/models_test.go TestMarkIsLegibleWithoutColour
 - the selector frame is flush at every width
   Proof: internal/ui/models_test.go TestSelectorFrameIsFlushAtEveryWidth
+- **no row ever outgrows the frame**, at any width, with the longest name the payload
+  ships and the `shared` warning on it
+  Proof: internal/ui/models_test.go TestTheSelectorRowNeverOutgrowsTheFrameAtAnyWidth
+- a name the frame cannot afford is elided visibly, and both value columns survive
+  Proof: internal/ui/models_test.go TestALongNameIsElidedRatherThanTearingTheFrame
+- nothing is elided when there is room
+  Proof: internal/ui/models_test.go TestNamesAreNotElidedWhenThereIsRoom
+- a row shows its declared effort, and the session word when it declares none
+  Proof: internal/ui/models_test.go TestRowsShowTheirEffort
+- `e` opens the effort catalogue, and escape returns to the rows without quitting
+  Proof: internal/ui/models_test.go TestEOpensTheEffortCatalogueAndEscapeReturns
+- **`m` and `enter` still open the model catalogue**
+  Proof: internal/ui/models_test.go TestEnterStillOpensTheModelCatalogue
+- pressing `e` with nothing marked says so and opens nothing
+  Proof: internal/ui/models_test.go TestChoosingEffortWithNothingMarkedSaysSo
+- a chosen level reaches every marked row and no unmarked one, and never the model apply
+  Proof: internal/ui/models_test.go TestChosenEffortReachesOnlyTheMarkedRows
+- the rows show the new effort without reopening the screen
+  Proof: internal/ui/models_test.go TestRowsShowTheNewEffortAfterApplying
+- **a refused apply leaves every row as it was, keeps the marks, and shows the reason**
+  Proof: internal/ui/models_test.go TestARefusedEffortApplyChangesNoRow
+- applying the level every marked row already has says so and calls nothing
+  Proof: internal/ui/models_test.go TestApplyingTheEffortTheyAlreadyHaveSaysNothingChanged
+- the rows still group by model alone
+  Proof: internal/ui/models_test.go TestRowsStillGroupByModelAlone
 - a failing apply reports the error and leaves the screen usable
   Proof: internal/ui/models_test.go TestFailedApplyIsReportedAndTheScreenSurvives
 - the menu row reports a tally of agents by model, not a description of itself

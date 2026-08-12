@@ -2,16 +2,21 @@
 
 Governs: internal/agentmodel/**
 
-Choose which model each payload agent runs on, so the work that is pattern-matching
-over prose stops being billed at the rate of the work that is not.
+Choose which model each payload agent runs on, and how hard that model thinks, so the
+work that is pattern-matching over prose stops being billed at the rate of the work
+that is not.
 
 The lever is **not fewer agents and not fewer tokens**. It is cheaper tokens for the
 lenses that read prose and answer in prose.
 
+Two keys, and they are independent. `model:` chooses the tier; `effort:` chooses the
+depth inside it. Keeping an agent on Opus while its effort drops is the case the second
+key exists for, so neither is expressible only through the other.
+
 ## Outcomes
 
-An agent's model is declared in its own frontmatter, and the user sets it without
-opening a file.
+An agent's model and effort are declared in its own frontmatter, and the user sets each
+without opening a file.
 
 ```
 ---
@@ -19,6 +24,14 @@ name: review-design
 description: …
 tools: Read, Grep, Glob, Skill
 model: haiku
+---
+```
+
+```
+---
+name: review-security
+model: opus
+effort: xhigh
 ---
 ```
 
@@ -53,19 +66,75 @@ because nobody recomputed it and nothing said when it was written.
 
 Choosing *default* **removes** the key rather than writing a word meaning "no choice".
 An absent key is already the language's way of saying it, and two spellings of one
-state is a difference somebody will eventually treat as meaningful.
+state is a difference somebody will eventually treat as meaningful. The same holds for
+`effort:`, and there is one `Default` constant serving both — a second name for the
+empty string would be the same difference in the code.
+
+### Effort — the depth inside the tier
+
+| Value | Means |
+|---|---|
+| `low` | short, scoped work that is not intelligence-sensitive |
+| `medium` | cost-sensitive work that can trade off some intelligence |
+| `high` | the balance point, and the host's own default |
+| `xhigh` | deeper reasoning at higher spend |
+| `max` | the deepest; prone to overthinking. Measure before adopting |
+| *default* | no `effort:` key at all: the agent runs at whatever the session runs at |
+
+**An absent `effort:` means the session's effort, not `high`.** `high` is the host's
+default for a model; the file's silence is inheritance, and the session may have been
+launched at `low`. The listing prints `(session)` for it — the same word the model
+column prints, because it is the same state.
+
+`ultracode` is **not** a level. It is a Claude Code session mode that sends `xhigh` and
+turns on workflow orchestration, and no frontmatter accepts it.
+
+**Which model has which:**
+
+| Value | Effort |
+|---|---|
+| `opus`, `sonnet` | all five |
+| `haiku` | **none. Haiku supports no effort at all** |
+| *default* | all five, because the session's model is unknowable from here |
+
+- **A level on a model that has none is refused**, and nothing is written. Writing it
+  would leave a line in a prompt file claiming a setting the model has no concept of,
+  which is the confident wrong answer this catalogue's whole posture is against.
+- **Moving an agent onto a model with no effort clears its `effort:` key**, and the
+  callers say so on the row it happened to. Refusing the model change instead would
+  make the cheap model the awkward one to reach, which is backwards for a capability
+  built to make Haiku reachable; leaving the key would be the lie above. The clearing
+  is narrow: a model that does support effort leaves the level alone, because changing
+  the tier is not a request to change the depth.
+- **An unsupported level is never silently downgraded here.** The host itself falls
+  back to the highest supported level at or below the one asked for — `xhigh` runs as
+  `high` on Opus 4.6 — and this tool does not reproduce that. It writes aliases, not
+  versions, and every alias it knows either supports all five or none. Reproducing the
+  fallback would mean pinning versions, which is refused above.
+
+The `Resolved` date covers this table too. It decays for the same reason, and a second
+date is a second thing to forget.
 
 ## Scope boundaries
 
-**In:** reading and writing the `model:` key of the agent files in `agents/`, the
-catalogue of legal values, and refusing everything else.
+**In:** reading and writing the `model:` and `effort:` keys of the agent files in a
+directory, the catalogue of legal values for each, which model supports effort at all,
+and refusing everything else.
 
 **Out, named so it cannot arrive quietly:**
 
+- **Fusing effort into the model catalogue.** `opus/xhigh` as one selectable value
+  would turn four entries into twenty and make "keep the model, drop the effort"
+  inexpressible. Two keys stay two keys.
+- **`ultracode`.** Not a level, and not something a file can declare.
+- **Organisation effort caps.** They exist and are invisible from here. Same standing
+  refusal as the plan tiers: no API call, no token.
 - **A different model per install target.** Settled below under prior decisions: it
   cannot be done without breaking the symlink invariant, and it is not worth that.
-- **Models for skills or commands.** Only agents carry a `model:`; a skill has no such
-  key and inventing one would be a key no host reads.
+- **Models or effort for skills or commands.** Only agents are the subject here. A host
+  does accept `effort:` in skill frontmatter, and it stays out for the same reason the
+  model does: a skill's settings are a different feature and would need this tool to
+  learn what a skill is to it.
 - **Asking Anthropic which models this account may use.** No API call, no token, no
   network. The catalogue is static. It comes back the day the CLI has an authenticated
   way to ask that does not involve this tool touching a credential — which
@@ -81,8 +150,16 @@ catalogue of legal values, and refusing everything else.
   a reason to add a YAML dependency — `AGENTS.md` puts a new dependency behind an ask,
   and this does not clear the bar.
 - **`scripts/check-payload` requires `name:` and `description:` and ignores every other
-  key** (`scripts/check-payload:62-67`). `model:` therefore needs no gate change.
-  Verified, not assumed.
+  key** (`scripts/check-payload:62-67`). `model:` and `effort:` therefore need no gate
+  change. Verified, not assumed.
+- **One reader and one writer serve both keys**, parametrised by key rather than copied.
+  The byte-for-byte promise below is the whole value of that file, and two copies of it
+  is two places for it to break — only one of which anybody would think to re-read.
+  `ReadModel`/`SetModel` and `ReadEffort`/`SetEffort` are four names over one
+  implementation.
+- **`Apply` and `ApplyEffort` share the resolution and the all-or-nothing refusal.** The
+  guarantee is the same guarantee in both, and a second copy is a copy a caller can
+  reach the weaker version of.
 - **The writer must refuse a file with no frontmatter**, rather than inventing one. A
   file that does not open with `---` on line 1 is not an agent file by this repo's own
   check, and writing a block into it would manufacture an agent out of a document.
@@ -135,7 +212,20 @@ catalogue of legal values, and refusing everything else.
   that any reformat breaks. The cost, accepted knowingly: four near-identical bodies
   that can drift. The reasoning is recorded in the review-project spec.
 
-- **The default value is an absent key, not the word `inherit`.** See outcomes.
+- **The default value is an absent key, not the word `inherit`.** See outcomes. It holds
+  for both keys, and there is one constant behind it.
+
+- **Effort on Haiku is refused rather than written and ignored**, and effort on an agent
+  declaring no model is allowed. *(Both assumed under `/libretto-attacca`, 2026-08-12 —
+  nobody was asked.)* The first because an inert key is the confident wrong answer this
+  capability is built against; the second because the session's model is unknowable from
+  here and refusing would be the guess in the other direction. **What changes if either
+  is wrong:** one condition each — the refusal becomes a warning, or `Default` stops
+  counting as effort-capable. No file format moves either way.
+
+- **Moving to a model with no effort clears the level rather than refusing the move.**
+  *(Assumed, same run.)* Reasoning under outcomes. **What changes if this is wrong:** the
+  strictness moves, the format does not.
 
 ## Task breakdown
 
@@ -147,6 +237,11 @@ catalogue of legal values, and refusing everything else.
    validation that refuses everything else.
 4. `internal/agentmodel`: apply one model to a set of agents as one act, validating the
    whole set before writing any of it.
+5. `internal/agentmodel`: the same four for `effort:` — read, write, its catalogue and
+   which model supports it, and apply one level to a set as one act with the pairing
+   check inside that validation.
+6. `internal/agentmodel`: `Agent` carries both keys, and applying a model clears an
+   effort the new model cannot run.
 
 ## Verification criteria
 
@@ -203,3 +298,52 @@ Applying to a set:
 - **a bad name in the set means nothing is written at all** — not even the agents that
   came before it
   Proof: internal/agentmodel/apply_test.go TestApplyWritesNothingWhenAnyAgentIsUnwritable
+
+Effort, reading:
+
+- a declared effort is read back
+  Proof: internal/agentmodel/effort_test.go TestReadEffortReturnsTheDeclaredEffort
+- a file with no `effort:` reads as default, not as an error
+  Proof: internal/agentmodel/effort_test.go TestReadEffortReportsDefaultWhenTheKeyIsAbsent
+- an `effort:` in the body rather than the frontmatter is not read as the effort
+  Proof: internal/agentmodel/effort_test.go TestReadEffortIgnoresTheBody
+- listing reports each agent's effort beside its model
+  Proof: internal/agentmodel/effort_test.go TestAgentsReportsEachCurrentEffort
+
+Effort, writing, and the byte-for-byte promise:
+
+- inserting the key leaves every other line identical, `model:` included
+  Proof: internal/agentmodel/effort_test.go TestSetEffortInsertsWithoutDisturbingTheFile
+- replacing an existing level changes that line and no other
+  Proof: internal/agentmodel/effort_test.go TestSetEffortReplacesInPlace
+- choosing default removes the key rather than writing a word
+  Proof: internal/agentmodel/effort_test.go TestSetEffortDefaultRemovesTheKey
+- setting the level an agent already has rewrites nothing
+  Proof: internal/agentmodel/effort_test.go TestSetEffortIsIdempotent
+- **the model survives an effort write and the effort survives a model write** — two
+  independent keys, proven independent
+  Proof: internal/agentmodel/effort_test.go TestTheTwoKeysDoNotDisturbEachOther
+
+The effort catalogue:
+
+- the five levels are listed, weakest first, and `ultracode` is not among them
+  Proof: internal/agentmodel/effort_test.go TestEffortCatalogueListsTheFiveLevels
+- an unknown level is refused
+  Proof: internal/agentmodel/effort_test.go TestUnknownEffortIsRefused
+- **`haiku` supports no effort; `opus`, `sonnet` and the session default support all five**
+  Proof: internal/agentmodel/effort_test.go TestWhichModelsSupportEffort
+
+Applying a level to a set:
+
+- one level reaches every agent in the set
+  Proof: internal/agentmodel/effort_test.go TestApplyEffortReachesEveryAgentInTheSet
+- **an agent on Haiku means nothing is written at all** — not even the agents before it
+  Proof: internal/agentmodel/effort_test.go TestApplyEffortWritesNothingWhenAnyAgentCannotRunIt
+- an agent with no declared model accepts a level
+  Proof: internal/agentmodel/effort_test.go TestApplyEffortAllowsAnAgentOnTheSessionModel
+- an unknown level is refused before any file is opened
+  Proof: internal/agentmodel/effort_test.go TestApplyEffortRefusesAnUnknownLevel
+- **moving an agent to Haiku clears a declared effort rather than leaving it dead**
+  Proof: internal/agentmodel/effort_test.go TestApplyModelClearsEffortWhenTheModelSupportsNone
+- **and the clearing is narrow: a model that does support effort leaves the level alone**
+  Proof: internal/agentmodel/effort_test.go TestApplyModelKeepsEffortWhenTheModelSupportsIt

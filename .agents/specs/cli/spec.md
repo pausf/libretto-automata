@@ -19,8 +19,9 @@ plain command.
 | `prune` | show links whose source is gone; `--yes` removes them |
 | `uninstall` | show what this repo installed here; `--yes` removes it |
 | `preview` | print the panel once, no TUI |
-| `models` | list every agent with the model it runs on, read-only |
+| `models` | list every agent with the model it runs on and the effort it runs at, read-only |
 | `models set <model> <agent>…` | write that model into each named agent; `--all` for every one |
+| `models effort <level> <agent>…` | write that effort level into each named agent; `--all` for every one |
 | `version`, `help` | say so |
 
 ### Finding the payload
@@ -206,6 +207,30 @@ A command acts on exactly one scope. Nothing iterates destinations.
 **`models` acts on the agents directory of the selected target** — `~/.claude/agents`
 under `--global`, `<cwd>/.claude/agents` under `--project`. Every `*.md` there is
 listed, whether libretto created it or not.
+
+**The model and the effort are two verbs, not one verb with a flag.** `models set` writes
+the tier; `models effort` writes the depth. `set opus --effort xhigh` was the alternative
+and it forces the model to be restated to change the effort, which is a write nobody
+asked for — the keys are independent and the surface says so. Both take agent names or
+`--all`, both refuse when given neither, and that refusal is one implementation rather
+than two: it is the thing standing between a forgotten argument and every agent on the
+machine becoming the same thing.
+
+Three things the listing says that it would be dishonest to leave out:
+
+- **`(session)` in both value columns** for an agent declaring neither key. An empty
+  column reads as a bug, and it is one word for one state.
+- **which model has no effort levels at all.** `haiku` carries `— no effort levels` in
+  the same list that offers it. A row sitting silently among three that do read as a
+  fourth that does, and the refusal further down would then arrive as a surprise.
+- **when the effort table was last checked**, under the same `Resolved` date as the model
+  versions. It decays for the same reason — an organisation can cap which levels are
+  available and nothing here can ask — and a trailer that carries the date next to one
+  that does not is a claim about which of the two is current.
+
+**`models set` reports a cleared effort on the row it cleared.** Moving an agent to a
+model with no effort support drops its `effort:` key, and a drop the user cannot see is a
+silent edit to a prompt file.
 
 An agent file in a target is one of two things, and they behave differently:
 
@@ -654,3 +679,25 @@ A missing payload:
   Proof: cmd/libretto/models_test.go TestModelsWithNoAgentsSaysSo
 - piped `models` carries no escape codes
   Proof: cmd/libretto/models_test.go TestModelsOutputHasNoEscapeCodes
+
+`models effort`:
+
+- the listing shows each agent's effort, and `(session)` when it declares none
+  Proof: cmd/libretto/models_test.go TestModelsListsEffortBesideTheModel
+- the trailer names the five levels, says which model has none, and states when it was
+  last checked
+  Proof: cmd/libretto/models_test.go TestModelsListsTheEffortCatalogue
+- `effort` writes the level to the named agents and no others
+  Proof: cmd/libretto/models_test.go TestModelsEffortWritesOnlyTheNamedAgents
+- `effort --all` reaches every agent in the destination
+  Proof: cmd/libretto/models_test.go TestModelsEffortAllReachesEveryAgent
+- **no agents named and no `--all` is refused, and nothing is written**
+  Proof: cmd/libretto/models_test.go TestModelsEffortRefusesWithNothingNamed
+- an unknown level is refused and the refusal names the five
+  Proof: cmd/libretto/models_test.go TestModelsEffortRefusesAnUnknownLevel
+- **an agent on Haiku is refused by name and the whole set is left alone**
+  Proof: cmd/libretto/models_test.go TestModelsEffortRefusesAnAgentThatCannotRunTheLevel
+- `default` removes the key rather than writing a word
+  Proof: cmd/libretto/models_test.go TestModelsEffortDefaultRemovesTheKey
+- **`models set haiku` on an agent declaring an effort reports the clearing**
+  Proof: cmd/libretto/models_test.go TestModelsSetReportsAClearedEffort
