@@ -775,3 +775,54 @@ A missing payload:
   what `libretto-attacca` answers for one branch after a person typed it; nothing here was
   asked, and an omission reads as an oversight to whatever is on the other end.
   Proof: cmd/libretto/loop_test.go TestTheLoopPromptRoutesAndNeverAuthorises
+
+### `metrics` — what the flow cost, derived and never recorded
+
+- **nothing is instrumented.** The obvious build has each phase write a timestamp and the
+  report read them back; that costs a new artifact in every change folder which eight
+  skills have to remember, and a metric collected only when somebody remembers has holes
+  exactly where the interesting runs are. Git already holds the answer: a change folder's
+  first and last commits are the wall clock, the commits between are the iterations, and
+  `plan.md`'s diffs are the churn. It works retroactively on every change ever landed.
+  Proof: cmd/libretto/metrics_test.go TestChangeNamesSeesLandedChangesNotJustOpenOnes
+- **`--full-history` on every query, and it is load-bearing.** Git's default history
+  simplification prunes commits that do not change a path's *final* state, and a landed
+  change's final state is "does not exist" — so the entire history of every change this
+  report exists to measure is simplified away. Measured, not reasoned: without it this
+  repository reported 12 changes instead of 22, two of them with no history at all, and
+  **no `plan.md` was found for any of them**, so every churn column read as "no plan" on
+  changes that plainly had one.
+  Proof: cmd/libretto/metrics_test.go TestChangeNamesSeesLandedChangesNotJustOpenOnes
+- **the churn query excludes deletions, or every number inverts.** A change lands by
+  deleting its folder, and that commit's diff removes every line of `plan.md` — so every
+  box ever closed also appears as a removed `[x]`, and the report reads as 0 closed and 52
+  reopened on a change that had neither. `--diff-filter=AM`. **Both of these were found by
+  running it against real history, not by the fixtures**, which is why the fixtures now
+  refuse a query missing either flag.
+  Proof: cmd/libretto/metrics_test.go TestReopenedBoxesAreCountedSeparatelyFromClosedOnes
+- **a reopened box is counted apart from a closed one.** Closed-then-reopened means a task
+  was called done before it was, which is the one thing in a plan's history worth knowing,
+  and a net count is precisely what hides it.
+  Proof: cmd/libretto/metrics_test.go TestReopenedBoxesAreCountedSeparatelyFromClosedOnes
+- git log is newest-first, and reading it as oldest-first inverts the span into a negative
+  duration that prints as a plausible number
+  Proof: cmd/libretto/metrics_test.go TestMeasureReadsSpanAndCommitsOldestLast
+- **a change with no plan reports a dash, never a zero.** "No plan existed" and "a plan
+  existed and nothing was finished" are different facts, and one of them is an accusation.
+  Proof: cmd/libretto/metrics_test.go TestAChangeWithNoPlanReportsADashNotAZero
+- **an unreadable change prints a row rather than being skipped.** The footer counts names,
+  so a silent skip makes the total disagree with the rows above it — a report claiming
+  twelve while showing ten is worse than one admitting it could not read two.
+  Proof: cmd/libretto/metrics_test.go TestAChangeWithNoPlanReportsADashNotAZero
+- **the report names the two things it cannot measure.** Per-phase duration and
+  `review-work` finding counts both need a phase to write them down: phases 1 to 7 happen
+  in one session and leave one commit, and a finding is repaired before anything lands so
+  only the repair is in the diff. A metrics command silently omitting two of the three
+  things asked of it reads as having measured them and found nothing.
+  Proof: cmd/libretto/metrics_test.go TestTheReportNamesWhatItCannotMeasure
+- a span drops precision it does not have — days, not minutes, on a multi-day change
+  Proof: cmd/libretto/metrics_test.go TestHumanSpanDropsPrecisionItDoesNotHave
+- one change may be named; an unknown one and an unknown flag are both refused
+  Proof: cmd/libretto/metrics_test.go TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne
+- it reads the project's git history, so it is not gated on the payload
+  Proof: cmd/libretto/metrics_test.go TestMetricsIsNotGatedOnThePayload

@@ -123,7 +123,7 @@ func needsPayload(args []string) bool {
 		return true // the panel shows the tree's state
 	}
 	switch args[0] {
-	case "models", "update", "loop":
+	case "models", "update", "loop", "metrics":
 		// `update` is what fixes a missing payload on an installed copy, so it cannot be
 		// gated on having one. In a checkout the payload is the tree and is always there.
 		//
