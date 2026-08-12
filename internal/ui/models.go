@@ -319,13 +319,13 @@ func (m Model) MarkedAgents() []string {
 // openSelector loads the rows and shows the second screen.
 func (m Model) openSelector() Model {
 	if m.listAgents == nil || m.applyModel == nil {
-		m.notice = "models is not wired up yet"
+		m = m.refuse("models is not wired up yet")
 		return m
 	}
 
 	rows, err := m.listAgents(m.activeScope())
 	if err != nil {
-		m.notice = "cannot read the agents: " + err.Error()
+		m = m.refuse("cannot read the agents: " + err.Error())
 		return m
 	}
 
@@ -337,7 +337,7 @@ func (m Model) openSelector() Model {
 	m.panel.InSelector, m.panel.ChoosingModel, m.panel.ChoosingEffort = true, false, false
 	m.panel.AgentCursor, m.panel.ModelCursor, m.panel.EffortCursor = 0, 0, 0
 	m.panel.AgentTop = 0
-	m.notice = "space mark · a all · m model · e effort · esc back"
+	m = m.say("space mark · a all · m model · e effort · esc back")
 	return m
 }
 
@@ -389,7 +389,7 @@ func (m Model) updateSelector(k string) (Model, bool) {
 	case "esc", "q":
 		m.panel.InSelector = false
 		m.panel.Agents = nil
-		m.notice = ""
+		m = m.say("")
 		return m, true
 
 	// tab changes the destination, so the rows have to change with it. A selector
@@ -409,7 +409,7 @@ func (m Model) updateSelector(k string) (Model, bool) {
 
 		rows, err := m.listAgents(m.activeScope())
 		if err != nil {
-			before.notice = "cannot read the agents: " + err.Error()
+			before = before.refuse("cannot read the agents: " + err.Error())
 			return before, true
 		}
 		m.panel.Agents = sortRowsByModel(rows, m.modelChoices)
@@ -448,7 +448,7 @@ func (m Model) updateSelector(k string) (Model, bool) {
 	// a silent change to the one gesture nobody reads the legend for.
 	case "m", "enter":
 		if len(m.MarkedAgents()) == 0 {
-			m.notice = "nothing marked — space marks a row, a marks all"
+			m = m.refuse("nothing marked — space marks a row, a marks all")
 			return m, true
 		}
 		m.panel.ChoosingModel, m.panel.ModelCursor = true, 0
@@ -456,7 +456,7 @@ func (m Model) updateSelector(k string) (Model, bool) {
 
 	case "e":
 		if len(m.MarkedAgents()) == 0 {
-			m.notice = "nothing marked — space marks a row, a marks all"
+			m = m.refuse("nothing marked — space marks a row, a marks all")
 			return m, true
 		}
 
@@ -466,9 +466,17 @@ func (m Model) updateSelector(k string) (Model, bool) {
 		offer := m.offerableEfforts()
 		if len(offer) == 0 {
 			if without := m.modelsWithoutEffort(); len(without) > 0 {
-				m.notice = strings.Join(without, " and ") + " has no effort levels — unmark those rows, or move them off it with m"
+				// "haiku and sonnet has" is what the first version said, seen in a
+				// rendered panel rather than reasoned about. A refusal is read at the
+				// moment something went wrong, which is the worst moment to be reading
+				// broken English.
+				verb := " has "
+				if len(without) > 1 {
+					verb = " have "
+				}
+				m = m.refuse(strings.Join(without, " and ") + verb + "no effort levels — unmark those rows, or change the model with m")
 			} else {
-				m.notice = "no effort level applies to every marked row"
+				m = m.refuse("no effort level applies to every marked row")
 			}
 			return m, true
 		}
@@ -516,12 +524,12 @@ func (m Model) applyChosenModel() Model {
 		}
 	}
 	if already == len(names) {
-		m.notice = strconv.Itoa(already) + " agent(s) already on " + describeModel(model) + " — nothing to change"
+		m = m.say(strconv.Itoa(already) + " agent(s) already on " + describeModel(model) + " — nothing to change")
 		return m
 	}
 
 	if err := m.applyModel(m.activeScope(), names, model); err != nil {
-		m.notice = "could not apply: " + err.Error()
+		m = m.refuse("could not apply: " + err.Error())
 		return m
 	}
 
@@ -542,7 +550,7 @@ func (m Model) applyChosenModel() Model {
 		m.panel.Agents = sortRowsByModel(rows, m.modelChoices)
 	}
 
-	m.notice = strconv.Itoa(len(names)) + " agent(s) → " + describeModel(model)
+	m = m.say(strconv.Itoa(len(names)) + " agent(s) → " + describeModel(model))
 	if m.refresh != nil {
 		if menu, targets, err := m.refresh(m.activeScope()); err == nil {
 			m.panel.Menu, m.panel.Targets = menu, targets
@@ -570,7 +578,7 @@ func (m Model) applyChosenEffort() Model {
 		}
 	}
 	if already == len(names) {
-		m.notice = strconv.Itoa(already) + " agent(s) already at " + describeModel(effort) + " — nothing to change"
+		m = m.say(strconv.Itoa(already) + " agent(s) already at " + describeModel(effort) + " — nothing to change")
 		return m
 	}
 
@@ -579,7 +587,7 @@ func (m Model) applyChosenEffort() Model {
 	// screen has to keep every mark so the user can unmark that one row rather than
 	// start again.
 	if err := m.applyEffort(m.activeScope(), names, effort); err != nil {
-		m.notice = "could not apply: " + err.Error()
+		m = m.refuse("could not apply: " + err.Error())
 		return m
 	}
 
@@ -596,7 +604,7 @@ func (m Model) applyChosenEffort() Model {
 		m.panel.Agents = sortRowsByModel(rows, m.modelChoices)
 	}
 
-	m.notice = strconv.Itoa(len(names)) + " agent(s) → effort " + describeModel(effort)
+	m = m.say(strconv.Itoa(len(names)) + " agent(s) → effort " + describeModel(effort))
 	if m.refresh != nil {
 		if menu, targets, err := m.refresh(m.activeScope()); err == nil {
 			m.panel.Menu, m.panel.Targets = menu, targets

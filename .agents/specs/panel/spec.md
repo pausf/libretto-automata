@@ -319,6 +319,29 @@ the same flag — and `tab` changes them.
   because it is broken" are the same picture. Twice in one session the first was read
   as the second.
 - An empty or absent agents directory shows a plain line saying so, not an empty box.
+- **A refusal is red and boxed; an outcome is not.** The notice line carries both — what
+  the panel did and what it declined to do — and the two do not look alike. A refusal is
+  the answer to *why did nothing happen?*, and as one grey line under a bordered panel it
+  read as decoration. It gets the error colour and its own box, exactly as wide as the
+  frame above it, borrowing the frame's glyphs so the existing flush tests measure it.
+
+  **Most notices are outcomes and stay the muted line** — `install · done`, `acting on
+  project`, `3 agent(s) → effort xhigh`, the selector's key legend. Painting those red
+  would make a successful apply read as a failure, which is worse than the grey it
+  replaced. The distinction is set through one pair of setters rather than a field anyone
+  may assign, because the message and its kind going out of step is silent and
+  bad-shaped: a stale refusal paints the next success red, a stale outcome draws the next
+  refusal as decoration again.
+
+  **Gold still means attention and only red means refused.** The release notice is gold
+  because being one release behind is news and not a fault; that reasoning is what makes
+  the second colour legible rather than a second alarm.
+
+  The text wraps rather than eliding. A refusal names the way out — *unmark those rows, or
+  change the model with m* — and the way out is the half an ellipsis eats. It also agrees
+  in number: *haiku and sonnet **has** no effort levels* is what the first version
+  rendered, and a refusal is read at the moment something went wrong, which is the worst
+  moment to be reading broken English.
 - **The menu row reports rather than describing itself** — `2 on haiku · 3 on session`,
   next to `status`. Every other row carries live state, and the tally is the question
   the screen was opened to answer. The session default sorts last: it is not a price,
@@ -666,6 +689,19 @@ The window:
   Proof: internal/ui/models_test.go TestAnUnknownHeightShowsEveryRow
 - **the rows give way to an open catalogue, not the frame**
   Proof: internal/ui/models_test.go TestTheWindowShrinksWhileACatalogueIsOpen
+
+Refusals look different from outcomes:
+
+- **a refusal is drawn in the error colour, inside its own box**
+  Proof: internal/ui/panel_test.go TestARefusalIsRedAndBoxed
+- **an outcome notice is neither red nor boxed**
+  Proof: internal/ui/panel_test.go TestAnOutcomeNoticeIsNeitherRedNorBoxed
+- the box is exactly the frame's width, at every width and for a version of any length
+  Proof: internal/ui/panel_test.go TestTheRefusalBoxMatchesTheFrameWidth
+- a long refusal wraps rather than being cut, and the way out survives
+  Proof: internal/ui/panel_test.go TestALongRefusalWrapsRatherThanBeingCut
+- the refusal agrees in number with the models it names
+  Proof: internal/ui/models_test.go TestTheRefusalAgreesInNumber
 - a failing apply reports the error and leaves the screen usable
   Proof: internal/ui/models_test.go TestFailedApplyIsReportedAndTheScreenSurvives
 - the menu row reports a tally of agents by model, not a description of itself

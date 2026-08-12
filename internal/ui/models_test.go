@@ -1117,6 +1117,12 @@ func TestAMixedMarkedSetRefusesRatherThanApplyingToTheSubset(t *testing.T) {
 	if !strings.Contains(m.Notice(), "unmark") {
 		t.Errorf("notice = %q, want it to say how to proceed", m.Notice())
 	}
+	// One model, so the singular. "haiku and sonnet has no effort levels" is what the
+	// first version rendered, and a refusal is read at the moment something went wrong —
+	// the worst moment to be reading broken English.
+	if !strings.Contains(m.Notice(), "haiku has") {
+		t.Errorf("notice = %q, want the singular verb for one model", m.Notice())
+	}
 }
 
 // Unmarking the row that cannot take a level opens the menu. The refusal is a property
@@ -1402,5 +1408,21 @@ func TestTheWindowShrinksWhileACatalogueIsOpen(t *testing.T) {
 	if after := len(m.VisibleAgentsForTest()); after >= len(m.AgentRows()) {
 		t.Errorf("the window showed %d of %d rows with the catalogue open — it did not shrink",
 			after, len(m.AgentRows()))
+	}
+}
+
+// Two models with no levels take the plural. Seen in a rendered panel, not reasoned
+// about: the first version said "haiku and sonnet has no effort levels".
+func TestTheRefusalAgreesInNumber(t *testing.T) {
+	m, _ := selectorModel(t, []AgentRow{
+		{Name: "one", Model: "haiku"},
+		{Name: "two", Model: "ancient"},
+	})
+	m = openSelector(t, m)
+	m = key(m, "a")
+	m = key(m, "e")
+
+	if got := m.Notice(); !strings.Contains(got, "have no effort levels") {
+		t.Errorf("notice = %q, want the plural verb for two models", got)
 	}
 }

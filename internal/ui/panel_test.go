@@ -963,3 +963,120 @@ func TestReportLinesKeepTheirHead(t *testing.T) {
 		t.Errorf("a line inside the budget was altered: %q", elideRight(short, 40))
 	}
 }
+
+// paintedWith reports whether rendered output uses a hex colour.
+//
+// The escape sequence is derived from the theme rather than written out, because the
+// encoding is lipgloss's and the colour profile's business — a test hardcoding
+// `38;2;255;136;120` would pass or fail on the profile rather than on the palette.
+func paintedWith(hex, out string) bool {
+	probe := Fg(hex).Render("x")
+	seq, _, ok := strings.Cut(probe, "x")
+	if !ok || seq == "" {
+		return false
+	}
+	return strings.Contains(out, seq)
+}
+
+// A refusal is the answer to "why did nothing happen?", and as one grey line under a
+// bordered panel it read as decoration. It gets the error colour and its own box.
+func TestARefusalIsRedAndBoxed(t *testing.T) {
+	forceTrueColor(t)
+	theme := darkTheme()
+
+	out := theme.Render(Panel{
+		Version: "v0",
+		Width:   90,
+		Notice:  "nothing marked — space marks a row, a marks all",
+		Refused: true,
+	})
+
+	if !paintedWith(theme.Error, out) {
+		t.Error("the refusal is not drawn in the error colour")
+	}
+	plain := strip(out)
+	// The box, below the footer. Its own border rows, not the frame's.
+	if !strings.Contains(plain, "nothing marked") {
+		t.Fatalf("the message is missing:\n%s", plain)
+	}
+	var boxed bool
+	lines := strings.Split(plain, "\n")
+	for i, line := range lines {
+		if strings.Contains(line, "nothing marked") {
+			// A box means a border above and below the text, and a side beside it.
+			if i > 0 && strings.Contains(lines[i-1], "╭") && strings.Contains(line, "│") {
+				boxed = true
+			}
+		}
+	}
+	if !boxed {
+		t.Errorf("the refusal is not in a box:\n%s", plain)
+	}
+}
+
+// Most notices are outcomes. Painting `install · done` red would make a success read as
+// a failure, which is worse than the grey it replaced.
+func TestAnOutcomeNoticeIsNeitherRedNorBoxed(t *testing.T) {
+	forceTrueColor(t)
+	theme := darkTheme()
+
+	out := theme.Render(Panel{Version: "v0", Width: 90, Notice: "install · done"})
+
+	if paintedWith(theme.Error, out) {
+		t.Error("an outcome notice was drawn in the error colour")
+	}
+	for _, line := range strings.Split(strip(out), "\n") {
+		if strings.Contains(line, "install · done") && strings.Contains(line, "│") {
+			t.Errorf("an outcome notice was boxed: %q", line)
+		}
+	}
+}
+
+// A box one column off, under a box that is flush at every width, reads as the frame
+// having broken rather than as a second box. The long refusal is the one that matters:
+// it is 74 characters and has to wrap rather than widen.
+func TestTheRefusalBoxMatchesTheFrameWidth(t *testing.T) {
+	forceTrueColor(t)
+
+	msg := "haiku has no effort levels — unmark those rows, or move them off it with m"
+	for _, term := range []int{MinPanelWidth, 62, 80, 100, 140} {
+		out := strip(darkTheme().Render(Panel{
+			Version: "v0.10.0-17-g96c04e3-dirty",
+			Width:   term,
+			Notice:  msg,
+			Refused: true,
+		}))
+		want := ContentWidth(term) + 2
+		for i, line := range strings.Split(out, "\n") {
+			plain := strings.TrimSpace(line)
+			if plain == "" || !strings.ContainsAny(string([]rune(plain)[0]), "╭│├╰") {
+				continue
+			}
+			if got := lipgloss.Width(plain); got != want {
+				t.Errorf("term %d, row %d: %d columns, want %d: %q", term, i, got, want, plain)
+			}
+		}
+	}
+}
+
+// The way out is the half an ellipsis would eat. `unmark those rows` is the actionable
+// clause and it sits at the end of the longest message.
+func TestALongRefusalWrapsRatherThanBeingCut(t *testing.T) {
+	forceTrueColor(t)
+
+	out := strip(darkTheme().Render(Panel{
+		Version: "v0",
+		Width:   MinPanelWidth,
+		Notice:  "haiku has no effort levels — unmark those rows, or move them off it with m",
+		Refused: true,
+	}))
+
+	if strings.Contains(out, "…") {
+		t.Errorf("the refusal was elided:\n%s", out)
+	}
+	for _, want := range []string{"haiku has no effort levels", "unmark those rows", "with m"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("%q did not survive the wrap:\n%s", want, out)
+		}
+	}
+}
