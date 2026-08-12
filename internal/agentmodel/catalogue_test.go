@@ -13,7 +13,11 @@ func TestCatalogueListsTheSubscriptionModels(t *testing.T) {
 	for _, m := range got {
 		names = append(names, m.Name)
 	}
-	want := []string{Default, "haiku", "sonnet", "opus"}
+	// Order is asserted, not just membership: both the CLI listing and the panel
+	// selector render this slice, so a row inserted in the middle moves what sits under
+	// the cursor of a feature built to reduce the bill. `fable` costs more per token
+	// than `opus`, so cheapest-first puts it at the far end.
+	want := []string{Default, "haiku", "sonnet", "opus", "fable"}
 
 	if len(names) != len(want) {
 		t.Fatalf("Catalogue() = %v, want %v", names, want)

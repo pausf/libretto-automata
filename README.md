@@ -218,6 +218,7 @@ $ CLAUDE_CODE_USE_BEDROCK=1 libretto models
   ...
   sonnet     Sonnet 4.5   the everyday working model  — no effort levels
   opus       Opus 5       most capable; Max plans, metered on Pro
+  fable      Fable 5      the deepest reasoning, and the priciest tokens here
   resolved for Amazon Bedrock
 ```
 
@@ -242,6 +243,7 @@ models available (aliases; versions as of 2026-08):
   haiku      Haiku 4.5    cheapest; fine for pattern-matching over prose  — no effort levels
   sonnet     Sonnet 5     the everyday working model
   opus       Opus 5       most capable; Max plans, metered on Pro
+  fable      Fable 5      the deepest reasoning, and the priciest tokens here
   resolved for the Anthropic API
 
 effort available (weakest first; as of 2026-08; `models effort <level> <agent>…`):

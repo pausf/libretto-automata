@@ -60,6 +60,11 @@ var catalogue = []Model{
 	{"haiku", "Haiku 4.5", "cheapest; fine for pattern-matching over prose"},
 	{"sonnet", "Sonnet 5", "the everyday working model"},
 	{"opus", "Opus 5", "most capable; Max plans, metered on Pro"},
+	// Last, because its tokens cost more than Opus's and the cheap end of this list is
+	// what sits under the cursor. Its label names no plan: which ones include Fable is not
+	// something this binary can find out without the credential it refuses to touch, and
+	// `opus` names a tier only because that one is documented.
+	{"fable", "Fable 5", "the deepest reasoning, and the priciest tokens here"},
 }
 
 // Catalogue returns the legal models, cheapest first.
