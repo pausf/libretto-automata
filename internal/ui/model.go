@@ -32,9 +32,11 @@ type Model struct {
 
 	// The model selector's wiring. Callbacks rather than a dependency, so this
 	// package still cannot read a file — see models.go.
-	modelChoices []ModelChoice
-	listAgents   ListAgents
-	applyModel   ApplyModel
+	modelChoices  []ModelChoice
+	effortChoices []EffortChoice
+	listAgents    ListAgents
+	applyModel    ApplyModel
+	applyEffort   ApplyEffort
 
 	// releaseCheck asks whether a newer release exists. Nil is the ordinary case.
 	releaseCheck ReleaseCheck

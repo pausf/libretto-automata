@@ -233,6 +233,7 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 	// another, and the write would land where the user could not see it.
 	model = model.WithAgents(
 		modelChoices(),
+		effortChoices(),
 		func(dest int) ([]ui.AgentRow, error) {
 			tg, err := destination(dest, projectDir)
 			if err != nil {
@@ -246,6 +247,13 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 				return err
 			}
 			return agentmodel.Apply(agentsDir(tg), names, m)
+		},
+		func(dest int, names []string, e string) error {
+			tg, err := destination(dest, projectDir)
+			if err != nil {
+				return err
+			}
+			return agentmodel.ApplyEffort(agentsDir(tg), names, e)
 		},
 	)
 
@@ -455,8 +463,9 @@ func agentRows(root string, tg target.Target) ([]ui.AgentRow, error) {
 	rows := make([]ui.AgentRow, 0, len(agents))
 	for _, a := range agents {
 		rows = append(rows, ui.AgentRow{
-			Name:  a.Name,
-			Model: a.Model,
+			Name:   a.Name,
+			Model:  a.Model,
+			Effort: a.Effort,
 			// Owned means the file is one of ours, reached from more than one
 			// destination — so writing it is not local to this one.
 			Shared: link.Owned(root, a.Path),
@@ -485,6 +494,19 @@ func modelChoices() []ui.ModelChoice {
 			label = m.Version + " · " + m.Label
 		}
 		out = append(out, ui.ModelChoice{Name: m.Name, Label: label})
+	}
+	return out
+}
+
+// effortChoices adapts the effort catalogue to the panel's choice type.
+//
+// The session default leads, as it does for the models, and for the same reason: it is
+// not a level but the absence of one, and a list of five levels with no way back would
+// make removing the key the one thing the screen cannot do.
+func effortChoices() []ui.EffortChoice {
+	out := []ui.EffortChoice{{Name: "", Label: "whatever the session runs at"}}
+	for _, e := range agentmodel.Efforts() {
+		out = append(out, ui.EffortChoice{Name: e.Name, Label: e.Label})
 	}
 	return out
 }

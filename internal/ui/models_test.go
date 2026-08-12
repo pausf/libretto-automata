@@ -20,6 +20,13 @@ type applied struct {
 	calls int
 	err   error
 
+	// The effort half, recorded separately. One set of fields for both keys would
+	// make "the model apply was called" and "the effort apply was called"
+	// indistinguishable, which is the only thing several of these tests assert.
+	effort      string
+	effortCalls int
+	effortErr   error
+
 	// listedFor records the destination index each listing was asked for. Without
 	// it the tab tests pass with the index hardcoded, which is how they shipped.
 	listedFor []int
@@ -49,6 +56,7 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 		}).
 		WithAgents(
 			catalogue(),
+			effortCatalogue(),
 			func(dest int) ([]AgentRow, error) {
 				rec.listedFor = append(rec.listedFor, dest)
 				out := make([]AgentRow, len(agents))
@@ -70,6 +78,21 @@ func selectorModel(t *testing.T, rows []AgentRow) (Model, *applied) {
 				}
 				return nil
 			},
+			func(_ int, names []string, effort string) error {
+				rec.effortCalls++
+				rec.names, rec.effort = names, effort
+				if rec.effortErr != nil {
+					return rec.effortErr
+				}
+				for i := range agents {
+					for _, n := range names {
+						if agents[i].Name == n {
+							agents[i].Effort = effort
+						}
+					}
+				}
+				return nil
+			},
 		)
 	return m, rec
 }
@@ -83,6 +106,17 @@ func catalogue() []ModelChoice {
 		{Name: "haiku", Label: "cheapest"},
 		{Name: "sonnet", Label: "everyday"},
 		{Name: "opus", Label: "most capable"},
+	}
+}
+
+func effortCatalogue() []EffortChoice {
+	return []EffortChoice{
+		{Name: "", Label: "whatever the session runs at"},
+		{Name: "low", Label: "short, scoped work"},
+		{Name: "medium", Label: "cost-sensitive"},
+		{Name: "high", Label: "the balance point"},
+		{Name: "xhigh", Label: "deeper reasoning"},
+		{Name: "max", Label: "the deepest"},
 	}
 }
 
@@ -613,11 +647,12 @@ func TestTabReloadsTheSelectorForTheNewDestination(t *testing.T) {
 	}
 
 	other := []AgentRow{{Name: "sdd-apply", Model: "sonnet"}}
-	m = m.WithAgents(m.ModelChoices(),
+	m = m.WithAgents(m.ModelChoices(), m.EffortChoices(),
 		func(dest int) ([]AgentRow, error) {
 			rec.listedFor = append(rec.listedFor, dest)
 			return other, nil
 		},
+		func(int, []string, string) error { return nil },
 		func(int, []string, string) error { return nil })
 
 	m = key(m, "tab")
@@ -645,8 +680,9 @@ func TestAFailedReloadKeepsTheRowsAndSaysSo(t *testing.T) {
 	m, _ := selectorModel(t, threeAgents())
 	m = openSelector(t, m)
 
-	m = m.WithAgents(m.ModelChoices(),
+	m = m.WithAgents(m.ModelChoices(), m.EffortChoices(),
 		func(int) ([]AgentRow, error) { return nil, errors.New("unreadable") },
+		func(int, []string, string) error { return nil },
 		func(int, []string, string) error { return nil })
 	m = key(m, "tab")
 
@@ -732,5 +768,192 @@ func TestApplyingTheModelTheyAlreadyHaveSaysNothingChanged(t *testing.T) {
 	}
 	if !strings.Contains(m.Notice(), "nothing to change") {
 		t.Errorf("notice = %q, want it to say nothing changed", m.Notice())
+	}
+}
+
+func chooseEffort(t *testing.T, m Model, name string) Model {
+	t.Helper()
+
+	for i := 0; i <= len(m.EffortChoices()); i++ {
+		if m.ChosenEffortName() == name {
+			return key(m, "enter")
+		}
+		m = key(m, "down")
+	}
+	t.Fatalf("effort %q never came under the catalogue cursor", name)
+	return m
+}
+
+// markAllAndOpenEffort is the shortest route to the effort catalogue over every row.
+func markAllAndOpenEffort(t *testing.T, m Model) Model {
+	t.Helper()
+	m = key(m, "a")
+	m = key(m, "e")
+	if !m.ChoosingEffort() {
+		t.Fatal("e did not open the effort catalogue")
+	}
+	return m
+}
+
+func TestRowsShowTheirEffort(t *testing.T) {
+	forceTrueColor(t)
+
+	rows := []AgentRow{
+		{Name: "deep", Model: "opus", Effort: "xhigh"},
+		{Name: "inherits", Model: "opus"},
+	}
+	out := strip(darkTheme().selector(Panel{
+		Width:        90,
+		Agents:       rows,
+		ModelChoices: catalogue(),
+	}))
+
+	if !strings.Contains(out, "xhigh") {
+		t.Errorf("a declared effort never reaches the screen:\n%s", out)
+	}
+	// An empty column would read as a bug. The word is the same one the model column
+	// already uses, because it is the same state.
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "inherits") && strings.Count(line, "(session)") != 1 {
+			t.Errorf("a row declaring no effort should say so once:\n%s", line)
+		}
+	}
+}
+
+func TestEOpensTheEffortCatalogueAndEscapeReturns(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = markAllAndOpenEffort(t, m)
+	if m.ChoosingModel() {
+		t.Error("e opened the model catalogue as well")
+	}
+
+	m = key(m, "esc")
+	if m.ChoosingEffort() {
+		t.Error("esc did not close the effort catalogue")
+	}
+	if !m.InSelector() {
+		t.Error("esc left the selector instead of closing the catalogue")
+	}
+}
+
+// enter is the one gesture nobody reads the legend for. Rebinding it to pick up a
+// second key would be a silent change to a reflex.
+func TestEnterStillOpensTheModelCatalogue(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+	m = key(m, "a")
+
+	m = key(m, "enter")
+	if !m.ChoosingModel() {
+		t.Error("enter no longer opens the model catalogue")
+	}
+	if m.ChoosingEffort() {
+		t.Error("enter opened the effort catalogue")
+	}
+}
+
+func TestChoosingEffortWithNothingMarkedSaysSo(t *testing.T) {
+	m, rec := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = key(m, "e")
+
+	if m.ChoosingEffort() {
+		t.Error("e opened the catalogue with nothing marked")
+	}
+	if rec.effortCalls != 0 {
+		t.Errorf("apply called %d times with nothing marked, want none", rec.effortCalls)
+	}
+	if !strings.Contains(m.Notice(), "nothing marked") {
+		t.Errorf("notice = %q, want it to say nothing is marked", m.Notice())
+	}
+}
+
+func TestChosenEffortReachesOnlyTheMarkedRows(t *testing.T) {
+	m, rec := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = key(m, "down") // review-security, the lone opus row
+	m = key(m, " ")
+	m = key(m, "e")
+	if !m.ChoosingEffort() {
+		t.Fatal("e did not open the catalogue")
+	}
+	m = chooseEffort(t, m, "xhigh")
+
+	if rec.effortCalls != 1 {
+		t.Fatalf("apply called %d times, want once", rec.effortCalls)
+	}
+	if rec.effort != "xhigh" {
+		t.Errorf("applied effort = %q, want xhigh", rec.effort)
+	}
+	if len(rec.names) != 1 || rec.names[0] != "review-security" {
+		t.Errorf("applied to %v, want exactly [review-security]", rec.names)
+	}
+	// The model apply must not have been reached. Two keys, two callbacks.
+	if rec.calls != 0 {
+		t.Errorf("the model apply was called %d times by an effort change", rec.calls)
+	}
+}
+
+// A screen that needs a reopen to tell the truth is a screen the user stops believing.
+func TestRowsShowTheNewEffortAfterApplying(t *testing.T) {
+	m, _ := selectorModel(t, threeAgents())
+	m = openSelector(t, m)
+
+	m = markAllAndOpenEffort(t, m)
+	m = chooseEffort(t, m, "low")
+
+	for _, r := range m.AgentRows() {
+		if r.Effort != "low" {
+			t.Errorf("%s still reads effort %q after applying low", r.Name, r.Effort)
+		}
+	}
+	if m.ChoosingEffort() {
+		t.Error("the catalogue stayed open after applying")
+	}
+}
+
+// A marked row on a model with no effort levels sends the whole apply back, and the
+// screen keeps every mark so the user can unmark that one row rather than start again.
+func TestARefusedEffortApplyChangesNoRow(t *testing.T) {
+	m, rec := selectorModel(t, threeAgents())
+	rec.effortErr = errors.New("review-security runs on haiku, which has no effort levels")
+	m = openSelector(t, m)
+
+	m = markAllAndOpenEffort(t, m)
+	m = chooseEffort(t, m, "max")
+
+	for _, r := range m.AgentRows() {
+		if r.Effort != "" {
+			t.Errorf("%s reads effort %q after a refused apply, want untouched", r.Name, r.Effort)
+		}
+	}
+	if len(m.MarkedAgents()) != 3 {
+		t.Errorf("marked = %v after a refusal, want the three still marked", m.MarkedAgents())
+	}
+	if !strings.Contains(m.Notice(), "no effort levels") {
+		t.Errorf("notice = %q, want the refusal it was handed", m.Notice())
+	}
+}
+
+// Rows group by model, cheapest first, and that stays the only grouping. Grouping by
+// the pair turns four groups into twenty on a screen whose argument is that a reader
+// sees the shape at a glance.
+func TestRowsStillGroupByModelAlone(t *testing.T) {
+	rows := sortRowsByModel([]AgentRow{
+		{Name: "b", Model: "opus", Effort: "low"},
+		{Name: "a", Model: "opus", Effort: "max"},
+		{Name: "c", Model: "haiku"},
+	}, catalogue())
+
+	want := []string{"c", "a", "b"}
+	for i, name := range want {
+		if rows[i].Name != name {
+			t.Fatalf("row %d = %q, want %q — grouped by model, then by name, and by nothing else",
+				i, rows[i].Name, name)
+		}
 	}
 }

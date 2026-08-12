@@ -68,31 +68,31 @@ and both of them can be written at once after that.
 
 ## 3 · The panel — after the package, independent of the CLI
 
-- [ ] **3.1 `AgentRow` carries `Effort`, and the row renders it**, session word included,
+- [x] **3.1 `AgentRow` carries `Effort`, and the row renders it**, session word included,
       inside the existing width budget.
       Spec: panel · task 1 · Closes: TestRowsShowTheirEffort,
       TestRowsStillGroupByModelAlone.
       Waits on: nothing in the package — `internal/ui` imports no `agentmodel`. Rows
       arrive as data. **Can start immediately, in parallel with 1.x.**
 
-- [ ] **3.2 `EffortChoice` and `ApplyEffort` on the `WithAgents` seam.**
+- [x] **3.2 `EffortChoice` and `ApplyEffort` on the `WithAgents` seam.**
       Spec: panel · task 2 · Closes: covered by 3.3's and 3.4's criteria; this task has no
       criterion of its own and exists because the seam is the thing that must not grow a
       second shape.
       Waits on: 3.1.
 
-- [ ] **3.3 `e` opens the chooser**; escape, cursor and the nothing-marked notice mirror
+- [x] **3.3 `e` opens the chooser**; escape, cursor and the nothing-marked notice mirror
       `m`, and `m`/`enter` keep meaning the model.
       Spec: panel · task 3 · Closes: TestEOpensTheEffortCatalogueAndEscapeReturns,
       TestEnterStillOpensTheModelCatalogue, TestChoosingEffortWithNothingMarkedSaysSo.
       Waits on: 3.2.
 
-- [ ] **3.4 The apply path** refreshes the rows and reports the refusal it is handed.
+- [x] **3.4 The apply path** refreshes the rows and reports the refusal it is handed.
       Spec: panel · task 4 · Closes: TestChosenEffortReachesOnlyTheMarkedRows,
       TestRowsShowTheNewEffortAfterApplying, TestARefusedEffortApplyChangesNoRow.
       Waits on: 3.3.
 
-- [ ] **3.5 Wire the panel's seam to the real package** in `cmd/libretto`, so the `e` key
+- [x] **3.5 Wire the panel's seam to the real package** in `cmd/libretto`, so the `e` key
       reaches `ApplyEffort` rather than a test double.
       Spec: panel · constraints — the panel reports the choice, `cli` runs it.
       Closes: no unit criterion; proven by the panel run test that already covers the

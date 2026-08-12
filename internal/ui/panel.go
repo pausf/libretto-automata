@@ -92,6 +92,13 @@ type Panel struct {
 	ModelChoices  []ModelChoice
 	ModelCursor   int
 
+	// The effort catalogue, opened by `e` over the same rows. A mode rather than a
+	// third screen: a screen that navigates to another screen to change one line is a
+	// screen with a hallway in it.
+	ChoosingEffort bool
+	EffortChoices  []EffortChoice
+	EffortCursor   int
+
 	// UpdateNotice says a newer release exists, and what to do about it. Empty until the
 	// check answers, and empty forever when it cannot.
 	//
@@ -335,11 +342,15 @@ func (t Theme) footer(p Panel, width int) string {
 		// While a question is open the only keys that matter are its answers.
 		// Listing the others invites pressing one by reflex.
 		hints, tight = "y yes · n no", "y yes · n no"
-	case p.ChoosingModel:
+	case p.choosing():
 		hints, tight = "↑↓ · ⏎ apply · esc back", "⏎ apply · esc"
 	case p.InSelector:
-		hints, tight = "↑↓ · space mark · a all · m model · tab scope · esc back",
-			"space · a all · m model · esc"
+		// `e effort` earns its place in both variants: a key that appears to do
+		// nothing reads as broken, which is the whole reason this legend exists. What
+		// gives way instead is the arrows in the tight form — they are the one hint a
+		// user does not need told.
+		hints, tight = "↑↓ · space mark · a all · m model · e effort · tab scope · esc back",
+			"space · a all · m model · e effort · esc"
 	}
 
 	left := strings.Repeat(" ", footerIndent) + p.Version

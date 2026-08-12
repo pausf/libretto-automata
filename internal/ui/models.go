@@ -33,6 +33,7 @@ func selectorRows(p Panel) int { return len(p.Agents) + 1 }
 type AgentRow struct {
 	Name   string
 	Model  string // empty means the session's model
+	Effort string // empty means the session's effort
 	Marked bool
 
 	// Shared marks a row whose file is one this repository owns, reached from more
@@ -63,23 +64,54 @@ type ModelChoice struct {
 // that followed would land somewhere the user could not see.
 type ListAgents func(destination int) ([]AgentRow, error)
 
+// EffortChoice is one entry of the catalogue the `e` key opens.
+//
+// An alias rather than a second struct: an effort choice is a name and a label, which
+// is exactly what a model choice is. Declaring the same two fields twice would be two
+// things to keep in step for no property gained, and the alias lets both call sites
+// read as what they are.
+type EffortChoice = ModelChoice
+
 // ApplyModel declares one model on a set of agents in one destination.
 type ApplyModel func(destination int, names []string, model string) error
 
+// ApplyEffort declares one effort level on a set of agents in one destination.
+//
+// Separate from ApplyModel because the two keys are independent — an agent staying on
+// Opus while its effort drops is the case the feature exists for, and one callback
+// taking both would make every effort change restate a model.
+type ApplyEffort func(destination int, names []string, effort string) error
+
 // WithAgents wires the selector. Without it the menu row refuses, the same way an
 // unwired action does.
-func (m Model) WithAgents(choices []ModelChoice, list ListAgents, apply ApplyModel) Model {
-	m.modelChoices = choices
+func (m Model) WithAgents(models []ModelChoice, efforts []EffortChoice, list ListAgents, apply ApplyModel, applyEffort ApplyEffort) Model {
+	m.modelChoices = models
+	m.effortChoices = efforts
 	m.listAgents = list
 	m.applyModel = apply
+	m.applyEffort = applyEffort
 	return m
 }
 
 // InSelector reports whether the second screen is up.
 func (m Model) InSelector() bool { return m.panel.InSelector }
 
-// ChoosingModel reports whether the catalogue is open over the selector.
+// ChoosingModel reports whether the model catalogue is open over the selector.
 func (m Model) ChoosingModel() bool { return m.panel.ChoosingModel }
+
+// ChoosingEffort reports whether the effort catalogue is open over the selector.
+func (m Model) ChoosingEffort() bool { return m.panel.ChoosingEffort }
+
+// EffortChoices exposes the effort catalogue for tests.
+func (m Model) EffortChoices() []EffortChoice { return m.effortChoices }
+
+// ChosenEffortName is the effort entry under the cursor.
+func (m Model) ChosenEffortName() string {
+	if len(m.effortChoices) == 0 {
+		return ""
+	}
+	return m.effortChoices[m.panel.EffortCursor].Name
+}
 
 // AgentRows exposes the rows for tests.
 func (m Model) AgentRows() []AgentRow { return m.panel.Agents }
@@ -125,9 +157,10 @@ func (m Model) openSelector() Model {
 
 	m.panel.Agents = sortRowsByModel(rows, m.modelChoices)
 	m.panel.ModelChoices = m.modelChoices
-	m.panel.InSelector, m.panel.ChoosingModel = true, false
-	m.panel.AgentCursor, m.panel.ModelCursor = 0, 0
-	m.notice = "space mark · a all · m model · esc back"
+	m.panel.EffortChoices = m.effortChoices
+	m.panel.InSelector, m.panel.ChoosingModel, m.panel.ChoosingEffort = true, false, false
+	m.panel.AgentCursor, m.panel.ModelCursor, m.panel.EffortCursor = 0, 0, 0
+	m.notice = "space mark · a all · m model · e effort · esc back"
 	return m
 }
 
@@ -150,6 +183,27 @@ func (m Model) updateSelector(k string) (Model, bool) {
 			return m, true
 		case "enter":
 			return m.applyChosenModel(), true
+		}
+		return m, true
+	}
+
+	// The same four keys over the other catalogue. Two blocks rather than one
+	// parametrised by which is open: the cursor, the choices and the apply are three
+	// different fields, and a single block would spend more lines choosing between
+	// them than it saves.
+	if m.panel.ChoosingEffort {
+		switch k {
+		case "esc":
+			m.panel.ChoosingEffort = false
+			return m, true
+		case "up", "k":
+			m.panel.EffortCursor = wrap(m.panel.EffortCursor-1, len(m.effortChoices))
+			return m, true
+		case "down", "j":
+			m.panel.EffortCursor = wrap(m.panel.EffortCursor+1, len(m.effortChoices))
+			return m, true
+		case "enter":
+			return m.applyChosenEffort(), true
 		}
 		return m, true
 	}
@@ -211,12 +265,23 @@ func (m Model) updateSelector(k string) (Model, bool) {
 	case "a":
 		return m.markAll(), true
 
+	// enter stays the model. It is what this screen has always meant by it, and what
+	// the footer has always said; rebinding a reflex to pick up a second key would be
+	// a silent change to the one gesture nobody reads the legend for.
 	case "m", "enter":
 		if len(m.MarkedAgents()) == 0 {
 			m.notice = "nothing marked — space marks a row, a marks all"
 			return m, true
 		}
 		m.panel.ChoosingModel, m.panel.ModelCursor = true, 0
+		return m, true
+
+	case "e":
+		if len(m.MarkedAgents()) == 0 {
+			m.notice = "nothing marked — space marks a row, a marks all"
+			return m, true
+		}
+		m.panel.ChoosingEffort, m.panel.EffortCursor = true, 0
 		return m, true
 	}
 	return m, true
@@ -293,8 +358,62 @@ func (m Model) applyChosenModel() Model {
 	return m
 }
 
-// describeModel renders a model for a human. The empty string is a state, and an
-// empty column would read as a bug.
+// applyChosenEffort sends the marked set and the chosen level to the caller.
+//
+// The model's twin, and deliberately its twin rather than a shared function taking a
+// key: the no-op check reads a different field, the refusal reads differently, and the
+// notice says a different word. What they share is the shape, which is worth keeping
+// visible.
+func (m Model) applyChosenEffort() Model {
+	names := m.MarkedAgents()
+	effort := m.ChosenEffortName()
+
+	m.panel.ChoosingEffort = false
+
+	already := 0
+	for _, a := range m.panel.Agents {
+		if a.Marked && a.Effort == effort {
+			already++
+		}
+	}
+	if already == len(names) {
+		m.notice = strconv.Itoa(already) + " agent(s) already at " + describeModel(effort) + " — nothing to change"
+		return m
+	}
+
+	// A refusal is the interesting path here in a way it is not for the model: a
+	// marked row on a model with no effort levels sends the whole apply back, and the
+	// screen has to keep every mark so the user can unmark that one row rather than
+	// start again.
+	if err := m.applyEffort(m.activeScope(), names, effort); err != nil {
+		m.notice = "could not apply: " + err.Error()
+		return m
+	}
+
+	if rows, err := m.listAgents(m.activeScope()); err == nil {
+		marked := make(map[string]bool, len(names))
+		for _, n := range names {
+			marked[n] = true
+		}
+		for i := range rows {
+			rows[i].Marked = marked[rows[i].Name]
+		}
+		// Still grouped by model. The effort did not move any row between groups, and
+		// re-sorting on a second axis is the twenty-group screen the spec refused.
+		m.panel.Agents = sortRowsByModel(rows, m.modelChoices)
+	}
+
+	m.notice = strconv.Itoa(len(names)) + " agent(s) → effort " + describeModel(effort)
+	if m.refresh != nil {
+		if menu, targets, err := m.refresh(m.activeScope()); err == nil {
+			m.panel.Menu, m.panel.Targets = menu, targets
+		}
+	}
+	return m
+}
+
+// describeModel renders a model or an effort for a human. The empty string is a state
+// for both keys, and an empty column would read as a bug.
 func describeModel(model string) string {
 	if model == "" {
 		return "(session)"
@@ -338,7 +457,7 @@ func (t Theme) selector(p Panel) string {
 		allBox = "[x]"
 	}
 	allColour, allCursor := t.Steel, " "
-	if p.AgentCursor == allRow && !p.ChoosingModel {
+	if p.AgentCursor == allRow && !p.choosing() {
 		allColour, allCursor = t.Gold, "❯"
 	}
 	rows = append(rows,
@@ -352,7 +471,7 @@ func (t Theme) selector(p Panel) string {
 		}
 
 		colour, cursor := t.Steel, " "
-		if i+1 == p.AgentCursor && !p.ChoosingModel {
+		if i+1 == p.AgentCursor && !p.choosing() {
 			colour, cursor = t.Gold, "❯"
 		}
 
@@ -365,26 +484,45 @@ func (t Theme) selector(p Panel) string {
 			shared = "   shared"
 		}
 		line := cursor + " " + box + " " + pad(a.Name, width+2) +
-			pad(describeModel(a.Model), 12) + shared
+			pad(describeModel(a.Model), 12) + pad(describeModel(a.Effort), 10) + shared
 		rows = append(rows, "  "+Fg(colour).Render(line))
 	}
 
 	if p.ChoosingModel {
-		rows = append(rows, "", "  "+Fg(t.Muted).Render("model for "+strconv.Itoa(countMarked(p.Agents))+" marked:"))
-		for i, c := range p.ModelChoices {
-			colour, cursor := t.Steel, " "
-			if i == p.ModelCursor {
-				colour, cursor = t.Gold, "❯"
-			}
-			name := c.Name
-			if name == "" {
-				name = "default"
-			}
-			line := cursor + "     " + pad(name, menuDescCol-menuLabelCol) + c.Label
-			rows = append(rows, "  "+Fg(colour).Render(line))
-		}
+		rows = append(rows, t.catalogue("model for "+strconv.Itoa(countMarked(p.Agents))+" marked:", p.ModelChoices, p.ModelCursor)...)
+	}
+	if p.ChoosingEffort {
+		rows = append(rows, t.catalogue("effort for "+strconv.Itoa(countMarked(p.Agents))+" marked:", p.EffortChoices, p.EffortCursor)...)
 	}
 	return strings.Join(rows, "\n")
+}
+
+// choosing reports whether either catalogue is open over the rows.
+//
+// The row cursor hides while one is, because two gold cursors on one screen is two
+// answers to "where am I". Adding the second catalogue without this would have left
+// the row cursor lit under the effort list — visible only by opening it, which is why
+// it is one predicate rather than a condition repeated at each of the three sites.
+func (p Panel) choosing() bool { return p.ChoosingModel || p.ChoosingEffort }
+
+// catalogue renders one open choice list. Shared by both because they are the same
+// list of the same two fields, and two copies would drift in the indentation nobody
+// notices until the screens sit next to each other.
+func (t Theme) catalogue(title string, choices []ModelChoice, cursorAt int) []string {
+	out := []string{"", "  " + Fg(t.Muted).Render(title)}
+	for i, c := range choices {
+		colour, cursor := t.Steel, " "
+		if i == cursorAt {
+			colour, cursor = t.Gold, "❯"
+		}
+		name := c.Name
+		if name == "" {
+			name = "default"
+		}
+		line := cursor + "     " + pad(name, menuDescCol-menuLabelCol) + c.Label
+		out = append(out, "  "+Fg(colour).Render(line))
+	}
+	return out
 }
 
 // modelRank orders models the way the catalogue does: cheapest first, then the
