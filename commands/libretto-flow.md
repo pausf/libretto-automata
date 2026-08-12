@@ -124,6 +124,24 @@ left out; phase 8 commits per task.
 So the gear is: **two stops with a contract, none without, and phase 8's question in
 both.**
 
+### Before the stop, read the contract
+
+```
+Skill(skill="review-spec")
+```
+
+**Only when a spec was written** — the trivial lane has no contract to review, and
+running it there is ceremony on a one-line change.
+
+Every other review in this flow reads code, and all of them run after the code exists.
+This one reads the promise: ambiguity that forks the work, criteria no run could fail,
+`Governs:` boundaries that describe nothing, a criterion another capability contradicts.
+It reports; phase 3's author decides.
+
+**It runs before the stop, not after.** The stop is where the contract is agreed, and
+agreeing to a criterion nothing can fail is the failure this phase exists to prevent —
+so the findings have to be on the table while the agreement is still being made.
+
 ## 5 · Plan it
 
 ```

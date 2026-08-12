@@ -85,7 +85,7 @@ common way this goes wrong.
 If a change spans several capabilities, every delta is applied in that same commit.
 Half-consolidated is the one state with no honest description.
 
-**`spec-drift` asks it for you**, mechanically, in two directions. It ships beside
+**`spec-drift` asks it for you**, mechanically, in three directions. It ships beside
 this file — `<skill-base>/spec-drift`, whatever directory this skill was installed
 into — so it is there in any project, not only in the repository it came from. Run
 it from the root of the project being worked on:
@@ -93,6 +93,7 @@ it from the root of the project being worked on:
 ```
 <skill-base>/spec-drift             staged code whose spec did not move
 <skill-base>/spec-drift --anchors    every Proof: citation resolves
+<skill-base>/spec-drift --trace      the whole tree, not just what is staged
 ```
 
 The first reads each spec's `Governs:` globs, so it names the spec and the path
@@ -103,6 +104,30 @@ The second is the reverse direction, and it is the one that catches rot: a
 criterion citing a test that was renamed, deleted or never written. It checks the
 **test name**, not just the file, because a file-level check passes an invented
 name. Run it before the commit that would ship the lie.
+
+### `--trace` — the map, not a gate
+
+The first two are both scoped to a commit: one to what is staged, one to citations that
+already exist. **Neither can see code that was never staged while a spec existed**, and
+in any repository whose specs arrived after its code that is most of the repository. So
+the contract can be entirely intact by both checks and still govern a third of the tree.
+
+`--trace` reads the whole tracked tree and answers three questions:
+
+| | |
+|---|---|
+| **orphan code** | a tracked file no `Governs:` glob claims |
+| **dead ownership** | a `Governs:` glob matching no tracked file — a package that moved, and a spec still pointing where it was |
+| **unproven criterion** | a bullet under *Verification criteria* with no `Proof:` beneath it |
+
+**It always exits 0, and that is deliberate.** A first run on a real project reports
+dozens of orphans, because the honest answer is that most code was never specified. A
+report that fails the build on the day it is introduced is a report somebody deletes,
+and a deleted report finds nothing. Read it, pick the ones that matter, leave the rest.
+
+**What it will not tell you is whether a `Proof:` names a *good* test.** That is a
+reading of the test, and a script that guessed would be wrong exactly where the answer
+matters. `skills/review-spec/` asks it.
 
 **It warns; it does not block.** Always exits 0. A check that stops a commit in
 someone else's project gets removed the same day, and then there is no check at all.

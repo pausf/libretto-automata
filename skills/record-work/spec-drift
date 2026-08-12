@@ -30,16 +30,18 @@
 # change is amending, so an in-flight delta counts as that spec moving. Proof
 # cites the test that holds a criterion up.
 #
-# ── the two questions ────────────────────────────────────────────────────────
+# ── the three questions ──────────────────────────────────────────────────────
 #
 #   default    staged code whose owning spec did not move
 #   --anchors  every Proof: citation still resolves, test name included
+#   --trace    the whole tree: orphan code, dead ownership, unproven criteria
 #
 # Default mode always exits 0. It warns; blocking in someone else's project gets
 # the check deleted, and a deleted check finds nothing. --anchors exits 1, so CI
-# can gate on it.
+# can gate on it. --trace exits 0 too: it is a map of where the contract is thin,
+# and in a repository that grew before its specs did that map is long on day one.
 #
-# Usage: spec-drift [--anchors|--self-test]
+# Usage: spec-drift [--anchors|--trace|--self-test]
 
 set -uo pipefail   # deliberately not -e: this must never be what fails a commit
 
@@ -270,6 +272,109 @@ anchors() {
   return 1
 }
 
+# ── --trace ──────────────────────────────────────────────────────────────────
+
+# Whole-tree traceability. Default mode asks its question only of *staged* files, so
+# code that was never staged while a spec existed is invisible to it forever — the
+# check is blind to exactly the code that predates the contract, which is most of it.
+#
+# Three questions, none of them a judgement:
+#
+#   orphan code        a tracked file no Governs: glob claims
+#   dead ownership     a Governs: glob that matches no tracked file
+#   unproven criterion a bullet under Verification criteria with no Proof: under it
+#
+# Whether a Proof: names a *strong* test is not asked here and cannot be: that is a
+# reading of the test, and a script that guessed would be wrong where it matters.
+# `review-spec` asks it.
+#
+# Exits 0 always. This is a map, not a gate — the orphan list is long by design in
+# any repository that grew before its specs did, and a report that fails a build on
+# its first run is a report somebody deletes.
+
+# criteria_without_proof <spec_file> — bullets under the criteria heading with no Proof:
+#
+# A criterion is a top-level `- ` bullet; its Proof: is any indented Proof: line before
+# the next top-level bullet or the next heading. Continuation lines belong to the bullet
+# above them, which is why the terminator is column-0 `- ` and not merely a blank line.
+criteria_without_proof() {
+  defenced "$1" | awk '
+    /^##[[:space:]]/           { inbody = ($0 ~ /[Vv]erification criteria/); flush(); next }
+    !inbody                    { next }
+    /^-[[:space:]]/            { flush(); pending = substr($0, 3); next }
+    /^[[:space:]]*Proof:/      { pending = "" ; next }
+    END                        { flush() }
+    function flush() { if (pending != "") print pending; pending = "" }
+  '
+}
+
+trace() {
+  git rev-parse --git-dir >/dev/null 2>&1 || {
+    printf 'spec-drift: --trace needs a git repository\n' >&2; return 0; }
+
+  local specs tracked
+  specs=$(spec_files)
+  [ -n "$specs" ] || { printf 'spec-drift: no specs found\n'; return 0; }
+  tracked=$(git ls-files) || return 0
+
+  local changes; changes=$(change_files)
+
+  # Every glob, remembered with the spec that claimed it, so a dead one can be named.
+  local claims="" s g
+  while IFS= read -r s; do
+    [ -n "$s" ] || continue
+    for g in $(governs_of "$s"); do claims="$claims$s|$g"$'\n'; done
+  done <<< "$specs"
+
+  printf '\n── code no spec claims to own ──\n'
+  local orphans=0 path
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    has_line "$specs" "$path" && continue
+    has_line "$changes" "$path" && continue
+    local owned=0 c
+    while IFS='|' read -r _ c; do
+      [ -n "$c" ] || continue
+      matches_any "$path" "$c" && { owned=1; break; }
+    done <<< "$claims"
+    [ "$owned" -eq 1 ] && continue
+    printf '  orphan  %s\n' "$path"
+    orphans=$((orphans + 1))
+  done <<< "$tracked"
+  [ "$orphans" -eq 0 ] && printf '  none — every tracked file has an owning spec\n'
+
+  printf '\n── ownership claimed over nothing ──\n'
+  local dead=0 sp gl
+  while IFS='|' read -r sp gl; do
+    [ -n "$gl" ] || continue
+    local hit=0
+    while IFS= read -r path; do
+      [ -n "$path" ] || continue
+      matches_any "$path" "$gl" && { hit=1; break; }
+    done <<< "$tracked"
+    [ "$hit" -eq 1 ] && continue
+    printf '  dead    %s claims %s — matches no tracked file\n' "$sp" "$gl"
+    dead=$((dead + 1))
+  done <<< "$claims"
+  [ "$dead" -eq 0 ] && printf '  none — every Governs: glob matches something\n'
+
+  printf '\n── criteria with nothing holding them up ──\n'
+  local unproven=0 crit
+  while IFS= read -r s; do
+    [ -n "$s" ] || continue
+    while IFS= read -r crit; do
+      [ -n "$crit" ] || continue
+      printf '  unproven  %s\n            %s\n' "$s" "$crit"
+      unproven=$((unproven + 1))
+    done <<< "$(criteria_without_proof "$s")"
+  done <<< "$specs"
+  [ "$unproven" -eq 0 ] && printf '  none — every criterion cites a Proof:\n'
+
+  printf '\nspec-drift --trace: %d orphan(s), %d dead claim(s), %d unproven criterion(s)\n\n' \
+    "$orphans" "$dead" "$unproven"
+  return 0
+}
+
 # ── self-test ────────────────────────────────────────────────────────────────
 
 self_test() {
@@ -314,6 +419,19 @@ self_test() {
   case "TestReal"    in -*) want 'a test name does not'     no  yes ;; *) want 'a test name does not'     no  no  ;; esac
   rm -f "$tmp"
 
+  # --trace's criterion parser. A bullet keeps its Proof: across continuation lines,
+  # loses it at the next top-level bullet, and is invisible outside the criteria
+  # heading — the last one matters most: an Outcomes bullet has no Proof: by design,
+  # and reading those as unproven buries the real finding under the whole document.
+  tmp=$(mktemp)
+  printf '## Outcomes\n- not a criterion, needs no proof\n\n## Verification criteria\n- has one\n  and a continuation line\n  Proof: x.go TestX\n- has none\n- also none\n  with a continuation\n\n## After\n- outside again\n' > "$tmp"
+  want 'unproven criteria found'     'has none
+also none' "$(criteria_without_proof "$tmp")"
+  want 'a proven criterion is quiet' ''  "$(printf 'a\n' >/dev/null; criteria_without_proof "$tmp" | rg -xF 'has one' || true)"
+  want 'outcomes are not criteria'   ''  "$(criteria_without_proof "$tmp" | rg -F 'not a criterion' || true)"
+  want 'a later heading closes it'   ''  "$(criteria_without_proof "$tmp" | rg -xF 'outside again' || true)"
+  rm -f "$tmp"
+
   # The dependency guard: without rg this script must refuse loudly, never report
   # "no drift". bash by absolute path, so only rg is missing from the child's PATH.
   bash_bin=$(command -v bash)
@@ -331,6 +449,7 @@ self_test() {
 case "${1:-}" in
   --self-test) self_test; exit $? ;;
   --anchors)   anchors;   exit $? ;;
+  --trace)     trace;     exit $? ;;
   '')          drift ;;
-  *) printf 'usage: %s [--anchors|--self-test]\n' "$0" >&2; exit 2 ;;
+  *) printf 'usage: %s [--anchors|--trace|--self-test]\n' "$0" >&2; exit 2 ;;
 esac

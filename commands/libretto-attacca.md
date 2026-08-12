@@ -66,6 +66,12 @@ invoked even when its answer is "nothing here".
 Skill(skill="find-work")          1 · with a task given, that task; with none, home first —
                                       the oldest change with open boxes
 Skill(skill="write-spec")         2–3 · then carry on
+Skill(skill="review-spec")        3→5 · reads the contract, only when one was written.
+                                      **Here it matters more than in the attended flow**:
+                                      nobody is reading the spec at the stop, so this is
+                                      the only thing between an unfailable criterion and
+                                      a plan built on it. Its findings are fixed, not
+                                      reported and passed — same rule as review-work
 Skill(skill="write-plan")         5 · then carry on
 Skill(skill="build-and-check")    6
 Skill(skill="review-work")        6→7 · it already fixes rather than asks

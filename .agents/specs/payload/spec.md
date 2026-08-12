@@ -521,6 +521,38 @@ the copy stays comparable with upstream.
   Proof: skills/record-work/spec-drift --self-test
 - every `Proof:` citation in every spec resolves, file and test name
   Proof: skills/record-work/spec-drift --anchors
+- **the whole tree is traceable, not only what is staged.** Both existing modes are scoped
+  to a commit — one to staged paths, one to citations that already exist — so **code that
+  was never staged while a spec existed is invisible to both, forever.** In a repository
+  whose specs arrived after its code that is most of the repository, and the contract can
+  pass every check while governing a third of the tree. `--trace` reads the tracked tree
+  and names orphan code, a `Governs:` glob matching nothing, and a criterion under
+  *Verification criteria* with no `Proof:` beneath it. **It exits 0 unconditionally**: the
+  first run here found sixteen orphans and sixteen unproven bullets, which is the honest
+  state rather than a regression, and a report that fails the build the day it lands is a
+  report somebody deletes.
+  Proof: skills/record-work/spec-drift --self-test
+- **a criterion is a column-0 bullet under the criteria heading, and nothing else.** Its
+  `Proof:` survives the continuation lines beneath it and ends at the next such bullet or
+  the next heading. Reading every bullet in the document instead buries the real findings
+  under the Outcomes section, which has no `Proof:` by design.
+  Proof: skills/record-work/spec-drift --self-test
+- **the contract is reviewed before a plan is built on it.** Every other review in the flow
+  reads code and all of them run after the code exists, so a criterion no run could fail is
+  agreed at the phase-3 stop, becomes tasks, becomes code, and is then measured against a
+  sentence nobody could have failed — the work passes and the promise was never real.
+  `review-spec` runs in the 3→5 seam over ambiguity that forks the work, criteria that
+  cannot fail, `Governs:` boundaries describing nothing, and a criterion another capability
+  contradicts. **Before the stop, not after**, because the findings have to be on the table
+  while the agreement is still being made. It reports and never rewrites the spec — a
+  reviewer editing the contract it reviews is the author twice over. Skipped entirely on the
+  trivial lane, which has no contract.
+  Proof: scripts/check-payload
+- **the mechanical half is delegated, not restated.** `review-spec` runs `--trace` first and
+  reads the spec for what a script cannot see: whether a `Proof:` names a test that could
+  actually fail. A citation pointing at a test that only asserts the code ran is untestable
+  with a citation attached, which reads as proven and is therefore worse than none.
+  Proof: scripts/check-payload
 - **the status command delegates rather than restating the scan**, and every referenced
   skill survived the rename
   Proof: scripts/check-payload
