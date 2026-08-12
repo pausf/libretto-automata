@@ -55,16 +55,25 @@ const Resolved = "2026-08"
 // environment. Whether a model runs effort levels is derived from the resolved version
 // rather than carried here as a second fact: this column and an effort flag beside it
 // would be two places to remember, and the one nobody edited would be the one on screen.
+//
+// **Every label answers "when would I pick this", and the wording is read off the host's
+// own model picker rather than composed here.** Two reasons, and the second is why `opus`
+// no longer says "most capable": a label stating a property instead of a use ("the deepest
+// reasoning") does not help anybody choose, and a superlative is a claim about the whole
+// lineup that goes wrong the moment the lineup grows. The host gives "most capable" to
+// Fable and Opus 5 "everyday, complex tasks", so that is what these say. `fable` keeps a
+// cost hint for the same reason `haiku` keeps "cheapest" — it is the fact that explains its
+// position in this list.
 var catalogue = []Model{
 	{Default, "", "the session's model — whatever you are running"},
 	{"haiku", "Haiku 4.5", "cheapest; fine for pattern-matching over prose"},
 	{"sonnet", "Sonnet 5", "the everyday working model"},
-	{"opus", "Opus 5", "most capable; Max plans, metered on Pro"},
+	{"opus", "Opus 5", "everyday complex work; Max plans, metered on Pro"},
 	// Last, because its tokens cost more than Opus's and the cheap end of this list is
 	// what sits under the cursor. Its label names no plan: which ones include Fable is not
 	// something this binary can find out without the credential it refuses to touch, and
 	// `opus` names a tier only because that one is documented.
-	{"fable", "Fable 5", "the deepest reasoning, and the priciest tokens here"},
+	{"fable", "Fable 5", "the hardest, longest-running work; priciest per token"},
 }
 
 // Catalogue returns the legal models, cheapest first.
