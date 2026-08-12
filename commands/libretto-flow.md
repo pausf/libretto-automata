@@ -61,6 +61,11 @@ A stop is where the user changes something. A stop where the only available answ
 "yes, carry on" is a round trip charged for a rubber stamp, and a flow that charges
 those gets routed around.
 
+**All three are asked with `AskUserQuestion`, never as a sentence at the end of a report.**
+The recommended option first, saying what will actually run; the real alternatives; room to
+answer differently. A question in prose is a paragraph the reader skims, and the flow then
+waits on an answer to something that read as a summary.
+
 `/libretto-attacca` is the same flow with all three answered in advance, and it owns that
 classification — including what stays a stop under it, because a gate is not one.
 

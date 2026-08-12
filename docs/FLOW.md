@@ -331,6 +331,13 @@ Three stops. Two inside the work, one at the door.
 whose only available answer is "yes, carry on" is a round trip charged for a rubber
 stamp, and it does not become one by being called a decision point.
 
+**And every one of them is a native question**, `AskUserQuestion`, never a sentence at the
+end of a report — along with phase 1's choice between work already in flight and something
+new. The argument was written once for the push and was never push-specific: a question in
+prose is a paragraph the reader skims, and a flow waiting on an answer nobody realised was
+a question looks hung. Three stops, three prompts, and the same shape each time — the
+recommended option first, saying what will actually run.
+
 Phase 1 used to stop, and what it bought was the user reading a paraphrase of their own
 sentence back to them. Phase 7 used to stop, and what it bought was permission to commit
 to a local branch nobody had seen — the cheapest possible place to change your mind,
