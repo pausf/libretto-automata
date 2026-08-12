@@ -79,15 +79,33 @@ func listModels(root string, tg target.Target) error {
 		fmt.Println("  run `libretto doctor` — `prune --yes` removes them")
 	}
 
+	// One detection for the whole trailer, so every row below is answered against the
+	// same reading of the environment.
+	provider := agentmodel.DetectProvider()
+
 	fmt.Println()
 	fmt.Printf("models available (aliases; versions as of %s):\n", agentmodel.Resolved)
 	for _, m := range agentmodel.Catalogue() {
-		note := ""
-		if !m.Effort {
-			note = "  — no effort levels"
+		// What the alias means here, which is not always what the catalogue's own
+		// Version column says: on Amazon Bedrock `sonnet` is Sonnet 4.5.
+		version := m.Version
+		if here, ok := provider.Resolve(m.Name); ok {
+			version = here
 		}
-		fmt.Printf("  %-10s %-12s %s%s\n", nameOf(m), m.Version, m.Label, note)
+		note := ""
+		switch levels := agentmodel.EffortsFor(m.Name); {
+		case len(levels) == 0:
+			note = "  — no effort levels"
+		case len(levels) < len(agentmodel.Efforts()):
+			note = "  — effort: " + strings.Join(levels, " ")
+		}
+		fmt.Printf("  %-10s %-12s %s%s\n", nameOf(m), version, m.Label, note)
 	}
+
+	// Named, because the table above is only checkable against something. A reader who
+	// disagrees with a version needs to know which row of the docs it was read from, and
+	// the provider is that row.
+	fmt.Printf("  resolved for %s\n", provider.Name)
 
 	fmt.Println()
 	fmt.Printf("effort available (weakest first; as of %s; `models effort <level> <agent>…`):\n", agentmodel.Resolved)

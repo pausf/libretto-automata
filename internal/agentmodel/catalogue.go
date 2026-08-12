@@ -32,13 +32,6 @@ type Model struct {
 
 	// Label is the one line shown beside it in the CLI and the panel.
 	Label string
-
-	// Effort reports whether this model runs effort levels at all.
-	//
-	// It lives on the model rather than in a list beside the effort catalogue
-	// because it is a fact about the model, and a second list is a second thing to
-	// forget when an entry is added. SupportsEffort reads it.
-	Effort bool
 }
 
 // Resolved is when the Version column was last checked against the model
@@ -56,15 +49,17 @@ const Resolved = "2026-08"
 // Order is contracted, not incidental: the panel and the CLI both render it, and a
 // list whose first entry is the most expensive model puts the costly choice under
 // the cursor of a feature whose whole purpose is to reduce the bill.
-// The Effort column is read off the host's own table, which lists Fable 5, Opus 5,
-// Sonnet 5, Opus 4.8, 4.7 and 4.6, and Sonnet 4.6 — and no Haiku. The session default
-// claims support because the session's model is unknowable from here, and refusing
-// would be the guess.
+// The Version column is what the alias means **on the Anthropic API**, which is the
+// common case and is stated here rather than left implied. Elsewhere it differs — on
+// Amazon Bedrock `sonnet` is Sonnet 4.5 — and provider.go resolves that from the
+// environment. Whether a model runs effort levels is derived from the resolved version
+// rather than carried here as a second fact: this column and an effort flag beside it
+// would be two places to remember, and the one nobody edited would be the one on screen.
 var catalogue = []Model{
-	{Default, "", "the session's model — whatever you are running", true},
-	{"haiku", "Haiku 4.5", "cheapest; fine for pattern-matching over prose", false},
-	{"sonnet", "Sonnet 5", "the everyday working model", true},
-	{"opus", "Opus 5", "most capable; Max plans, metered on Pro", true},
+	{Default, "", "the session's model — whatever you are running"},
+	{"haiku", "Haiku 4.5", "cheapest; fine for pattern-matching over prose"},
+	{"sonnet", "Sonnet 5", "the everyday working model"},
+	{"opus", "Opus 5", "most capable; Max plans, metered on Pro"},
 }
 
 // Catalogue returns the legal models, cheapest first.

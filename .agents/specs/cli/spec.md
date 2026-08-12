@@ -227,9 +227,15 @@ Three things the listing says that it would be dishonest to leave out:
 
 - **`(session)` in both value columns** for an agent declaring neither key. An empty
   column reads as a bug, and it is one word for one state.
-- **which model has no effort levels at all.** `haiku` carries `— no effort levels` in
-  the same list that offers it. A row sitting silently among three that do read as a
-  fourth that does, and the refusal further down would then arrive as a surprise.
+- **which model has no effort levels at all, and which has only some.** `haiku` carries
+  `— no effort levels`; a model with four of the five carries `— effort: low medium high
+  max`. A row sitting silently among others that support effort reads as a fourth that
+  does, and the refusal further down would then arrive as a surprise.
+- **which provider the versions were resolved for**, on its own line. The version column
+  is only checkable against something: a reader who disagrees with `sonnet · Sonnet 4.5`
+  needs to know it was read off the Amazon Bedrock row, and the provider is that row. It
+  is derived from the environment — see `agent-models` — so it changes with the machine
+  rather than with this table.
 - **when the effort table was last checked**, under the same `Resolved` date as the model
   versions. It decays for the same reason — an organisation can cap which levels are
   available and nothing here can ask — and a trailer that carries the date next to one
@@ -694,6 +700,13 @@ A missing payload:
 - the trailer names the five levels, says which model has none, and states when it was
   last checked
   Proof: cmd/libretto/models_test.go TestModelsListsTheEffortCatalogue
+- **the listing names the provider it resolved the versions for**
+  Proof: cmd/libretto/models_test.go TestModelsNamesTheProviderItResolvedFor
+- **under a provider where `sonnet` is older, the listing says so and offers it no levels**
+  Proof: cmd/libretto/models_test.go TestModelsReflectsTheProviderInTheVersionColumn
+- **the refusal follows the provider and not the alias** — `xhigh` on a sonnet agent is
+  accepted on the Anthropic API and refused under Amazon Bedrock
+  Proof: cmd/libretto/models_test.go TestModelsEffortFollowsTheProviderNotTheAlias
 - `effort` writes the level to the named agents and no others
   Proof: cmd/libretto/models_test.go TestModelsEffortWritesOnlyTheNamedAgents
 - `effort --all` reaches every agent in the destination

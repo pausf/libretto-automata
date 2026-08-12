@@ -637,3 +637,75 @@ func TestEveryModelsVerbIsInTheHelp(t *testing.T) {
 		}
 	}
 }
+
+// The version column is only checkable against something. A reader who disagrees with
+// `sonnet · Sonnet 4.5` needs to know it was read off the Amazon Bedrock row.
+func TestModelsNamesTheProviderItResolvedFor(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "one", "opus")
+
+	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "resolved for") {
+		t.Errorf("the listing never says which provider the versions are for:\n%s", out)
+	}
+}
+
+// The hole this closed: the catalogue said `sonnet` supports all five levels, which is
+// true on the Anthropic API and on no other provider. Under Bedrock the alias is Sonnet
+// 4.5, which appears in no row of the host's effort table.
+func TestModelsReflectsTheProviderInTheVersionColumn(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "one", "sonnet")
+	t.Setenv("CLAUDE_CODE_USE_BEDROCK", "1")
+
+	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(out, "Amazon Bedrock") {
+		t.Errorf("the listing does not name Bedrock:\n%s", out)
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "sonnet ") {
+			continue
+		}
+		if !strings.Contains(line, "Sonnet 4.5") {
+			t.Errorf("sonnet should resolve to Sonnet 4.5 on Bedrock: %q", line)
+		}
+		if !strings.Contains(line, "no effort levels") {
+			t.Errorf("Sonnet 4.5 has no effort levels and the row does not say so: %q", line)
+		}
+		return
+	}
+	t.Fatalf("no sonnet row in the catalogue:\n%s", out)
+}
+
+// And the refusal follows the provider, not the alias. A level on a sonnet agent is legal
+// on the Anthropic API and must be refused under Bedrock.
+func TestModelsEffortFollowsTheProviderNotTheAlias(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "one", "sonnet")
+
+	// First without a provider: allowed.
+	_, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"effort", "xhigh", "one"})
+	})
+	if err != nil {
+		t.Fatalf("xhigh on sonnet was refused on the Anthropic API: %v", err)
+	}
+
+	t.Setenv("CLAUDE_CODE_USE_BEDROCK", "1")
+	_, _, err = capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"effort", "xhigh", "one"})
+	})
+	if err == nil {
+		t.Fatal("xhigh on sonnet was accepted under Bedrock, where sonnet is Sonnet 4.5")
+	}
+	if !strings.Contains(err.Error(), "one") {
+		t.Errorf("the refusal does not name the agent: %v", err)
+	}
+}

@@ -207,6 +207,25 @@ libretto models effort default work-reviewer        # back to the session's effo
 rather than written and ignored, and moving an agent onto Haiku clears any level it
 declared — the listing says so on the row it happened to.
 
+**And which levels an alias has depends on where your requests go.** `opus` and `sonnet`
+do not name the same model on every provider — on Amazon Bedrock `sonnet` is Sonnet 4.5,
+which has no effort at all, and on Microsoft Foundry `opus` is Opus 4.6, which has four of
+the five. So the alias is resolved from your environment first, and the listing names the
+provider it resolved for:
+
+```
+$ CLAUDE_CODE_USE_BEDROCK=1 libretto models
+  ...
+  sonnet     Sonnet 4.5   the everyday working model  — no effort levels
+  opus       Opus 5       most capable; Max plans, metered on Pro
+  resolved for Amazon Bedrock
+```
+
+That is `os.Getenv` on variables Claude Code already documents — **no request, no
+credential, and never a variable that holds a secret.** An explicit
+`ANTHROPIC_DEFAULT_SONNET_MODEL` pin takes precedence over the provider default, and
+anything this build cannot resolve is treated as capable rather than refused.
+
 The panel has both behind its `models` row: mark agents with `space`, or all of them with
 `a`, then `m` for the model and `e` for the effort.
 
@@ -223,6 +242,7 @@ models available (aliases; versions as of 2026-08):
   haiku      Haiku 4.5    cheapest; fine for pattern-matching over prose  — no effort levels
   sonnet     Sonnet 5     the everyday working model
   opus       Opus 5       most capable; Max plans, metered on Pro
+  resolved for the Anthropic API
 
 effort available (weakest first; as of 2026-08; `models effort <level> <agent>…`):
   default    no key at all: whatever the session runs at
