@@ -27,7 +27,9 @@ Installing this repository gives a working flow on a machine that has nothing el
   pushed branch with a request open on it. It writes everything the attended flow writes;
   what the invocation answers is the waiting. **What it cannot answer is a gate**, and a
   question no reading of the code settles becomes an assumption recorded in the spec, the
-  report and the request rather than a prompt
+  report and the request rather than a prompt. **The request's description carries both
+  halves** — what the invocation answered and what the run assumed — because without the
+  first a reviewer cannot tell an agreed contract from an assumed one
 - **the finished work reviewed by someone who did not write it, then repaired** — in the
   seam between build and present, `review-work` launches one fresh `work-reviewer`
   subagent with none of the session's context; it re-runs every proof the change
@@ -267,6 +269,13 @@ the user's project. `docs/FLOW.md` is not somewhere they have.
 **Frontmatter `name:` must equal the directory or filename.** A mismatch means the
 caller reads one name off disk and invokes another, and the failure is a sub-agent that
 silently never runs.
+
+**A marked box that was never committed was never marked.** The plan ships in the same
+commit as the task that closed it, exactly as the spec does. A `git add` scoped to the code
+leaves it behind in the working tree, and the change that lands then deletes the folder with
+every unrecorded mark still in it — measured on the run that added this line: six commits,
+0/24 boxes, work finished. Phase 1 reads unchecked boxes to decide what is in flight, so
+the failure is silent until the plan disappears.
 
 **Every file has exactly one author.** The brief is written once and read many times;
 each spec delta has one writer; the plan has one writer, the orchestrator. This is what

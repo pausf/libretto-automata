@@ -32,6 +32,11 @@ The user typed this command and not the other one. That is the answer, given in 
 and it is why "never push unasked" is intact rather than overridden — the asking happened
 at the prompt. **The consent covers this branch and this request and nothing past it.**
 
+**The request's description says which of its decisions a person made.** What the
+invocation answered — the two stops and the push — and every question the run assumed past.
+Without the first half a reviewer cannot tell an agreed contract from an assumed one, and
+that is the difference this command is entirely built out of.
+
 ## A question it cannot derive becomes an assumption, never a prompt
 
 When a phase hits something no reading of the code settles — a product tradeoff, two live

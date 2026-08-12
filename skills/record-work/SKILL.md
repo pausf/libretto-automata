@@ -159,13 +159,6 @@ At the very end — after everything is committed and reported — ask once: **p
 open the pull request?** One question, one answer. A no ends it and needs no
 follow-up.
 
-**Under `/libretto-attacca` it is not asked, because it was answered when the command was
-typed.** "Never push unasked" is intact rather than overridden — the asking happened at the
-prompt. What the answer covers is this branch and this request and nothing past it: no
-merge, no tag, no release, no `release:` label. And the request's description carries every
-assumption the run made in place of a question, or the run has bought silence rather than
-speed.
-
 **Ask it with `AskUserQuestion`, never as a sentence at the end of a report.** This is
 the last question in the flow and usually the only one after the plan, so it is the one
 that must not be missable — a question in prose is a paragraph the reader can skim past,
@@ -177,6 +170,27 @@ Phase 4 already requires the native prompt for anything the user must settle. Th
 the same rule arriving at the phase that used to be written as prose, and it is stated
 here because a rule written only where the *asking* is described gets read as belonging
 to phase 4 alone.
+
+### The one exception, and it is the whole of `/libretto-attacca`
+
+**Everything above — the question, the native prompt, the waiting — is the attended
+flow.** Under `/libretto-attacca` the question is not asked at all, because it was
+answered when the command was typed. "Never push unasked" is intact rather than
+overridden: the asking happened at the prompt.
+
+The answer covers **this branch and this request and nothing past it** — no merge, no tag,
+no release, no `release:` label.
+
+And it is paid for in the request's description, which carries two things or the run has
+bought silence rather than speed:
+
+- **what the invocation answered** — the two stops and the push — so a reader can tell
+  which of the decisions in front of them a person made
+- **every question the run assumed past**, each with what changes if it is wrong
+
+This section sits last deliberately. Written above the native-prompt paragraph it read as
+though the paragraph after it reinstated the ask, which is the reviewer's finding on the
+run that landed the mode.
 
 The two used to be asked separately. That bought a second round trip and no safety:
 pushing a branch and then declining to open the request for it is a state almost
