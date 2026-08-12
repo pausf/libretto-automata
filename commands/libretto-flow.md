@@ -197,9 +197,10 @@ next time.
 When something is genuinely not yours to decide — a product tradeoff, two live
 precedents in the codebase, anything where guessing quietly breaks working behaviour —
 ask with `AskUserQuestion`: the option you recommend, the real alternatives, and room to
-answer differently.
+answer differently. One question, then stop and wait.
 
-**Phase 2 asks up to three, in one call, before it writes the spec** — the contract gets
+**Phase 2 is the exception, and it asks up to three, in one call, before it writes the
+spec** — the contract gets
 built by two people rather than handed over finished. Zero is legitimate and is said in
 one line; a quota manufactures questions the code already answers. Phase 5 stops for the
 order and opens no second tranche, and no stop is added: the questions ride the one

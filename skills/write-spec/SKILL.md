@@ -228,6 +228,12 @@ Every spec has all six, explicitly, with headings. A pillar left vague is not
 brevity — it is a gap that gets filled later by whoever is typing, from
 association rather than intent.
 
+**Draft them, then hold the file until step 4 has its answers.** Drafting is what
+surfaces the questions worth asking — a boundary the request left open, two precedents
+with nothing choosing between them — and an answer that arrives after the file exists
+gets bolted onto a contract instead of shaping it. The steps are numbered 3 then 4
+because the *thinking* runs in that order; the writing happens once, after both.
+
 ### Outcomes
 
 The verifiable end state, in operational terms. Not "add login" but what is true
