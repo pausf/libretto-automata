@@ -93,6 +93,42 @@ else
   done <<< "$refs"
 fi
 
+printf '\n── namespaced refs the payload does not ship are overridden ──\n'
+# A `plugin:skill` reference names something installed under a namespace this payload
+# has no control over. The vendored skills carry three of them, and a user who installed
+# only this repository has none — so the plan they generate opens by demanding a skill
+# that does not exist, and the flow stalls on its own first line. That shipped for
+# months without anybody noticing, because nothing read the namespace.
+#
+# The vendored copies stay byte-comparable with upstream (THIRD-PARTY.md), so the fix is
+# never an edit to them: the Libretto skill that delegates to one states the override.
+# So this only reads refs inside vendored skills, and requires each to be answered by a
+# skill that is not vendored. A ref inside a Libretto skill IS the answer, never the fault.
+vendored=$(rg -oN '^\| `skills/[a-z0-9-]+/`' THIRD-PARTY.md | rg -oN 'skills/[a-z0-9-]+' | sort -u)
+if [ -z "$vendored" ]; then
+  fail 'no vendored skills read from THIRD-PARTY.md — the grep is probably wrong'
+fi
+ns_fails=0
+ns_seen=
+for v in $vendored; do
+  while IFS= read -r hit; do
+    [ -z "$hit" ] && continue
+    bare=${hit##*:}
+    if [ -d "skills/$bare" ]; then
+      ok "$hit — payload ships $bare"
+    elif rg -qN "$hit" $(printf '%s\n' skills/*/SKILL.md | rg -v "^$v/") 2>/dev/null; then
+      ok "$hit — not shipped, answered by a Libretto skill"
+    else
+      fail "vendored ref the payload does not ship and no skill answers: $v cites $hit"
+      ns_fails=1
+    fi
+  done <<< "$(rg -oNI --no-heading '[a-z0-9-]+:[a-z0-9-]+' "$v" -g '*.md' 2>/dev/null \
+                | rg '^superpowers:' | sort -u)"
+  ns_seen=1
+done
+[ -n "$ns_seen" ] || ok 'no vendored skills to check'
+[ "$ns_fails" -eq 0 ] || fails=$((fails + 1))
+
 printf '\n── skills never point at an executable that is not installed ──\n'
 # `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
 # telling the user to run scripts/foo is broken for everyone who installed it:

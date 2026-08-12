@@ -526,6 +526,21 @@ the copy stays comparable with upstream.
   Proof: scripts/check-payload
 - **the queue commands delegate the scan too**, and reference only skills that exist
   Proof: scripts/check-payload
+- **a vendored skill's namespaced reference is either shipped or answered.** `writing-plans`
+  opens every plan it writes with a header demanding `superpowers:subagent-driven-development`
+  and offers `superpowers:executing-plans`; `test-driven-development` cites
+  `superpowers:writing-skills`. **The payload ships none of the three, and neither does a
+  machine that installed only this** — so the flow's own phase-5 output has instructed its
+  reader to invoke a skill that does not exist since the day the copies landed. Nothing read
+  the namespace, so nothing noticed. The fix is never an edit to the vendored copy, because
+  `THIRD-PARTY.md` promises it stays comparable with upstream and a divergence needs exactly
+  one home: the Libretto skill that delegates to it states the override — `write-plan` for
+  the two execution skills and the worktree one, `build-and-check` for the test-prose one.
+  The check reads refs only inside vendored directories, listed from `THIRD-PARTY.md` rather
+  than hardcoded, and requires each to resolve to a shipped skill or be named by a skill that
+  is not the vendored one. **A ref inside a Libretto skill is the answer, never the fault** —
+  scoping it the other way made the override itself the failure.
+  Proof: scripts/check-payload
 
 **What none of this verifies is behaviour.** A skill is a prompt, and a prompt is
 checked by running it. The static checks above catch what silently degrades one — a
