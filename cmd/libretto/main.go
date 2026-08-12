@@ -200,7 +200,7 @@ func run(args []string) error {
 	case "loop":
 		return loop(projectDir, args[1:])
 	case "metrics":
-		return metrics(os.Stdout, projectDir, args[1:], execGit(projectDir))
+		return metrics(os.Stdout, args[1:], execGit(projectDir))
 	default:
 		usage()
 		return fmt.Errorf("unknown command %q", args[0])

@@ -124,6 +124,14 @@ func loop(projectDir string, args []string) error {
 	if err != nil {
 		return err
 	}
+	// The plan is checked before PATH is, and the order is the point: `loop <typo>` on a
+	// machine without `claude` should name the plan it could not find, not a dependency
+	// that is irrelevant to the mistake actually made.
+	plan := planPath(projectDir, o.change)
+	if _, err := os.Stat(plan); err != nil {
+		return fmt.Errorf("no plan at %s\n"+
+			"       the loop drives a change that phase 5 already planned", plan)
+	}
 	if !o.dryRun {
 		if _, err := exec.LookPath("claude"); err != nil {
 			return fmt.Errorf("claude is not on PATH — the loop relaunches it once per task\n" +
@@ -144,8 +152,12 @@ func loop(projectDir string, args []string) error {
 //
 // It never pushes, never merges, never tags. Those are attacca's answered questions
 // for one branch, and nothing here was asked.
+func planPath(projectDir, change string) string {
+	return filepath.Join(projectDir, ".agents", "changes", change, "plan.md")
+}
+
 func runLoop(w io.Writer, projectDir string, o loopOpts, run loopRunner) error {
-	plan := filepath.Join(projectDir, ".agents", "changes", o.change, "plan.md")
+	plan := planPath(projectDir, o.change)
 	before, err := readPlan(plan)
 	if err != nil {
 		return fmt.Errorf("no plan at %s\n"+
@@ -179,7 +191,12 @@ func runLoop(w io.Writer, projectDir string, o loopOpts, run loopRunner) error {
 		if err != nil {
 			return fmt.Errorf("plan disappeared mid-loop: %w", err)
 		}
-		if after.open >= before.open {
+		// Boxes *closed*, not boxes remaining. A session that finishes one task and splits
+		// another in two leaves `open` unchanged, and reading that as no progress stops the
+		// loop with "two rounds closed nothing" when two things were done — the opposite of
+		// what happened. A plan is allowed to grow: phase 6 discovering a task is the flow
+		// working, not the loop stalling.
+		if after.done <= before.done {
 			stuck++
 			fmt.Fprintf(w, "     no box closed (%d round(s))\n", stuck)
 			if stuck >= 2 {

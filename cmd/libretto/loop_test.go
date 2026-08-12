@@ -106,6 +106,58 @@ func TestOneBarrenRoundDoesNotStopTheLoop(t *testing.T) {
 	}
 }
 
+// Progress is boxes closed, not boxes remaining. A session that finishes one task and
+// splits another in two leaves `open` unchanged — and reading that as no progress stops
+// the loop saying "two rounds closed nothing" when two things were done.
+func TestAPlanThatGrowsIsProgressNotAStall(t *testing.T) {
+	dir := t.TempDir()
+	plan := writePlan(t, dir, "c", "- [ ] one\n- [ ] two\n")
+
+	runs := 0
+	run := func(string) error {
+		runs++
+		switch runs {
+		case 1: // closes one, and splits the other in two: open stays at 2
+			return os.WriteFile(plan, []byte("- [x] one\n- [ ] two a\n- [ ] two b\n"), 0o644)
+		case 2:
+			return os.WriteFile(plan, []byte("- [x] one\n- [x] two a\n- [ ] two b\n"), 0o644)
+		default:
+			return os.WriteFile(plan, []byte("- [x] one\n- [x] two a\n- [x] two b\n"), 0o644)
+		}
+	}
+	if err := runLoop(io.Discard, dir, loopOpts{change: "c", max: 10}, run); err != nil {
+		t.Fatalf("a growing plan is the flow working, not the loop stalling: %v", err)
+	}
+	if runs != 3 {
+		t.Fatalf("wanted 3 rounds for 3 eventual boxes, got %d", runs)
+	}
+}
+
+// `loop <typo>` must name the plan it could not find, whatever else is missing from the
+// machine. The PATH check used to run first, so the error was about a dependency
+// irrelevant to the mistake actually made.
+func TestTheMissingPlanIsReportedBeforeTheMissingDependency(t *testing.T) {
+	t.Setenv("PATH", "")
+	err := loop(t.TempDir(), []string{"nope"})
+	if err == nil {
+		t.Fatal("wanted a refusal")
+	}
+	if !strings.Contains(err.Error(), "no plan at") {
+		t.Fatalf("wanted the missing plan named, got %v", err)
+	}
+}
+
+// The criterion says --dry-run needs no `claude` on PATH. Calling runLoop directly proves
+// nothing about that, because the guard lives above it in loop().
+func TestDryRunNeedsNoClaudeOnPath(t *testing.T) {
+	t.Setenv("PATH", "")
+	dir := t.TempDir()
+	writePlan(t, dir, "c", "- [ ] one\n")
+	if err := loop(dir, []string{"c", "--dry-run"}); err != nil {
+		t.Fatalf("--dry-run must work with an empty PATH, got %v", err)
+	}
+}
+
 func TestLoopStopsAtTheCapAndSaysSo(t *testing.T) {
 	dir := t.TempDir()
 	plan := writePlan(t, dir, "c", "- [ ] one\n- [ ] two\n- [ ] three\n")

@@ -14,6 +14,9 @@ import (
 func fakeGit(added string, logs, diffs map[string]string) gitRunner {
 	return func(args ...string) (string, error) {
 		joined := strings.Join(args, " ")
+		if strings.Contains(joined, "--show-toplevel") {
+			return "/repo\n", nil
+		}
 		// Git's default history simplification prunes a path whose final state is
 		// "deleted" — which is every landed change, i.e. every change worth measuring.
 		// Refusing here means forgetting the flag fails a test rather than silently
@@ -58,7 +61,7 @@ func TestChangeNamesSeesLandedChangesNotJustOpenOnes(t *testing.T) {
 .agents/changes/fix-other/proposal.md
 docs/FLOW.md
 `
-	got, err := changeNames(fakeGit(added, nil, nil))
+	got, err := changeNames(fakeGit(added, nil, nil), "/repo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +72,7 @@ docs/FLOW.md
 }
 
 func TestChangeNamesIgnoresPathsOutsideTheChangeTree(t *testing.T) {
-	got, err := changeNames(fakeGit("docs/FLOW.md\nREADME.md\n.agents/specs/cli/spec.md\n", nil, nil))
+	got, err := changeNames(fakeGit("docs/FLOW.md\nREADME.md\n.agents/specs/cli/spec.md\n", nil, nil), "/repo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +86,7 @@ func TestMeasureReadsSpanAndCommitsOldestLast(t *testing.T) {
 	// negative duration, which prints as a plausible-looking number.
 	now := time.Now().Unix()
 	logs := map[string]string{"c": fmt.Sprintf("%d\n%d\n%d\n", now, now-3600, now-7200)}
-	m, err := measure(fakeGit("", logs, nil), "c")
+	m, err := measureAt(fakeGit("", logs, nil), "c")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,15 +103,24 @@ func TestMeasureReadsSpanAndCommitsOldestLast(t *testing.T) {
 
 // The metric the whole report is for. A box closed and reopened means a task was called
 // done before it was; a net count hides exactly that and reports a tidy plan.
+//
+// The fixture carries commit SHAs because the arithmetic is per-commit and the boundary
+// is what makes it correct. An earlier fixture ran the whole history together as one
+// diff, which is not what `git log -p` emits, and it made the test pass while the code
+// under it counted a reworded task as a reopening.
 func TestReopenedBoxesAreCountedSeparatelyFromClosedOnes(t *testing.T) {
 	now := time.Now().Unix()
-	diff := `+- [x] one
+	diff := `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++- [x] one
 +- [x] two
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 -- [x] two
 +- [ ] two
+cccccccccccccccccccccccccccccccccccccccc
+-- [ ] two
 +- [x] two
 `
-	m, err := measure(fakeGit("",
+	m, err := measureAt(fakeGit("",
 		map[string]string{"c": fmt.Sprintf("%d\n", now)},
 		map[string]string{"c": diff}), "c")
 	if err != nil {
@@ -117,9 +129,50 @@ func TestReopenedBoxesAreCountedSeparatelyFromClosedOnes(t *testing.T) {
 	if m.uncheck != 1 {
 		t.Fatalf("wanted 1 reopened box, got %d", m.uncheck)
 	}
-	// three `+[x]` lines, one of them a re-close of the reopened box: two boxes closed.
-	if m.checked != 2 {
-		t.Fatalf("wanted 2 boxes closed, got %d", m.checked)
+	// Commit a closed two boxes, commit c closed the reopened one again: three closes.
+	if m.checked != 3 {
+		t.Fatalf("wanted 3 boxes closed, got %d", m.checked)
+	}
+}
+
+// The two false accusations review found. A reopening means "a task was called done
+// before it was" — rewording a finished task's text is not that, and neither is deleting
+// one. Both emit a removed `[x]` and both netted a reopening under line-counting.
+func TestRewordingAndDeletingAFinishedTaskAreNotReopenings(t *testing.T) {
+	reword := `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++- [x] one
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+-- [x] one
++- [x] one, reworded
+`
+	if closed, reopened := churn(reword); closed != 1 || reopened != 0 {
+		t.Errorf("rewording a done task: wanted 1 closed / 0 reopened, got %d / %d", closed, reopened)
+	}
+
+	// A deleted done task nets -1 in its own commit. That IS a loss of finished work, so
+	// reporting it is honest — but it must not also inflate the close count.
+	del := `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++- [x] one
++- [x] two
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+-- [x] two
+`
+	if closed, reopened := churn(del); closed != 2 || reopened != 1 {
+		t.Errorf("deleting a done task: wanted 2 closed / 1 reopened, got %d / %d", closed, reopened)
+	}
+}
+
+// `+++ b/plan.md` and `--- a/plan.md` are diff headers, not content. Reading them as
+// lines starting with + or - is harmless only until a filename contains a checkbox.
+func TestChurnIgnoresDiffHeaders(t *testing.T) {
+	d := `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+--- a/plan.md
++++ b/plan.md
+@@ -1 +1 @@
++- [x] one
+`
+	if closed, reopened := churn(d); closed != 1 || reopened != 0 {
+		t.Errorf("wanted 1 closed / 0 reopened, got %d / %d", closed, reopened)
 	}
 }
 
@@ -129,9 +182,24 @@ func TestBoxInReadsOnlyRealCheckboxes(t *testing.T) {
 		{"+- [X] done", "x"},
 		{"+  - [ ] nested open", " "},
 		{"+- [] malformed", ""},
-		{"+prose about - [x] a box", "x"}, // a diff line is a diff line; this is honest noise
 		{"+nothing here", ""},
-		{"+- [", ""},
+
+		// Anchored, so the two commands cannot disagree about what a box is. `loop`'s
+		// parser has always required the box at the start of the line; this counted one
+		// anywhere, so the same plan.md gave two different totals.
+		{"+prose about - [x] a box", ""},
+		{"+  - [x] indented is still a box", "x"},
+
+		// The truncation boundary. The old bounds guard was `i+4 > len(l)` where it needed
+		// `>=`, so every one of these panicked with index out of range. The old table
+		// stopped at "+- [", exactly one character short of the crash — a boundary case
+		// that reads as covered and is not.
+		{"+- [x", ""},
+		{"+- [ ", ""},
+		{"+- []", ""},
+		{"+-", ""},
+		{"+", ""},
+		{"", ""},
 	} {
 		if got := boxIn(tc.line); got != tc.want {
 			t.Errorf("boxIn(%q) = %q, wanted %q", tc.line, got, tc.want)
@@ -142,15 +210,65 @@ func TestBoxInReadsOnlyRealCheckboxes(t *testing.T) {
 func TestAChangeWithNoPlanReportsADashNotAZero(t *testing.T) {
 	// Zero closed boxes and no plan at all are different facts. Printing 0 for both
 	// says a plan existed and nothing got done.
+	//
+	// The assertion is on the change's own row, not on the page. An earlier version
+	// searched the whole output for an em dash — which flowCeiling prints on every run,
+	// so mutating planCell to return "0" left the test green. A test whose subject also
+	// appears in boilerplate is asserting on the boilerplate.
 	now := time.Now().Unix()
 	var out strings.Builder
-	err := metrics(&out, ".", nil, fakeGit(".agents/changes/c/proposal.md\n",
+	err := metrics(&out, nil, fakeGit(".agents/changes/c/proposal.md\n",
 		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "—") {
-		t.Fatalf("a change with no plan must not report 0 closed boxes:\n%s", out.String())
+	row := rowFor(t, out.String(), "c")
+	if strings.Contains(row, "0") {
+		t.Fatalf("a change with no plan must not report 0 closed boxes, got row:\n%s", row)
+	}
+	if !strings.Contains(row, "—") {
+		t.Fatalf("wanted a dash in the row, got:\n%s", row)
+	}
+}
+
+// measureAt pins the repository root the tests measure against. The root is a real
+// parameter now: git pathspecs and os.Stat are both cwd-relative, so reading them from
+// the process cwd made `metrics` report "no changes yet" when run from a subdirectory.
+func measureAt(git gitRunner, name string) (changeMetrics, error) {
+	return measure(git, "/repo", name)
+}
+
+// rowFor returns the single output line reporting on one change, so an assertion cannot
+// accidentally be satisfied by the header, the footer or the ceiling note.
+func rowFor(t *testing.T, out, change string) string {
+	t.Helper()
+	for _, l := range strings.Split(out, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(l), change+" ") {
+			return l
+		}
+	}
+	t.Fatalf("no row for %q in:\n%s", change, out)
+	return ""
+}
+
+// The silent-skip guard. `measure` failing must still print a row: the footer counts
+// names, so a skip makes the total disagree with the rows above it.
+func TestAnUnreadableChangePrintsARowRatherThanVanishing(t *testing.T) {
+	now := time.Now().Unix()
+	// `b` is listed as added but has no log, so measure returns an error.
+	g := fakeGit(".agents/changes/a/proposal.md\n.agents/changes/b/proposal.md\n",
+		map[string]string{"a": fmt.Sprintf("%d\n", now)}, nil)
+
+	var out strings.Builder
+	if err := metrics(&out, nil, g); err != nil {
+		t.Fatal(err)
+	}
+	row := rowFor(t, out.String(), "b")
+	if !strings.Contains(row, "unreadable") {
+		t.Fatalf("wanted b marked unreadable, got:\n%s", row)
+	}
+	if !strings.Contains(out.String(), "2 change(s)") {
+		t.Fatalf("the footer must count both changes it listed:\n%s", out.String())
 	}
 }
 
@@ -159,7 +277,7 @@ func TestAChangeWithNoPlanReportsADashNotAZero(t *testing.T) {
 func TestTheReportNamesWhatItCannotMeasure(t *testing.T) {
 	now := time.Now().Unix()
 	var out strings.Builder
-	if err := metrics(&out, ".", nil, fakeGit(".agents/changes/c/proposal.md\n",
+	if err := metrics(&out, nil, fakeGit(".agents/changes/c/proposal.md\n",
 		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil)); err != nil {
 		t.Fatal(err)
 	}
@@ -179,17 +297,21 @@ func TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne(t *testing.T) {
 		}, nil)
 
 	var out strings.Builder
-	if err := metrics(&out, ".", []string{"a"}, g); err != nil {
+	if err := metrics(&out, []string{"a"}, g); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "a ") || strings.Contains(out.String(), "\n  b ") {
+	rowFor(t, out.String(), "a") // fails the test if absent
+	if strings.Contains(out.String(), "\n  b ") {
 		t.Fatalf("wanted only change a:\n%s", out.String())
 	}
+	if !strings.Contains(out.String(), "1 change(s)") {
+		t.Fatalf("the footer must count the filtered set, not the whole history:\n%s", out.String())
+	}
 
-	if err := metrics(&strings.Builder{}, ".", []string{"nope"}, g); err == nil {
+	if err := metrics(&strings.Builder{}, []string{"nope"}, g); err == nil {
 		t.Fatal("wanted a refusal for a change git never saw")
 	}
-	if err := metrics(&strings.Builder{}, ".", []string{"--all"}, g); err == nil {
+	if err := metrics(&strings.Builder{}, []string{"--all"}, g); err == nil {
 		t.Fatal("wanted a refusal for an unknown flag")
 	}
 }

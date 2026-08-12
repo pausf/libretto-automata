@@ -427,10 +427,30 @@ self_test() {
   printf '## Outcomes\n- not a criterion, needs no proof\n\n## Verification criteria\n- has one\n  and a continuation line\n  Proof: x.go TestX\n- has none\n- also none\n  with a continuation\n\n## After\n- outside again\n' > "$tmp"
   want 'unproven criteria found'     'has none
 also none' "$(criteria_without_proof "$tmp")"
-  want 'a proven criterion is quiet' ''  "$(printf 'a\n' >/dev/null; criteria_without_proof "$tmp" | rg -xF 'has one' || true)"
+  want 'a proven criterion is quiet' ''  "$(criteria_without_proof "$tmp" | rg -xF 'has one' || true)"
   want 'outcomes are not criteria'   ''  "$(criteria_without_proof "$tmp" | rg -F 'not a criterion' || true)"
   want 'a later heading closes it'   ''  "$(criteria_without_proof "$tmp" | rg -xF 'outside again' || true)"
   rm -f "$tmp"
+
+  # Orphan and dead-claim detection. --trace on this repository reports 0 dead claims, so
+  # without these the branch has never been observed producing output at all — a criterion
+  # naming three findings whose proof covered one of them.
+  want 'a claimed path is not an orphan'  yes "$(glob 'internal/link/plan.go' 'internal/link/**')"
+  want 'an unclaimed path is an orphan'   no  "$(glob 'LICENSE' 'internal/link/**' 'skills/**')"
+  # A dead claim is a glob matching nothing *in a file list* — not a glob that fails to
+  # match one path. `matches_any 'internal/gone/x.go' 'internal/gone/**'` is true, because
+  # the predicate compares patterns and never touches the filesystem; deadness is the
+  # question asked of the whole list, which is what the two cases below ask.
+  dead_hit=no
+  for p in cmd/libretto/main.go skills/evidence/SKILL.md; do
+    matches_any "$p" 'internal/vanished/**' && dead_hit=yes
+  done
+  want 'a dead glob matches no real path'  no "$dead_hit"
+  live_hit=no
+  for p in cmd/libretto/main.go skills/evidence/SKILL.md; do
+    matches_any "$p" 'skills/**' && live_hit=yes
+  done
+  want 'a live glob is not reported dead'  yes "$live_hit"
 
   # The dependency guard: without rg this script must refuse loudly, never report
   # "no drift". bash by absolute path, so only rg is missing from the child's PATH.

@@ -70,11 +70,14 @@ func execGit(dir string) gitRunner {
 // report exists to measure is simplified away. Measured, not assumed: without it, two of
 // twelve changes returned no history at all and no plan.md diff was found for any of
 // them, so every churn column read as "no plan" on changes that plainly had one.
-func changeNames(git gitRunner) ([]string, error) {
-	out, err := git("log", "--full-history", "--diff-filter=A", "--name-only", "--format=", "--", ".agents/changes/")
+func changeNames(git gitRunner, root string) ([]string, error) {
+	out, err := git("log", "--full-history", "--diff-filter=A", "--name-only", "--format=",
+		"--", path.Join(root, ".agents/changes")+"/")
 	if err != nil {
 		return nil, err
 	}
+	// git reports paths relative to the repository root whatever the pathspec was, so the
+	// prefix to strip is the repo-relative one and never the absolute one just passed in.
 	seen := map[string]bool{}
 	for _, l := range strings.Split(out, "\n") {
 		l = strings.TrimSpace(l)
@@ -98,9 +101,9 @@ func changeNames(git gitRunner) ([]string, error) {
 
 // measure reads one change's whole history. Commits arrive newest-first from git, so
 // last is the first line seen and first is the last.
-func measure(git gitRunner, name string) (changeMetrics, error) {
+func measure(git gitRunner, root, name string) (changeMetrics, error) {
 	m := changeMetrics{name: name}
-	dir := path.Join(".agents/changes", name)
+	dir := path.Join(root, ".agents/changes", name)
 
 	out, err := git("log", "--full-history", "--format=%ct", "--", dir)
 	if err != nil {
@@ -140,38 +143,90 @@ func measure(git gitRunner, name string) (changeMetrics, error) {
 	diff, err := git("log", "--full-history", "--diff-filter=AM", "-p", "--format=%H", "--", plan)
 	if err == nil && strings.TrimSpace(diff) != "" {
 		m.planSeen = true
-		for _, l := range strings.Split(diff, "\n") {
-			switch {
-			case strings.HasPrefix(l, "+") && boxIn(l) == "x":
-				m.checked++
-			case strings.HasPrefix(l, "-") && boxIn(l) == "x":
-				m.uncheck++
-			}
-		}
-		// Every closed box shows once as an added `[x]`; a box closed and reopened also
-		// shows as a removed one. So removals are reopenings, and they were also counted
-		// as closes when they closed again.
-		m.checked -= m.uncheck
+		m.checked, m.uncheck = churn(diff)
 	}
 	return m, nil
 }
 
-// boxIn returns "x", " " or "" for a diff line carrying a task checkbox.
-func boxIn(l string) string {
-	i := strings.Index(l, "- [")
-	if i < 0 || i+4 > len(l) || l[i+4] != ']' {
-		return ""
+// churn reads `git log -p --format=%H` over one plan.md and returns boxes closed and
+// boxes reopened.
+//
+// **Per commit, not per line, and that is the whole correctness argument.** Counting
+// added and removed `[x]` lines across the whole history makes a reworded task look like
+// a reopening: rewording a closed box emits `-[x] one` and `+[x] one, reworded` in the
+// same commit, which line-counting reports as one close and one reopen. So does deleting
+// a finished task. Both were reported by review as false accusations, because a
+// reopening means "a task was called done before it was" and a typo fix is not that.
+//
+// Within one commit the net change in closed boxes is what actually happened: +1 means a
+// box closed, -1 means one stopped being closed, 0 means the text moved and the state did
+// not. A reword nets zero and vanishes, which is correct.
+func churn(diff string) (closed, reopened int) {
+	flush := func(net int) {
+		if net > 0 {
+			closed += net
+		} else if net < 0 {
+			reopened += -net
+		}
 	}
-	switch c := l[i+3]; c {
-	case 'x', 'X':
-		return "x"
-	case ' ':
-		return " "
+	net := 0
+	for _, l := range strings.Split(diff, "\n") {
+		if isCommitSHA(l) {
+			flush(net)
+			net = 0
+			continue
+		}
+		// A diff header line begins with +++ or ---; it is not content.
+		if strings.HasPrefix(l, "+++") || strings.HasPrefix(l, "---") {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(l, "+") && boxIn(l) == "x":
+			net++
+		case strings.HasPrefix(l, "-") && boxIn(l) == "x":
+			net--
+		}
 	}
-	return ""
+	flush(net)
+	return closed, reopened
 }
 
-func metrics(w io.Writer, projectDir string, args []string, git gitRunner) error {
+func isCommitSHA(l string) bool {
+	if len(l) != 40 {
+		return false
+	}
+	for _, c := range l {
+		if !strings.ContainsRune("0123456789abcdef", c) {
+			return false
+		}
+	}
+	return true
+}
+
+// boxIn returns "x", " " or "" for a diff line carrying a task checkbox.
+//
+// It strips the diff marker and then asks `loop`'s parser, so the two commands cannot
+// disagree about what a box is. They did: this counted a box anywhere in a line while
+// planLine anchors to the start, so the same plan.md yielded two different totals
+// depending on which command read it.
+func boxIn(l string) string {
+	if l == "" {
+		return ""
+	}
+	m := planLine.FindStringSubmatch(l[1:]) // drop the +/- diff marker
+	if m == nil {
+		return ""
+	}
+	if m[1] == " " {
+		return " "
+	}
+	return "x"
+}
+
+// The repository root comes from git rather than a parameter: the caller's cwd is where
+// git was pointed, and `--show-toplevel` is the only thing that knows how far up the root
+// is. A projectDir parameter here would be a second answer that agrees only by accident.
+func metrics(w io.Writer, args []string, git gitRunner) error {
 	var only string
 	for _, a := range args {
 		if strings.HasPrefix(a, "-") {
@@ -183,7 +238,16 @@ func metrics(w io.Writer, projectDir string, args []string, git gitRunner) error
 		only = a
 	}
 
-	names, err := changeNames(git)
+	// Everything below is asked of the repository root, never of the cwd. git pathspecs
+	// and os.Stat are both cwd-relative, so run from a subdirectory this reported "no
+	// changes in this repository's history yet" — a plausible answer that was false.
+	root, err := git("rev-parse", "--show-toplevel")
+	if err != nil {
+		return fmt.Errorf("not a git repository, or git is unavailable: %w", err)
+	}
+	root = strings.TrimSpace(root)
+
+	names, err := changeNames(git, root)
 	if err != nil {
 		return fmt.Errorf("not a git repository, or git is unavailable: %w", err)
 	}
@@ -202,7 +266,7 @@ func metrics(w io.Writer, projectDir string, args []string, git gitRunner) error
 	var totalCommits, totalReopen int
 	var totalSpan time.Duration
 	for _, n := range names {
-		m, err := measure(git, n)
+		m, err := measure(git, root, n)
 		if err != nil {
 			// Never skip silently. The footer counts names, so a skipped row makes the
 			// total disagree with what is above it — and a report that says twelve while

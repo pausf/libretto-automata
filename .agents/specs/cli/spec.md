@@ -750,6 +750,17 @@ A missing payload:
   Proof: cmd/libretto/loop_test.go TestLoopStopsAfterTwoRoundsThatCloseNothing
 - a single barren round does not stop it
   Proof: cmd/libretto/loop_test.go TestOneBarrenRoundDoesNotStopTheLoop
+- **progress is boxes closed, never boxes remaining.** A session that finishes one task and
+  splits another in two leaves the open count unchanged, and reading that as no progress
+  stops the loop reporting "two rounds closed nothing" when two things were done. A plan is
+  allowed to grow: phase 6 discovering a task is the flow working.
+  Proof: cmd/libretto/loop_test.go TestAPlanThatGrowsIsProgressNotAStall
+- **the missing plan is reported before the missing dependency.** `loop <typo>` on a machine
+  without `claude` named the dependency rather than the mistake actually made.
+  Proof: cmd/libretto/loop_test.go TestTheMissingPlanIsReportedBeforeTheMissingDependency
+- **`--dry-run` works with an empty PATH**, proved through `loop` rather than `runLoop` —
+  the guard sits above `runLoop`, so a test calling it directly proves nothing about it.
+  Proof: cmd/libretto/loop_test.go TestDryRunNeedsNoClaudeOnPath
 - **the cap is the second ceiling, and hitting it is an error naming the flag that raises
   it.** A loop with no ceiling that never converges spends a budget silently.
   Proof: cmd/libretto/loop_test.go TestLoopStopsAtTheCapAndSaysSo
@@ -813,7 +824,28 @@ A missing payload:
 - **an unreadable change prints a row rather than being skipped.** The footer counts names,
   so a silent skip makes the total disagree with the rows above it — a report claiming
   twelve while showing ten is worse than one admitting it could not read two.
-  Proof: cmd/libretto/metrics_test.go TestAChangeWithNoPlanReportsADashNotAZero
+  Proof: cmd/libretto/metrics_test.go TestAnUnreadableChangePrintsARowRatherThanVanishing
+- **a reworded or deleted finished task is not a reopening.** The churn arithmetic is net
+  per commit, not summed per line, and that is the whole correctness argument: rewording a
+  closed box emits a removed `[x]` and an added one in the same commit, so line-counting
+  reported one close and one reopen for a typo fix. A reopening is the accusation "this was
+  called done before it was" and it has to be earned. Net zero within a commit means the
+  text moved and the state did not.
+  Proof: cmd/libretto/metrics_test.go TestRewordingAndDeletingAFinishedTaskAreNotReopenings
+- **the two commands read a checkbox identically.** `metrics` counted a box anywhere in a
+  line while `loop` anchors to the start, so one `plan.md` gave two different totals
+  depending on which command read it. `metrics` strips the diff marker and asks `loop`'s
+  parser; there is one definition of a box.
+  Proof: cmd/libretto/metrics_test.go TestBoxInReadsOnlyRealCheckboxes
+- **a truncated diff line does not panic.** The bounds guard was off by one — `i+4 > len(l)`
+  where it needed `>=` — so a line ending one character after `- [` indexed past the end.
+  The table that was meant to cover it stopped exactly one character short of the crash,
+  which is a boundary case that reads as covered and is not.
+  Proof: cmd/libretto/metrics_test.go TestBoxInReadsOnlyRealCheckboxes
+- **it asks git for the repository root rather than trusting the cwd.** git pathspecs and
+  `os.Stat` are both cwd-relative, so run from a subdirectory this reported "no changes in
+  this repository's history yet" — plausible, and false.
+  Proof: cmd/libretto/metrics_test.go TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne
 - **the report names the two things it cannot measure.** Per-phase duration and
   `review-work` finding counts both need a phase to write them down: phases 1 to 7 happen
   in one session and leave one commit, and a finding is repaired before anything lands so
