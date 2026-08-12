@@ -123,6 +123,30 @@ undocumented answer gets asked again next session.
 
 `AskUserQuestion` is native. Do not build a prompt system.
 
+### Three, at phase 2, and zero is allowed
+
+The user's call, 2026-08-12: *"me gustaría que hagas más preguntas del estilo Claude, para
+que el plan se cree entre los 2 y no solo tú"*. A phase that hands over a finished spec has
+decided alone everything it did not ask about, and the decisions it made quietly are
+exactly the ones nobody reviews.
+
+So phase 2 asks up to three before it writes the file — **one call, not three turns.** Three
+round trips to build one contract is the ceremony this flow spends its length arguing
+against, and the answers have to be *in* the contract rather than bolted on afterwards.
+
+**Phase 2 alone, not phase 5**, which was offered and declined. The contract is where an
+answer changes the most and costs the least to change; phase 5 already stops for the order
+and what waits on what. Asking twice before the first line of code is how a three-stop flow
+grows back into a nine-stop one, one defensible exception at a time.
+
+**Zero is legitimate, and it is said in one line.** The alternative — always three, stretched
+if necessary — was offered and declined for the reason `AGENTS.md` already gives: do not ask
+what the code can tell you. A quota manufactures the rubber-stamp question this flow removed
+from three other phases.
+
+Note what does *not* change: the stop count. The questions ride the stop phase 2 already
+has.
+
 ## 5 · The plan
 
 One markdown file. One line per task, checked off as work lands, so an agent
@@ -261,6 +285,33 @@ would be a hook, and `settings.json` is out of scope for this project by an earl
 decision. The gap is deliberate and worth naming rather than papering over.
 
 The push is asked at the very end — yes or no — and never assumed.
+
+### And then the tree goes home
+
+When the answer is yes and the request is confirmed open, phase 8 checks out the base
+branch and fast-forwards it. Not a convenience: **a session starts wherever the last one
+left the working directory**, so a flow that ends parked on a merged feature branch hands
+the next phase 1 a base that is behind the remote — and phase 1's whole job is reading what
+is in flight off exactly that.
+
+That is measured, not theorised. Phase 1 of the run that added this reported a branch as
+work in flight, offered the user a choice about it, and was wrong on both counts: the branch
+had already been merged and tagged `v0.6.1`, and local `main` was seven commits behind. The
+wrong reading was stated as fact.
+
+Three things it deliberately does not do:
+
+- **fetch the base ref without leaving the branch.** `git fetch origin main:main` is cheaper
+  and keeps you where you are, and it was offered and declined — it fixes the ref, not the
+  place the next session starts.
+- **delete the feature branch.** The request is open, not merged. A branch deleted there
+  takes the only local copy of unmerged work with it.
+- **merge anything.** `--ff-only`, always. A merge commit manufactured on somebody's base
+  branch by the bookkeeping phase is the surprise nobody wants, and a diverged base is a
+  fact worth seeing rather than resolving unasked.
+
+On the no path it does nothing at all. Nothing was pushed, so the branch is the only place
+the work exists, and moving off it buys nothing.
 
 ## Where the flow stops, and why only there
 
