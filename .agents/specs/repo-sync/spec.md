@@ -49,10 +49,24 @@ anybody and no version needed a major bump for the removal.
     parenthesised block, and a `[low, high]` range, inclusive at both ends.
   - **Hand-parsed, not through `golang.org/x/mod/modfile`.** A sixth direct dependency for
     one predicate, when the ladder puts stdlib first.
-  - **An unreadable `go.mod` is not evidence of a retraction** and the tag is offered.
-    `ls-remote` can name a tag the local object store has never seen — one pushed since the
-    last fetch — and a tag that new is a release far more often than a tombstone. Hiding it
-    would mean a genuine release going unannounced to everyone whose tags are a day old.
+  - **An unreadable `go.mod` means the tag cannot be offered. This reverses the original
+    decision, which shipped and then produced exactly the failure it was written to avoid.**
+    The rule used to be that an unreadable `go.mod` is not evidence of a retraction, so the
+    tag is offered — reasoning that `ls-remote` can name a tag the local store has never
+    seen, and a tag that new is a release far more often than a tombstone.
+    That is true in general and false here permanently. **This repository's tombstone is the
+    highest tag by design and stays there**, so what was filed as rare and transient is
+    certain and forever for any clone whose object store lacks that one blob — a `--no-tags`
+    clone, a shallow clone, or one made before the tag existed. Reproduced on a real clone:
+    `LatestTag` returned `v1.0.2`, the one version that must never be offered, while
+    `go install` had been resolving the `0.x` line correctly the whole time.
+    **The two errors are not symmetric, and that is the argument.** A missed notice is
+    repaired by the next fetch and `update` fetches; it costs a day of not knowing. A notice
+    naming a retracted version is wrong every time it prints and points at a number that can
+    never be un-published, because `sum.golang.org` is append-only.
+    An unverifiable candidate is therefore **skipped, and the walk falls through to the next
+    one** — a blanket refusal would discard a perfectly good lower tag. A clone with no tag
+    objects at all reports nothing, which is the honest answer: it cannot verify anything.
   - **No fetch to settle it.** Reaching the network for a speculative background check is
     the hang the cache exists to prevent, arriving from another direction, and it would
     write to the user's object store for a question nobody asked.
@@ -200,8 +214,9 @@ one. Rename is atomic.
 - **a tag whose own `go.mod` retracts it is skipped** — the tombstone, offered as an update
   until it was not
   Proof: internal/repo/release_test.go TestLatestTagSkipsATagThatRetractsItself
-- **a tag whose `go.mod` cannot be read is offered**, because unreadable is not evidence
-  Proof: internal/repo/release_test.go TestLatestTagOffersATagWhoseGoModCannotBeRead
+- **a tag whose `go.mod` cannot be read is not offered either**, and the walk falls through
+  to the next candidate rather than refusing outright
+  Proof: internal/repo/release_test.go TestLatestTagDoesNotOfferATagWhoseGoModCannotBeRead
 - every `retract` form is read: single, block, and an inclusive `[low, high]` range
   Proof: internal/repo/release_test.go TestRetractedReadsEveryDirectiveForm
 - a remote whose only tags are prereleases has no release to offer, and that is not an
