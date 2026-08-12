@@ -48,8 +48,8 @@ effort: xhigh
 
 | Value | Resolves to | Means |
 |---|---|---|
-| `fable` | Fable 5 | the deepest reasoning, and the priciest tokens here |
-| `opus` | Opus 5 | the most capable. Max plans; metered on Pro |
+| `fable` | Fable 5 | the hardest, longest-running work; priciest per token |
+| `opus` | Opus 5 | everyday complex work. Max plans; metered on Pro |
 | `sonnet` | Sonnet 5 | the default working model |
 | `haiku` | Haiku 4.5 | the cheap one — what this capability exists to make reachable |
 | *default* | — | no `model:` key at all: the agent runs on whatever the session runs on |
@@ -60,10 +60,24 @@ first, session default at the top, `fable` last — because the cheap choice bel
 cursor of a feature built to reduce the bill. This table reads most-capable first for a
 human; nothing renders it.
 
-**`opus`'s "the most capable" is stale prose the day `fable` exists, and it is left
-standing.** Rewriting a shipped label is a promise moving, and the ask was one entry.
-Named here so the next reader knows it was seen rather than missed; what fixes it is a pass
-over every label, which is its own change.
+**Every label answers "when would I pick this", and its wording is read off the host's own
+model picker rather than composed here.** A label stating a property — "the deepest
+reasoning" — does not help anybody choose, and a superlative is a claim about the whole
+lineup that goes wrong the moment the lineup grows. `fable` keeps a cost hint for the same
+reason `haiku` keeps "the cheap one": it is the fact that explains its position in the list.
+
+**Superseded — `opus` did say "the most capable", and that was left standing on purpose for
+one change.** When `fable` entered the catalogue the reasoning was that rewriting a shipped
+label moves a promise and the ask was one entry, so the staleness was named here instead of
+fixed. That held for about an hour. The host's own picker gives *most capable* to Fable and
+Opus 5 *"everyday, complex tasks"* — so `opus`'s label was not stale prose to be flagged, it
+was **false against the table this capability transcribes**, and naming a falsehood is not
+the same as tolerating one.
+
+What survives of the original decision is the caution: a shipped label is a promise and does
+not move on taste. What fell is the idea that this one was a matter of taste — it was
+checkable, and nobody had checked it. It was checked when the user put the host's picker on
+screen beside ours.
 
 **The value written is the alias; the version is what it means today.** `opus` keeps
 meaning "the Opus tier" after the model behind it is replaced, which is why the
