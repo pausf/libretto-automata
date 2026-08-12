@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pausf/libretto-automata/internal/agentmodel"
 	"github.com/pausf/libretto-automata/internal/target"
 )
 
@@ -378,5 +379,218 @@ func TestMenuTallyCountsTheActiveTargetsAgents(t *testing.T) {
 		if !strings.Contains(models, want) {
 			t.Errorf("tally = %q, want it to contain %q", models, want)
 		}
+	}
+}
+
+// effortOfAgent reads the effort a repo agent declares, through the same reader the
+// command uses. Reading the raw body and grepping would pass a `effort:` that landed
+// in the body.
+func (f fixture) effortOfAgent(t *testing.T, name string) string {
+	t.Helper()
+	got, err := agentmodel.ReadEffort(filepath.Join(f.Repo, "agents", name+".md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+func (f fixture) foreignEffort(t *testing.T, name string) string {
+	t.Helper()
+	got, err := agentmodel.ReadEffort(filepath.Join(f.Claude, "agents", name+".md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return got
+}
+
+func TestModelsListsEffortBesideTheModel(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "deep", "opus")
+	f.foreign(t, "inherits", "")
+	if err := agentmodel.SetEffort(filepath.Join(f.Claude, "agents", "deep.md"), "xhigh"); err != nil {
+		t.Fatal(err)
+	}
+
+	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(out, "xhigh") {
+		t.Errorf("the listing never shows a declared effort:\n%s", out)
+	}
+	// An agent declaring neither key shows the session word twice, and both columns
+	// mean the same thing by it.
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "inherits") {
+			if strings.Count(line, "(session)") != 2 {
+				t.Errorf("an agent declaring neither key should read (session) in both columns, got:\n%s", line)
+			}
+		}
+	}
+}
+
+func TestModelsListsTheEffortCatalogue(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "deep", "opus")
+
+	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, level := range []string{"low", "medium", "high", "xhigh", "max"} {
+		if !strings.Contains(out, level) {
+			t.Errorf("the trailer never names %q:\n%s", level, out)
+		}
+	}
+	if strings.Contains(out, "ultracode") {
+		t.Error("ultracode is a session mode, not a level, and no frontmatter accepts it")
+	}
+	// Haiku carrying the same silent row as the others would read as a level it can
+	// take. The listing has to say it cannot.
+	if !strings.Contains(out, "no effort levels") {
+		t.Errorf("the catalogue never says which model has no effort levels:\n%s", out)
+	}
+}
+
+func TestModelsEffortWritesOnlyTheNamedAgents(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "named", "opus")
+	f.foreign(t, "spared", "opus")
+
+	_, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"effort", "xhigh", "named"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := f.foreignEffort(t, "named"); got != "xhigh" {
+		t.Errorf("named = %q, want xhigh", got)
+	}
+	if got := f.foreignEffort(t, "spared"); got != "" {
+		t.Errorf("spared was not named and reads %q, want untouched", got)
+	}
+}
+
+func TestModelsEffortAllReachesEveryAgent(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "one", "opus")
+	f.foreign(t, "two", "sonnet")
+
+	_, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"effort", "low", "--all"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, name := range []string{"one", "two"} {
+		if got := f.foreignEffort(t, name); got != "low" {
+			t.Errorf("%s = %q, want low", name, got)
+		}
+	}
+}
+
+// A destructive default that fires on a forgotten argument is how every agent on the
+// machine silently becomes the same thing.
+func TestModelsEffortRefusesWithNothingNamed(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "one", "opus")
+
+	_, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"effort", "max"})
+	})
+	if err == nil {
+		t.Fatal("models effort with no agents and no --all was accepted")
+	}
+	if got := f.foreignEffort(t, "one"); got != "" {
+		t.Errorf("one reads %q after a refusal, want untouched", got)
+	}
+}
+
+func TestModelsEffortRefusesAnUnknownLevel(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "one", "opus")
+
+	_, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"effort", "ultracode", "one"})
+	})
+	if err == nil {
+		t.Fatal("models effort accepted ultracode")
+	}
+	for _, level := range []string{"low", "high", "max"} {
+		if !strings.Contains(err.Error(), level) {
+			t.Errorf("the refusal never names %q: %v", level, err)
+		}
+	}
+	if got := f.foreignEffort(t, "one"); got != "" {
+		t.Errorf("one reads %q after a refusal, want untouched", got)
+	}
+}
+
+func TestModelsEffortRefusesAnAgentThatCannotRunTheLevel(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "capable", "opus")
+	f.foreign(t, "cheap", "haiku")
+
+	_, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"effort", "high", "--all"})
+	})
+	if err == nil {
+		t.Fatal("a Haiku agent was given an effort level")
+	}
+	if !strings.Contains(err.Error(), "cheap") {
+		t.Errorf("the refusal does not name the offending agent: %v", err)
+	}
+	if got := f.foreignEffort(t, "capable"); got != "" {
+		t.Errorf("capable was written anyway and reads %q — the refusal was not all-or-nothing", got)
+	}
+}
+
+func TestModelsEffortDefaultRemovesTheKey(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "one", "opus")
+	if err := agentmodel.SetEffort(filepath.Join(f.Claude, "agents", "one.md"), "max"); err != nil {
+		t.Fatal(err)
+	}
+
+	_, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"effort", "default", "one"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := f.foreignEffort(t, "one"); got != "" {
+		t.Errorf("one = %q, want the key gone", got)
+	}
+	if strings.Contains(f.foreignBody(t, "one"), "effort:") {
+		t.Error("the key is still in the file")
+	}
+}
+
+// A dropped effort is an edit to a prompt file. A silent one is the failure the
+// clearing exists to avoid.
+func TestModelsSetReportsAClearedEffort(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "lens", "opus")
+	if err := agentmodel.SetEffort(filepath.Join(f.Claude, "agents", "lens.md"), "xhigh"); err != nil {
+		t.Fatal(err)
+	}
+
+	out, _, err := capture(t, func() error {
+		return models(f.Repo, f.global(), []string{"set", "haiku", "lens"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := f.foreignEffort(t, "lens"); got != "" {
+		t.Errorf("effort after moving to haiku = %q, want cleared", got)
+	}
+	if !strings.Contains(out, "cleared") {
+		t.Errorf("the clearing happened and the report never said so:\n%s", out)
 	}
 }

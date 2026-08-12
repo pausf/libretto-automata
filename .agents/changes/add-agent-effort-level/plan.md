@@ -48,12 +48,12 @@ and both of them can be written at once after that.
 
 ## 2 · The CLI — after the package, independent of the panel
 
-- [ ] **2.1 The effort column and the levels trailer in `models`.**
+- [x] **2.1 The effort column and the levels trailer in `models`.**
       Spec: cli · task 1 · Closes: TestModelsListsEffortBesideTheModel,
       TestModelsListsTheEffortCatalogue.
       Waits on: 1.4, 1.2.
 
-- [ ] **2.2 `models effort <level> <agents…|--all>`**, reusing `set`'s argument handling
+- [x] **2.2 `models effort <level> <agents…|--all>`**, reusing `set`'s argument handling
       rather than reimplementing the `--all` refusal.
       Spec: cli · task 2 · Closes: TestModelsEffortWritesOnlyTheNamedAgents,
       TestModelsEffortAllReachesEveryAgent, TestModelsEffortRefusesWithNothingNamed,
@@ -62,7 +62,7 @@ and both of them can be written at once after that.
       TestModelsEffortDefaultRemovesTheKey.
       Waits on: 1.5.
 
-- [ ] **2.3 `models set` reports a cleared effort** on the rows it cleared.
+- [x] **2.3 `models set` reports a cleared effort** on the rows it cleared.
       Spec: cli · task 3 · Closes: TestModelsSetReportsAClearedEffort.
       Waits on: 1.6, 2.1.
 
