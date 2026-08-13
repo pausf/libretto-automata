@@ -433,12 +433,12 @@ func TestTheReportExplainsItsColumns(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"calendar clock",              // span
+		"calendar clock",               // span
 		"called done before they were", // reopen
-		"boxes the plan holds",        // closed's denominator
-		"no plan.md in its history",   // the — cell
-		"still on disk",               // state
-		"touched the change",          // commits
+		"boxes the plan holds",         // closed's denominator
+		"no plan.md in its history",    // the — cell
+		"still on disk",                // state
+		"touched the change",           // commits
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("the legend must say %q:\n%s", want, out.String())
