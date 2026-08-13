@@ -26,6 +26,16 @@ import (
 //
 // What that cannot see is named in the report rather than guessed at. See flowCeiling.
 
+const flowLegend = `  Columns:
+    commits  commits that touched the change's folder
+    span     first commit to last — calendar clock, not attention
+    closed   boxes now closed, over the boxes the plan holds
+    reopen   boxes that went back open — tasks called done before they were
+    corr     user corrections recorded in .agents/lessons.md — a dash when no ledger exists
+    state    landed = the folder was deleted on landing · in flight = still on disk ·
+             unreadable = git would not answer for it, so its row is all ?
+    —        the change has no plan.md in its history`
+
 const flowCeiling = `  Not measured, and not derivable from git:
     · per-phase duration — phases 1 to 7 happen inside one session and leave one commit
     · review-work findings — reported in a session and repaired before anything lands,
@@ -40,6 +50,7 @@ type changeMetrics struct {
 	commits  int
 	checked  int // boxes that went from open to closed
 	uncheck  int // boxes that went back — the churn worth seeing
+	boxes    int // boxes the plan holds now, the closed cell's denominator
 	landed   bool
 	planSeen bool
 }
@@ -143,7 +154,7 @@ func measure(git gitRunner, root, name string) (changeMetrics, error) {
 	diff, err := git("log", "--full-history", "--diff-filter=AM", "-p", "--format=%H", "--", plan)
 	if err == nil && strings.TrimSpace(diff) != "" {
 		m.planSeen = true
-		m.checked, m.uncheck = churn(diff)
+		m.checked, m.uncheck, m.boxes = churn(diff)
 	}
 	return m, nil
 }
@@ -161,7 +172,10 @@ func measure(git gitRunner, root, name string) (changeMetrics, error) {
 // Within one commit the net change in closed boxes is what actually happened: +1 means a
 // box closed, -1 means one stopped being closed, 0 means the text moved and the state did
 // not. A reword nets zero and vanishes, which is correct.
-func churn(diff string) (closed, reopened int) {
+// It also returns how many boxes the plan holds at the end of its history — added box
+// lines minus removed ones, whatever their state. A reword nets zero here too, and a
+// deleted task shrinks the denominator along with whatever it did to the numerator.
+func churn(diff string) (closed, reopened, boxes int) {
 	flush := func(net int) {
 		if net > 0 {
 			closed += net
@@ -181,14 +195,20 @@ func churn(diff string) (closed, reopened int) {
 			continue
 		}
 		switch {
-		case strings.HasPrefix(l, "+") && boxIn(l) == "x":
-			net++
-		case strings.HasPrefix(l, "-") && boxIn(l) == "x":
-			net--
+		case strings.HasPrefix(l, "+") && boxIn(l) != "":
+			boxes++
+			if boxIn(l) == "x" {
+				net++
+			}
+		case strings.HasPrefix(l, "-") && boxIn(l) != "":
+			boxes--
+			if boxIn(l) == "x" {
+				net--
+			}
 		}
 	}
 	flush(net)
-	return closed, reopened
+	return closed, reopened, boxes
 }
 
 func isCommitSHA(l string) bool {
@@ -290,10 +310,14 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 		return fmt.Errorf("not a git repository, or git is unavailable: %w", err)
 	}
 	if only != "" {
-		names = filterName(names, only)
-		if len(names) == 0 {
+		matches := filterName(names, only)
+		if len(matches) == 0 {
 			return fmt.Errorf("git has never seen a change called %q", only)
 		}
+		if len(matches) > 1 {
+			return fmt.Errorf("%q is ambiguous: %s", only, strings.Join(matches, ", "))
+		}
+		names = matches
 	}
 	if len(names) == 0 {
 		fmt.Fprintf(w, "\n  no changes in this repository's history yet\n\n")
@@ -304,7 +328,7 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 
 	fmt.Fprintf(w, "\n  %-34s %7s %8s %7s %7s %7s  %s\n", "change", "commits", "span", "closed", "reopen", "corr", "state")
 	var totalCommits, totalReopen int
-	var totalSpan time.Duration
+	var spans []changeMetrics
 	for _, n := range names {
 		m, err := measure(git, root, n)
 		if err != nil {
@@ -324,26 +348,47 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 		}
 		fmt.Fprintf(w, "  %-34s %7d %8s %7s %7s %7s  %s\n",
 			trunc(m.name, 34), m.commits, humanSpan(m.span()),
-			planCell(m.planSeen, m.checked), churn, corrCell(ledgerSeen, corrCounts[n]), state)
+			planCell(m.planSeen, m.checked-m.uncheck, m.boxes), churn, corrCell(ledgerSeen, corrCounts[n]), state)
 		totalCommits += m.commits
 		totalReopen += m.uncheck
-		totalSpan += m.span()
+		spans = append(spans, m)
 	}
 	fmt.Fprintf(w, "\n  %d change(s), %d commit(s), %s of wall clock, %d box(es) reopened\n",
-		len(names), totalCommits, humanSpan(totalSpan), totalReopen)
+		len(names), totalCommits, humanSpan(mergedSpan(spans)), totalReopen)
 	if orphans > 0 {
 		fmt.Fprintf(w, "  %d correction(s) outside any change\n", orphans)
 	}
-	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "%s\n\n", flowCeiling)
+	fmt.Fprintf(w, "\n%s\n\n%s\n\n", flowLegend, flowCeiling)
 	return nil
 }
 
-func planCell(seen bool, n int) string {
+// mergedSpan sums [first, last] ranges counting each calendar hour once. The footer
+// says "wall clock", and two changes open the same week are one week of clock — the
+// plain sum reported both, which was nobody's calendar.
+func mergedSpan(ms []changeMetrics) time.Duration {
+	sort.Slice(ms, func(i, j int) bool { return ms[i].first.Before(ms[j].first) })
+	var total time.Duration
+	var end time.Time
+	for _, m := range ms {
+		start := m.first
+		if start.Before(end) {
+			start = end
+		}
+		if m.last.After(end) {
+			total += m.last.Sub(start)
+			end = m.last
+		}
+	}
+	return total
+}
+
+// planCell reads n/total: boxes closed now over boxes the plan has. The cumulative
+// close count belongs to the reopen column's story, not this cell's.
+func planCell(seen bool, n, total int) string {
 	if !seen {
 		return "—"
 	}
-	return fmt.Sprint(n)
+	return fmt.Sprintf("%d/%d", n, total)
 }
 
 // corrCell prints the corrections column: a dash when no ledger exists — absent is
@@ -355,13 +400,20 @@ func corrCell(seen bool, n int) string {
 	return fmt.Sprint(n)
 }
 
+// filterName resolves a typed name: exact first, then prefix. Exact must win even when
+// it also prefixes a sibling, or a change whose full name starts another's becomes
+// unreachable. A multi-element return is an ambiguity for the caller to refuse.
 func filterName(names []string, only string) []string {
+	var prefixed []string
 	for _, n := range names {
 		if n == only {
 			return []string{n}
 		}
+		if strings.HasPrefix(n, only) {
+			prefixed = append(prefixed, n)
+		}
 	}
-	return nil
+	return prefixed
 }
 
 func trunc(s string, n int) string {
