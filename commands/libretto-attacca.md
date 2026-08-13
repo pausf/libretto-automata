@@ -102,9 +102,13 @@ a contract nobody agreed to.
 
 ## Never
 
-- **merge, tag, release, or put a `release:` label on the request.** It ends at a request
-  open for review. The bump is a reading of the specs rather than of the commits, and a
-  version number cannot be recalled once the proxy has cached it.
+- **merge, tag or release the request, or label it with a bump the user did not choose.**
+  It ends at a request open for review. The bump is a reading of the specs rather than of
+  the commits, and a version number cannot be recalled once the proxy has cached it — so
+  the reading stays the user's, always. What the run may do is **type** an answer it was
+  given: phase 8 asks once at the very end, and `skills/record-work/` owns every rule
+  about it. Unanswered, headless, or a repository that defines no `release:` labels all
+  end here unlabeled, exactly as before.
 - **skip, reorder or soften a gate**, or reach for `--force`, `--no-verify` or anything
   else that buys a green result. This removes waits, never checks.
 - **weaken, skip or delete a failing test.** Fix the cause or stop and say why.

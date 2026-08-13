@@ -27,9 +27,20 @@ Installing this repository gives a working flow on a machine that has nothing el
   pushed branch with a request open on it. It writes everything the attended flow writes;
   what the invocation answers is the waiting. **What it cannot answer is a gate**, and a
   question no reading of the code settles becomes an assumption recorded in the spec, the
-  report and the request rather than a prompt. **The request's description carries both
-  halves** — what the invocation answered and what the run assumed — because without the
-  first a reviewer cannot tell an agreed contract from an assumed one
+  report and the request rather than a prompt. **The request's description carries three
+  things** — what the invocation answered, what the run assumed, and the bump a person
+  chose — because without the first a reviewer cannot tell an agreed contract from an
+  assumed one
+- **one question an unattended run does ask, and it is the last thing that happens** — the
+  `release:` bump, after the report, the request and the return to the base branch. It is
+  not a stop: nothing is downstream of it and the work is complete and reviewable whether
+  it is answered or not. **The run never decides the bump; it asks and types the answer**,
+  which is the split `AGENTS.md` already draws — the reading is the user's, the typing is
+  not. `release:major` is selectable and never recommended, there is no default when it
+  goes unanswered, and a repository that defines none of the three labels is not asked at
+  all. It exists because a designed refusal nobody predicts reads as breakage: the red
+  `require-release-label` check *is* the bump question, and it arrived once as a broken
+  pipeline
 - **the finished work reviewed by someone who did not write it, then repaired** — in the
   seam between build and present, `review-work` launches one fresh `work-reviewer`
   subagent with none of the session's context; it re-runs every proof the change
@@ -104,10 +115,22 @@ third-party items and their attribution.
 - **draining the queue unattended.** `libretto-next` runs one idea and the flow's own
   stops apply, and `libretto-attacca` does not reopen it: one invocation is one piece of
   work. Batch execution is a different feature with different risks.
-- **an unattended run merging, tagging, releasing, or labelling the request.** It ends at
-  a request open for review. The bump is a reading of `.agents/specs/` rather than of the
-  commits, `release:major` is asked-and-waited-for by standing rule, and a version number
-  cannot be recalled once the proxy has cached it.
+- **an unattended run merging, tagging or releasing the request, or labelling it with a
+  bump the user did not choose.** It ends at a request open for review. The bump is a
+  reading of `.agents/specs/` rather than of the commits, `release:major` is
+  asked-and-waited-for by standing rule, and a version number cannot be recalled once the
+  proxy has cached it — so the reading stays the user's, always. **What the run may do is
+  type an answer it was given**, once, at the very end. That is one word of this non-goal
+  reversed and no more: merging, tagging and releasing stay absolute, and a run that
+  labelled without asking would be deciding the version, which is the thing forbidden here.
+- **the bump question in the attended `/libretto-flow`.** Its phase 8 already stops with
+  the user present; the red check ambushes nobody there. The user's call, 2026-08-13 —
+  back the day an attended run pays the same round trip.
+- **creating the `release:` labels where a repository defines none**, defaulting the bump
+  when the question goes unanswered, or re-asking a request that already carries one.
+  The first decides somebody else's release convention; the second is the silently-wrong
+  bump wearing a politer hat; the third defends a state attacca cannot reach, because it
+  opens the request itself in the same run.
 - **skipping, reordering or softening a gate**, and `--force`, `--no-verify` or anything
   else that buys a green result. Unattended removes waits, never checks.
 - **a second door into the unattended mode.** One command, no flag on `libretto-flow`
@@ -444,6 +467,25 @@ the copy stays comparable with upstream.
   invocation that behaves differently must be unmistakable in the history rather than an
   argument that can be typed by accident. What the refused rule still binds is the shape:
   it delegates and describes nothing.
+- **the bump is asked at attacca's end rather than left as a red check to be discovered** —
+  the user's call, 2026-08-13, and the reversal of one word of the labelling non-goal above.
+  It holds only because the run asks and types rather than reads: `AGENTS.md` already splits
+  those, and every rule around the question exists to keep the split intact. Two calls taken
+  with it, both with what changes if they are wrong: **attacca only**, so an attended run
+  keeps paying the round trip if that turns out to matter; and **detect the labels rather
+  than hardcode this repository**, so a project whose `release:*` labels mean something else
+  gets a question that does not apply and answers by ignoring it. **Ceiling named:** the
+  question is only as reachable as the terminal it is asked in — a scheduled or piped run
+  never sees it and lands unlabeled, which is today's behaviour and therefore the fallback
+  rather than an error. The replacement, if that becomes common, is a `gh pr comment`
+  carrying the three commands.
+- **a wiring proof cannot tell a sentence from a step, and this change paid for the lesson** —
+  the phase 6→7 reviewer found the request's description promised the chosen bump with
+  nothing in the flow writing it there, while the criterion's row confirmed the sentence
+  existed and passed. Four of its five findings were defects that shipped green. The rule
+  that follows is not a new check but a reading of the existing one: a criterion proved by
+  `check-payload` is proved to be *present*, and any criterion whose value is that something
+  *runs* needs the step named in the same file, not only the promise.
 - **`attacca` because it is the instruction, not a metaphor for it** — what a score writes
   to mean *go on to the next movement without pausing*. The cost is opacity to a reader
   who does not read music, paid by one line of `description:`. `auto` was rejected for
@@ -646,6 +688,45 @@ the copy stays comparable with upstream.
   marking, propose-never-apply, and the command routing to the skill.** Wiring only — a
   prompt is checked by running it, and these rows are what keeps the decisive words in
   the files that own them.
+  Proof: scripts/check-payload
+
+The bump question's rows, one per condition. **Each was written before the prose it
+describes and observed red**, except where noted in the change's own record — a row added
+to match prose that already exists has never proved it could fail, and this change found
+one of those in its own plan before the reviewer found four more in its skill.
+
+- **the bump is asked at the end of the attacca path in `skills/record-work/`**, which is
+  the file that owns phase 8
+  Proof: scripts/check-payload
+- **the applied label is read back off the request.** A command that printed no error is
+  not a change the forge accepted — the rule the push already carries
+  Proof: scripts/check-payload
+- **the chosen bump is written back into the request's description.** The description
+  exists before the question is asked, so it reaches it only by being written back. Found
+  by the reviewer as a promise with no step behind it, passing its own row
+  Proof: scripts/check-payload
+- **`release:major` is present in the prompt and is never the first option.** Recommending
+  it is the announcement `AGENTS.md` forbids, and announcing it is what published `v1.0.0`
+  Proof: scripts/check-payload
+- **label detection is searched and bounded, never a bare `gh label list`.** The default
+  fetches 30 ascending, so `release:*` falls off the page and the check answers "none of
+  the three" for a repository that defines all three — inverting silently
+  Proof: scripts/check-payload
+- **labels are matched by whole name, never by prefix or substring.** `release:patch-hotfix`
+  contains `release:patch` and is not it, and a detection looser than the workflow it feeds
+  finds labels `gh pr edit` is then refused
+  Proof: scripts/check-payload
+- **a repository defining none of the three is not asked**, and **the closing report's
+  red-check line survives an unanswered question** — the line is written before the question
+  and is never withdrawn by it
+  Proof: scripts/check-payload
+- **the push consent does not extend to a label**, in `record-work` as well as in the
+  command. The same absolute sentence lived in both; only one was amended and only one was
+  guarded, in the file the contract does not designate as the owner
+  Proof: scripts/check-payload
+- **`commands/libretto-attacca.md` restates none of it** — no prompt, no `gh pr edit` — and
+  its `Never` list forbids labelling only with a bump the user did not choose, while merging,
+  tagging and releasing stay absolute
   Proof: scripts/check-payload
 
 **What none of this verifies is behaviour.** A skill is a prompt, and a prompt is

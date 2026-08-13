@@ -225,8 +225,16 @@ before it can merge**.
   question reaching the user. The run that opened PR #44 did not say so in its closing
   report and the user read a broken pipeline — one alarm and one round trip paid for a
   sentence. Any report that ends at this repository's request names the label check in
-  its own line, with the one command that answers it. The fuller fix — asking the bump
-  natively at the end of the run — is queued as `ask-release-label-at-attacca-end`.
+  its own line, with the one command that answers it. **That prediction rule stands on its
+  own and is not replaced by what follows** — a report is read before a prompt arrives, and
+  a run with no terminal never gets the prompt at all.
+
+  The fuller fix was built on 2026-08-13 and lives in `skills/record-work/`, on the attacca
+  path: the bump is asked once at the very end and the user's answer is typed onto the
+  request. **Nothing here changed.** `require-release-label` still refuses an unlabelled
+  request, still judges nothing about which bump is correct, and still holds no permissions.
+  The red check is not what that change removed — what changed is that somebody is asked
+  before they meet it, and an unanswered question still lands here, red, exactly as before.
 
 ## Task breakdown
 
