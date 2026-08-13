@@ -98,16 +98,35 @@ git commit -m "feat(record-work): ask the bump once at attacca's end"
 
 **Consumes:** the section heading and `gh label list` sentence from task 1.
 
-- [ ] **2.1 Write the two rows red**
+- [x] **2.1 Write the two rows red**
 
 ```bash
 check_wiring skills/record-work/SKILL.md 'defines none of the three' 'a repository without the labels is not asked'
 check_wiring skills/record-work/SKILL.md 'is never withdrawn'        'the red-check line survives an unanswered question'
 ```
 
-- [ ] **2.2 Run it and watch it fail** — `scripts/check-payload; echo $?` → `1`, two `FAIL`.
+- [x] **2.2 Run it and watch it fail** — `scripts/check-payload; echo $?` → `1`, two `FAIL`.
 
-- [ ] **2.3 Write the two paths**
+**It did not fail, and the reason is a finding rather than an excuse.** Task 1 wrote the
+prose belonging here — its section states both quiet paths — so these rows were green the
+moment they were added. The boundary between tasks 1 and 2 was drawn in the plan and
+crossed while implementing, which is the plan being wrong about the seam, not the work.
+
+Faking the red by deleting prose to watch it come back is theatre. What was done instead
+is the honest half: prove the patterns **discriminate**, by running them against the file
+as it stood before task 1.
+
+```bash
+git show 7e4d65c~1:skills/record-work/SKILL.md > /tmp/pre1.md
+rg -N 'defines none of the three' /tmp/pre1.md   # no match
+rg -N 'is never withdrawn'        /tmp/pre1.md   # no match
+```
+
+Both absent, so both rows can go red for an edit that removes the path they guard. That is
+weaker evidence than a watched red — the rows never failed in the run that created them —
+and it is written down here rather than smoothed over.
+
+- [x] **2.3 Write the two paths**
 
 - **no labels:** a repository that *defines none of the three* is not asked and is not told
   why. Nothing is created — inventing `release:minor` in somebody else's repository decides
@@ -120,9 +139,9 @@ check_wiring skills/record-work/SKILL.md 'is never withdrawn'        'the red-ch
 - **no default.** Not patch, not "the safe one". A silently-wrong bump is the failure that
   published `v1.0.0` wearing a politer name.
 
-- [ ] **2.4 Run it and watch it pass** → `0`, two new `ok`.
+- [x] **2.4 Run it and watch it pass** → `0`, two new `ok`.
 
-- [ ] **2.5 Six gates, then commit**
+- [x] **2.5 Six gates, then commit**
 
 ```bash
 git add skills/record-work/SKILL.md scripts/check-payload .agents/changes/ask-release-label-at-attacca-end/plan.md
