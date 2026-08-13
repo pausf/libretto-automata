@@ -206,12 +206,16 @@ overridden: the asking happened at the prompt.
 The answer covers **this branch and this request and nothing past it** — no merge, no tag,
 no release, no `release:` label.
 
-And it is paid for in the request's description, which carries two things or the run has
+And it is paid for in the request's description, which carries three things or the run has
 bought silence rather than speed:
 
 - **what the invocation answered** — the two stops and the push — so a reader can tell
   which of the decisions in front of them a person made
 - **every question the run assumed past**, each with what changes if it is wrong
+- **the bump a person chose**, and that a person chose it — see the bump section below. A
+  reviewer has to be able to tell an agreed bump from an assumed one, and that distinction
+  is what this whole command is built out of. An unlabeled request says the question went
+  unanswered, which is its own honest state and not an omission to be tidied away.
 
 This section sits **below** the native-prompt paragraph deliberately. Written above it, the
 paragraph that followed read as reinstating the ask unconditionally — the reviewer's

@@ -158,24 +158,24 @@ the request's description"*) · modify `scripts/check-payload`
 **Closes:** criterion 8 — the one phase 5's coverage pass found missing.
 **Waits on:** task 1 — the bump has to exist before the description can carry it.
 
-- [ ] **3.1 Write the row red**
+- [x] **3.1 Write the row red**
 
 ```bash
 check_wiring skills/record-work/SKILL.md 'the bump a person chose' 'the request records who chose the bump'
 ```
 
-- [ ] **3.2 Run it and watch it fail** → `1`, one `FAIL`.
+- [x] **3.2 Run it and watch it fail** → `1`, one `FAIL`.
 
-- [ ] **3.3 Extend the description paragraph**
+- [x] **3.3 Extend the description paragraph**
 
 It already carries two things — what the invocation answered, and every question the run
 assumed past. It gains a third: **the bump a person chose**, and that a person chose it. A
 reviewer has to be able to tell an agreed bump from an assumed one, and that distinction is
 what this whole command is built out of.
 
-- [ ] **3.4 Run it and watch it pass** → `0`.
+- [x] **3.4 Run it and watch it pass** → `0`.
 
-- [ ] **3.5 Six gates, then commit**
+- [x] **3.5 Six gates, then commit**
 
 ```bash
 git add skills/record-work/SKILL.md scripts/check-payload .agents/changes/ask-release-label-at-attacca-end/plan.md

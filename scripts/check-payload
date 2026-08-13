@@ -183,6 +183,7 @@ check_wiring skills/record-work/SKILL.md 'read the request back'  'the applied l
 check_wiring skills/record-work/SKILL.md 'never the first option' 'release:major is never recommended'
 check_wiring skills/record-work/SKILL.md 'defines none of the three' 'a repository without the labels is not asked'
 check_wiring skills/record-work/SKILL.md 'is never withdrawn' 'the red-check line survives an unanswered question'
+check_wiring skills/record-work/SKILL.md 'the bump a person chose' 'the request records who chose the bump'
 
 # The inverse. Two of this change's criteria are about what must NOT be in the command
 # that describes no phase, and a presence check cannot express either.
