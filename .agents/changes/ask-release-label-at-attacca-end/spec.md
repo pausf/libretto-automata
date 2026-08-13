@@ -149,6 +149,11 @@ the review's own finding, and the reason each line below fails alone.
   strings a script can find absent and present: *"no longer contradicts the skill"* is a
   judgment, and a judgment cited to a script has no red run
   Proof: scripts/check-payload
+- **the request's description carries the chosen bump and that a person chose it**, beside
+  what the invocation answered and what the run assumed past. Found by phase 5's coverage
+  pass, not by the review: the outcome and its task were written and nothing closed them,
+  which is the shape that gets marked done by whoever reads most generously
+  Proof: scripts/check-payload
 
 **Proved as wiring, and the difference is stated rather than assumed.** A prompt's conduct
 is checked by running it; what a script can check is that the phase exists where it should,
