@@ -13,7 +13,11 @@ must be red before tasks 2–4 exist, or the rows prove nothing.
 
 ## The red-first task, and why it is first
 
-- [ ] **1 · Three `check_wiring` rows, observed RED**
+- [x] **1 · Three `check_wiring` rows, observed RED** — all three failed, exit 1, nothing
+      else in the script failed. Recorded:
+      `FAIL phase 2 selects the governing spec, not the spec root — … no longer contains /never the corpus/`
+      `FAIL a fan-out brief section is named per subtask, vocabulary always — … /always the vocabulary/`
+      `FAIL the fan-out states what a mid-phase model switch costs — … /rebills the whole context/`
       Add three rows to `scripts/check-payload`, all over `skills/write-spec/SKILL.md`,
       each matching a phrase the file does **not** yet contain. Run `scripts/check-payload`,
       redirect to a file, check `$?`, read the file. Record all three failures verbatim —
