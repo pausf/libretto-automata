@@ -40,6 +40,7 @@ type changeMetrics struct {
 	commits  int
 	checked  int // boxes that went from open to closed
 	uncheck  int // boxes that went back — the churn worth seeing
+	boxes    int // boxes the plan holds now, the closed cell's denominator
 	landed   bool
 	planSeen bool
 }
@@ -143,7 +144,7 @@ func measure(git gitRunner, root, name string) (changeMetrics, error) {
 	diff, err := git("log", "--full-history", "--diff-filter=AM", "-p", "--format=%H", "--", plan)
 	if err == nil && strings.TrimSpace(diff) != "" {
 		m.planSeen = true
-		m.checked, m.uncheck = churn(diff)
+		m.checked, m.uncheck, m.boxes = churn(diff)
 	}
 	return m, nil
 }
@@ -161,7 +162,10 @@ func measure(git gitRunner, root, name string) (changeMetrics, error) {
 // Within one commit the net change in closed boxes is what actually happened: +1 means a
 // box closed, -1 means one stopped being closed, 0 means the text moved and the state did
 // not. A reword nets zero and vanishes, which is correct.
-func churn(diff string) (closed, reopened int) {
+// It also returns how many boxes the plan holds at the end of its history — added box
+// lines minus removed ones, whatever their state. A reword nets zero here too, and a
+// deleted task shrinks the denominator along with whatever it did to the numerator.
+func churn(diff string) (closed, reopened, boxes int) {
 	flush := func(net int) {
 		if net > 0 {
 			closed += net
@@ -181,14 +185,20 @@ func churn(diff string) (closed, reopened int) {
 			continue
 		}
 		switch {
-		case strings.HasPrefix(l, "+") && boxIn(l) == "x":
-			net++
-		case strings.HasPrefix(l, "-") && boxIn(l) == "x":
-			net--
+		case strings.HasPrefix(l, "+") && boxIn(l) != "":
+			boxes++
+			if boxIn(l) == "x" {
+				net++
+			}
+		case strings.HasPrefix(l, "-") && boxIn(l) != "":
+			boxes--
+			if boxIn(l) == "x" {
+				net--
+			}
 		}
 	}
 	flush(net)
-	return closed, reopened
+	return closed, reopened, boxes
 }
 
 func isCommitSHA(l string) bool {
@@ -284,7 +294,7 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 		}
 		fmt.Fprintf(w, "  %-34s %7d %8s %7s %7s  %s\n",
 			trunc(m.name, 34), m.commits, humanSpan(m.span()),
-			planCell(m.planSeen, m.checked), churn, state)
+			planCell(m.planSeen, m.checked-m.uncheck, m.boxes), churn, state)
 		totalCommits += m.commits
 		totalReopen += m.uncheck
 		spans = append(spans, m)
@@ -315,11 +325,13 @@ func mergedSpan(ms []changeMetrics) time.Duration {
 	return total
 }
 
-func planCell(seen bool, n int) string {
+// planCell reads n/total: boxes closed now over boxes the plan has. The cumulative
+// close count belongs to the reopen column's story, not this cell's.
+func planCell(seen bool, n, total int) string {
 	if !seen {
 		return "—"
 	}
-	return fmt.Sprint(n)
+	return fmt.Sprintf("%d/%d", n, total)
 }
 
 func filterName(names []string, only string) []string {

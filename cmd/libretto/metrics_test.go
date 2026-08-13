@@ -145,7 +145,7 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 -- [x] one
 +- [x] one, reworded
 `
-	if closed, reopened := churn(reword); closed != 1 || reopened != 0 {
+	if closed, reopened, _ := churn(reword); closed != 1 || reopened != 0 {
 		t.Errorf("rewording a done task: wanted 1 closed / 0 reopened, got %d / %d", closed, reopened)
 	}
 
@@ -157,8 +157,8 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 -- [x] two
 `
-	if closed, reopened := churn(del); closed != 2 || reopened != 1 {
-		t.Errorf("deleting a done task: wanted 2 closed / 1 reopened, got %d / %d", closed, reopened)
+	if closed, reopened, boxes := churn(del); closed != 2 || reopened != 1 || boxes != 1 {
+		t.Errorf("deleting a done task: wanted 2 closed / 1 reopened / 1 box left, got %d / %d / %d", closed, reopened, boxes)
 	}
 }
 
@@ -171,7 +171,7 @@ func TestChurnIgnoresDiffHeaders(t *testing.T) {
 @@ -1 +1 @@
 +- [x] one
 `
-	if closed, reopened := churn(d); closed != 1 || reopened != 0 {
+	if closed, reopened, _ := churn(d); closed != 1 || reopened != 0 {
 		t.Errorf("wanted 1 closed / 0 reopened, got %d / %d", closed, reopened)
 	}
 }
@@ -313,6 +313,33 @@ func TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne(t *testing.T) {
 	}
 	if err := metrics(&strings.Builder{}, []string{"--all"}, g); err == nil {
 		t.Fatal("wanted a refusal for an unknown flag")
+	}
+}
+
+// 5/5 and 5/18 are opposite facts about a change in flight, and a bare 5 hides which
+// one is happening. The numerator is what is closed now, not cumulative closes —
+// churn already has its own column.
+func TestClosedShowsItsDenominator(t *testing.T) {
+	now := time.Now().Unix()
+	diff := `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++- [x] one
++- [ ] two
++- [ ] three
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+-- [x] one
++- [x] one, reworded
+`
+	g := fakeGit(".agents/changes/c/proposal.md\n",
+		map[string]string{"c": fmt.Sprintf("%d\n", now)},
+		map[string]string{"c": diff})
+	var out strings.Builder
+	if err := metrics(&out, nil, g); err != nil {
+		t.Fatal(err)
+	}
+	row := rowFor(t, out.String(), "c")
+	// The reword must move neither number: still one closed of three.
+	if !strings.Contains(row, "1/3") {
+		t.Fatalf("wanted the closed cell as 1/3, got row:\n%s", row)
 	}
 }
 
