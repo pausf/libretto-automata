@@ -871,20 +871,24 @@ const recMark = "*"
 // machine carrying this payload plus the user's own twenty-two would otherwise answer
 // nothing, for ever — which is the common gesture producing the useless result.
 //
+// **Having no opinion and having no value are different things**, and conflating them was
+// a real defect: an agent recommended onto a model with no effort levels is not silent
+// about effort, it is saying no level applies. Read as an abstention it let one other
+// marked agent carry the set, and the screen recommended `high` for a pair including an
+// agent whose own recommendation has no levels to give. So abstention is decided by
+// whether the agent is recommended at all, and the field is the vote.
+//
 // **Each catalogue asks about its own field.** A set agreeing on the model and differing
 // on effort is not a set that disagrees when the question on screen is which model.
 func markedRecommendation(agents []AgentRow, field func(AgentRow) string) (string, bool) {
-	value := ""
+	value, voted := "", false
 	for _, a := range agents {
-		if !a.Marked {
+		if !a.Marked || a.Recommended == "" {
 			continue
 		}
 		v := field(a)
-		if v == "" {
-			continue
-		}
-		if value == "" {
-			value = v
+		if !voted {
+			value, voted = v, true
 			continue
 		}
 		if v != value {

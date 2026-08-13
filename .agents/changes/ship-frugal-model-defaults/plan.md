@@ -125,6 +125,25 @@ recorded rather than assumed.
       Proof: internal/ui/models_test.go TestTheRecommendationIsNeverPreselected
       Proof: internal/ui/models_test.go TestAnUnrecommendedAgentAddsNothingToTheCatalogue
 
+## Added by review-work, after the fact
+
+- [x] **12 · The four findings**
+      **The real one:** `markedRecommendation` read "recommended onto a model with no
+      effort levels" as "no opinion". Marking `spec-writer` beside `review-lens-design`
+      then let one agent carry the set and the screen recommended `high` for a pair
+      including an agent whose recommendation has no levels to give. Abstention is now
+      decided by whether the agent is recommended at all; the field is the vote.
+      **A dead assertion:** the silence half of the listing criterion looked for `→` on an
+      unrecommended agent's line, and the trailer emits `←`. It could not fail — dropping
+      the skip guard left it green. Now asserted against the trailer, and proved red.
+      **The table disagreed with its own spec:** `review-lens-intent` shipped `high` while
+      A1 omitted it, and no guard can see that — the guards walk the table for what a
+      machine can decide. The table was right; the paragraph was short.
+      **And the differ notice went to the title, not the footer** the delta first named.
+      The spec moved: the footer legend is full and the title is where the mark needed
+      explaining anyway.
+      Proof: internal/ui/models_test.go TestARecommendationWithNoEffortIsAVoteNotAnAbstention
+
 ## Closing
 
 - [ ] **11 · Six gates, then apply both deltas**

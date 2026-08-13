@@ -733,12 +733,17 @@ func TestModelsListsTheRecommendationAndItsReason(t *testing.T) {
 	if !found {
 		t.Errorf("no line carries the agent and its reason together:\n%s", out)
 	}
-	// Silence for somebody's own agent, and not a blank cell standing in for an
-	// opinion that does not exist.
-	for _, line := range strings.Split(out, "\n") {
-		if strings.Contains(line, "somebody-elses-agent") && strings.Contains(line, "→") {
-			t.Errorf("an agent we have no opinion about was given one:\n%s", line)
-		}
+	// Silence for somebody's own agent — absent from the trailer, not blank in it.
+	//
+	// Asserted against the trailer rather than against a glyph. The first version looked
+	// for "→" on that agent's line, and the trailer emits "←"; the assertion could not
+	// fail, so deleting the guard that skips unrecommended agents left it green.
+	_, trailer, ok := strings.Cut(out, "recommended, and never applied")
+	if !ok {
+		t.Fatalf("no recommendation trailer at all:\n%s", out)
+	}
+	if strings.Contains(trailer, "somebody-elses-agent") {
+		t.Errorf("an agent we have no opinion about appears in the trailer:\n%s", trailer)
 	}
 }
 

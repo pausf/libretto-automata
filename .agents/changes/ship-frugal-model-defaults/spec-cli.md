@@ -125,7 +125,7 @@ changes if it is wrong:
   |---|---|---|
   | `review-lens-design` | `haiku` | pattern-matching over prose |
   | `review-lens-tests` | `haiku` | pattern-matching over prose |
-  | `review-lens-intent` | `sonnet` | the only lens that runs commands, and it reads forge payload |
+  | `review-lens-intent` | `sonnet` · `high` | the only lens that runs commands, and it reads forge payload |
   | `review-lens-reliability` | `sonnet` · `high` | races and error paths are reasoning, not matching |
   | `review-lens-security` | `sonnet` · `xhigh` | the skill says security does not run cheap |
   | `spec-writer` | `sonnet` · `high` | it writes the contract everything later is measured against |
@@ -133,6 +133,14 @@ changes if it is wrong:
 
   *If wrong:* one table entry each. Nothing structural moves, which is why the values sit
   in one place.
+
+  **The values are reviewed, never tested, and review caught one.** The guards below walk
+  the table for what a machine can decide — is this a real model, is that a level the
+  model has, is this the priciest tier — and none of them can see a value disagreeing with
+  this paragraph. `review-lens-intent` shipped carrying `high` while this table omitted it,
+  and both were green. The table was right and the paragraph was short; **a recommendation
+  of `high` is not noise**, because an absent key means the *session's* effort and the
+  session may have been launched at `low`.
 
 - **A2 · Nothing is recommended onto `opus` or `fable`.** The catalogue orders itself
   cheapest-first precisely because this feature exists to reduce a bill. `sonnet` is the

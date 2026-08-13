@@ -1627,3 +1627,25 @@ func TestTheEffortCatalogueMarksTheRecommendation(t *testing.T) {
 		t.Errorf("marked %v for a recommendation carrying no effort:\n%s", got, out)
 	}
 }
+
+func TestARecommendationWithNoEffortIsAVoteNotAnAbstention(t *testing.T) {
+	forceTrueColor(t)
+	// review-lens-design is recommended onto haiku, which has no levels at all. That is
+	// not "no opinion" — it is the opinion that no level applies. Reading it as an
+	// abstention lets one other marked agent carry the whole set, and the screen then
+	// recommends `high` for an agent whose recommendation has no efforts to give.
+	out := strip(darkTheme().selector(Panel{
+		Width: 140, InSelector: true, ChoosingEffort: true,
+		EffortChoices: []EffortChoice{{Name: "low"}, {Name: "high"}, {Name: "xhigh"}},
+		Agents: []AgentRow{
+			{Name: "spec-writer", Marked: true, Recommended: "sonnet", RecommendedEffort: "high"},
+			{Name: "review-lens-design", Marked: true, Recommended: "haiku"},
+		},
+	}))
+	if got := markedIn(out); len(got) != 0 {
+		t.Errorf("marked %v for a set one of whose members has no level to give:\n%s", got, out)
+	}
+	if strings.Contains(out, "recommended") && !strings.Contains(out, "differ") {
+		t.Errorf("the header promises a recommendation the set does not have:\n%s", out)
+	}
+}

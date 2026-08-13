@@ -92,8 +92,12 @@ cursor on it would be the tool typing the answer with extra steps.
   panel rather than to this feature.
 - **No extra line under the catalogue.** The open-catalogue row reservation is part of the
   window arithmetic that keeps the screen inside the terminal height, and a line not in
-  that count is a scroll bug on a short terminal. The differ notice reuses the footer the
-  screen already has.
+  that count is a scroll bug on a short terminal.
+  **The notice goes in the catalogue's own title**, not the footer this delta first named.
+  The footer legend is already full at `space mark · a all · m model · e effort · esc
+  back`, and the title is the line the mark needs explaining on anyway — an unexplained
+  glyph is no affordance with extra ink. The boundary's purpose is unchanged: no line
+  outside the row reservation.
 - **No divergence glyph on the resting row.** A single character would fit the budget, and
   it was rejected: a glyph needs a legend, the legend row is already full at
   `space mark · a all · m model · e effort · esc back`, and the panel spec forbids the
@@ -155,7 +159,7 @@ changes if it is wrong:
    the sibling delta; this one only reads the field.
 2. The model catalogue marks the recommended entry for a set that agrees, unknown agents
    abstaining.
-3. A set disagreeing on the model marks nothing and says so in the footer.
+3. A set disagreeing on the model marks nothing and says so in the catalogue's title.
 4. An unrecommended agent renders the catalogue exactly as today.
 5. The effort catalogue, same rules, judged against the declared model inside its existing
    narrowing.
@@ -182,6 +186,13 @@ changes if it is wrong:
   together with an unknown one still marks the known one's recommendation — otherwise
   marking everything on a real machine answers nothing, for ever.
   Proof: internal/ui/models_test.go TestAnUnknownAgentDoesNotBlockTheOthersRecommendation
+
+- **having no opinion and having no value are different things.** An agent recommended
+  onto a model with no effort levels is not silent about effort — it is saying no level
+  applies, and reading that as abstention let one other marked agent carry the set. So
+  abstention is decided by whether the agent is recommended at all, and the field is the
+  vote. Found by review, in the code path rather than on screen.
+  Proof: internal/ui/models_test.go TestARecommendationWithNoEffortIsAVoteNotAnAbstention
 
 - **a set agreeing on the model but differing on effort still marks the model.** Each
   catalogue compares its own field; a disagreement about depth is not a disagreement about
