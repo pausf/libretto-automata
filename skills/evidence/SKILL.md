@@ -4,7 +4,7 @@ description: "Trigger: running tests, builds, linters or any command whose resul
 license: MIT
 metadata:
   author: pausf
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## The one rule
@@ -99,6 +99,33 @@ decorative.
 
 At the end, the criterion and its test are checked against each other. A criterion
 whose test was never written is an unmet criterion, whatever the suite says.
+
+## A correction is evidence too — write it down
+
+**When the user says work already done was wrong** — a mistake named, a decision
+reversed, a convention this flow broke — append one entry to `.agents/lessons.md`
+in the project the flow is running in, then carry on with the correction itself.
+
+```
+## 2026-08-13 · add-relative-discounts · build-and-check
+Said: the tag here is <type>/<scope>, never bare
+Did: wrote a bare tag in the commit subject
+```
+
+The header is the contract: `## <date> · <change> · <phase>` — exactly two ` · `
+separators, three non-empty fields, the change field `-` when no change is open,
+the phase field the skill that was active. `Said:` carries the user's words, not a
+paraphrase — a paraphrase records what was understood, and what was understood is
+the thing under suspicion. `Did:` is what the flow had done.
+
+**A changed ask is not a lesson.** "Actually, make it blue instead" is new work.
+The ledger measures this flow's errors, not the user's evolving intent — pollute it
+with requirement changes and the count stops meaning anything.
+
+Capture never interrupts: no question, no pause, one append. The file is
+append-only — entries are never edited or deleted; the `retro` skill spends them
+later by adding a `Resolved:` line. A correction that dies in the scroll is paid
+again next session; this is where it stops being free to lose.
 
 ## Know when to stop
 

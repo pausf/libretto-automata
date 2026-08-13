@@ -858,3 +858,19 @@ A missing payload:
   Proof: cmd/libretto/metrics_test.go TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne
 - it reads the project's git history, so it is not gated on the payload
   Proof: cmd/libretto/metrics_test.go TestMetricsIsNotGatedOnThePayload
+- **corrections are counted per change, read off the lessons ledger.** `.agents/lessons.md`
+  is the one artifact the payload writes and this command only counts — it exists for the
+  retro, written by one skill, and metrics is a free rider, which is the bar the
+  no-instrumentation rule above sets for an artifact. The header is the contract: a line
+  matches when it starts with `## ` and carries exactly two ` · ` separators with three
+  non-empty fields; the date is not validated, because a misspelled date is still a
+  countable lesson.
+  Proof: cmd/libretto/metrics_test.go TestCorrectionsAreCountedPerChange
+- **no ledger reports a dash, never a zero.** Absent means capture is not in use; zero
+  means the flow ran and was never corrected. Printing 0 for the first claims the second.
+  Proof: cmd/libretto/metrics_test.go TestNoLedgerReportsADashNotAZero
+- **a malformed header is skipped and a changeless correction is named, never lost.** The
+  ledger is written by prompts, so a parser that dies on one bad line loses the whole
+  report; entries whose change field is `-` (no change open) belong to no row and are
+  reported in one line instead of silently dropped.
+  Proof: cmd/libretto/metrics_test.go TestMalformedAndChangelessEntriesDoNotCrashTheCount

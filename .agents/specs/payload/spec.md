@@ -46,6 +46,14 @@ Installing this repository gives a working flow on a machine that has nothing el
   much gets said" work on a machine that installed nothing else. Only what the flow
   calls by name: the rest of both plugins stays upstream.
 - drift detection that ships with the skill that uses it
+- **the flow learns from its own corrections.** `evidence` captures every user correction
+  into `.agents/lessons.md` while the flow runs — a correction is work already done being
+  wrong; a changed ask is new work, not a lesson — as append-only entries under the
+  countable header `## <date> · <change> · <phase>`, the user's words kept verbatim.
+  `libretto-retro` routes to `retro`, which spends the open entries: **project knowledge**
+  is recorded in the project's own contract, a **flow defect** becomes an exact diff
+  proposed against the payload skill and never applied, and a **one-off** is marked as
+  such. Spent entries gain a `Resolved:` line and are never edited otherwise.
 
 **Every skill is self-sufficient once installed.** A skill that only works inside this
 repository is a skill that works for nobody.
@@ -110,6 +118,20 @@ third-party items and their attribution.
   var for the mode.** Consent is for one run, and consent that persists is consent nobody
   remembers giving.
 - **the Go binary knowing about the queue.** It is payload, not delivery.
+- **a cross-project retro.** The retro runs where the flow ran, on that project's ledger.
+  Back the day one payload lesson shows up in two projects' ledgers.
+- **the retro applying a payload diff.** Propose only; the payload is the product and does
+  not get edited as a side effect of a retro. Back, if ever, as an explicit flag after the
+  proposals have earned trust — never the default.
+- **capturing the model's self-detected failures.** Gates and `evidence` already own
+  those; the ledger records *user* corrections, the signal that is unambiguous and
+  otherwise lost.
+- **a hook or automation for capture.** Recognising "the user is correcting me" is
+  judgment, and it lives in a skill instruction.
+- **editing or deleting ledger entries**, from any skill. Append and mark. History is the
+  point, and an edited entry is history that lies.
+- **the Go binary writing the ledger.** Delivery reads it (the corrections column in
+  `metrics`); only the payload writes it.
 
 ### A stop is a place where the user changes something
 
@@ -452,6 +474,21 @@ the copy stays comparable with upstream.
   upstream is the accepted cost, and `diff` against a fresh clone at the pinned
   commit is the check when doubt arises.
 
+- **The lessons ledger lives per project at `.agents/lessons.md`** — the user's call,
+  2026-08-13. Central-in-`~/.claude` was rejected (outside git, no review possible, mixes
+  projects); per-change files were rejected because phase 8 deletes the change folder at
+  landing and lessons must outlive the change that taught them.
+- **The retro proposes payload diffs and never applies them** — the user's call,
+  2026-08-13, choosing this over an automatic retro inside phase 8, which was rejected as
+  too much power without eyes on it.
+- **Capture lives in `evidence`, not in eight phase skills.** One place, already invoked
+  at every phase; eight copies of one rule is eight things that drift.
+- **A lesson is classified by where the fix lives.** Project knowledge goes into that
+  project's contract; a flow defect goes to the payload skill as a proposal. A retro that
+  mixes them writes one project's manias into the flow and breaks it for every other
+  project. An entry that could read both ways is project knowledge until the same lesson
+  appears somewhere a second time — the cheaper wrong guess.
+
 ## Task breakdown
 
 - [x] `find-work` — phase 1, three sources
@@ -483,6 +520,11 @@ the copy stays comparable with upstream.
 - [x] an independent verifier: check the implementation against the spec's criteria,
       never run by whoever wrote the code — `review-work` and `work-reviewer`, in the
       seam between phases 6 and 7
+- [x] the capture rule in `evidence`, with the entry format stated once
+- [x] `retro` — read, classify, record or propose, mark resolved
+- [x] `libretto-retro` — route to the skill, describe nothing
+- [x] the retro wiring guarded in `check-payload`, observed failing on a hand-broken
+      copy before landing
 
 ## Verification criteria
 
@@ -600,6 +642,12 @@ the copy stays comparable with upstream.
   scoping it the other way made the override itself the failure.
   Proof: scripts/check-payload
 
+- **the retro wiring holds: capture in `evidence`, verbatim `Said:`, `Resolved:`-only
+  marking, propose-never-apply, and the command routing to the skill.** Wiring only — a
+  prompt is checked by running it, and these rows are what keeps the decisive words in
+  the files that own them.
+  Proof: scripts/check-payload
+
 **What none of this verifies is behaviour.** A skill is a prompt, and a prompt is
 checked by running it. The static checks above catch what silently degrades one — a
 broken reference, an unreachable tool, frontmatter a host cannot parse — and nothing
@@ -659,6 +707,11 @@ question it could not derive appears as a marked assumption in the spec, the rep
 the request, and nowhere as a prompt. The third of those is the one to run first — it is
 the case where the mode must look exactly like the attended flow, and the only one whose
 failure is silent.
+
+**The lessons ledger and the retro are prose and none of it has run.** Claims, not
+facts: a correction mid-flow producing an entry without interrupting the phase; a retro
+classifying a real ledger and putting each fix where it belongs; a proposed payload diff
+a user could apply verbatim. The first real flow after this lands is the test.
 
 **The queue is prose and none of it has run.** Claims, not facts: capturing two ideas
 leaves two committed proposals and no branch; `/libretto-next` offers the oldest first and

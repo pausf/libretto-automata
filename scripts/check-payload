@@ -173,6 +173,11 @@ check_wiring skills/review-spec/SKILL.md 'never rewrites the spec'      'review-
 check_wiring skills/write-spec/SKILL.md  'the work is a bug'       'write-spec carries the bug branch'
 check_wiring skills/write-spec/SKILL.md  'fails right now'              'the bug branch demands a red test first'
 check_wiring skills/find-work/SKILL.md   'whether it is a bug'          'phase 1 names bug-or-not'
+check_wiring skills/evidence/SKILL.md    'lessons\.md'                  'evidence captures corrections into the ledger'
+check_wiring skills/evidence/SKILL.md    'Said:'                        'the capture keeps the user words, not a paraphrase'
+check_wiring skills/retro/SKILL.md       'Resolved:'                    'retro spends entries by marking, never editing'
+check_wiring skills/retro/SKILL.md       'Never apply it'               'retro proposes payload diffs and never applies'
+check_wiring commands/libretto-retro.md  'Skill\(skill="retro"\)'       'libretto-retro routes to the retro skill'
 
 printf '\n── skills never point at an executable that is not installed ──\n'
 # `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
