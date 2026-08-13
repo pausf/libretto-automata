@@ -195,6 +195,10 @@ whose deltas it will produce:
   give one thing two names
 - the six-pillar structure they all fill in
 
+**Those five are headings in the file, and they are the whole set.** Fixed rather than
+invented per change, because the prompt below names sections back to the writer and a
+name only works when both sides hold the same list.
+
 A file, not a paragraph held in this conversation. Three reasons, and the third is
 the one that matters:
 
@@ -205,6 +209,22 @@ the one that matters:
 3. **It can be re-run.** When the brief turns out to be wrong, the fix is to correct
    the brief and regenerate the affected specs — which is impossible if the brief
    only ever existed inside a prompt.
+
+### Do not change the model or the effort part-way through a fan-out
+
+A phase's context is billed cheaply while its prefix stays identical between calls —
+the run is charged a fraction of the input price for everything the previous call
+already established. **Switching the model or the effort level invalidates that prefix
+and rebills the whole context at full input price**, and a fan-out is where that hurts
+most: N writers is N contexts, and a switch part-way through pays for all of them
+twice.
+
+So pick the tier before the fan-out starts and leave it alone until the phase ends.
+Between phases is free — that is a new prefix either way.
+
+**This is a statement, not a check.** The dial is the session's, and no skill can read
+it or stop a hand from moving it; what a skill can do is put the cost where somebody
+about to launch eight writers will see it.
 
 Commit it with the deltas. It is the provenance of the whole change, and it is as
 temporary as the change — when the deltas land on their capability specs, the brief
@@ -231,7 +251,15 @@ fan-out safe, and it is the same rule as the plan's, with a different single wri
 Each one is launched as the `spec-writer` agent — that contract exists for exactly
 this seat, and a generic sub-agent would start without it. In its prompt:
 
-- the path to the brief, and the instruction to read it first
+- the path to the brief, **and which of its five sections this subtask touches — and
+  always the vocabulary**. Naming sections is what keeps a brief affordable as it grows:
+  a brief serving eight subtasks carries eight subtasks' worth of settled decisions, and
+  the writer of one of them pays for all eight to find its own. The vocabulary is never
+  trimmed and never optional, because it is the entire mechanism stopping two writers
+  from giving one concept two names — a brief read in slices with the shared names left
+  out is worse than a brief read whole
+- **the path, never the text.** Sections are named, not excerpted: excerpting is what
+  puts N copies in N contexts, which is the cost the brief exists to remove
 - its own subtask — key, summary, description
 - the boundary between its spec and its siblings', stated explicitly
 - the one path it may write, and nothing else

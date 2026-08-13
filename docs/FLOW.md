@@ -431,6 +431,17 @@ through the orchestrator**: several agents asking directly would interleave ques
 from work the user cannot see, each answer arriving without the context that made it a
 question.
 
+**And the tier is chosen before the fan-out, not during it.** A phase's context is billed
+at a fraction of the input price while its prefix stays byte-identical between calls;
+changing the model or the effort level invalidates that prefix and rebills everything at
+full price. Fanning out is where that is dearest — N writers is N contexts, and a switch
+part-way through pays for all of them twice. Between phases the prefix is new anyway, so
+that is where a change of tier is free.
+
+The rule is stated in `skills/write-spec/` too, beside the fan-out it costs. It stays a
+statement in both places rather than a check: the dial is the session's, and nothing in
+the payload can read it.
+
 Phase 6 does not fan out. Parallel implementation needs isolation per task, a serial
 queue for merges, and a conflict protocol — without those three, concurrency
 manufactures races. The order to add them, when it is time, is worktrees, then the

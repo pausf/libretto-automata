@@ -47,7 +47,7 @@ concurrent edits to one markdown is the lost-update race this plan's own rules f
       *From:* outcomes 1 · task breakdown 2 · *Closes:* criterion 1.
       *Waits on:* 1.
 
-- [ ] **3 · Rule 2 — the brief's fixed headings**
+- [x] **3 · Rule 2 — the brief's fixed headings** — row green.
       `write-spec` step 2b: the brief's five section headings stated as a **fixed
       enumerated set** (conventions, constraints, settled decisions, vocabulary, the
       six-pillar structure); the sub-agent prompt names the sections its subtask touches
@@ -56,7 +56,7 @@ concurrent edits to one markdown is the lost-update race this plan's own rules f
       *From:* outcomes 2 · task breakdown 3 · *Closes:* criterion 2.
       *Waits on:* 1. Independent of 2 in content, serial in file.
 
-- [ ] **4 · Rule 3 — cache stability**
+- [x] **4 · Rule 3 — cache stability** — row green; FLOW.md paragraph added, uncontracted.
       `write-spec` step 2b: a switch of model or effort invalidates the cached prefix and
       rebills the whole context at full input price, stated beside the fan-out where N
       contexts pay it.
@@ -67,7 +67,7 @@ concurrent edits to one markdown is the lost-update race this plan's own rules f
 
 ## Closing
 
-- [ ] **5 · `scripts/check-payload` green, observed**
+- [x] **5 · `scripts/check-payload` green, observed** — exit 0, no FAIL lines, all three rows ok.
       Run it, redirect, check `$?`, read the file. All three rows green, and the rest of
       the script still green. Never piped into `head` — the pipeline reports the last
       command's status.
