@@ -61,7 +61,7 @@ Waits on: Task 1 (the format it reads is stated there).
 
 **Files:** Create: `skills/retro/SKILL.md`
 
-- [ ] **2.1** Write `skills/retro/SKILL.md` — frontmatter `name: retro`, a
+- [x] **2.1** Write `skills/retro/SKILL.md` — frontmatter `name: retro`, a
       description that triggers on "retro", "lecciones", "learn from the flow".
       Body: read `.agents/lessons.md`; take entries without a `Resolved:` line;
       classify each as **project knowledge** (record the convention in the owning
@@ -73,8 +73,8 @@ Waits on: Task 1 (the format it reads is stated there).
       where, every proposed diff. No ledger or no open entries: say so in one line
       and stop. Never edit entries beyond appending `Resolved:`; never push; never
       touch the payload.
-- [ ] **2.2** Run `scripts/check-payload`; expect pass.
-- [ ] **2.3** Commit: `feat(payload): retro skill — classify lessons, fix the project, propose to the payload`
+- [x] **2.2** Run `scripts/check-payload`; expect pass.
+- [x] **2.3** Commit: `feat(payload): retro skill — classify lessons, fix the project, propose to the payload`
 
 ### Task 3 — the `libretto-retro` command
 
