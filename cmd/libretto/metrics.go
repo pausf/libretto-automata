@@ -31,7 +31,8 @@ const flowLegend = `  Columns:
     span     first commit to last — calendar clock, not attention
     closed   boxes now closed, over the boxes the plan holds
     reopen   boxes that went back open — tasks called done before they were
-    state    landed = the folder was deleted on landing · in flight = still on disk
+    state    landed = the folder was deleted on landing · in flight = still on disk ·
+             unreadable = git would not answer for it, so its row is all ?
     —        the change has no plan.md in its history`
 
 const flowCeiling = `  Not measured, and not derivable from git:

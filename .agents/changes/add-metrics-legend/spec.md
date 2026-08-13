@@ -30,5 +30,7 @@ where useful). English, like all CLI output.
 
 ## Verification criteria
 
-- the report names every column it prints, and what a `—` means.
+- the legend names the six measured facts — commits, span, closed, reopen, state
+  including its `unreadable` value, and the `—` cell. The `change` column is the name
+  itself and explains nothing.
   Proof: cmd/libretto/metrics_test.go TestTheReportExplainsItsColumns

@@ -438,6 +438,7 @@ func TestTheReportExplainsItsColumns(t *testing.T) {
 		"boxes the plan holds",         // closed's denominator
 		"no plan.md in its history",    // the — cell
 		"still on disk",                // state
+		"unreadable",                   // the state the error row prints
 		"touched the change",           // commits
 	} {
 		if !strings.Contains(out.String(), want) {
