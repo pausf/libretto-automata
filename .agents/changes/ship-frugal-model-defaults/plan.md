@@ -76,7 +76,11 @@ recorded rather than assumed.
 
 ## The screen — a mark, and never a reason
 
-- [ ] **6 · The catalogue holds the frame at its narrowest**
+- [x] **6 · The catalogue holds the frame at its narrowest** — **red on a bug that was
+      already there.** With no character added by this change, the open catalogue ran to
+      66 and 73 columns against a 58-column interior. Nothing measured it, because the
+      row-width test renders no open catalogue. Labels now yield to the frame with a
+      visible ellipsis, exactly as the name column does.
       58 columns, catalogue open, longest entry the table makes possible.
       **This is the criterion the existing row-width test cannot be**: that test renders
       resting rows with no catalogue open, so the one line this change can lengthen is
@@ -84,13 +88,16 @@ recorded rather than assumed.
       *From:* panel outcomes 1 · constraints · *Closes:* criterion 8. *Waits on:* 5.
       Proof: internal/ui/models_test.go TestTheOpenCatalogueHoldsTheFrameAtItsNarrowest
 
-- [ ] **7 · The mark, for a set that agrees**
+- [x] **7 · The mark, for a set that agrees** — written after the implementation, so both were forced red: the mark disabled → `marked [], want exactly [haiku]`.
       One marked agent, then several agreeing. A character, not a hue.
       *From:* panel outcomes 1 · *Closes:* criteria 9, 13. *Waits on:* 6.
       Proof: internal/ui/models_test.go TestTheModelCatalogueMarksTheRecommendation
       Proof: internal/ui/models_test.go TestTheRecommendationMarkIsLegibleWithoutColour
 
-- [ ] **8 · The three ways a set can fail to agree**
+- [x] **8 · The three ways a set can fail to agree** — all three forced red: a swallowed
+      disagreement → `marked [haiku], want nothing`; an abstention turned into a block →
+      `an agent with no opinion blocked the ones that had one`; the model catalogue asked
+      the effort field → `marked [], want [sonnet]`.
       Different models → nothing marked, footer says so. An unknown agent **abstains**
       rather than blocking — marking everything on a real machine must not answer nothing
       for ever. A set agreeing on model and differing on effort still marks the model,
@@ -100,14 +107,18 @@ recorded rather than assumed.
       Proof: internal/ui/models_test.go TestAnUnknownAgentDoesNotBlockTheOthersRecommendation
       Proof: internal/ui/models_test.go TestDisagreementIsJudgedPerCatalogue
 
-- [ ] **9 · The effort catalogue, judged against the declared model**
+- [x] **9 · The effort catalogue, judged against the declared model** — and the assertion
+      had to be strengthened to mean anything. Removing the offer guard changed no mark,
+      because the entry is absent from a narrowed list either way; what it changed was the
+      **header**, which went on promising a recommendation the user would then hunt for.
+      The test asserts the header now, and goes red without the guard.
       Inside the narrowing it already applies. A recommended level outside that offer marks
       nothing — including `review-lens-design`, whose `haiku` recommendation has no levels
       at all.
       *From:* panel outcomes 3 · *Closes:* criterion 14. *Waits on:* 8.
       Proof: internal/ui/models_test.go TestTheEffortCatalogueMarksTheRecommendation
 
-- [ ] **10 · Nothing is preselected, and an unknown agent changes nothing**
+- [x] **10 · Nothing is preselected, and an unknown agent changes nothing** — both forced red: cursor moved to 1 → `the catalogue opened on "haiku"`; the header made unconditional → `an agent we have no opinion about changed the catalogue`.
       The cursor opens where it has always opened. An agent with no recommendation renders
       the catalogue exactly as today — no mark, no blank row standing in for one.
       *From:* panel outcomes 4, 5 · *Closes:* criteria 15, 16. *Waits on:* 7.

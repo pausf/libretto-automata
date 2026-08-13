@@ -730,10 +730,18 @@ func (t Theme) selector(p Panel) string {
 	}
 
 	if p.ChoosingModel {
-		rows = append(rows, t.catalogue("model for "+strconv.Itoa(countMarked(p.Agents))+" marked:", p.ModelChoices, p.ModelCursor)...)
+		rec, differ := markedRecommendation(p.Agents, func(a AgentRow) string { return a.Recommended })
+		rows = append(rows, t.catalogue(cw, "model for "+strconv.Itoa(countMarked(p.Agents))+" marked:", p.ModelChoices, p.ModelCursor, rec, differ)...)
 	}
 	if p.ChoosingEffort {
-		rows = append(rows, t.catalogue("effort for "+strconv.Itoa(countMarked(p.Agents))+" marked:", p.EffortChoices, p.EffortCursor)...)
+		// Judged against the model each row declares, because that is what the offer
+		// below was narrowed by and what the user can actually pick right now. A
+		// recommended level outside it simply is not marked.
+		rec, differ := markedRecommendation(p.Agents, func(a AgentRow) string { return a.RecommendedEffort })
+		if rec != "" && !offers(p.EffortChoices, rec) {
+			rec = ""
+		}
+		rows = append(rows, t.catalogue(cw, "effort for "+strconv.Itoa(countMarked(p.Agents))+" marked:", p.EffortChoices, p.EffortCursor, rec, differ)...)
 	}
 	return strings.Join(rows, "\n")
 }
@@ -809,8 +817,27 @@ func (p Panel) choosing() bool { return p.ChoosingModel || p.ChoosingEffort }
 // catalogue renders one open choice list. Shared by both because they are the same
 // list of the same two fields, and two copies would drift in the indentation nobody
 // notices until the screens sit next to each other.
-func (t Theme) catalogue(title string, choices []ModelChoice, cursorAt int) []string {
+func (t Theme) catalogue(cw int, title string, choices []ModelChoice, cursorAt int, recommended string, differ bool) []string {
+	// The mark is explained in the title rather than in the footer. The footer legend is
+	// already full at `space mark · a all · m model · e effort · esc back`, and an
+	// unexplained glyph is a mystery the user has to guess at — which is the same as no
+	// affordance, with extra ink.
+	switch {
+	case differ:
+		title += "  the marked agents differ"
+	case recommended != "":
+		title += "  " + recMark + " recommended"
+	}
 	out := []string{"", "  " + Fg(t.Muted).Render(title)}
+
+	// The label yields to the frame, visibly, exactly as the name column does. Measured
+	// before this change and not by it: at a 58-column interior these lines already ran
+	// to 66 and 73 columns, so the open catalogue tore the border off every row beneath
+	// it. Nothing saw it, because the row-width test renders no open catalogue.
+	budget := cw - 2 - 1 - 5 - (menuDescCol - menuLabelCol)
+	if budget < 1 {
+		budget = 1
+	}
 	for i, c := range choices {
 		colour, cursor := t.Steel, " "
 		if i == cursorAt {
@@ -820,10 +847,63 @@ func (t Theme) catalogue(title string, choices []ModelChoice, cursorAt int) []st
 		if name == "" {
 			name = "default"
 		}
-		line := cursor + "     " + pad(name, menuDescCol-menuLabelCol) + c.Label
+		// ASCII, and in the gutter rather than beside the name: an ambiguous-width rune
+		// tears the column it sits in, and this panel already refuses colour as the only
+		// carrier of meaning.
+		mark := " "
+		if recommended != "" && c.Name == recommended {
+			mark = recMark
+		}
+		line := cursor + " " + mark + "   " + pad(name, menuDescCol-menuLabelCol) + elide(c.Label, budget)
 		out = append(out, "  "+Fg(colour).Render(line))
 	}
 	return out
+}
+
+// recMark is the recommendation marker. ASCII on purpose — the panel bans runes whose
+// width a terminal may disagree about, and this one sits inside a padded row.
+const recMark = "*"
+
+// markedRecommendation returns the one value every marked agent recommends for a field,
+// and whether the marked agents disagree about it.
+//
+// **An agent with no opinion abstains rather than blocking.** Marking every agent on a
+// machine carrying this payload plus the user's own twenty-two would otherwise answer
+// nothing, for ever — which is the common gesture producing the useless result.
+//
+// **Each catalogue asks about its own field.** A set agreeing on the model and differing
+// on effort is not a set that disagrees when the question on screen is which model.
+func markedRecommendation(agents []AgentRow, field func(AgentRow) string) (string, bool) {
+	value := ""
+	for _, a := range agents {
+		if !a.Marked {
+			continue
+		}
+		v := field(a)
+		if v == "" {
+			continue
+		}
+		if value == "" {
+			value = v
+			continue
+		}
+		if v != value {
+			return "", true
+		}
+	}
+	return value, false
+}
+
+// offers reports whether a narrowed catalogue actually contains a value. The effort list
+// is narrowed to what the marked rows can run now, so a recommendation outside it is one
+// the screen cannot offer and must not mark.
+func offers(choices []ModelChoice, name string) bool {
+	for _, c := range choices {
+		if c.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // modelRank orders models the way the catalogue does: cheapest first, then the
