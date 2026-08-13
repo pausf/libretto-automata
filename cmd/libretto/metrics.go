@@ -31,6 +31,7 @@ const flowLegend = `  Columns:
     span     first commit to last — calendar clock, not attention
     closed   boxes now closed, over the boxes the plan holds
     reopen   boxes that went back open — tasks called done before they were
+    corr     user corrections recorded in .agents/lessons.md — a dash when no ledger exists
     state    landed = the folder was deleted on landing · in flight = still on disk ·
              unreadable = git would not answer for it, so its row is all ?
     —        the change has no plan.md in its history`
@@ -242,6 +243,44 @@ func boxIn(l string) string {
 	return "x"
 }
 
+// corrections reads the lessons ledger — the one artifact the payload writes and this
+// command only counts. `evidence` appends an entry per user correction; the header is
+// the contract: `## <date> · <change> · <phase>`, exactly two ` · ` separators, three
+// non-empty fields, date not validated. Anything else is skipped, never a crash — the
+// ledger is written by prompts, and a parser that dies on one bad line loses the report.
+//
+// Returns per-change counts, the entries whose change field is `-` (a correction with
+// no change open — counted nowhere, named in the report), and whether the file exists
+// at all. Absent and empty are different facts: absent means capture is not in use,
+// and printing 0 for that would read as a flow that was never corrected.
+func corrections(root string) (counts map[string]int, orphans int, seen bool) {
+	b, err := os.ReadFile(path.Join(root, ".agents/lessons.md"))
+	if err != nil {
+		return nil, 0, false
+	}
+	counts = map[string]int{}
+	for _, l := range strings.Split(string(b), "\n") {
+		rest, ok := strings.CutPrefix(l, "## ")
+		if !ok {
+			continue
+		}
+		f := strings.Split(rest, " · ")
+		if len(f) != 3 {
+			continue
+		}
+		date, change, phase := strings.TrimSpace(f[0]), strings.TrimSpace(f[1]), strings.TrimSpace(f[2])
+		if date == "" || change == "" || phase == "" {
+			continue
+		}
+		if change == "-" {
+			orphans++
+			continue
+		}
+		counts[change]++
+	}
+	return counts, orphans, true
+}
+
 // The repository root comes from git rather than a parameter: the caller's cwd is where
 // git was pointed, and `--show-toplevel` is the only thing that knows how far up the root
 // is. A projectDir parameter here would be a second answer that agrees only by accident.
@@ -285,7 +324,9 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 		return nil
 	}
 
-	fmt.Fprintf(w, "\n  %-34s %7s %8s %7s %7s  %s\n", "change", "commits", "span", "closed", "reopen", "state")
+	corrCounts, orphans, ledgerSeen := corrections(root)
+
+	fmt.Fprintf(w, "\n  %-34s %7s %8s %7s %7s %7s  %s\n", "change", "commits", "span", "closed", "reopen", "corr", "state")
 	var totalCommits, totalReopen int
 	var spans []changeMetrics
 	for _, n := range names {
@@ -294,7 +335,7 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 			// Never skip silently. The footer counts names, so a skipped row makes the
 			// total disagree with what is above it — and a report that says twelve while
 			// showing ten is worse than one that admits it could not read two.
-			fmt.Fprintf(w, "  %-34s %7s %8s %7s %7s  unreadable\n", trunc(n, 34), "?", "?", "?", "?")
+			fmt.Fprintf(w, "  %-34s %7s %8s %7s %7s %7s  unreadable\n", trunc(n, 34), "?", "?", "?", "?", corrCell(ledgerSeen, corrCounts[n]))
 			continue
 		}
 		state := "in flight"
@@ -305,16 +346,19 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 		if !m.planSeen {
 			churn = "—"
 		}
-		fmt.Fprintf(w, "  %-34s %7d %8s %7s %7s  %s\n",
+		fmt.Fprintf(w, "  %-34s %7d %8s %7s %7s %7s  %s\n",
 			trunc(m.name, 34), m.commits, humanSpan(m.span()),
-			planCell(m.planSeen, m.checked-m.uncheck, m.boxes), churn, state)
+			planCell(m.planSeen, m.checked-m.uncheck, m.boxes), churn, corrCell(ledgerSeen, corrCounts[n]), state)
 		totalCommits += m.commits
 		totalReopen += m.uncheck
 		spans = append(spans, m)
 	}
-	fmt.Fprintf(w, "\n  %d change(s), %d commit(s), %s of wall clock, %d box(es) reopened\n\n",
+	fmt.Fprintf(w, "\n  %d change(s), %d commit(s), %s of wall clock, %d box(es) reopened\n",
 		len(names), totalCommits, humanSpan(mergedSpan(spans)), totalReopen)
-	fmt.Fprintf(w, "%s\n\n%s\n\n", flowLegend, flowCeiling)
+	if orphans > 0 {
+		fmt.Fprintf(w, "  %d correction(s) outside any change\n", orphans)
+	}
+	fmt.Fprintf(w, "\n%s\n\n%s\n\n", flowLegend, flowCeiling)
 	return nil
 }
 
@@ -345,6 +389,15 @@ func planCell(seen bool, n, total int) string {
 		return "—"
 	}
 	return fmt.Sprintf("%d/%d", n, total)
+}
+
+// corrCell prints the corrections column: a dash when no ledger exists — absent is
+// not zero — and the change's count when one does, zero included.
+func corrCell(seen bool, n int) string {
+	if !seen {
+		return "—"
+	}
+	return fmt.Sprint(n)
 }
 
 // filterName resolves a typed name: exact first, then prefix. Exact must win even when

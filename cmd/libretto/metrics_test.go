@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -440,10 +442,125 @@ func TestTheReportExplainsItsColumns(t *testing.T) {
 		"still on disk",                // state
 		"unreadable",                   // the state the error row prints
 		"touched the change",           // commits
+		"lessons.md",                   // corr
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("the legend must say %q:\n%s", want, out.String())
 		}
+	}
+}
+
+// gitAtRoot points --show-toplevel at a real directory so the ledger tests can put a
+// real lessons.md under it; everything else stays the fake's answer.
+func gitAtRoot(root string, g gitRunner) gitRunner {
+	return func(args ...string) (string, error) {
+		if strings.Contains(strings.Join(args, " "), "--show-toplevel") {
+			return root + "\n", nil
+		}
+		return g(args...)
+	}
+}
+
+func ledgerAt(t *testing.T, content string) string {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.MkdirAll(path.Join(root, ".agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path.Join(root, ".agents/lessons.md"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
+// corrField returns the corrections cell of one change's row: the field before the
+// state, so the assertion cannot be satisfied by the commit count or the span.
+func corrField(t *testing.T, out, change string) string {
+	t.Helper()
+	f := strings.Fields(rowFor(t, out, change))
+	if len(f) < 2 {
+		t.Fatalf("row for %q has no fields:\n%s", change, out)
+	}
+	return f[len(f)-2]
+}
+
+func TestCorrectionsAreCountedPerChange(t *testing.T) {
+	root := ledgerAt(t, `## 2026-08-13 · a · build-and-check
+Said: the tag here is scoped, never bare
+Did: wrote a bare tag
+
+## 2026-08-13 · a · record-work
+Said: no AI attribution, ever
+Did: added a Co-Authored-By trailer
+
+## 2026-08-14 · b · write-spec
+Said: that criterion cannot fail
+Did: wrote an unfalsifiable criterion
+`)
+	now := time.Now().Unix()
+	g := gitAtRoot(root, fakeGit(".agents/changes/a/proposal.md\n.agents/changes/b/proposal.md\n",
+		map[string]string{
+			"a": fmt.Sprintf("%d\n", now),
+			"b": fmt.Sprintf("%d\n", now),
+		}, nil))
+
+	var out strings.Builder
+	if err := metrics(&out, nil, g); err != nil {
+		t.Fatal(err)
+	}
+	if got := corrField(t, out.String(), "a"); got != "2" {
+		t.Fatalf("wanted 2 corrections for a, got %q in:\n%s", got, out.String())
+	}
+	if got := corrField(t, out.String(), "b"); got != "1" {
+		t.Fatalf("wanted 1 correction for b, got %q in:\n%s", got, out.String())
+	}
+}
+
+func TestNoLedgerReportsADashNotAZero(t *testing.T) {
+	// No ledger and a ledger with nothing for this change are different facts: the
+	// first means capture is not in use, the second means the flow ran uncorrected.
+	now := time.Now().Unix()
+	g := gitAtRoot(t.TempDir(), fakeGit(".agents/changes/c/proposal.md\n",
+		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil))
+
+	var out strings.Builder
+	if err := metrics(&out, nil, g); err != nil {
+		t.Fatal(err)
+	}
+	if got := corrField(t, out.String(), "c"); got != "—" {
+		t.Fatalf("no ledger must read as a dash, got %q in:\n%s", got, out.String())
+	}
+}
+
+func TestMalformedAndChangelessEntriesDoNotCrashTheCount(t *testing.T) {
+	// One separator is not the contract's header; it is skipped, never a crash. An
+	// entry whose change field is `-` belongs to no row, and the report names it in
+	// one line so it is not silently lost.
+	root := ledgerAt(t, `## 2026-08-13 · build-and-check
+Said: malformed, one separator only
+Did: this line must be skipped
+
+## 2026-08-13 · a · build-and-check
+Said: a real one
+Did: something wrong
+
+## 2026-08-14 · - · find-work
+Said: corrected outside any change
+Did: something wrong with no change open
+`)
+	now := time.Now().Unix()
+	g := gitAtRoot(root, fakeGit(".agents/changes/a/proposal.md\n",
+		map[string]string{"a": fmt.Sprintf("%d\n", now)}, nil))
+
+	var out strings.Builder
+	if err := metrics(&out, nil, g); err != nil {
+		t.Fatal(err)
+	}
+	if got := corrField(t, out.String(), "a"); got != "1" {
+		t.Fatalf("wanted the malformed header skipped and 1 counted, got %q in:\n%s", got, out.String())
+	}
+	if !strings.Contains(out.String(), "1 correction(s) outside any change") {
+		t.Fatalf("the report must name the changeless entries:\n%s", out.String())
 	}
 }
 

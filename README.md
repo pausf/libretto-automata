@@ -128,6 +128,7 @@ Nothing else to learn to start. The rest is knowing which door to use:
 /libretto-queue               # capture ideas, one after another, and build none of them
 /libretto-next                # take the oldest queued idea into the flow
 /libretto-review <pr-url>     # review a PR/MR in a workspace that restores itself
+/libretto-retro               # spend the lessons ledger — fix what the flow got corrected on
 /libretto-attacca             # the same flow, without stopping — straight to a pushed PR
 ```
 
