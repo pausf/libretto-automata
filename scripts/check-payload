@@ -184,6 +184,13 @@ check_wiring skills/record-work/SKILL.md 'never the first option' 'release:major
 check_wiring skills/record-work/SKILL.md 'defines none of the three' 'a repository without the labels is not asked'
 check_wiring skills/record-work/SKILL.md 'is never withdrawn' 'the red-check line survives an unanswered question'
 check_wiring skills/record-work/SKILL.md 'the bump a person chose' 'the request records who chose the bump'
+# The four below came from the phase 6→7 reviewer. Each guards a defect that shipped
+# green: a detection that inverts silently, a promise with no step behind it, a prefix
+# match, and the same file forbidding absolutely what it two paragraphs later permits.
+check_wiring skills/record-work/SKILL.md 'Never a bare .gh label list.' 'label detection is searched and bounded, never the default 30'
+check_wiring skills/record-work/SKILL.md 'Never a prefix or a substring' 'labels are matched by whole name'
+check_wiring skills/record-work/SKILL.md 'this step is not optional' 'the chosen bump is written back into the description'
+check_wiring skills/record-work/SKILL.md 'label the user did not choose' 'the push consent does not extend to a label'
 
 # The inverse. Two of this change's criteria are about what must NOT be in the command
 # that describes no phase, and a presence check cannot express either.

@@ -204,7 +204,9 @@ answered when the command was typed. "Never push unasked" is intact rather than
 overridden: the asking happened at the prompt.
 
 The answer covers **this branch and this request and nothing past it** — no merge, no tag,
-no release, no `release:` label.
+no release, and no `release:` label the user did not choose. The bump is asked separately
+at the very end and is never covered by this consent: typing an answer the user gave is
+not the same act as assuming one, and the invocation answered the push, not the version.
 
 And it is paid for in the request's description, which carries three things or the run has
 bought silence rather than speed:
@@ -290,8 +292,19 @@ the split: *the reading is yours, the typing is not*. Everything below holds tha
 First, does the repository define the labels at all?
 
 ```
-gh label list --json name
+gh label list --search 'release:' --limit 100 --json name
 ```
+
+**Never a bare `gh label list`.** It fetches 30 by default, ascending, so `release:*`
+sorts late and falls off the page in any repository past thirty labels — and the answer
+comes back "none of the three" for a repository that defines all three. That inverts the
+whole check silently, which is the worst way for it to be wrong.
+
+Then match **whole names** against exactly `release:patch`, `release:minor` and
+`release:major`. Never a prefix or a substring: `release:patch-hotfix` contains
+`release:patch` and is not it. The workflow that reads these labels matches whole names
+for the same reason, and a detection looser than the check it feeds is a detection that
+finds a label `gh pr edit` will then be refused.
 
 A repository that **defines none of the three** is not asked and is not told why — the
 convention does not exist there, so neither does the question. Nothing is created:
@@ -318,6 +331,18 @@ gh pr view <n> --json labels
 
 The same rule the push already carries, for the same reason: a command that printed no
 error is not a change the forge accepted.
+
+**Then put it in the description, and this step is not optional.** The description was
+written before the question was asked — the request had to exist for there to be anything
+to label — so the bump reaches it only by being written back:
+
+```
+gh pr edit <n> --body "<the description, plus the bump a person chose>"
+```
+
+Without this the third bullet above is a promise the run never keeps: the description
+lists what the invocation answered and what it assumed, and a reader has no way to tell
+that the bump was neither. The label alone does not say who chose it.
 
 **Unanswered, the run ends exactly as it does today** — unlabeled, and the closing
 report's red-check line *is never withdrawn* by the question. That line is written before
