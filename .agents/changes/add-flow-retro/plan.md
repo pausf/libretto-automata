@@ -114,7 +114,7 @@ Waits on: Task 1 only (the header format). Independent of Tasks 2–4.
 
 **Files:** Modify: `cmd/libretto/metrics.go`, `cmd/libretto/metrics_test.go`
 
-- [ ] **5.1** Write the three failing tests in `cmd/libretto/metrics_test.go`,
+- [x] **5.1** Write the three failing tests in `cmd/libretto/metrics_test.go`,
       fixture style as the existing ones (fixed ledger content, no real repos):
       `TestCorrectionsAreCountedPerChange` — a ledger with two entries for change A,
       one for B, expects 2 and 1 in their rows;
@@ -122,14 +122,14 @@ Waits on: Task 1 only (the header format). Independent of Tasks 2–4.
       `TestMalformedAndChangelessEntriesDoNotCrashTheCount` — a header with one
       separator and a header with change `-`: the first is skipped, the second is
       counted nowhere and named in the report's one-line note.
-- [ ] **5.2** Run `go test ./cmd/libretto/ -run 'Corrections|NoLedger|Malformed' -count=1`;
+- [x] **5.2** Run `go test ./cmd/libretto/ -run 'Corrections|NoLedger|Malformed' -count=1`;
       expect FAIL (functions undefined / column absent).
-- [ ] **5.3** Implement: parse `.agents/lessons.md` (match: `## ` prefix, exactly
+- [x] **5.3** Implement: parse `.agents/lessons.md` (match: `## ` prefix, exactly
       two ` · `, three non-empty fields), count per change, `-` column when the
       file is absent, the note for `-`-change entries, column wired into the
       report next to the existing ones.
-- [ ] **5.4** Run the same tests; expect PASS. Then the full gates.
-- [ ] **5.5** Commit: `feat(cli): metrics counts corrections per change from the lessons ledger`
+- [x] **5.4** Run the same tests; expect PASS. Then the full gates.
+- [x] **5.5** Commit: `feat(cli): metrics counts corrections per change from the lessons ledger`
 
 ### Task 6 — land the change
 

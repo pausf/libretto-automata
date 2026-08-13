@@ -13,7 +13,7 @@ corrected, per change.
   for the retro, and metrics reads it for free. `flowCeiling`'s bar is met: the
   artifact was wanted badly enough that somebody said what for, and it is written
   by one skill, not eight.
-- No ledger file: the column reads `-` for every change, same as a change with no
+- No ledger file: the column reads `—` for every change, same as a change with no
   plan — absent is not zero. A ledger with no entries for a change reads `0`.
 - Entries whose change field is `-` (no change open) are counted nowhere in the
   per-change rows; the report names them in one line so they are not silently lost.
