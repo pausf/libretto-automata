@@ -3,5 +3,5 @@
 Executed by `build-and-check` (phase 6). Last: the legend describes the closed cell,
 whose shape `add-metrics-closed-denominator` changes — waits on that change.
 
-- [ ] `flowLegend` const naming every column and the `—`, printed beside `flowCeiling`
+- [x] `flowLegend` const naming every column and the `—`, printed beside `flowCeiling`
       (spec: Verification · Proof: TestTheReportExplainsItsColumns)

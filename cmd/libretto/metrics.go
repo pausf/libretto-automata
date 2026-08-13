@@ -26,6 +26,14 @@ import (
 //
 // What that cannot see is named in the report rather than guessed at. See flowCeiling.
 
+const flowLegend = `  Columns:
+    commits  commits that touched the change's folder
+    span     first commit to last — calendar clock, not attention
+    closed   boxes now closed, over the boxes the plan holds
+    reopen   boxes that went back open — tasks called done before they were
+    state    landed = the folder was deleted on landing · in flight = still on disk
+    —        the change has no plan.md in its history`
+
 const flowCeiling = `  Not measured, and not derivable from git:
     · per-phase duration — phases 1 to 7 happen inside one session and leave one commit
     · review-work findings — reported in a session and repaired before anything lands,
@@ -305,7 +313,7 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 	}
 	fmt.Fprintf(w, "\n  %d change(s), %d commit(s), %s of wall clock, %d box(es) reopened\n\n",
 		len(names), totalCommits, humanSpan(mergedSpan(spans)), totalReopen)
-	fmt.Fprintf(w, "%s\n\n", flowCeiling)
+	fmt.Fprintf(w, "%s\n\n%s\n\n", flowLegend, flowCeiling)
 	return nil
 }
 

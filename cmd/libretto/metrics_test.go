@@ -423,6 +423,29 @@ func TestHumanSpanDropsPrecisionItDoesNotHave(t *testing.T) {
 	}
 }
 
+// The report explains its own columns. It already prints what it cannot measure;
+// what it does measure deserves no less, or the table needs a translator.
+func TestTheReportExplainsItsColumns(t *testing.T) {
+	now := time.Now().Unix()
+	var out strings.Builder
+	if err := metrics(&out, nil, fakeGit(".agents/changes/c/proposal.md\n",
+		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil)); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"calendar clock",              // span
+		"called done before they were", // reopen
+		"boxes the plan holds",        // closed's denominator
+		"no plan.md in its history",   // the — cell
+		"still on disk",               // state
+		"touched the change",          // commits
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("the legend must say %q:\n%s", want, out.String())
+		}
+	}
+}
+
 func TestMetricsIsNotGatedOnThePayload(t *testing.T) {
 	if needsPayload([]string{"metrics"}) {
 		t.Fatal("metrics reads the project's git history, not the payload tree")
