@@ -15,3 +15,5 @@ open without saying, loudly and in its own line, **"the label check will now be 
 the PR, that red is the bump question reaching you, here is the one command"**. A
 designed refusal that the report does not predict reads as a broken pipeline, costs the
 user an alarm and a round trip, and the mode's whole visibility budget is that report.
+Resolved: 2026-08-13 · project knowledge — convention recorded in .agents/specs/ci/spec.md
+(prior decisions); the payload-side fix stays queued as ask-release-label-at-attacca-end

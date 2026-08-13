@@ -219,6 +219,15 @@ before it can merge**.
   follows; a CI file that paraphrases its gates is a second source of truth for what
   "checked" means.
 
+- **A designed refusal is predicted where it will be read, or it reads as breakage** —
+  from the retro, 2026-08-13. `require-release-label` is red on every unattended run's
+  request by design: attacca is forbidden from labelling, so the red X *is* the bump
+  question reaching the user. The run that opened PR #44 did not say so in its closing
+  report and the user read a broken pipeline — one alarm and one round trip paid for a
+  sentence. Any report that ends at this repository's request names the label check in
+  its own line, with the one command that answers it. The fuller fix — asking the bump
+  natively at the end of the run — is queued as `ask-release-label-at-attacca-end`.
+
 ## Task breakdown
 
 1. `.github/workflows/gates.yml`: the six gates, one step each, `rg` installed, Go from
