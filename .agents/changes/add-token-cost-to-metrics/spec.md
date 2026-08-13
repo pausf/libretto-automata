@@ -41,8 +41,10 @@ match and never fuzzy: a substring rule turns one wrong guess into a number nobo
 audit.
 
 Everything else — `main`, `HEAD`, a branch named unlike its change, an absent field —
-lands in a single **unattributed** bucket that is printed, never discarded. A total that
-silently omits 44% of the history is worse than no total.
+lands in a single **unattributed** bucket that is printed, never discarded. **Measured on
+this repository once it ran: 62% of entries attribute to no change.** A total that
+silently omitted that is worse than no total, and 62% is also why the bucket is a
+headline number rather than a footnote.
 
 **3 · Three states are distinguishable, and each prints differently.**
 
@@ -58,9 +60,11 @@ and collapsing them would hide the very miss rate this change exists to expose.
 | a root exists, and nothing attributed to this change | **a dash** — sessions were read and none reached it |
 | attributed, and the numbers are genuinely zero | **`0`** |
 
-The third is close to unreachable — a matched branch has `assistant` entries by
-construction — and it is stated anyway, because a rule with an unreachable branch is
-cheaper than a rule that has to be re-derived the day it is reached.
+The third is **not** unreachable, which an earlier draft of this spec claimed. A
+`<synthetic>` entry carries an all-zero usage object and attributes like any other, so a
+change whose only entry is one renders zeros. The distinction is therefore **presence in
+the attribution map, never a zero total** — and the per-phase block is shown for such a
+change too, because its entries named phases even though they cost nothing.
 
 **4 · Cost is attributed per phase, from `attributionSkill`, at the coverage it actually
 has.**
@@ -77,11 +81,21 @@ and carry their own `gitBranch`. One review-lens subagent file alone holds 3,026
 cache-read tokens; there are 41 of them. **Ignoring them undercounts by more than the
 number being reported.**
 
-**6 · The report's claim about what it cannot measure is corrected, not left standing.**
+**6 · The ceiling gains what is true, and nothing in it is retracted.**
 
-`flowCeiling` says per-phase measurement "needs a phase to write them down". For
-**duration** that is still true. For **cost** it is now false — `attributionSkill` writes
-it down already.
+An earlier draft of this outcome said `flowCeiling` had become half-false. **It had not,
+and the build is what established that.** The ceiling names per-phase *duration* and
+`review-work` findings; both still need a phase to write them down, and both are still
+unmeasurable. Cost was never on that list — it simply was not measured at all.
+
+So the ceiling is extended rather than corrected, with three things it did not say:
+
+- per-phase **cost** is measured now, because the transcripts record `attributionSkill`
+- **duration stays off**, and now with its own reason: the same entries carry timestamps,
+  but a phase's wall clock includes every wait for a human and would report attention the
+  work never had
+- **the token block's own ceiling** — a change is recognised by its branch name, so the
+  unattributed row is the measurement's error bar and is to be read before the rest
 
 ## What each command prints
 
@@ -93,25 +107,40 @@ footer and before `flowLegend`.
 `libretto metrics` — corpus-wide, one block:
 
 ```
-  tokens          input     output    cache-w    cache-r
-  attributed     21 480  4 903 221 15 002 118  1.42e+09
-  unattributed   11 572  2 460 809  8 319 815  8.89e+08
+  tokens                    input         output        cache-w          cache-r
+  attributed                54784        2866759       10467947        654722879
+  unattributed              84493        5029953       19145370       1736078669
 
-  44% of session entries could not be attributed to a change
+  62% of session entries could not be attributed to a change
 ```
+
+**Plain digits, no thousands separator and no exponent form.** An earlier draft of this
+block pinned `21 480` and `1.42e+09`; both were rejected during the build. A space inside
+a number breaks `awk`, `cut` and every other thing a person pipes a report into, and an
+exponent throws away the precision that makes two runs comparable — which is the entire
+use this measurement was queued for.
+
+**And the miss rate never rounds itself away.** Integer division truncates, so one
+unattributed entry in two hundred reads as `0%`. Anything above zero and below one
+percent prints `<1%`: a number the ceiling calls an error bar must not report the
+opposite of its own subject.
 
 `libretto metrics <change>` — the same block scoped to that change, then the phases:
 
 ```
-  tokens          input     output    cache-w    cache-r
-  add-flow-retro  3 118    412 990  1 004 552  1.03e+08
+  by change                 input         output        cache-w          cache-r
+  add-flow-retro              691         311444         757004         47033497
 
-  by phase        input     output    cache-w    cache-r
-  build-and-check 1 902    250 114    612 003   61 900 002
-  write-spec        711     98 442    233 118   28 004 119
-  record-work       505     64 434    159 431   13 095 881
-  unattributed        -          -          -            -
+  by phase                  input         output        cache-w          cache-r
+  build-and-check             244          93518         151654         20572299
+  find-work                    68          18920          37962          3385831
+  record-work                  50          25223          63643          5616550
+  unattributed                  —              —              —                —
 ```
+
+The corpus block prints under both commands, above this. That is what makes
+*attributed + unattributed = corpus* readable whatever the filter, and it is why the
+per-change rows are labelled `by change` rather than repeating the word `tokens`.
 
 **The dash lives in that per-change block and nowhere else.** Under plain `libretto
 metrics` there is no per-change token surface, so a change with nothing attributable is
@@ -301,6 +330,23 @@ changes if it is wrong:
   distinguishable in the output.
   Proof: cmd/libretto/metrics_test.go TestAChangeWithNoTokensReportsADashNotAZero
 
+- **a change that was attributed and genuinely cost nothing prints zeros, not a dash, and
+  keeps its per-phase block.** The distinction is presence in the attribution map, never a
+  zero total — a `<synthetic>` entry reaches this state, so it is reachable rather than
+  theoretical, and the first implementation collapsed it into the dash.
+  Proof: cmd/libretto/metrics_test.go TestAnAttributedChangeWithZeroTokensIsNotADash
+
+- **a miss rate above zero never prints as `0%`.** Integer division truncates; one
+  unattributed entry in two hundred read as `0%` until this was fixed, which is the
+  opposite of what a number the ceiling calls an error bar is for.
+  Proof: cmd/libretto/metrics_test.go TestASmallMissRateDoesNotRoundAwayToZero
+
+- **a dot in the repository path encodes to a dash, like a separator.** A home directory
+  called `pau.sanchez` maps to `pau-sanchez`, so a reader that preserved dots found no
+  transcripts at all for that user — which this did, and only running it against a real
+  tree said so. Every fixture used a dotless path and none could have caught it.
+  Proof: cmd/libretto/usage_test.go TestADotInThePathBecomesADashToo
+
 - **the per-phase block carries its own unattributed row**, and never distributes entries
   that named no skill across the phases that did.
   Proof: cmd/libretto/metrics_test.go TestPerPhaseCostCarriesAnUnattributedRow
@@ -313,10 +359,13 @@ changes if it is wrong:
   full and the token block is replaced by one line saying the measurement was unavailable.
   Proof: cmd/libretto/metrics_test.go TestNoTranscriptRootStillReportsTheGitMetrics
 
-- **the ceiling no longer claims per-phase cost is unmeasurable, and still claims it for
-  duration.** The new test asserts both directions — the sentence naming cost as measured
-  is present, and the old undifferentiated claim is **absent**. An absence assertion is
-  what makes it red before the work: the existing
-  `TestTheReportNamesWhatItCannotMeasure` checks only that three substrings are present,
-  so it passes whatever is done to the cost claim, including nothing.
+- **the ceiling says per-phase cost is measured and duration is not, and names the token
+  block's own limit.** Two presence assertions, both red before this change: neither
+  `attributionSkill` nor the unattributed row's description as an error bar appeared
+  anywhere in the report.
+  An earlier draft demanded an *absence* assertion instead, on the theory that the old
+  claim had become false. It had not — the ceiling never spoke about cost — so the
+  assertion would have been red for the wrong reason and green for a change that retracted
+  a true sentence. The existing `TestTheReportNamesWhatItCannotMeasure` is left exactly as
+  it is, still asserting the three things that are still unmeasured.
   Proof: cmd/libretto/metrics_test.go TestTheCeilingSeparatesCostFromDuration

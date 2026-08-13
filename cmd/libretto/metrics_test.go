@@ -736,3 +736,62 @@ func TestTheCeilingSeparatesCostFromDuration(t *testing.T) {
 		t.Errorf("the ceiling must name the token block's own limit:\n%s", s)
 	}
 }
+
+// zeroLine is an attributed entry that genuinely cost nothing — the <synthetic> model
+// shape, which the constraints name and which really occurs.
+func zeroLine(branch, skill string) string {
+	return fmt.Sprintf(`{"type":"assistant","gitBranch":%q,"attributionSkill":%q,`+
+		`"message":{"model":"<synthetic>","usage":{"input_tokens":0,"output_tokens":0,`+
+		`"cache_creation_input_tokens":0,"cache_read_input_tokens":0,`+
+		`"service_tier":null,"iterations":null}}}`, branch, skill)
+}
+
+func TestAnAttributedChangeWithZeroTokensIsNotADash(t *testing.T) {
+	// The third state of outcome 3, and it is reachable rather than theoretical: a
+	// <synthetic> entry attributes to the change and costs nothing. Sessions reached it,
+	// so it must not render like a change no session reached.
+	projects := transcriptRoot(t, "/repo", map[string][]string{
+		"a.jsonl": {zeroLine("feat/alpha", "build-and-check")},
+	})
+	var out strings.Builder
+	if err := metrics(&out, []string{"alpha"}, twoChangeGit(time.Now().Unix()), projects); err != nil {
+		t.Fatal(err)
+	}
+	s := out.String()
+
+	row := tokenLine(s, "alpha")
+	if row == "" {
+		t.Fatalf("no token row for alpha:\n%s", s)
+	}
+	if strings.Contains(row, "—") {
+		t.Errorf("alpha was attributed and must print zeros, not a dash: %q", row)
+	}
+	// And the phase surface survives: the entry named a skill, so suppressing the block
+	// on a zero total loses a phase that was recorded.
+	if !strings.Contains(s, "by phase") || !strings.Contains(s, "build-and-check") {
+		t.Errorf("the phase block vanished for a change whose entry named a phase:\n%s", s)
+	}
+}
+
+func TestASmallMissRateDoesNotRoundAwayToZero(t *testing.T) {
+	// The ceiling calls this number the measurement's own error bar. An error bar that
+	// truncates to 0 while entries are genuinely unattributed reports the opposite of
+	// what it is for.
+	lines := []string{assistantLine("main", "write-spec", 1, 1, 1, 1)}
+	for i := 0; i < 200; i++ {
+		lines = append(lines, assistantLine("feat/alpha", "write-spec", 1, 1, 1, 1))
+	}
+	projects := transcriptRoot(t, "/repo", map[string][]string{"a.jsonl": lines})
+
+	var out strings.Builder
+	if err := metrics(&out, nil, twoChangeGit(time.Now().Unix()), projects); err != nil {
+		t.Fatal(err)
+	}
+	s := out.String()
+	if strings.Contains(s, "0% of session entries") {
+		t.Errorf("1 unattributed entry in 201 reported as 0%%:\n%s", s)
+	}
+	if !strings.Contains(s, "<1% of session entries") {
+		t.Errorf("want a sub-1%% miss rate said as <1%%:\n%s", s)
+	}
+}

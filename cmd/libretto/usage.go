@@ -173,8 +173,6 @@ func (t usageTotals) plus(o usageTotals) usageTotals {
 	return usageTotals{t.in + o.in, t.out + o.out, t.cacheW + o.cacheW, t.cacheR + o.cacheR}
 }
 
-func (t usageTotals) zero() bool { return t == usageTotals{} }
-
 // branchPrefixes are the conventional segments stripped before matching. An
 // unrecognised prefix is left alone, which fails safe: the branch then matches no
 // change and lands in the unattributed bucket rather than in the wrong one.

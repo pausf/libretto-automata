@@ -125,7 +125,20 @@ rewritten, never kept.
       file-level check.
       *From:* task breakdown 7 · *Waits on:* 12.
 
+## Added by review-work, after the fact
+
+- [x] **14 · The three findings, fixed in this pass**
+      An attributed change that genuinely cost nothing printed a dash and lost its phase
+      block — the guard was a zero total where it had to be presence in the attribution
+      map, and `<synthetic>` makes that state reachable rather than theoretical.
+      A miss rate under one percent truncated to `0%`, which is the opposite of what an
+      error bar is for; it says `<1%` now.
+      And the rendering had drifted from the output the spec pinned. **The spec moved, not
+      the code**: plain digits beat thousands separators a pipe cannot parse and an
+      exponent that throws away the precision this was queued to measure.
+      Proof: cmd/libretto/metrics_test.go TestAnAttributedChangeWithZeroTokensIsNotADash
+      Proof: cmd/libretto/metrics_test.go TestASmallMissRateDoesNotRoundAwayToZero
+
 ## What can start now
 
-**Task 1, alone.** Nothing renders until something parses, and nothing is attributed until
-something is read.
+Nothing. Every box is closed but 13, which is phase 8's.

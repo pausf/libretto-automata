@@ -411,31 +411,41 @@ func tokenBlock(w io.Writer, projects, root string, allNames []string, only stri
 				off++
 			}
 		}
-		fmt.Fprintf(w, "\n  %d%% of session entries could not be attributed to a change\n", off*100/n)
+		// Integer division truncates, so one miss in two hundred reads as 0% — the
+		// opposite of what a number the ceiling calls an error bar is for. Anything
+		// under one percent says so rather than rounding itself away.
+		pct := fmt.Sprintf("%d%%", off*100/n)
+		if off > 0 && off*100/n == 0 {
+			pct = "<1%"
+		}
+		fmt.Fprintf(w, "\n  %s of session entries could not be attributed to a change\n", pct)
 	}
 
 	if only == "" {
 		return
 	}
 
+	// Presence in the map, never a zero total. A change can be attributed and cost
+	// nothing — a <synthetic> entry does exactly that — and rendering it like a change
+	// no session reached would collapse the two states outcome 3 exists to separate.
+	t, attributedHere := byChange[only]
 	fmt.Fprintf(w, "\n  %-16s %14s %14s %14s %16s\n", "by change", "input", "output", "cache-w", "cache-r")
-	// A dash, never a zero. Sessions were read and none reached this change, which is
-	// not the same fact as a change that ran and cost nothing.
-	tokenRow(w, trunc(only, 16), byChange[only], !byChange[only].zero())
+	tokenRow(w, trunc(only, 16), t, attributedHere)
 
-	if byChange[only].zero() {
+	if !attributedHere {
 		return
 	}
 	fmt.Fprintf(w, "\n  %-16s %14s %14s %14s %16s\n", "by phase", "input", "output", "cache-w", "cache-r")
 	byPhase := map[string]usageTotals{}
 	var noPhase usageTotals
+	var noPhaseSeen bool
 	for _, e := range es {
 		if attributeBranch(e.branch, allNames) != only {
 			continue
 		}
 		t := usageTotals{e.in, e.out, e.cacheW, e.cacheR}
 		if e.skill == "" {
-			noPhase = noPhase.plus(t)
+			noPhase, noPhaseSeen = noPhase.plus(t), true
 			continue
 		}
 		byPhase[e.skill] = byPhase[e.skill].plus(t)
@@ -450,7 +460,7 @@ func tokenBlock(w io.Writer, projects, root string, allNames []string, only stri
 	}
 	// Never distributed across the phases that did name a skill: 4,216 of 8,944 entries
 	// carry no attributionSkill, and sharing them out would invent the number.
-	tokenRow(w, "unattributed", noPhase, !noPhase.zero())
+	tokenRow(w, "unattributed", noPhase, noPhaseSeen)
 }
 
 func tokenRow(w io.Writer, label string, t usageTotals, real bool) {
