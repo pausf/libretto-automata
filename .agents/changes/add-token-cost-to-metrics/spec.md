@@ -44,12 +44,25 @@ Everything else — `main`, `HEAD`, a branch named unlike its change, an absent 
 lands in a single **unattributed** bucket that is printed, never discarded. A total that
 silently omits 44% of the history is worse than no total.
 
-**A change with no attributable session prints a dash, never a zero.** This is the
-existing rule for the corrections column, applied unchanged: absent means the measurement
-could not reach it; zero means it ran and cost nothing. Printing `0` for the first claims
-the second.
+**3 · Three states are distinguishable, and each prints differently.**
 
-**3 · Cost is attributed per phase, from `attributionSkill`, at the coverage it actually
+This replaces an earlier sentence claiming the corrections column's rule "applied
+unchanged". It does not apply unchanged, and the difference matters: `corrCell` dashes on
+the **ledger being absent**, which is one global state, and prints `0` for a change the
+ledger simply does not mention. Token cost has three states where corrections have two,
+and collapsing them would hide the very miss rate this change exists to expose.
+
+| State | Prints |
+|---|---|
+| no transcript root, or none for this repository | the whole token block is replaced by one line saying the measurement was unavailable |
+| a root exists, and nothing attributed to this change | **a dash** — sessions were read and none reached it |
+| attributed, and the numbers are genuinely zero | **`0`** |
+
+The third is close to unreachable — a matched branch has `assistant` entries by
+construction — and it is stated anyway, because a rule with an unreachable branch is
+cheaper than a rule that has to be re-derived the day it is reached.
+
+**4 · Cost is attributed per phase, from `attributionSkill`, at the coverage it actually
 has.**
 
 Entries carry `attributionSkill`, and its values are the flow's phases —
@@ -57,19 +70,60 @@ Entries carry `attributionSkill`, and its values are the flow's phases —
 coverage is **4,728 entries carrying it against 4,216 without** in the main files, so the
 per-phase block carries an explicit unattributed row and never distributes the remainder.
 
-**4 · Subagent transcripts are counted.**
+**5 · Subagent transcripts are counted.**
 
 They live at `<project>/<sessionId>/subagents/agent-*.jsonl`, carry `isSidechain: true`,
 and carry their own `gitBranch`. One review-lens subagent file alone holds 3,026,036
 cache-read tokens; there are 41 of them. **Ignoring them undercounts by more than the
 number being reported.**
 
-**5 · The report's claim about what it cannot measure is corrected, not left standing.**
+**6 · The report's claim about what it cannot measure is corrected, not left standing.**
 
-`flowCeiling` and the `cli` criterion behind it say per-phase measurement "needs a phase
-to write them down". For **duration** that is still true. For **cost** it is now false —
-`attributionSkill` writes it down already. A criterion that stays wrong because it was
-convenient is the drift this repository's spec rules exist to prevent.
+`flowCeiling` says per-phase measurement "needs a phase to write them down". For
+**duration** that is still true. For **cost** it is now false — `attributionSkill` writes
+it down already.
+
+## What each command prints
+
+**Pinned here rather than described, because "the single-change view" named a surface that
+does not exist.** `metrics <change>` today is the same table filtered to one row, not a
+different rendering. Both commands gain a **token block**, printed after the existing
+footer and before `flowLegend`.
+
+`libretto metrics` — corpus-wide, one block:
+
+```
+  tokens          input     output    cache-w    cache-r
+  attributed     21 480  4 903 221 15 002 118  1.42e+09
+  unattributed   11 572  2 460 809  8 319 815  8.89e+08
+
+  44% of session entries could not be attributed to a change
+```
+
+`libretto metrics <change>` — the same block scoped to that change, then the phases:
+
+```
+  tokens          input     output    cache-w    cache-r
+  add-flow-retro  3 118    412 990  1 004 552  1.03e+08
+
+  by phase        input     output    cache-w    cache-r
+  build-and-check 1 902    250 114    612 003   61 900 002
+  write-spec        711     98 442    233 118   28 004 119
+  record-work       505     64 434    159 431   13 095 881
+  unattributed        -          -          -            -
+```
+
+**The dash lives in that per-change block and nowhere else.** Under plain `libretto
+metrics` there is no per-change token surface, so a change with nothing attributable is
+not represented there at all — which is the direct consequence of taking no new table
+column, and it is stated rather than discovered. Whoever wants to find the expensive
+change without naming it first is asking for the column, and the boundary below says what
+brings it back.
+
+**The token footer is corpus-wide under both commands, and the per-change row is
+filtered.** The two are labelled differently for exactly this reason: the invariant
+*attributed + unattributed = corpus* has to be readable off the output, and it cannot be
+if the totals move when a filter is applied.
 
 ## Scope boundaries
 
@@ -77,43 +131,46 @@ convenient is the drift this repository's spec rules exist to prevent.
 
 - `cmd/libretto/usage.go` — transcript discovery, streaming parse, attribution
 - `cmd/libretto/usage_test.go` — its proofs, against fixtures under `CLAUDE_HOME`
-- `cmd/libretto/metrics.go` — the footer totals, the per-change block, `flowCeiling`
+- `cmd/libretto/metrics.go` — the token block, the per-phase block, `flowCeiling`
 - `cmd/libretto/metrics_test.go` — the rendering proofs
 - `cmd/libretto/main.go` — resolving the transcript root and passing it in
-- `internal/target/claude.go` — an accessor for the `projects/` directory, if `Root()`
-  does not already suffice
 - `.agents/specs/cli/spec.md` — the criteria, applied at phase 8
 
 **Out, and named so it cannot be quietly added:**
 
-- **No new column in the change table.** It is already seven columns wide; four more
-  makes eleven, and the tests pick the corrections cell by counting from the right
-  (`corrField`), so a column added on that side breaks a proof for a cosmetic reason. The
-  four numbers go in the footer as totals and in the single-change view per phase.
-  *Brings it back:* wanting to rank changes by cost without running the command once each.
+- **`internal/target/claude.go` is not touched.** It was in scope until review asked who
+  governs it: `targets`, not `cli` — so touching it would make this change span two
+  capabilities with one delta declared. Resolved by reading rather than by declaring a
+  second delta: `Root() string` is already exported, so `filepath.Join(claude.Root(),
+  "projects")` in `main.go` needs no new accessor. **This is why `Targets: cli` is
+  correct**, and it would not be if that file moved.
+- **No new column in the change table.** It is already seven columns wide, and the tests
+  pick the corrections cell by counting from the right (`corrField`), so a column on that
+  side breaks a proof for a cosmetic reason. *Brings it back:* wanting to rank changes by
+  cost without naming each one — at which point it goes **left of `corr`**, and it has to
+  pick one of four numbers or invent a composite, which is the decision that was avoided
+  here rather than made.
 - **No pricing, no currency, no model price table.** Prices change under the repository
   and a stale table reports confident nonsense. Tokens are what was measured; money is a
   multiplication the reader can do with today's numbers.
 - **No new dependency.** `encoding/json` from the standard library, as `internal/dist`
-  already does. Every direct dependency in `go.mod` today is a Charm package and adding a
-  JSON library to parse JSON the standard library parses is the exact ladder rung
-  `AGENTS.md` puts behind an ask.
+  already does. Every direct dependency in `go.mod` today is a Charm package, and adding a
+  JSON library to parse JSON the standard library parses is the ladder rung `AGENTS.md`
+  puts behind an ask.
 - **No new package.** One file beside `metrics.go`, its only consumer. An `internal/`
   package for one caller is an abstraction with one implementation.
-- **No instrumentation, no new artifact, no writing to the transcripts.** The
-  no-instrumentation criterion in `cli` is the bar: this command is a free rider on a file
-  somebody else already writes, exactly as the corrections count free-rides on the
-  lessons ledger. **Read-only, always** — nothing under `~/.claude` is written, moved or
-  deleted.
+- **No instrumentation, no new artifact, nothing written under the transcript root.** The
+  no-instrumentation criterion in `cli` is the bar: this command free-rides on a file
+  somebody else already writes, exactly as the corrections count free-rides on the lessons
+  ledger.
 - **No decoding a project directory name back into a path.** The encoding replaces every
   `/` with `-` and is lossy: `-Users-x-gitrepos-promofarma-v3` could decode to two
   different paths. Encode the repository root forward and compare; never invert.
 - **No git-side join to rescue the 14 unmatched changes.** Matching a change folder's
-  commits to the branches containing them would raise the hit rate and is a substantially
-  larger piece of work resting on history that gets squashed. *Brings it back:* the
-  unattributed bucket staying large enough to make the attributed numbers untrustworthy —
-  which the report now prints, so the decision will be made on a number rather than a
-  feeling.
+  commits to the branches containing them would raise the hit rate and is substantially
+  larger work resting on history that gets squashed. *Brings it back:* the unattributed
+  percentage — now printed — staying high enough to make the attributed numbers
+  untrustworthy. The decision will be made on a number rather than a feeling.
 - **No per-phase duration.** Still genuinely unmeasurable: phases 1 to 7 happen in one
   session and leave one commit. Only the *cost* claim is corrected.
 
@@ -125,22 +182,18 @@ convenient is the drift this repository's spec rules exist to prevent.
   makes a test that passes here and fails on any other checkout. The repository already
   has the pattern — `notice_test.go`, `update_release_test.go`.
 - **The transcript root is injected, never resolved inside the logic.** `metrics.go`
-  already takes its `gitRunner` as a parameter and `internal/dist` takes its three path
-  inputs as parameters with a thin environment-reading wrapper. Same seam, same reason.
+  already takes its `gitRunner` as a parameter and `internal/dist` takes its path inputs as
+  parameters with a thin environment-reading wrapper. Same seam, same reason.
 - **Every field is optional.** Whole entry types — `mode`, `last-prompt`, `ai-title`,
   `file-history-delta` — carry no `cwd`, no `gitBranch`, no `timestamp` and no `uuid`. A
   struct that assumes any field crashes on a real file.
 - **A malformed line is skipped, never fatal.** An 81 MB corpus written by another program
   across many versions will contain something unparseable, and a metrics command that dies
   on one bad line reports nothing about the other 8,943.
-- **Streamed line by line.** Files reach 6.8 MB and the directory is 81 MB. Reading whole
-  files into memory to sum four integers is waste with no upside.
+- **Streamed line by line.** Files reach 6.8 MB and the directory is 81 MB.
 - **`model` may be `<synthetic>`**, carrying an all-zero usage object with null
-  `service_tier`. It must not be looked up in any table that assumes a known name.
-- **No transcript root, or none for this repository, is a state and not an error.** The
-  command still prints everything it derives from git; the token block says the
-  measurement was not available. Someone running this on a checkout that never hosted a
-  session is the normal case, not a broken one.
+  `service_tier`. It must not be looked up in any table assuming a known name.
+- **No transcript root, or none for this repository, is a state and not an error.**
 - All six gates pass before any commit.
 
 ## Prior decisions
@@ -150,48 +203,61 @@ reasoning:
 
 - **The four are never summed.** 2.3 billion cache reads against 33 thousand input tokens
   means a total is a cache-read count with extra steps.
-- **Subagent files are in scope.** 41 files, one of them alone carrying 3M cache reads.
+- **Subagent files are in scope.** 41 files, one alone carrying 3M cache reads.
 - **`gitBranch` is read per entry, not per file.** One session file was measured spanning
   four branches; a per-file reading would misattribute every entry after a checkout.
 - **`sessionId` is preferred over `session_id`.** Both appear and are identical on
   `assistant` entries, but `sessionId` is present on entry types where the other is not.
 
+**Settled by reading, after review asked:**
+
+- **`target.Claude.Root()` suffices**, so this change touches only `cmd/libretto/**` and
+  `Targets: cli` covers everything in scope.
+
 **Assumed under `/libretto-attacca`, because nobody was there to answer.** Each names what
 changes if it is wrong:
 
 - **A1 · Branch-name matching is the attribution mechanism, and its miss rate is printed
-  rather than engineered away.** The alternative — joining a change folder's commits to
-  the branches that contain them — is a much larger change resting on history that gets
-  squashed on merge. *If wrong:* the join replaces the matcher behind the same reporting
-  surface; the unattributed bucket is what the report is built around either way, so
-  nothing rendered has to move.
-- **A2 · The change table gains no column; the four numbers go in the footer and in the
-  single-change per-phase block.** *If wrong:* one column of one derived number is
-  additive, but it must go left of `corr` or `corrField` breaks.
+  rather than engineered away.** *If wrong:* a git-side join replaces the matcher behind
+  the same reporting surface; the unattributed bucket is what the report is built around
+  either way, so nothing rendered has to move.
+- **A2 · The change table gains no column; the four numbers go in a block after the
+  footer.** *If wrong:* one column is additive, must sit left of `corr`, and forces the
+  composite-metric decision this deliberately avoided.
 - **A3 · Attribution strips a conventional branch prefix and then matches whole names.**
-  `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`. *If wrong:* the list is one line, and
-  it fails safe — an unrecognised prefix lands in the unattributed bucket rather than
+  `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`. *If wrong:* the list is one line, and it
+  fails safe — an unrecognised prefix lands in the unattributed bucket rather than
   matching the wrong change.
-- **A4 · The `cli` criterion claiming per-phase measurement needs instrumentation is
-  amended to hold for duration and not for cost.** *If wrong:* the criterion reverts, but
-  it would then be a sentence the code contradicts.
+- **A4 · The corrected ceiling claim gets its own test rather than extending the existing
+  one.** *If wrong:* the assertion moves into `TestTheReportNamesWhatItCannotMeasure` and
+  the new test goes away; what must not happen either way is a criterion whose only proof
+  passes before the work starts.
+
+**Amended after `review-spec`, before phase 5 read this.** Six findings, all acted on:
+
+- the rendering is pinned with worked output for both commands — "the single-change view"
+  named a surface that does not exist
+- the dash's home is stated, and so is the consequence of having no table column
+- the corrections analogy is withdrawn; three states are named where it offered two
+- `internal/target/claude.go` left the scope after `Root()` was read and found sufficient
+- the ceiling correction got its own test, because the one it named was green before the
+  work and stays green after
+- the never-written proof names its witness
 
 ## Task breakdown
 
 1. **Fixtures and the parse.** A fixture transcript root under `t.TempDir()`, and a
    streaming reader returning the four totals per entry with `gitBranch`,
-   `attributionSkill` and `isSidechain`. Written test-first: the shapes are known from
-   real files, so the test can be red before the parser exists.
+   `attributionSkill` and `isSidechain`. Test-first: the shapes are known from real files,
+   so the test is red before the parser exists.
 2. **Malformed and absent.** A bad line, an entry with no `usage`, an entry with no
-   `gitBranch`, a `<synthetic>` model, an empty root, a missing root. Each proved not to
-   crash and to be counted where the outcome says.
-3. **Discovery.** Encode the repository root into a project directory name, find the
+   `gitBranch`, a `<synthetic>` model, an empty root, a missing root.
+3. **Discovery.** Encode the repository root into a project directory name; find the
    top-level `*.jsonl` and the `*/subagents/*.jsonl` beneath it.
-4. **Attribution.** Prefix strip, whole-name match against git's change names, everything
-   else to the unattributed bucket.
-5. **Rendering.** The footer totals, the single-change per-phase block, the dash for a
-   change with nothing attributable.
-6. **`flowCeiling` and the criterion.** Correct the cost claim, leave the duration claim.
+4. **Attribution.** Prefix strip, whole-name match, everything else to the unattributed
+   bucket.
+5. **Rendering.** The corpus block, the per-change block, the per-phase rows, the dash.
+6. **`flowCeiling`.** Correct the cost claim, leave the duration claim, new test.
 7. Six gates, then apply the delta onto `.agents/specs/cli/spec.md` and delete the change
    folder, in the commit with the final code.
 
@@ -206,8 +272,8 @@ changes if it is wrong:
   Proof: cmd/libretto/usage_test.go TestAMalformedLineDoesNotCostTheRestOfTheFile
 
 - **subagent transcripts are counted.** A fixture with a top-level file and a
-  `<sessionId>/subagents/agent-*.jsonl` beneath it reports the sum of both, and a reader
-  that walked only the top level fails this.
+  `<sessionId>/subagents/agent-*.jsonl` beneath it reports the sum of both; a reader that
+  walked only the top level fails this.
   Proof: cmd/libretto/usage_test.go TestSubagentTranscriptsAreCounted
 
 - **`gitBranch` is read per entry.** A single fixture file whose entries name two
@@ -215,8 +281,7 @@ changes if it is wrong:
   Proof: cmd/libretto/usage_test.go TestBranchIsReadPerEntryNotPerFile
 
 - **a conventional branch prefix is stripped and the rest is matched whole.**
-  `feat/add-thing` attributes to change `add-thing`; `feat/add-thing-extra` does not
-  attribute to `add-thing`.
+  `feat/add-thing` attributes to change `add-thing`; `feat/add-thing-extra` does not.
   Proof: cmd/libretto/usage_test.go TestAPrefixIsStrippedAndTheNameMatchedWhole
 
 - **what cannot be attributed is bucketed and printed, never dropped.** Entries on `main`,
@@ -224,24 +289,34 @@ changes if it is wrong:
   attributed totals plus the unattributed total equal the corpus total.
   Proof: cmd/libretto/usage_test.go TestUnattributedTokensAreReportedNotDiscarded
 
-- **a change with no attributable session prints a dash, never a zero.** The same rule the
-  corrections column already keeps.
+- **nothing under the transcript root is written.** The witness is a **snapshot of the
+  fixture tree — every path, its size, and the SHA-256 of its contents — taken before the
+  command runs and compared after**. That goes red on a create, a delete, a truncation and
+  an in-place rewrite alike, which an mtime comparison does not, and it is an observation
+  of effect rather than a grep for `os.Create` in the source.
+  Proof: cmd/libretto/usage_test.go TestTheTranscriptRootIsNeverWritten
+
+- **a change with a transcript root and nothing attributed prints a dash; a change with no
+  root at all is not represented as zero either.** The three states of outcome 3, each
+  distinguishable in the output.
   Proof: cmd/libretto/metrics_test.go TestAChangeWithNoTokensReportsADashNotAZero
 
 - **the per-phase block carries its own unattributed row**, and never distributes entries
   that named no skill across the phases that did.
   Proof: cmd/libretto/metrics_test.go TestPerPhaseCostCarriesAnUnattributedRow
 
+- **the corpus totals do not move when a change filter is applied**, so *attributed +
+  unattributed = corpus* is readable off either command's output.
+  Proof: cmd/libretto/metrics_test.go TestTheTokenFooterIsCorpusWideUnderAFilter
+
 - **no transcript root is a state, not an error.** The git-derived report still prints in
-  full and the token block says the measurement was unavailable.
+  full and the token block is replaced by one line saying the measurement was unavailable.
   Proof: cmd/libretto/metrics_test.go TestNoTranscriptRootStillReportsTheGitMetrics
 
-- **the report no longer claims per-phase cost is unmeasurable, and still claims it for
-  duration.** `flowCeiling` was true when it was written and half of it stopped being
-  true when `attributionSkill` started being recorded.
-  Proof: cmd/libretto/metrics_test.go TestTheReportNamesWhatItCannotMeasure
-
-- **nothing under the transcript root is written.** The command opens files for reading
-  and creates, moves and removes nothing — the free-rider bar the no-instrumentation
-  criterion sets.
-  Proof: cmd/libretto/usage_test.go TestTheTranscriptRootIsNeverWritten
+- **the ceiling no longer claims per-phase cost is unmeasurable, and still claims it for
+  duration.** The new test asserts both directions — the sentence naming cost as measured
+  is present, and the old undifferentiated claim is **absent**. An absence assertion is
+  what makes it red before the work: the existing
+  `TestTheReportNamesWhatItCannotMeasure` checks only that three substrings are present,
+  so it passes whatever is done to the cost claim, including nothing.
+  Proof: cmd/libretto/metrics_test.go TestTheCeilingSeparatesCostFromDuration
