@@ -21,25 +21,54 @@ model and effort catalogues, at the moment the user opens them.
 
 **1 · The catalogue marks what is recommended for the agents that are marked.**
 
-Pressing `m` opens the model catalogue for the marked set. The entry the repository
-recommends carries a visible mark and its per-agent reason. `e` does the same for effort,
-inside the narrowing that screen already applies.
+Pressing `m` opens the model catalogue for the marked set; the recommended entry carries a
+visible mark. `e` does the same for effort, inside the narrowing that screen already
+applies.
 
-**2 · Marked agents that disagree are said to disagree, never averaged.**
+**A mark and nothing else. The reason is not rendered here**, and that is forced rather
+than chosen: the catalogue line is `cursor + 5 + name + label` inside an interior that
+narrows to 58 columns, and the reasons run to seventy runes. A reason on this screen tears
+the frame — the same arithmetic that kept a third column off the row, arriving one screen
+over. The reasons live in `libretto models`, which has no width to defend.
 
-Marking `review-lens-security` and `review-lens-design` together is marking two agents with
-different recommendations. The catalogue says so and marks nothing, because a single mark
-would be a recommendation for a set that has none. **This is the same rule as
-`Nothing marked means nothing happens`** — an affordance that is sometimes right teaches
-the user to ignore it.
+**2 · What "disagree" means is decided per catalogue, and an agent with no opinion does
+not vote.**
 
-**3 · An agent with no recommendation changes nothing on the screen.**
+Three rules, because the word covers three different sets and each was read both ways:
+
+| The marked set | The model catalogue | The effort catalogue |
+|---|---|---|
+| all recommend the same model, differing efforts | marks that model | marks nothing |
+| recommend different models | marks nothing, and says the marked agents differ | marks nothing |
+| some recommended, some not known | the known ones decide; unknown agents do not vote | same |
+| exactly one agent marked | marks its recommendation | marks its recommendation |
+
+**Each catalogue compares only its own field.** A set agreeing on `sonnet` and disagreeing
+on effort is not "a set that disagrees" when the question on screen is which model.
+
+**An agent with no recommendation abstains rather than blocking.** Marking every agent on a
+machine that has the payload plus twenty-two of the user's own would otherwise mark nothing
+for ever, which is the common gesture producing the useless answer.
+
+**3 · The effort half is judged against the model the agent declares, not the one it is
+recommended.**
+
+The effort catalogue already narrows to what the marked rows can run *now*, and that is the
+set the user can actually pick from. So a recommended level outside that offer is simply not
+marked.
+
+**Named consequence:** `review-lens-design` declares `sonnet` and is recommended `haiku`,
+which has no effort levels at all — so its effort catalogue marks nothing, and that is
+indistinguishable on screen from "no recommendation exists". The listing is where those two
+are told apart, which is the second thing pushing the reasons there.
+
+**4 · An agent with no recommendation changes nothing on the screen.**
 
 No mark, no reason, no empty row where one would be. A user's own agent is not something
 this repository has an opinion about, and a blank marker column would read as a verdict of
 "none recommended" rather than "not known".
 
-**4 · The screen still never applies anything.**
+**5 · The screen still never applies anything.**
 
 The mark is a mark. The user moves the cursor and presses enter exactly as before, onto
 the recommended entry or past it. **Nothing preselects the recommendation** — putting the
@@ -49,7 +78,7 @@ cursor on it would be the tool typing the answer with extra steps.
 
 **In:**
 
-- `internal/ui/models.go` — the mark and the reason inside both catalogues
+- `internal/ui/models.go` — the mark inside both catalogues, and the differ notice
 - `internal/ui/models_test.go`
 - `.agents/specs/panel/spec.md` — the criteria
 
@@ -57,6 +86,14 @@ cursor on it would be the tool typing the answer with extra steps.
 
 - **No third value column, at any width.** Measured above. *Brings it back:* nothing that
   is a change to this screen — it would be a change to what the frame is.
+- **No reason text on this screen**, in the catalogue or anywhere else. The frame cannot
+  hold seventy runes at 58 columns, and eliding a reason to fit produces a sentence that
+  stops mid-argument. *Brings it back:* a wider `MinContentWidth`, which is a change to the
+  panel rather than to this feature.
+- **No extra line under the catalogue.** The open-catalogue row reservation is part of the
+  window arithmetic that keeps the screen inside the terminal height, and a line not in
+  that count is a scroll bug on a short terminal. The differ notice reuses the footer the
+  screen already has.
 - **No divergence glyph on the resting row.** A single character would fit the budget, and
   it was rejected: a glyph needs a legend, the legend row is already full at
   `space mark · a all · m model · e effort · esc back`, and the panel spec forbids the
@@ -73,10 +110,11 @@ cursor on it would be the tool typing the answer with extra steps.
 
 ## Constraints
 
-- **`TestTheSelectorRowNeverOutgrowsTheFrameAtAnyWidth` must still pass unchanged**, with
-  the longest name the payload ships and the `shared` warning on it. This change adds
-  nothing to a row, so it should — and if it does not, the change is wrong rather than the
-  test.
+- **`TestTheSelectorRowNeverOutgrowsTheFrameAtAnyWidth` must still pass unchanged.** It is
+  a boundary this change respects, **not a criterion**: it renders resting rows with no
+  catalogue open, so no implementation of this change makes it red. Citing it as proof
+  would be a criterion green before the work starts, which is the defect the target spec
+  already caught on itself once.
 - **`TestRowsShowTheirEffort` asserts `(session)` appears exactly once** on a row that
   declares no effort, and the CLI's sibling asserts exactly twice on its line. Both are
   counting assertions that a recommendation rendered in the wrong place would break. They
@@ -106,38 +144,56 @@ changes if it is wrong:
   column inside the catalogue for the same reason the row cannot have one. *If wrong:* the
   catalogue grows a per-agent line and the disagreement case disappears.
 
+- **B3 · An unknown agent abstains rather than blocking**, and the effort half is judged
+  against the declared model rather than the recommended one. Both were genuine forks that
+  review found unpinned. *If wrong:* each is one condition, and both fail towards showing
+  no mark rather than a wrong one.
+
 ## Task breakdown
 
-1. `AgentRow` carries the recommendation, filled by the adapter — no new import in
-   `internal/ui`.
-2. The model catalogue marks the recommended entry for a homogeneous marked set, with the
-   reason.
-3. A mixed set marks nothing and says why.
+1. `AgentRow` carries the recommendation. **The adapter that fills it is `cli`'s** — see
+   the sibling delta; this one only reads the field.
+2. The model catalogue marks the recommended entry for a set that agrees, unknown agents
+   abstaining.
+3. A set disagreeing on the model marks nothing and says so in the footer.
 4. An unrecommended agent renders the catalogue exactly as today.
-5. The effort catalogue, same three rules, inside its existing narrowing.
-6. Six gates, then apply this delta onto `.agents/specs/panel/spec.md`.
+5. The effort catalogue, same rules, judged against the declared model inside its existing
+   narrowing.
+6. The catalogue holds at 58 columns with the longest label the table ships.
+7. Six gates, then apply this delta onto `.agents/specs/panel/spec.md`.
 
 ## Verification criteria
 
-- **the row is untouched, and the frame still holds at every width.** This change adds
-  nothing to a resting row; the existing width test passes with no edit, which is the
-  evidence that the third column was avoided rather than squeezed in.
-  Proof: internal/ui/models_test.go TestTheSelectorRowNeverOutgrowsTheFrameAtAnyWidth
+- **the open catalogue never outgrows the frame**, at the narrowest interior, with the
+  longest entry the recommendation makes possible. **This is the criterion the row test
+  cannot be** — the existing width test renders resting rows with no catalogue open, so
+  the one line this change can lengthen is measured by nothing until here.
+  Proof: internal/ui/models_test.go TestTheOpenCatalogueHoldsTheFrameAtItsNarrowest
 
-- **the model catalogue marks the recommended entry, and says why.** One marked agent with
-  a recommendation; the mark is on the right row and the reason is on screen.
+- **the model catalogue marks the recommended entry.** One marked agent with a
+  recommendation; the mark is on the right row.
   Proof: internal/ui/models_test.go TestTheModelCatalogueMarksTheRecommendation
 
-- **a marked set that disagrees is marked nowhere.** Two agents recommended onto different
-  models; no entry carries the mark, and the screen says the marked agents differ.
+- **a set disagreeing on the model is marked nowhere, and the screen says so.** Two agents
+  recommended onto different models; no entry carries the mark.
   Proof: internal/ui/models_test.go TestAMixedMarkedSetIsNotGivenOneRecommendation
+
+- **an agent with no recommendation abstains instead of blocking.** A known agent marked
+  together with an unknown one still marks the known one's recommendation — otherwise
+  marking everything on a real machine answers nothing, for ever.
+  Proof: internal/ui/models_test.go TestAnUnknownAgentDoesNotBlockTheOthersRecommendation
+
+- **a set agreeing on the model but differing on effort still marks the model.** Each
+  catalogue compares its own field; a disagreement about depth is not a disagreement about
+  tier.
+  Proof: internal/ui/models_test.go TestDisagreementIsJudgedPerCatalogue
 
 - **an agent with no recommendation leaves the catalogue exactly as it was.** No mark, no
   reason, no blank row standing in for one.
   Proof: internal/ui/models_test.go TestAnUnrecommendedAgentAddsNothingToTheCatalogue
 
-- **the effort catalogue keeps the same three rules**, inside the narrowing it already
-  applies to the marked set's model.
+- **the effort catalogue marks against the declared model, inside its existing
+  narrowing**, and marks nothing when the recommended level is not in the offer.
   Proof: internal/ui/models_test.go TestTheEffortCatalogueMarksTheRecommendation
 
 - **the mark is legible without colour.** A character, like the row mark and the `shared`
