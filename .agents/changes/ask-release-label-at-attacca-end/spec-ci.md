@@ -42,6 +42,12 @@ delta because that is the capability the sentence lives in.
 
 ## Verification criteria
 
-- **no spec cites `ask-release-label-at-attacca-end` as queued** once the change folder is
-  gone, and every `Proof:` in the amended spec still resolves
+- **every `Proof:` in the amended spec still resolves**, file and test name
   Proof: skills/record-work/spec-drift --anchors
+
+- **no spec cites `ask-release-label-at-attacca-end` as queued** once phase 8 deletes the
+  change folder. **No `Proof:`, deliberately** — `--anchors` resolves `Proof:` citations
+  and knows nothing about change-folder names, so citing it here would attach a green
+  check to the one condition this delta exists for. A citation that cannot go red reads as
+  proven and is worse than none. This is a human read at phase 8, and the only thing that
+  makes it reliable is that phase 8 is where the folder is deleted — the same commit.

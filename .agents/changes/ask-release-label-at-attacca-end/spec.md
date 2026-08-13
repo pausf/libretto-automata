@@ -55,8 +55,10 @@ the run confirms the label landed by reading the request back.
   with a politer name.
 - **Creating the labels when they are absent.** A run that invents `release:minor` in
   somebody else's repository has decided that repository's release convention.
-- **Re-asking.** One question per run. A request that already carries a `release:*` label
-  is not asked about again.
+- **A guard against re-asking a request that already carries a label.** Attacca opens the
+  request in the same run, so it cannot arrive labelled — the guard defends a state this
+  scope cannot reach. It is what the attended flow would need on the day the scope above
+  widens, and it comes back with it, not before.
 - **A flag, setting or env var to suppress the question.** Consent is per run, and the
   suppression already exists: do not answer it.
 
@@ -121,21 +123,31 @@ the run confirms the label landed by reading the request back.
 
 ## Verification criteria
 
-- **the bump question exists in `skills/record-work/`, on the attacca path, after the
-  push and the request are confirmed, and the label is read back off the request** — and
-  not in `commands/libretto-attacca.md`, which describes no phase. The read-back is named
-  here rather than left to the task list because it is the same rule the push already
-  carries: a command that printed no error is not a change the forge accepted
+**One criterion, one failing run.** The first draft of this list joined four conditions
+with *and* under one `Proof:`, which is three conditions a green check does not cover —
+the review's own finding, and the reason each line below fails alone.
+
+- **the bump question lives in `skills/record-work/`, inside its attacca section**, which
+  is the section that sits below the push confirmation
   Proof: scripts/check-payload
-- **`release:major` is never the recommended option.** A static read of the file that owns
-  the prompt: major is present and is not first
+- **the label is read back off the request after it is applied.** The same rule the push
+  already carries: a command that printed no error is not a change the forge accepted
   Proof: scripts/check-payload
-- **the no-labels and unanswered paths are stated**, and the closing report's red-check
-  line is required to survive the question
+- **neither the prompt nor `gh pr edit --add-label` appears in
+  `commands/libretto-attacca.md`**, which describes no phase
   Proof: scripts/check-payload
-- **the command's `Never` list no longer contradicts the skill.** Labelling reads as
-  conditional on the user having chosen the bump; merging, tagging and releasing stay
-  absolute
+- **`release:major` is present in the prompt and is never the first option.** Recommending
+  it is the announcement `AGENTS.md` forbids
+  Proof: scripts/check-payload
+- **the no-labels path is stated** — a repository defining none of the three is not asked
+  Proof: scripts/check-payload
+- **the unanswered path is stated, and the closing report's red-check line survives it.**
+  The line is written before the question and is never withdrawn by it
+  Proof: scripts/check-payload
+- **`or labelling the request` is gone from the command's `Never` list**, replaced by the
+  conditional wording, while merging, tagging and releasing stay absolute. Named as the
+  strings a script can find absent and present: *"no longer contradicts the skill"* is a
+  judgment, and a judgment cited to a script has no red run
   Proof: scripts/check-payload
 
 **Proved as wiring, and the difference is stated rather than assumed.** A prompt's conduct
