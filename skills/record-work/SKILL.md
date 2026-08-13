@@ -267,6 +267,75 @@ branch as work in flight when it had already been merged and tagged, because loc
 was seven commits behind. The reading was wrong, it was reported as fact, and the
 correction cost a round trip.
 
+### Last of all, under `/libretto-attacca`: the bump
+
+**This is the only question an unattended run asks, and it is the last thing that
+happens** — after the report, after the request is confirmed open, after the return to
+the base branch. There is nothing downstream of it, and that is what makes it not a
+stop: the work is complete and reviewable whether it is answered or not.
+
+It exists because a designed refusal that nobody predicts reads as breakage. The
+`release:` label is required before a merge, so an unattended run's request carries a red
+check by design — that red *is* the bump question arriving. It arrived as a broken
+pipeline once, and cost an alarm and a round trip for a decision the run was standing
+next to.
+
+**The run never decides the bump. It asks, and it types the answer.** `AGENTS.md` states
+the split: *the reading is yours, the typing is not*. Everything below holds that line.
+
+First, does the repository define the labels at all?
+
+```
+gh label list --json name
+```
+
+A repository that **defines none of the three** is not asked and is not told why — the
+convention does not exist there, so neither does the question. Nothing is created:
+inventing `release:minor` in somebody else's repository is deciding that repository's
+release convention on their behalf.
+
+Where they do exist, **the bump is asked once** with `AskUserQuestion` — the run's own
+reading recommended first, then the others, and room to answer differently.
+
+**`release:major` is present and is never the first option.** Selectable, because a
+native question the user answers *is* the asking its standing rule demands. Never
+recommended, because recommending it is the announcement that rule forbids — and
+announcing a major three times and proceeding is what published `v1.0.0` and `v1.0.1`
+from a table read without the paragraph above it. A version number cannot be recalled
+once the proxy has cached it.
+
+Then apply exactly one — the workflow refuses two — and **read the request back** off the
+forge to confirm the label is on it:
+
+```
+gh pr edit <n> --add-label <label>
+gh pr view <n> --json labels
+```
+
+The same rule the push already carries, for the same reason: a command that printed no
+error is not a change the forge accepted.
+
+**Unanswered, the run ends exactly as it does today** — unlabeled, and the closing
+report's red-check line *is never withdrawn* by the question. That line is written before
+the question is asked. A report that promised a red check and then quietly labelled the
+request has lied about the state the user will find, which is the same failure as the
+silence, wearing the opposite face.
+
+**No default. Ever.** Not patch, not "the safe one". A silently-wrong bump is the failure
+that published `v1.0.0` with a politer name on it. Headless runs — `libretto loop` — have
+no prompt for `AskUserQuestion` to arrive in, so unanswered is the normal path there and
+must be the quiet one.
+
+**Ceiling named:** the question is only as reachable as the terminal it is asked in. A
+scheduled or piped run never sees it and lands unlabeled — today's behaviour, which is
+why today's behaviour is the fallback rather than an error. The replacement, if that
+becomes the common case, is a `gh pr comment` carrying the three commands. Deliberately
+not built for a case that has not happened.
+
+**Attended runs do not ask this.** `/libretto-flow` already stops at phase 8 with the user
+present and watching; the red check ambushes nobody there. The user's call, 2026-08-13 —
+back the day an attended run pays the same round trip.
+
 ### Which forge, and whether there is one
 
 Derive it. Do not assume, and do not ask what the repository can answer:

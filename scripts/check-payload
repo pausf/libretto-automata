@@ -178,6 +178,9 @@ check_wiring skills/evidence/SKILL.md    'Said:'                        'the cap
 check_wiring skills/retro/SKILL.md       'Resolved:'                    'retro spends entries by marking, never editing'
 check_wiring skills/retro/SKILL.md       'Never apply it'               'retro proposes payload diffs and never applies'
 check_wiring commands/libretto-retro.md  'Skill\(skill="retro"\)'       'libretto-retro routes to the retro skill'
+check_wiring skills/record-work/SKILL.md 'the bump is asked once' 'attacca asks the bump at the end'
+check_wiring skills/record-work/SKILL.md 'read the request back'  'the applied label is read back off the request'
+check_wiring skills/record-work/SKILL.md 'never the first option' 'release:major is never recommended'
 
 printf '\n── skills never point at an executable that is not installed ──\n'
 # `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md

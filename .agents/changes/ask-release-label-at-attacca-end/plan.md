@@ -48,7 +48,7 @@ the base branch"*) · modify `scripts/check-payload` (the `check_wiring` block, 
 **Produces:** the section heading and the decisive strings tasks 2 and 3 extend —
 `the bump is asked once`, `gh pr edit --add-label`, `read the request back`.
 
-- [ ] **1.1 Write the three rows red**
+- [x] **1.1 Write the three rows red**
 
 ```bash
 check_wiring skills/record-work/SKILL.md 'the bump is asked once' 'attacca asks the bump at the end'
@@ -56,12 +56,12 @@ check_wiring skills/record-work/SKILL.md 'read the request back'  'the applied l
 check_wiring skills/record-work/SKILL.md 'never the first option' 'release:major is never recommended'
 ```
 
-- [ ] **1.2 Run it and watch it fail**
+- [x] **1.2 Run it and watch it fail**
 
 Run: `scripts/check-payload > /tmp/cp.out 2>&1; echo $?`
 Expected: `1`, and three `FAIL … no longer contains /…/` lines in `/tmp/cp.out`.
 
-- [ ] **1.3 Write the section in `skills/record-work/SKILL.md`**
+- [x] **1.3 Write the section in `skills/record-work/SKILL.md`**
 
 Below the base-branch return, inside the attacca path. It states, in prose:
 
@@ -76,11 +76,11 @@ Below the base-branch return, inside the attacca path. It states, in prose:
 - **read the request back** off the forge and confirm the label is on it. A command that
   printed no error is not a change the forge accepted — the same rule the push already carries
 
-- [ ] **1.4 Run it and watch it pass**
+- [x] **1.4 Run it and watch it pass**
 
 Run: `scripts/check-payload > /tmp/cp.out 2>&1; echo $?` → `0`, three new `ok` lines.
 
-- [ ] **1.5 Six gates, then commit**
+- [x] **1.5 Six gates, then commit**
 
 ```bash
 git add skills/record-work/SKILL.md scripts/check-payload .agents/changes/ask-release-label-at-attacca-end/plan.md
