@@ -99,13 +99,13 @@ Waits on: Tasks 1–3 (it checks their artifacts).
 
 **Files:** Modify: `scripts/check-payload`
 
-- [ ] **4.1** Extend `scripts/check-payload` following its existing decisive-words
+- [x] **4.1** Extend `scripts/check-payload` following its existing decisive-words
       pattern (the one that guards `review-spec`'s wiring): `skills/evidence/SKILL.md`
       contains `lessons.md` and `Said:`; `skills/retro/SKILL.md` exists and contains
       `Resolved:`; `commands/libretto-retro.md` references the `retro` skill.
-- [ ] **4.2** Break one of the three by hand in the working tree, run the script,
+- [x] **4.2** Break one of the three by hand in the working tree, run the script,
       expect fail; restore, expect pass. (Observed, not assumed.)
-- [ ] **4.3** Commit: `test(payload): check-payload guards the retro wiring`
+- [x] **4.3** Commit: `test(payload): check-payload guards the retro wiring`
 
 ### Task 5 — the corrections column in `libretto metrics`
 
