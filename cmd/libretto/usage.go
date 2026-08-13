@@ -14,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pausf/libretto-automata/internal/target"
 )
 
 // usageEntry is one assistant turn's cost, with what little the transcript says about
@@ -49,13 +51,20 @@ type transcriptEntry struct {
 	} `json:"message"`
 }
 
-// projectDirName encodes a repository root the way the host does: every separator
-// becomes a dash.
+// projectDirName encodes a repository root the way the host does: every separator and
+// every dot becomes a dash.
 //
-// Forward only. The encoding is lossy — "-Users-x-gitrepos-promofarma-v3" could decode
-// to two different paths — so this is never inverted to learn what a directory holds.
+// The dot is not obvious and it is not optional. A home directory called `pau.sanchez`
+// encodes to `pau-sanchez`, so a reader that preserved dots found no transcripts at all
+// for that user — which is exactly what this did until it was run against a real tree.
+// A fixture with no dot in its path cannot catch it.
+//
+// Forward only. The encoding is lossy in two ways now — both `/` and `.` collapse to the
+// same character, so "-Users-x-gitrepos-promofarma-v3" has several possible origins — and
+// it is never inverted to learn what a directory holds.
 func projectDirName(repoRoot string) string {
-	return strings.ReplaceAll(filepath.Clean(repoRoot), string(filepath.Separator), "-")
+	return strings.NewReplacer(string(filepath.Separator), "-", ".", "-").
+		Replace(filepath.Clean(repoRoot))
 }
 
 // readUsage returns every assistant turn recorded for repoRoot under projectsDir, and
@@ -213,4 +222,18 @@ func attribute(es []usageEntry, changes []string) (map[string]usageTotals, usage
 		unattributed = unattributed.plus(t)
 	}
 	return byChange, unattributed
+}
+
+// transcriptProjects is where the host keeps its session transcripts.
+//
+// Resolved here and passed in, never looked up inside the reporting logic — the same
+// seam execGit already uses, and what lets the whole suite run against t.TempDir().
+// CLAUDE_HOME is what target.NewClaude() already honours, so nothing new reads the
+// environment.
+func transcriptProjects() string {
+	root := target.NewClaude().Root()
+	if root == "" {
+		return ""
+	}
+	return filepath.Join(root, "projects")
 }

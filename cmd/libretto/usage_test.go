@@ -269,3 +269,20 @@ func TestUnattributedTokensAreReportedNotDiscarded(t *testing.T) {
 			sum, corpusIn, corpusOut, corpusW, corpusR)
 	}
 }
+
+func TestADotInThePathBecomesADashToo(t *testing.T) {
+	// Measured against a real ~/.claude/projects: /Users/pau.sanchez/gitrepos/x encodes
+	// to -Users-pau-sanchez-gitrepos-x. The dot is not preserved, and a reader that
+	// preserved it found no transcripts at all for any user whose home has one — which
+	// is what happened here, and only running it against a real tree said so.
+	cases := map[string]string{
+		"/Users/pau.sanchez/gitrepos/libretto-automata": "-Users-pau-sanchez-gitrepos-libretto-automata",
+		"/repo":                       "-repo",
+		"/Users/x/.config/some.thing": "-Users-x--config-some-thing",
+	}
+	for in, want := range cases {
+		if got := projectDirName(in); got != want {
+			t.Errorf("projectDirName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

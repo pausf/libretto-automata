@@ -40,8 +40,18 @@ const flowCeiling = `  Not measured, and not derivable from git:
     · per-phase duration — phases 1 to 7 happen inside one session and leave one commit
     · review-work findings — reported in a session and repaired before anything lands,
       so the repair is in the diff and the count never was
-  Both need a phase to write them down. Neither is worth an artifact eight skills have
-  to remember, until somebody wants the number badly enough to say what for.`
+  Both need a phase to write them down, and neither is worth an artifact eight skills
+  have to remember until somebody wants the number badly enough to say what for.
+
+  Per-phase *cost* was never on that list and is now measured: the transcripts record
+  attributionSkill, so the phase is written down already and this is a free rider on it.
+  Duration stays off — the same entries carry timestamps, but a phase's wall clock
+  includes every wait for a human and would report attention it never had.
+
+  What the token block cannot do is attribute every entry. A change is recognised by its
+  branch name, so work done on main, in a detached HEAD, or on a branch named unlike its
+  change lands in the unattributed row. That unattributed row is the measurement's own
+  error bar — read it before trusting the rest.`
 
 type changeMetrics struct {
 	name     string
@@ -284,7 +294,7 @@ func corrections(root string) (counts map[string]int, orphans int, seen bool) {
 // The repository root comes from git rather than a parameter: the caller's cwd is where
 // git was pointed, and `--show-toplevel` is the only thing that knows how far up the root
 // is. A projectDir parameter here would be a second answer that agrees only by accident.
-func metrics(w io.Writer, args []string, git gitRunner) error {
+func metrics(w io.Writer, args []string, git gitRunner, projects string) error {
 	var only string
 	for _, a := range args {
 		if strings.HasPrefix(a, "-") {
@@ -309,6 +319,9 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 	if err != nil {
 		return fmt.Errorf("not a git repository, or git is unavailable: %w", err)
 	}
+	// Kept before the filter narrows it. The token block attributes against every change
+	// git has seen, so its totals stay corpus-wide however the table is scoped.
+	allNames := names
 	if only != "" {
 		matches := filterName(names, only)
 		if len(matches) == 0 {
@@ -318,6 +331,9 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 			return fmt.Errorf("%q is ambiguous: %s", only, strings.Join(matches, ", "))
 		}
 		names = matches
+		// A prefix resolves to one name here, so the token block reports what the table
+		// reports rather than the letters that were typed.
+		only = matches[0]
 	}
 	if len(names) == 0 {
 		fmt.Fprintf(w, "\n  no changes in this repository's history yet\n\n")
@@ -358,8 +374,91 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 	if orphans > 0 {
 		fmt.Fprintf(w, "  %d correction(s) outside any change\n", orphans)
 	}
+	tokenBlock(w, projects, root, allNames, only)
 	fmt.Fprintf(w, "\n%s\n\n%s\n\n", flowLegend, flowCeiling)
 	return nil
+}
+
+// tokenBlock prints what the session transcripts say this repository's work cost.
+//
+// allNames rather than the filtered set, always: the corpus totals must not move when a
+// change filter is applied, or "attributed + unattributed = corpus" stops being readable
+// off the output and the unattributed row stops meaning anything.
+func tokenBlock(w io.Writer, projects, root string, allNames []string, only string) {
+	if projects == "" {
+		fmt.Fprintf(w, "\n  no session transcripts configured — token cost not measured\n")
+		return
+	}
+	es, found := readUsage(projects, root)
+	if !found {
+		fmt.Fprintf(w, "\n  no session transcripts for this repository — token cost not measured\n")
+		return
+	}
+
+	byChange, unattributed := attribute(es, allNames)
+	var attributed usageTotals
+	for _, t := range byChange {
+		attributed = attributed.plus(t)
+	}
+
+	fmt.Fprintf(w, "\n  %-16s %14s %14s %14s %16s\n", "tokens", "input", "output", "cache-w", "cache-r")
+	tokenRow(w, "attributed", attributed, true)
+	tokenRow(w, "unattributed", unattributed, true)
+	if n := len(es); n > 0 {
+		var off int
+		for _, e := range es {
+			if attributeBranch(e.branch, allNames) == "" {
+				off++
+			}
+		}
+		fmt.Fprintf(w, "\n  %d%% of session entries could not be attributed to a change\n", off*100/n)
+	}
+
+	if only == "" {
+		return
+	}
+
+	fmt.Fprintf(w, "\n  %-16s %14s %14s %14s %16s\n", "by change", "input", "output", "cache-w", "cache-r")
+	// A dash, never a zero. Sessions were read and none reached this change, which is
+	// not the same fact as a change that ran and cost nothing.
+	tokenRow(w, trunc(only, 16), byChange[only], !byChange[only].zero())
+
+	if byChange[only].zero() {
+		return
+	}
+	fmt.Fprintf(w, "\n  %-16s %14s %14s %14s %16s\n", "by phase", "input", "output", "cache-w", "cache-r")
+	byPhase := map[string]usageTotals{}
+	var noPhase usageTotals
+	for _, e := range es {
+		if attributeBranch(e.branch, allNames) != only {
+			continue
+		}
+		t := usageTotals{e.in, e.out, e.cacheW, e.cacheR}
+		if e.skill == "" {
+			noPhase = noPhase.plus(t)
+			continue
+		}
+		byPhase[e.skill] = byPhase[e.skill].plus(t)
+	}
+	phases := make([]string, 0, len(byPhase))
+	for p := range byPhase {
+		phases = append(phases, p)
+	}
+	sort.Strings(phases)
+	for _, p := range phases {
+		tokenRow(w, trunc(p, 16), byPhase[p], true)
+	}
+	// Never distributed across the phases that did name a skill: 4,216 of 8,944 entries
+	// carry no attributionSkill, and sharing them out would invent the number.
+	tokenRow(w, "unattributed", noPhase, !noPhase.zero())
+}
+
+func tokenRow(w io.Writer, label string, t usageTotals, real bool) {
+	if !real {
+		fmt.Fprintf(w, "  %-16s %14s %14s %14s %16s\n", label, "—", "—", "—", "—")
+		return
+	}
+	fmt.Fprintf(w, "  %-16s %14d %14d %14d %16d\n", label, t.in, t.out, t.cacheW, t.cacheR)
 }
 
 // mergedSpan sums [first, last] ranges counting each calendar hour once. The footer

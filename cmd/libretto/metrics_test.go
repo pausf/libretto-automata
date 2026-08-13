@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -220,7 +221,7 @@ func TestAChangeWithNoPlanReportsADashNotAZero(t *testing.T) {
 	now := time.Now().Unix()
 	var out strings.Builder
 	err := metrics(&out, nil, fakeGit(".agents/changes/c/proposal.md\n",
-		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil))
+		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +263,7 @@ func TestAnUnreadableChangePrintsARowRatherThanVanishing(t *testing.T) {
 		map[string]string{"a": fmt.Sprintf("%d\n", now)}, nil)
 
 	var out strings.Builder
-	if err := metrics(&out, nil, g); err != nil {
+	if err := metrics(&out, nil, g, ""); err != nil {
 		t.Fatal(err)
 	}
 	row := rowFor(t, out.String(), "b")
@@ -280,7 +281,7 @@ func TestTheReportNamesWhatItCannotMeasure(t *testing.T) {
 	now := time.Now().Unix()
 	var out strings.Builder
 	if err := metrics(&out, nil, fakeGit(".agents/changes/c/proposal.md\n",
-		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil)); err != nil {
+		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil), ""); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"per-phase duration", "review-work findings", "Not measured"} {
@@ -299,7 +300,7 @@ func TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne(t *testing.T) {
 		}, nil)
 
 	var out strings.Builder
-	if err := metrics(&out, []string{"a"}, g); err != nil {
+	if err := metrics(&out, []string{"a"}, g, ""); err != nil {
 		t.Fatal(err)
 	}
 	rowFor(t, out.String(), "a") // fails the test if absent
@@ -310,10 +311,10 @@ func TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne(t *testing.T) {
 		t.Fatalf("the footer must count the filtered set, not the whole history:\n%s", out.String())
 	}
 
-	if err := metrics(&strings.Builder{}, []string{"nope"}, g); err == nil {
+	if err := metrics(&strings.Builder{}, []string{"nope"}, g, ""); err == nil {
 		t.Fatal("wanted a refusal for a change git never saw")
 	}
-	if err := metrics(&strings.Builder{}, []string{"--all"}, g); err == nil {
+	if err := metrics(&strings.Builder{}, []string{"--all"}, g, ""); err == nil {
 		t.Fatal("wanted a refusal for an unknown flag")
 	}
 }
@@ -335,7 +336,7 @@ bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 		map[string]string{"c": fmt.Sprintf("%d\n", now)},
 		map[string]string{"c": diff})
 	var out strings.Builder
-	if err := metrics(&out, nil, g); err != nil {
+	if err := metrics(&out, nil, g, ""); err != nil {
 		t.Fatal(err)
 	}
 	row := rowFor(t, out.String(), "c")
@@ -358,7 +359,7 @@ func TestTotalSpanMergesOverlappingChanges(t *testing.T) {
 	}
 	added := ".agents/changes/a/proposal.md\n.agents/changes/b/proposal.md\n.agents/changes/c/proposal.md\n"
 	var out strings.Builder
-	if err := metrics(&out, nil, fakeGit(added, logs, nil)); err != nil {
+	if err := metrics(&out, nil, fakeGit(added, logs, nil), ""); err != nil {
 		t.Fatal(err)
 	}
 	// Union: 10h + 2h = 12h. The naive sum says 17h.
@@ -381,12 +382,12 @@ func TestAPrefixSelectsAChangeUnlessAmbiguous(t *testing.T) {
 		}, nil)
 
 	var out strings.Builder
-	if err := metrics(&out, []string{"add"}, g); err != nil {
+	if err := metrics(&out, []string{"add"}, g, ""); err != nil {
 		t.Fatalf("a unique prefix must select: %v", err)
 	}
 	rowFor(t, out.String(), "add-thing")
 
-	err := metrics(&strings.Builder{}, []string{"dra"}, g)
+	err := metrics(&strings.Builder{}, []string{"dra"}, g, "")
 	if err == nil {
 		t.Fatal("an ambiguous prefix must be refused")
 	}
@@ -398,7 +399,7 @@ func TestAPrefixSelectsAChangeUnlessAmbiguous(t *testing.T) {
 
 	// "drain" is exact and also a prefix of drain-six — exact wins.
 	out.Reset()
-	if err := metrics(&out, []string{"drain"}, g); err != nil {
+	if err := metrics(&out, []string{"drain"}, g, ""); err != nil {
 		t.Fatalf("an exact name must win over a longer sibling: %v", err)
 	}
 	rowFor(t, out.String(), "drain")
@@ -431,7 +432,7 @@ func TestTheReportExplainsItsColumns(t *testing.T) {
 	now := time.Now().Unix()
 	var out strings.Builder
 	if err := metrics(&out, nil, fakeGit(".agents/changes/c/proposal.md\n",
-		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil)); err != nil {
+		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil), ""); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
@@ -505,7 +506,7 @@ Did: wrote an unfalsifiable criterion
 		}, nil))
 
 	var out strings.Builder
-	if err := metrics(&out, nil, g); err != nil {
+	if err := metrics(&out, nil, g, ""); err != nil {
 		t.Fatal(err)
 	}
 	if got := corrField(t, out.String(), "a"); got != "2" {
@@ -524,7 +525,7 @@ func TestNoLedgerReportsADashNotAZero(t *testing.T) {
 		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil))
 
 	var out strings.Builder
-	if err := metrics(&out, nil, g); err != nil {
+	if err := metrics(&out, nil, g, ""); err != nil {
 		t.Fatal(err)
 	}
 	if got := corrField(t, out.String(), "c"); got != "—" {
@@ -553,7 +554,7 @@ Did: something wrong with no change open
 		map[string]string{"a": fmt.Sprintf("%d\n", now)}, nil))
 
 	var out strings.Builder
-	if err := metrics(&out, nil, g); err != nil {
+	if err := metrics(&out, nil, g, ""); err != nil {
 		t.Fatal(err)
 	}
 	if got := corrField(t, out.String(), "a"); got != "1" {
@@ -567,5 +568,171 @@ Did: something wrong with no change open
 func TestMetricsIsNotGatedOnThePayload(t *testing.T) {
 	if needsPayload([]string{"metrics"}) {
 		t.Fatal("metrics reads the project's git history, not the payload tree")
+	}
+}
+
+// tokenLine returns the token block row starting with label, or "" when absent.
+//
+// Scoped to everything after the token block's header on purpose. Searching the whole
+// output matched the change table's own row for a change of the same name, and the
+// dash test passed against the churn column while the token block did not exist —
+// a false green found by reading the failure list rather than the pass list.
+func tokenLine(out, label string) string {
+	_, block, ok := strings.Cut(out, "\n  tokens ")
+	if !ok {
+		return ""
+	}
+	for _, l := range strings.Split(block, "\n") {
+		if t := strings.TrimSpace(l); strings.HasPrefix(t, label+" ") || t == label {
+			return t
+		}
+	}
+	return ""
+}
+
+func twoChangeGit(now int64) gitRunner {
+	return fakeGit(".agents/changes/alpha/proposal.md\n.agents/changes/beta/proposal.md\n",
+		map[string]string{
+			"alpha": fmt.Sprintf("%d\n", now),
+			"beta":  fmt.Sprintf("%d\n", now),
+		}, nil)
+}
+
+func TestTheTokenFooterIsCorpusWideUnderAFilter(t *testing.T) {
+	projects := transcriptRoot(t, "/repo", map[string][]string{
+		"a.jsonl": {
+			assistantLine("feat/alpha", "write-spec", 1, 10, 100, 1000),
+			assistantLine("feat/beta", "write-spec", 2, 20, 200, 2000),
+			assistantLine("main", "write-spec", 4, 40, 400, 4000),
+		},
+	})
+	now := time.Now().Unix()
+
+	var all, one strings.Builder
+	if err := metrics(&all, nil, twoChangeGit(now), projects); err != nil {
+		t.Fatal(err)
+	}
+	if err := metrics(&one, []string{"alpha"}, twoChangeGit(now), projects); err != nil {
+		t.Fatal(err)
+	}
+
+	// The invariant attributed + unattributed = corpus has to be readable off the
+	// output. It cannot be if the totals move when a filter is applied.
+	for _, label := range []string{"attributed", "unattributed"} {
+		a, o := tokenLine(all.String(), label), tokenLine(one.String(), label)
+		if a == "" {
+			t.Fatalf("no %q row in the unfiltered report:\n%s", label, all.String())
+		}
+		if a != o {
+			t.Errorf("%q moved under a filter:\n  all: %s\n  one: %s", label, a, o)
+		}
+	}
+}
+
+func TestAChangeWithNoTokensReportsADashNotAZero(t *testing.T) {
+	// A transcript root exists and was read; nothing in it names beta. That is "could
+	// not attribute", not "ran and cost nothing", and the two must not print alike.
+	projects := transcriptRoot(t, "/repo", map[string][]string{
+		"a.jsonl": {assistantLine("feat/alpha", "write-spec", 1, 10, 100, 1000)},
+	})
+	var out strings.Builder
+	if err := metrics(&out, []string{"beta"}, twoChangeGit(time.Now().Unix()), projects); err != nil {
+		t.Fatal(err)
+	}
+
+	row := tokenLine(out.String(), "beta")
+	if row == "" {
+		t.Fatalf("no token row for beta:\n%s", out.String())
+	}
+	if strings.Contains(row, "0") {
+		t.Errorf("beta has no attributable session and must dash, not zero: %q", row)
+	}
+	if !strings.Contains(row, "—") {
+		t.Errorf("want a dash in beta's token row, got %q", row)
+	}
+}
+
+func TestPerPhaseCostCarriesAnUnattributedRow(t *testing.T) {
+	projects := transcriptRoot(t, "/repo", map[string][]string{
+		"a.jsonl": {
+			assistantLine("feat/alpha", "write-spec", 1, 10, 100, 1000),
+			assistantLine("feat/alpha", "build-and-check", 2, 20, 200, 2000),
+			assistantLine("feat/alpha", "", 4, 40, 400, 4000), // named no skill
+		},
+	})
+	var out strings.Builder
+	if err := metrics(&out, []string{"alpha"}, twoChangeGit(time.Now().Unix()), projects); err != nil {
+		t.Fatal(err)
+	}
+	s := out.String()
+
+	for _, want := range []string{"by phase", "write-spec", "build-and-check"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("the phase block must name %q:\n%s", want, s)
+		}
+	}
+	// 53% of entries carry no attributionSkill. Sharing them out across the phases that
+	// did would invent a number; the row is what keeps the arithmetic honest.
+	phases := 0
+	for _, l := range strings.Split(s, "\n") {
+		f := strings.Fields(l)
+		if len(f) == 5 && (f[0] == "write-spec" || f[0] == "build-and-check") {
+			phases++
+			if f[1] == "3" || f[1] == "7" {
+				t.Errorf("the unattributed entry was distributed into a phase row: %q", l)
+			}
+		}
+	}
+	if phases != 2 {
+		t.Errorf("got %d phase rows, want 2", phases)
+	}
+	// The corpus block has an unattributed row of its own, so this one is read from the
+	// phase block. Two rows legitimately carry the label; each means it in its own block.
+	_, phaseBlock, _ := strings.Cut(s, "\n  by phase ")
+	if u := tokenLine("\n  tokens "+phaseBlock, "unattributed"); !strings.Contains(u, "4") {
+		t.Errorf("the skill-less entry must reach the phase block's unattributed row, got %q", u)
+	}
+}
+
+func TestNoTranscriptRootStillReportsTheGitMetrics(t *testing.T) {
+	now := time.Now().Unix()
+	for _, projects := range []string{"", filepath.Join(t.TempDir(), "gone")} {
+		var out strings.Builder
+		if err := metrics(&out, nil, twoChangeGit(now), projects); err != nil {
+			t.Fatalf("projects=%q: %v", projects, err)
+		}
+		s := out.String()
+		// The git-derived report is untouched by a measurement that was unavailable.
+		if !strings.Contains(s, "2 change(s)") {
+			t.Errorf("projects=%q: the git metrics stopped printing:\n%s", projects, s)
+		}
+		if !strings.Contains(s, "no session transcripts") {
+			t.Errorf("projects=%q: want the token block replaced by a line saying so:\n%s", projects, s)
+		}
+		if tokenLine(s, "attributed") != "" {
+			t.Errorf("projects=%q: printed token totals with no transcripts to read", projects)
+		}
+	}
+}
+
+func TestTheCeilingSeparatesCostFromDuration(t *testing.T) {
+	var out strings.Builder
+	if err := metrics(&out, nil, twoChangeGit(time.Now().Unix()), ""); err != nil {
+		t.Fatal(err)
+	}
+	s := out.String()
+
+	// Still true, and still said.
+	if !strings.Contains(s, "per-phase duration") {
+		t.Errorf("duration is still unmeasurable and must still be named:\n%s", s)
+	}
+	// Nothing here was ever false — the ceiling named duration and review-work findings,
+	// and both are still unmeasurable. What it lacked is any statement about cost, which
+	// this change starts measuring. Both assertions below were red before it.
+	if !strings.Contains(s, "attributionSkill") {
+		t.Errorf("the ceiling must say what made per-phase cost measurable:\n%s", s)
+	}
+	if !strings.Contains(s, "unattributed row is the measurement's own") {
+		t.Errorf("the ceiling must name the token block's own limit:\n%s", s)
 	}
 }

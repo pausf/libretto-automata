@@ -22,14 +22,14 @@ rewritten, never kept.
       numbers from `assistant` entries only, ignore `iterations[]`.
       *From:* outcomes 1 · constraints · *Closes:* criterion 1.
       *Blocks:* everything. Nothing blocks it.
-      Proof: `TestTheFourUsageNumbersAreKeptApart`
+      Proof: cmd/libretto/usage_test.go TestTheFourUsageNumbersAreKeptApart
 
 - [x] **2 · Everything that is absent, malformed or strange** — red, then green.
       A line that is not JSON, an `assistant` entry with no `usage`, an entry with no
       `gitBranch`, a `<synthetic>` model with an all-zero usage object and null
       `service_tier`. None fatal, each counted where outcome 1 says.
       *From:* constraints · *Closes:* criterion 2. *Waits on:* 1.
-      Proof: `TestAMalformedLineDoesNotCostTheRestOfTheFile`
+      Proof: cmd/libretto/usage_test.go TestAMalformedLineDoesNotCostTheRestOfTheFile
 
 - [x] **3 · Discovery, including the subagents** — red, then green.
       Encode the repository root forward into the project directory name — every `/` to
@@ -38,14 +38,14 @@ rewritten, never kept.
       The fixture carries both, with different numbers, so a reader that walked only the
       top level fails rather than under-reporting quietly.
       *From:* outcomes 5 · scope boundaries · *Closes:* criterion 3. *Waits on:* 1.
-      Proof: `TestSubagentTranscriptsAreCounted`
+      Proof: cmd/libretto/usage_test.go TestSubagentTranscriptsAreCounted
 
 - [x] **4 · The transcript root is never written** — a negative assertion cannot go red against a do-nothing stub, so it was proved by deliberately making `readTranscript` write a `.tmp` beside each file: red, naming both created paths. Reverted. Same for the missing-directory test, forced red by returning `found=true`.
       Snapshot the fixture tree — every path, its size, the SHA-256 of its contents —
       before the read and compare after. Red on a create, a delete, a truncation and an
       in-place rewrite alike.
       *From:* verification criteria · *Closes:* criterion 7. *Waits on:* 3.
-      Proof: `TestTheTranscriptRootIsNeverWritten`
+      Proof: cmd/libretto/usage_test.go TestTheTranscriptRootIsNeverWritten
 
 ## Attribution — where the honesty lives
 
@@ -54,48 +54,48 @@ rewritten, never kept.
       its own — a per-file reading misattributes everything after a checkout, and that was
       measured on a real session spanning four branches.
       *From:* prior decisions · *Closes:* criterion 4. *Waits on:* 1.
-      Proof: `TestBranchIsReadPerEntryNotPerFile`
+      Proof: cmd/libretto/usage_test.go TestBranchIsReadPerEntryNotPerFile
 
 - [x] **6 · Prefix stripped, name matched whole** — red on seven of thirteen cases against a stub returning "", then green on all thirteen.
       `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` stripped; the rest matched **whole**
       against the change names git has seen. The negative case is the point:
       `feat/add-thing-extra` must **not** attribute to `add-thing`.
       *From:* outcomes 2 · A3 · *Closes:* criterion 5. *Waits on:* 5.
-      Proof: `TestAPrefixIsStrippedAndTheNameMatchedWhole`
+      Proof: cmd/libretto/usage_test.go TestAPrefixIsStrippedAndTheNameMatchedWhole
 
 - [x] **7 · The unattributed bucket, and the invariant** — red, then green. The invariant holds: attributed + unattributed equals the corpus on all four numbers.
       `main`, `HEAD`, a branch matching no change, an absent field — all into one bucket.
       The assertion that matters: **attributed + unattributed = corpus**. That invariant is
       independent of rendering and is what stops a quiet drop.
       *From:* outcomes 2 · *Closes:* criterion 6. *Waits on:* 6.
-      Proof: `TestUnattributedTokensAreReportedNotDiscarded`
+      Proof: cmd/libretto/usage_test.go TestUnattributedTokensAreReportedNotDiscarded
 
 ## Rendering — pinned in the spec, so build to the worked example
 
-- [ ] **8 · The corpus block, and the filter invariant**
+- [x] **8 · The corpus block, and the filter invariant** — red, then green.
       The token block after the existing footer, before `flowLegend`. **Corpus-wide under
       both commands** — the totals do not move when a change filter is applied, or the
       invariant from task 7 stops being readable off the output.
       *From:* what each command prints · *Closes:* criterion 10. *Waits on:* 7.
-      Proof: `TestTheTokenFooterIsCorpusWideUnderAFilter`
+      Proof: cmd/libretto/metrics_test.go TestTheTokenFooterIsCorpusWideUnderAFilter
 
-- [ ] **9 · The per-change block, the phases, and the dash**
+- [x] **9 · The per-change block, the phases, and the dash** — red, then green. The dash test first passed falsely: the helper matched the change *table*'s row for the same name, so it read the churn column. Scoped to the token block, it went red properly.
       Under `metrics <change>`: that change's four numbers, then one row per
       `attributionSkill` value, then an **unattributed row** that is never distributed
       across the phases that did name a skill.
       The dash lives here and nowhere else — three states, per outcome 3.
       *From:* outcomes 3, 4 · *Closes:* criteria 8 and 9. *Waits on:* 8.
-      Proof: `TestAChangeWithNoTokensReportsADashNotAZero`,
-      `TestPerPhaseCostCarriesAnUnattributedRow`
+      Proof: cmd/libretto/metrics_test.go TestAChangeWithNoTokensReportsADashNotAZero
+      Proof: cmd/libretto/metrics_test.go TestPerPhaseCostCarriesAnUnattributedRow
 
-- [ ] **10 · No root is a state, not an error**
+- [x] **10 · No root is a state, not an error** — red, then green, both for an empty path and a missing directory.
       `CLAUDE_HOME` at an empty temp dir, and at one with no directory for this repository.
       The git-derived report prints in full either way; the token block becomes one line
       saying the measurement was unavailable.
       *From:* constraints · *Closes:* criterion 11. *Waits on:* 8.
-      Proof: `TestNoTranscriptRootStillReportsTheGitMetrics`
+      Proof: cmd/libretto/metrics_test.go TestNoTranscriptRootStillReportsTheGitMetrics
 
-- [ ] **11 · Wire it into `main.go`**
+- [x] **11 · Wire it into `main.go`** — `transcriptProjects()` resolves `target.NewClaude().Root()` and is passed in. No file under `internal/target/` touched.
       `filepath.Join(target.NewClaude().Root(), "projects")`, passed in as a parameter.
       **Injected, never resolved inside the logic** — the same seam `execGit` already uses.
       No file under `internal/target/` is touched; `Root()` is already exported and that
@@ -104,7 +104,7 @@ rewritten, never kept.
 
 ## Closing
 
-- [ ] **12 · The ceiling stops being half-false**
+- [x] **12 · The ceiling stops being half-false** — **the premise was wrong and the build found it.** `flowCeiling` named per-phase *duration* and review-work findings; both are still unmeasurable, and cost was never on that list. Nothing was false. The ceiling gains what is true instead: cost is now measured via `attributionSkill`, duration stays off, and the token block's own limit — the unattributed row as an error bar — is named. Spec amended to match.
       `flowCeiling` says per-phase measurement "needs a phase to write them down". True for
       duration, false for cost since `attributionSkill` started being recorded. Split the
       sentence.
@@ -113,7 +113,7 @@ rewritten, never kept.
       work; `TestTheReportNamesWhatItCannotMeasure` checks only that three substrings are
       present and would pass whatever is done here, including nothing.
       *From:* outcomes 6 · A4 · *Closes:* criterion 12. *Waits on:* 9.
-      Proof: `TestTheCeilingSeparatesCostFromDuration`
+      Proof: cmd/libretto/metrics_test.go TestTheCeilingSeparatesCostFromDuration
 
 - [ ] **13 · Six gates, then apply the delta**
       `gofmt -l .`, `go vet ./...`, `go test ./... -count=1`, `scripts/check-payload`,
