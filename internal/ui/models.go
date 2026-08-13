@@ -137,6 +137,19 @@ type AgentRow struct {
 	// opened a menu of five levels none of which could be written.
 	Efforts []string
 
+	// Recommended and RecommendedEffort are what the repository suggests for this
+	// agent, empty when it has no opinion — which is every agent the user wrote.
+	//
+	// Data across the seam, like Efforts and for the same reason: the table is the
+	// payload's own agent list, this package does not know what an agent file is, and a
+	// second copy of the rule on screen would be the one nobody updated.
+	//
+	// The reason is deliberately NOT here. It runs to seventy runes and this frame
+	// narrows to 58 columns, so it lives in `libretto models`, which has no width to
+	// defend. What reaches the screen is a mark.
+	Recommended       string
+	RecommendedEffort string
+
 	// Shared marks a row whose file is one this repository owns, reached from more
 	// than one destination. Writing it changes every project on the machine;
 	// writing an unmarked row changes this destination only.

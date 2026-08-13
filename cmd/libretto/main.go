@@ -466,6 +466,7 @@ func agentRows(root string, tg target.Target) ([]ui.AgentRow, error) {
 	}
 	rows := make([]ui.AgentRow, 0, len(agents))
 	for _, a := range agents {
+		rec, _ := recommend(a.Name)
 		rows = append(rows, ui.AgentRow{
 			Name:   a.Name,
 			Model:  a.Model,
@@ -474,6 +475,11 @@ func agentRows(root string, tg target.Target) ([]ui.AgentRow, error) {
 			// than refuse one after it was made. The rule stays in agentmodel; this
 			// carries its answer across the seam.
 			Efforts: agentmodel.EffortsFor(a.Model),
+			// What this repository suggests for this agent, if it has an opinion.
+			// The rule stays in this binary — internal/agentmodel is handed a
+			// directory and does not know which agents are the payload's.
+			Recommended:       rec.model,
+			RecommendedEffort: rec.effort,
 			// Owned means the file is one of ours, reached from more than one
 			// destination — so writing it is not local to this one.
 			Shared: link.Owned(root, a.Path),

@@ -71,6 +71,7 @@ func listModels(root string, tg target.Target) error {
 		}
 		fmt.Printf("  %-*s  %-12s%-10s%s\n", width, a.Name, describe(a.Model), describe(a.Effort), note)
 	}
+	listRecommendations(agents, width)
 	// Skipping in silence would trade a loud failure for a quiet one. `doctor` and
 	// `prune` own stale links; this only has to say they are there.
 	if len(unreadable) > 0 {
@@ -269,6 +270,50 @@ func targetNames(dir string, args []string) ([]string, error) {
 		names = append(names, a.Name)
 	}
 	return names, nil
+}
+
+// listRecommendations prints what this repository suggests, and why.
+//
+// A trailer rather than a fourth column, and the reason is the whole argument: the
+// reasons run to seventy runes and a row already spends a name, a model, an effort and a
+// shared marker. **This listing is also the only surface wide enough to carry them** —
+// the panel's selector narrows to 58 columns, so what reaches the screen there is a mark
+// and this is where it is explained.
+//
+// Agents with no recommendation are absent rather than blank. A user's own agent is not
+// something this repository has an opinion about, and an empty cell reads as "none
+// recommended" rather than "not known".
+func listRecommendations(agents []agentmodel.Agent, width int) {
+	type row struct{ name, want, reason, now string }
+	var rows []row
+	for _, a := range agents {
+		r, ok := recommend(a.Name)
+		if !ok {
+			continue
+		}
+		want := r.model
+		if r.effort != "" {
+			want += " " + r.effort
+		}
+		// Named only when it differs. A recommendation nobody can tell they are
+		// ignoring is a recommendation that changes nothing.
+		now := ""
+		if a.Model != r.model {
+			now = "runs " + describe(a.Model) + " today"
+		}
+		rows = append(rows, row{a.Name, want, r.reason, now})
+	}
+	if len(rows) == 0 {
+		return
+	}
+	fmt.Println()
+	fmt.Println("  recommended, and never applied — `models set` and `models effort` are yours to type:")
+	for _, r := range rows {
+		fmt.Printf("    %-*s  %-14s%s\n", width, r.name, r.want, r.reason)
+		if r.now != "" {
+			fmt.Printf("    %-*s  %-14s← %s\n", width, "", "", r.now)
+		}
+	}
 }
 
 // describe renders a model or an effort for a human. The default is the interesting

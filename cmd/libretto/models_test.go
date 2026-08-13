@@ -709,3 +709,80 @@ func TestModelsEffortFollowsTheProviderNotTheAlias(t *testing.T) {
 		t.Errorf("the refusal does not name the agent: %v", err)
 	}
 }
+
+func TestModelsListsTheRecommendationAndItsReason(t *testing.T) {
+	f := newFixture(t)
+	// A payload agent this repository has an opinion about, and one it does not.
+	f.foreign(t, "review-lens-tests", "haiku")
+	f.foreign(t, "somebody-elses-agent", "opus")
+
+	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Both on one line, and that is not fussiness: the catalogue trailer already
+	// prints "pattern-matching over prose" as haiku's own label, so a bare Contains
+	// passes against output this change has not touched. It did, on the first run.
+	found := false
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "review-lens-tests") && strings.Contains(line, "pattern-matching over prose") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("no line carries the agent and its reason together:\n%s", out)
+	}
+	// Silence for somebody's own agent, and not a blank cell standing in for an
+	// opinion that does not exist.
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "somebody-elses-agent") && strings.Contains(line, "→") {
+			t.Errorf("an agent we have no opinion about was given one:\n%s", line)
+		}
+	}
+}
+
+func TestModelsMarksAgentsRunningAgainstTheRecommendation(t *testing.T) {
+	f := newFixture(t)
+	// Declares sonnet, recommended haiku — the real disagreement this ships with.
+	f.foreign(t, "review-lens-design", "sonnet")
+	// Declares exactly what it is recommended.
+	f.foreign(t, "review-lens-tests", "haiku")
+
+	out, _, err := capture(t, func() error { return models(f.Repo, f.global(), nil) })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A recommendation nobody can tell they are ignoring changes nothing.
+	if !strings.Contains(out, "runs sonnet today") {
+		t.Errorf("an agent running against its recommendation is not marked as doing so:\n%s", out)
+	}
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "review-lens-tests") && strings.Contains(line, "today") {
+			t.Errorf("an agent already at its recommendation was marked as diverging:\n%s", line)
+		}
+	}
+}
+
+func TestAgentRowsCarryTheRecommendation(t *testing.T) {
+	f := newFixture(t)
+	f.foreign(t, "review-lens-security", "sonnet")
+	f.foreign(t, "somebody-elses-agent", "opus")
+
+	rows, err := agentRows(f.Repo, f.global())
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, r := range rows {
+		got[r.Name] = r.Recommended + "/" + r.RecommendedEffort
+	}
+	if got["review-lens-security"] != "sonnet/xhigh" {
+		t.Errorf("review-lens-security row carries %q, want sonnet/xhigh", got["review-lens-security"])
+	}
+	// The seam is the point: the panel is handed an answer, never the rule.
+	if got["somebody-elses-agent"] != "/" {
+		t.Errorf("an unrecommended agent's row carries %q, want nothing", got["somebody-elses-agent"])
+	}
+}

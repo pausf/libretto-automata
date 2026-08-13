@@ -46,7 +46,12 @@ recorded rather than assumed.
 
 ## The listing — where the reasons live
 
-- [ ] **3 · The recommendation column and its reason**
+- [x] **3 · The recommendation column and its reason** — a **trailer**, not a column: the
+      reasons run to seventy runes and the row already carries four things. Its test
+      passed on the first run for the wrong reason — `pattern-matching over prose` is
+      already in the output as `haiku`'s own catalogue label, so a bare `Contains` matched
+      text this change never touched. Scoped to one line carrying both the agent and the
+      reason, it went red properly.
       `libretto models` prints both. An agent with no recommendation prints nothing — no
       blank cell standing in for an opinion that does not exist.
       **`TestModelsListsEffortBesideTheModel` asserts `(session)` exactly twice on the
@@ -55,14 +60,14 @@ recorded rather than assumed.
       *From:* cli outcomes 2 · *Closes:* criterion 5. *Waits on:* 1.
       Proof: cmd/libretto/models_test.go TestModelsListsTheRecommendationAndItsReason
 
-- [ ] **4 · Saying when an agent runs against its recommendation**
+- [x] **4 · Saying when an agent runs against its recommendation** — red, then green. Four of the seven diverge today, and the listing now says so per agent.
       A recommendation nobody can tell they are ignoring changes nothing.
       `review-lens-design` is that case on the day this ships — it declares `sonnet` and is
       recommended `haiku`, deliberately, per A3.
       *From:* cli outcomes 2 · A3 · *Closes:* criterion 6. *Waits on:* 3.
       Proof: cmd/libretto/models_test.go TestModelsMarksAgentsRunningAgainstTheRecommendation
 
-- [ ] **5 · One field through the existing adapter**
+- [x] **5 · One field through the existing adapter** — two fields, filled beside `Efforts`. `internal/ui` still imports no `agentmodel`.
       `agentRows` in `cmd/libretto/main.go` gains the recommendation exactly as it gained
       `Efforts`. **`internal/ui` imports no `agentmodel` after this, and that is the
       assertion** — the seam is the point, not the field.
