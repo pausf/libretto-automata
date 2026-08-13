@@ -992,3 +992,62 @@ confident nonsense; tokens are what was measured.
 **Plain digits, no thousands separator and no exponent.** A space inside a number breaks
 every pipe a report gets read through, and an exponent throws away the precision that
 makes two runs comparable, which is the entire use this was built for.
+
+#### A per-agent model recommendation, and it is never applied
+
+`libretto models set` and `models effort` have existed since the selector did, but which
+agent suits which tier lived in one paragraph of a skill and on nobody's machine. This
+ships it as data and prints it.
+
+**Recommend only.** Nothing writes a model or an effort because of the table — not a flag,
+not a first run, not the panel. The reading is the repository's; the typing is the user's,
+which is the same split `AGENTS.md` draws for the release bump and is here for the same
+reason: a tool that acts on its own reading is a tool whose reading nobody audits.
+
+**The table lives in `cmd/libretto`, and that is a layering decision rather than a
+convenience.** `agent-models` settled, from a real failure, that *the subject is a
+directory, not the repository* — it is handed a directory and works on every `*.md` in it,
+whoever created them. A map from `review-lens-security` to a tier **is** this payload's
+agent list, so putting it there would reintroduce the coupling that decision exists
+against, in the one package whose layering claim is that it is testable against a bare
+`t.TempDir()`. This binary already knows what the payload is; it gates commands on it.
+
+- **every recommendation names a model the catalogue accepts**, and an effort the
+  recommended model actually supports. Walked, not reviewed: an entry naming `sonnet-5`,
+  or a level on `haiku`, is a recommendation this binary would refuse to type — the one
+  thing worse than saying nothing.
+  Proof: cmd/libretto/recommend_test.go TestEveryRecommendationIsTypeable
+- **nothing is recommended onto the two priciest tiers.** The catalogue orders itself
+  cheapest-first because this exists to lower a bill; a table steering onto `opus` or
+  `fable` inverts what it was built for. An agent that genuinely needs more is a decision
+  a person makes at the screen.
+  Proof: cmd/libretto/recommend_test.go TestNothingIsRecommendedOntoThePriciestTiers
+- **an agent the table does not know gets no recommendation and no reason.** Silence, never
+  a guess — every agent a user writes themselves lands here, and an invented opinion about
+  somebody's own agent is worse than none.
+  Proof: cmd/libretto/recommend_test.go TestAnUnknownAgentGetsNoRecommendation
+- **every recommendation carries a reason.** A verdict with no reason is an instruction,
+  and nothing here gives instructions. The model catalogue's labels already answer "when
+  would I pick this"; this is the same idea keyed by agent.
+  Proof: cmd/libretto/recommend_test.go TestEveryRecommendationCarriesAReason
+- **the listing carries the reasons, as a trailer rather than a fourth column**, and an
+  agent with no recommendation is absent from it rather than blank in it — an empty cell
+  reads as *none recommended* where the truth is *not known*. **This listing is the only
+  surface wide enough for them**: the panel's selector narrows to 58 columns and the
+  reasons run to seventy runes, so what reaches the screen there is a mark and this is
+  where it is explained.
+  Proof: cmd/libretto/models_test.go TestModelsListsTheRecommendationAndItsReason
+- **it says when an agent runs against its recommendation**, and only then. A
+  recommendation nobody can tell they are ignoring is a recommendation that changes
+  nothing. Four of the seven diverge on the day this ships, `review-lens-design` among
+  them deliberately: the skill's own reasoning puts design on the cheap end and the file
+  declares `sonnet`, so **the disagreement is shown rather than settled silently here**.
+  Proof: cmd/libretto/models_test.go TestModelsMarksAgentsRunningAgainstTheRecommendation
+- **the panel is handed the answer through the existing adapter**, exactly as it was
+  handed `Efforts`, so `internal/ui` still imports no `agentmodel`.
+  Proof: cmd/libretto/models_test.go TestAgentRowsCarryTheRecommendation
+
+**The values themselves are reviewed and never tested**, and review caught one: the table
+shipped `high` for `review-lens-intent` while the change's own table omitted it, and every
+guard above stayed green — they walk the table for what a machine can decide and none of
+them can read a paragraph.

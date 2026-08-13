@@ -1426,3 +1426,226 @@ func TestTheRefusalAgreesInNumber(t *testing.T) {
 		t.Errorf("notice = %q, want the plural verb for two models", got)
 	}
 }
+
+// TestTheOpenCatalogueHoldsTheFrameAtItsNarrowest measures the one line this change can
+// lengthen. The row-width test beside it renders resting rows with no catalogue open, so
+// it cannot see this at all.
+func TestTheOpenCatalogueHoldsTheFrameAtItsNarrowest(t *testing.T) {
+	forceTrueColor(t)
+
+	for _, term := range []int{MinPanelWidth, 62, 80, 140} {
+		p := Panel{
+			Width:  term,
+			Agents: []AgentRow{{Name: "review-lens-reliability", Model: "sonnet", Effort: "xhigh", Marked: true, Recommended: "haiku", Shared: true}},
+			ModelChoices: []ModelChoice{
+				{Name: "", Label: "the session's model — whatever you are running"},
+				{Name: "haiku", Label: "cheapest; fine for pattern-matching over prose"},
+				{Name: "fable", Label: "the hardest, longest-running work; priciest per token"},
+			},
+			ChoosingModel: true,
+			InSelector:    true,
+		}
+		limit := ContentWidth(term)
+		for _, line := range strings.Split(strip(darkTheme().selector(p)), "\n") {
+			if got := lipgloss.Width(strings.TrimRight(line, " ")); got > limit {
+				t.Errorf("term %d: a catalogue line is %d columns against a %d interior: %q",
+					term, got, limit, line)
+			}
+		}
+	}
+}
+
+// catalogueOpen renders the model catalogue over a marked set.
+func catalogueOpen(rows []AgentRow) string {
+	return strip(darkTheme().selector(Panel{
+		Width:         140,
+		Agents:        rows,
+		ModelChoices:  catalogue(),
+		ChoosingModel: true,
+		InSelector:    true,
+	}))
+}
+
+// markedIn returns the catalogue entries carrying the recommendation mark.
+func markedIn(out string) []string {
+	var got []string
+	for _, l := range strings.Split(out, "\n") {
+		f := strings.Fields(l)
+		// >= rather than >: an entry with no label has exactly two fields, and the
+		// effort catalogue's fixtures are exactly that. The first version required
+		// three and silently found nothing there.
+		if len(f) >= 2 && f[0] == recMark {
+			got = append(got, f[1])
+		}
+		if len(f) >= 3 && f[0] == "❯" && f[1] == recMark {
+			got = append(got, f[2])
+		}
+	}
+	return got
+}
+
+func TestTheModelCatalogueMarksTheRecommendation(t *testing.T) {
+	forceTrueColor(t)
+	out := catalogueOpen([]AgentRow{
+		{Name: "review-lens-tests", Model: "sonnet", Marked: true, Recommended: "haiku"},
+	})
+	if got := markedIn(out); len(got) != 1 || got[0] != "haiku" {
+		t.Errorf("marked %v, want exactly [haiku]:\n%s", got, out)
+	}
+}
+
+func TestTheRecommendationMarkIsLegibleWithoutColour(t *testing.T) {
+	forceTrueColor(t)
+	// strip() removes every escape, which is the mono terminal, the pipe and the
+	// screenshot pasted into a ticket. A mark that only exists as a hue is gone in all
+	// three, and this panel has refused that once already.
+	out := catalogueOpen([]AgentRow{
+		{Name: "review-lens-tests", Model: "sonnet", Marked: true, Recommended: "haiku"},
+	})
+	if !strings.Contains(out, recMark) || !strings.Contains(out, "recommended") {
+		t.Errorf("the mark and its explanation must survive with no colour:\n%s", out)
+	}
+}
+
+func TestAMixedMarkedSetIsNotGivenOneRecommendation(t *testing.T) {
+	forceTrueColor(t)
+	out := catalogueOpen([]AgentRow{
+		{Name: "review-lens-tests", Marked: true, Recommended: "haiku"},
+		{Name: "review-lens-security", Marked: true, Recommended: "sonnet"},
+	})
+	if got := markedIn(out); len(got) != 0 {
+		t.Errorf("a set recommending two different models marked %v, want nothing:\n%s", got, out)
+	}
+	if !strings.Contains(out, "the marked agents differ") {
+		t.Errorf("the screen must say the set disagrees rather than going quiet:\n%s", out)
+	}
+}
+
+func TestAnUnknownAgentDoesNotBlockTheOthersRecommendation(t *testing.T) {
+	forceTrueColor(t)
+	// The common gesture on a real machine: the payload's agents plus the user's own.
+	// If an agent with no opinion blocked the vote, marking everything would answer
+	// nothing, for ever.
+	out := catalogueOpen([]AgentRow{
+		{Name: "review-lens-tests", Marked: true, Recommended: "haiku"},
+		{Name: "somebody-elses-agent", Marked: true},
+	})
+	if got := markedIn(out); len(got) != 1 || got[0] != "haiku" {
+		t.Errorf("an agent with no opinion blocked the ones that had one: marked %v\n%s", got, out)
+	}
+}
+
+func TestDisagreementIsJudgedPerCatalogue(t *testing.T) {
+	forceTrueColor(t)
+	// Same model, different depth. The question on screen is which model, so this set
+	// does not disagree about it.
+	out := catalogueOpen([]AgentRow{
+		{Name: "spec-writer", Marked: true, Recommended: "sonnet", RecommendedEffort: "high"},
+		{Name: "review-lens-security", Marked: true, Recommended: "sonnet", RecommendedEffort: "xhigh"},
+	})
+	if got := markedIn(out); len(got) != 1 || got[0] != "sonnet" {
+		t.Errorf("a set agreeing on the model marked %v, want [sonnet]:\n%s", got, out)
+	}
+	if strings.Contains(out, "differ") {
+		t.Errorf("a disagreement about depth was reported as one about tier:\n%s", out)
+	}
+}
+
+func TestAnUnrecommendedAgentAddsNothingToTheCatalogue(t *testing.T) {
+	forceTrueColor(t)
+	with := catalogueOpen([]AgentRow{{Name: "somebody-elses-agent", Marked: true}})
+	if strings.Contains(with, "recommended") || strings.Contains(with, "differ") {
+		t.Errorf("an agent we have no opinion about changed the catalogue:\n%s", with)
+	}
+	if got := markedIn(with); len(got) != 0 {
+		t.Errorf("marked %v for an agent with no recommendation", got)
+	}
+}
+
+func TestTheRecommendationIsNeverPreselected(t *testing.T) {
+	forceTrueColor(t)
+	m, _ := selectorModel(t, []AgentRow{
+		{Name: "review-lens-tests", Model: "sonnet", Recommended: "haiku"},
+	})
+	m = openSelector(t, m)
+	m = key(m, "down")
+	m = key(m, " ")
+	m = key(m, "m")
+	if !m.ChoosingModel() {
+		t.Fatal("the model catalogue did not open")
+	}
+	// Marked, never chosen. Putting the cursor on the recommendation is the tool typing
+	// the answer with extra steps.
+	if got := m.ChosenModelName(); got != "" {
+		t.Errorf("the catalogue opened on %q; it must open where it always has", got)
+	}
+}
+
+func TestTheEffortCatalogueMarksTheRecommendation(t *testing.T) {
+	forceTrueColor(t)
+
+	open := func(rows []AgentRow, offer []EffortChoice) string {
+		return strip(darkTheme().selector(Panel{
+			Width: 140, Agents: rows, InSelector: true,
+			ChoosingEffort: true, EffortChoices: offer,
+		}))
+	}
+	all := []EffortChoice{{Name: "low"}, {Name: "medium"}, {Name: "high"}, {Name: "xhigh"}, {Name: "max"}}
+
+	// In the offer: marked.
+	out := open([]AgentRow{
+		{Name: "review-lens-security", Marked: true, Recommended: "sonnet", RecommendedEffort: "xhigh"},
+	}, all)
+	if got := markedIn(out); len(got) != 1 || got[0] != "xhigh" {
+		t.Errorf("marked %v, want [xhigh]:\n%s", got, out)
+	}
+
+	// Outside the offer: nothing marked. The list is narrowed to what the marked rows
+	// can run *now*, and marking a level the screen cannot offer is a promise it would
+	// then refuse.
+	out = open([]AgentRow{
+		{Name: "review-lens-security", Marked: true, Recommended: "sonnet", RecommendedEffort: "xhigh"},
+	}, []EffortChoice{{Name: "low"}, {Name: "medium"}, {Name: "high"}, {Name: "max"}})
+	if got := markedIn(out); len(got) != 0 {
+		t.Errorf("marked %v for a level this screen cannot offer:\n%s", got, out)
+	}
+	// The title is the half a missing entry does not cover on its own: with no guard,
+	// nothing is marked anyway — because the entry is absent — but the header still
+	// promises a recommendation the user then hunts for and never finds.
+	if strings.Contains(out, "recommended") {
+		t.Errorf("the header promises a recommendation this offer does not contain:\n%s", out)
+	}
+
+	// A recommendation whose model has no levels at all abstains: review-lens-design is
+	// recommended haiku, which has none. Nothing is marked, and that is deliberately
+	// indistinguishable here from having no recommendation — `libretto models` is where
+	// the two are told apart.
+	out = open([]AgentRow{
+		{Name: "review-lens-design", Marked: true, Recommended: "haiku"},
+	}, all)
+	if got := markedIn(out); len(got) != 0 {
+		t.Errorf("marked %v for a recommendation carrying no effort:\n%s", got, out)
+	}
+}
+
+func TestARecommendationWithNoEffortIsAVoteNotAnAbstention(t *testing.T) {
+	forceTrueColor(t)
+	// review-lens-design is recommended onto haiku, which has no levels at all. That is
+	// not "no opinion" — it is the opinion that no level applies. Reading it as an
+	// abstention lets one other marked agent carry the whole set, and the screen then
+	// recommends `high` for an agent whose recommendation has no efforts to give.
+	out := strip(darkTheme().selector(Panel{
+		Width: 140, InSelector: true, ChoosingEffort: true,
+		EffortChoices: []EffortChoice{{Name: "low"}, {Name: "high"}, {Name: "xhigh"}},
+		Agents: []AgentRow{
+			{Name: "spec-writer", Marked: true, Recommended: "sonnet", RecommendedEffort: "high"},
+			{Name: "review-lens-design", Marked: true, Recommended: "haiku"},
+		},
+	}))
+	if got := markedIn(out); len(got) != 0 {
+		t.Errorf("marked %v for a set one of whose members has no level to give:\n%s", got, out)
+	}
+	if strings.Contains(out, "recommended") && !strings.Contains(out, "differ") {
+		t.Errorf("the header promises a recommendation the set does not have:\n%s", out)
+	}
+}
