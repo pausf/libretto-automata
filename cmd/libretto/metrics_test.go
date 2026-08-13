@@ -365,6 +365,46 @@ func TestTotalSpanMergesOverlappingChanges(t *testing.T) {
 	}
 }
 
+// A name is typed from memory of how it starts. A unique prefix selects; an ambiguous
+// one is refused naming the candidates; and an exact name always wins, or a change
+// whose full name prefixes a sibling's becomes unreachable.
+func TestAPrefixSelectsAChangeUnlessAmbiguous(t *testing.T) {
+	now := time.Now().Unix()
+	g := fakeGit(
+		".agents/changes/drain-six/proposal.md\n.agents/changes/drain/proposal.md\n.agents/changes/add-thing/proposal.md\n",
+		map[string]string{
+			"drain-six": fmt.Sprintf("%d\n", now),
+			"drain":     fmt.Sprintf("%d\n", now),
+			"add-thing": fmt.Sprintf("%d\n", now),
+		}, nil)
+
+	var out strings.Builder
+	if err := metrics(&out, []string{"add"}, g); err != nil {
+		t.Fatalf("a unique prefix must select: %v", err)
+	}
+	rowFor(t, out.String(), "add-thing")
+
+	err := metrics(&strings.Builder{}, []string{"dra"}, g)
+	if err == nil {
+		t.Fatal("an ambiguous prefix must be refused")
+	}
+	for _, name := range []string{"drain", "drain-six"} {
+		if !strings.Contains(err.Error(), name) {
+			t.Errorf("the refusal must name candidate %q, got: %v", name, err)
+		}
+	}
+
+	// "drain" is exact and also a prefix of drain-six — exact wins.
+	out.Reset()
+	if err := metrics(&out, []string{"drain"}, g); err != nil {
+		t.Fatalf("an exact name must win over a longer sibling: %v", err)
+	}
+	rowFor(t, out.String(), "drain")
+	if strings.Contains(out.String(), "drain-six") {
+		t.Fatalf("wanted only the exact match:\n%s", out.String())
+	}
+}
+
 func TestHumanSpanDropsPrecisionItDoesNotHave(t *testing.T) {
 	// A change spanning four days did not get four days of attention. Minutes on that
 	// span is a number implying an accuracy the measurement cannot support.

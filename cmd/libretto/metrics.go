@@ -262,10 +262,14 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 		return fmt.Errorf("not a git repository, or git is unavailable: %w", err)
 	}
 	if only != "" {
-		names = filterName(names, only)
-		if len(names) == 0 {
+		matches := filterName(names, only)
+		if len(matches) == 0 {
 			return fmt.Errorf("git has never seen a change called %q", only)
 		}
+		if len(matches) > 1 {
+			return fmt.Errorf("%q is ambiguous: %s", only, strings.Join(matches, ", "))
+		}
+		names = matches
 	}
 	if len(names) == 0 {
 		fmt.Fprintf(w, "\n  no changes in this repository's history yet\n\n")
@@ -334,13 +338,20 @@ func planCell(seen bool, n, total int) string {
 	return fmt.Sprintf("%d/%d", n, total)
 }
 
+// filterName resolves a typed name: exact first, then prefix. Exact must win even when
+// it also prefixes a sibling, or a change whose full name starts another's becomes
+// unreachable. A multi-element return is an ambiguity for the caller to refuse.
 func filterName(names []string, only string) []string {
+	var prefixed []string
 	for _, n := range names {
 		if n == only {
 			return []string{n}
 		}
+		if strings.HasPrefix(n, only) {
+			prefixed = append(prefixed, n)
+		}
 	}
-	return nil
+	return prefixed
 }
 
 func trunc(s string, n int) string {
