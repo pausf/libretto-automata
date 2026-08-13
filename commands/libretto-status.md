@@ -37,9 +37,14 @@ Nothing in flight is a state, not an emptiness to apologise for. Say so in one l
 
 ## Then the queue, as its own section
 
-Ideas captured by `/libretto-queue` — proposals carrying a `Queued:` line — come **after**
-in flight, oldest first, name and one line each. The skill finds them; this command only
-keeps them separate.
+Ideas captured by `/libretto-queue` come **after** in flight, oldest first, name and one
+line each. The skill finds them; this command only keeps them separate.
+
+**What counts as queued is the skill's to decide, and it is not just the `Queued:` line.**
+This sentence used to restate that definition and the restatement went stale the day the
+rule grew: a change dispatched by a branch keeps the line on the base branch and is not
+queued. Two descriptions of one thing is one too many, and the copy that drifts is always
+the one nobody is editing.
 
 Two sections, never one list. A captured idea and a change half-built are different kinds
 of thing, and merging them makes the queue look like a backlog of stalled work.

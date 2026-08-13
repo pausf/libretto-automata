@@ -140,6 +140,33 @@ rg -l '^Queued:' .agents/changes/*/proposal.md
 Run it whenever the caller asks for the queue, including in reporting mode. For each one,
 oldest `Queued:` date first: its name and what its proposal says it is for, in one line.
 
+### The line is necessary and not sufficient — drop the ones already **dispatched by a branch**
+
+**That scan reads the working tree, and the working tree is one branch's opinion.** The
+`Queued:` line comes out in the pickup commit, and the pickup commit lives on the feature
+branch — so from the base branch a change that has been built, reviewed and pushed still
+carries the line and still reads as captured-and-not-started.
+
+So filter the result against the branch scan this phase already ran:
+
+**A queued name that matches an unmerged branch is not queued. It is in flight**, and it
+belongs in the in-flight report with its commits and its request — never in the queue.
+
+Match the change name against each branch with a leading `feat/`, `fix/`, `docs/`,
+`chore/` or `refactor/` removed, and match it **whole**. An unrecognised prefix fails
+safe: the branch does not match, so the change stays in the queue and the worst case is
+the report this rule exists to prevent, rather than a captured idea silently vanishing.
+
+**This is a bug fix, and the failure is worth keeping.** `/libretto-status` listed a
+change under *the queue* while its work was finished and open as a pull request. The next
+command typed was `/libretto-attacca <that change>` — which would have branched from the
+base, found the proposal still queued there, and rebuilt work that already existed, ending
+in two requests for one change and a conflict on every spec it had already amended.
+
+**A report that induces rework is worse than one that says nothing**, because silence
+costs a question and this costs the work twice. Reported as the user put it, and it is the
+rule now.
+
 **Never ask whether to pick one up, and never let one block.** Home first exists so
 *started* work does not get abandoned; an idea costs nothing to abandon, because nothing
 has been built on it. Making four captured ideas stand between the user and a Jira task

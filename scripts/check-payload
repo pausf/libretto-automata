@@ -173,6 +173,7 @@ check_wiring skills/review-spec/SKILL.md 'never rewrites the spec'      'review-
 check_wiring skills/write-spec/SKILL.md  'the work is a bug'       'write-spec carries the bug branch'
 check_wiring skills/write-spec/SKILL.md  'fails right now'              'the bug branch demands a red test first'
 check_wiring skills/find-work/SKILL.md   'whether it is a bug'          'phase 1 names bug-or-not'
+check_wiring skills/find-work/SKILL.md   'dispatched by a branch'       'the queue scan drops a proposal its branch already took'
 check_wiring skills/write-spec/SKILL.md  'never the corpus'             'phase 2 selects the governing spec, not the spec root'
 check_wiring skills/write-spec/SKILL.md  'always the vocabulary'        'a fan-out brief section is named per subtask, vocabulary always'
 check_wiring skills/write-spec/SKILL.md  'rebills the whole context'    'the fan-out states what a mid-phase model switch costs'
