@@ -668,6 +668,23 @@ the copy stays comparable with upstream.
   Proof: scripts/check-payload
 - **the queue commands delegate the scan too**, and reference only skills that exist
   Proof: scripts/check-payload
+- **a `Queued:` line is necessary and not sufficient: a change dispatched by a branch is
+  reported in flight, never in the queue.** The scan reads the working tree, and the
+  working tree is one branch's opinion — the line comes out in the pickup commit, which
+  lives on the feature branch, so from the base branch a change that has been built,
+  reviewed and pushed still reads as captured-and-not-started. The queue result is
+  filtered against the branch scan the same phase already runs, matching whole names with
+  a conventional prefix removed; an unrecognised prefix fails safe towards leaving the
+  change in the queue rather than losing a captured idea.
+  **Written from the failure**: `/libretto-status` reported a finished change under *the
+  queue*, and the next command typed was `/libretto-attacca` on it — which would have
+  branched from the base, found the proposal still queued there, and rebuilt work that
+  already existed into a second request and a conflict on every spec it had amended. **A
+  report that induces rework is worse than one that says nothing**, because silence costs
+  a question and this costs the work twice.
+  **Proved as wiring only** — that the rule is still in the skill that owns it, not that a
+  session obeyed it.
+  Proof: scripts/check-payload
 - **a vendored skill's namespaced reference is either shipped or answered.** `writing-plans`
   opens every plan it writes with a header demanding `superpowers:subagent-driven-development`
   and offers `superpowers:executing-plans`; `test-driven-development` cites
