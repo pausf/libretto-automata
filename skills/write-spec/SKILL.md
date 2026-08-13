@@ -121,6 +121,59 @@ So read the code first. Specifically:
 With one spec, read the code inline. A sub-agent for a change you can hold in your
 head is a round trip for nothing.
 
+### The specification is selected, never the corpus
+
+That last bullet is a lookup, and it is one that gets done by reading everything. Do
+not. **Open the spec that governs this change, never the corpus**, and find it in this
+order:
+
+1. **the change's own `Targets:`**, when a delta already exists — that names the
+   capability outright, and it is how `review-work` already assembles a reviewer's world
+2. **the `Governs:` line** that claims the path being changed. That is what `Governs:`
+   is for, and it is the same lookup the bug branch above depends on
+3. **the project's index**, when it has one — a signpost listing the capabilities, which
+   costs one file to read and answers "which one" for a change that has neither of the
+   above yet
+
+None of the three found means the answer is *no capability owns this path*, and that is
+a finding worth reporting rather than a reason to go and read the whole specification.
+
+The gap is not marginal. A specification is written to accumulate — a directory of a
+dozen capabilities is a normal middle age for one — and a phase that opens all of it to
+answer *which one* pays for the whole corpus to learn a single name. Everything past the
+governing spec is context that changes no decision this phase makes.
+
+**Read the specs the change touches, and the ones a criterion here contradicts.** The
+second half is not licence to sweep: it means following a specific suspicion to a
+specific file, which is a read you can name a reason for. "I might find something" is
+not one.
+
+### If the project already has a convention
+
+Whatever exists wins, and **the layout is discovered rather than assumed** — this skill
+installs into projects that organise their specification differently, and one that names
+a path from somewhere else works only where it was written.
+
+`spec-drift` (at `<skill-base>/../record-work/spec-drift`, next to the sibling
+`record-work` skill) looks for consolidated specs under `.agents/specs`, `specs`,
+`openspec`, `docs/specs`, `spec` — in that order, first hit wins — plus a single-file
+spec at `docs/SPEC.md` and nowhere else, and for changes under `.agents/changes`,
+`changes`, `openspec/changes`. Run it, or read the directory, before believing any
+layout.
+
+**That one path is literal**, so a project keeping its single-file spec anywhere else is
+a project `spec-drift` will not see it in. Describing the tool loosely here would send a
+reader looking for support that is not written.
+
+A single-file spec is legitimate for a small project and the tooling supports it. So is
+a directory per capability with a separate index page listing them. The selection order
+above is written to work under all three, which is why it leads with `Targets:` and
+`Governs:` — those travel inside the files, and a path does not.
+
+**Never create a `changes/` directory in a project that has none** without also
+doing the consolidation. A staging area nobody empties is just a second source of
+truth.
+
 ## Step 2b — Several specs: the shared brief, then fan out
 
 Ten subtasks researched in this thread will exhaust the context, which is the exact
@@ -147,6 +200,10 @@ whose deltas it will produce:
   give one thing two names
 - the six-pillar structure they all fill in
 
+**Those five are headings in the file, and they are the whole set.** Fixed rather than
+invented per change, because the prompt below names sections back to the writer and a
+name only works when both sides hold the same list.
+
 A file, not a paragraph held in this conversation. Three reasons, and the third is
 the one that matters:
 
@@ -157,6 +214,22 @@ the one that matters:
 3. **It can be re-run.** When the brief turns out to be wrong, the fix is to correct
    the brief and regenerate the affected specs — which is impossible if the brief
    only ever existed inside a prompt.
+
+### Do not change the model or the effort part-way through a fan-out
+
+A phase's context is billed cheaply while its prefix stays identical between calls —
+the run is charged a fraction of the input price for everything the previous call
+already established. **Switching the model or the effort level invalidates that prefix
+and rebills the whole context at full input price**, and a fan-out is where that hurts
+most: N writers is N contexts, and a switch part-way through pays for all of them
+twice.
+
+So pick the tier before the fan-out starts and leave it alone until the phase ends.
+Between phases is free — that is a new prefix either way.
+
+**This is a statement, not a check.** The dial is the session's, and no skill can read
+it or stop a hand from moving it; what a skill can do is put the cost where somebody
+about to launch eight writers will see it.
 
 Commit it with the deltas. It is the provenance of the whole change, and it is as
 temporary as the change — when the deltas land on their capability specs, the brief
@@ -183,7 +256,15 @@ fan-out safe, and it is the same rule as the plan's, with a different single wri
 Each one is launched as the `spec-writer` agent — that contract exists for exactly
 this seat, and a generic sub-agent would start without it. In its prompt:
 
-- the path to the brief, and the instruction to read it first
+- the path to the brief, **and which of its five sections this subtask touches — and
+  always the vocabulary**. Naming sections is what keeps a brief affordable as it grows:
+  a brief serving eight subtasks carries eight subtasks' worth of settled decisions, and
+  the writer of one of them pays for all eight to find its own. The vocabulary is never
+  trimmed and never optional, because it is the entire mechanism stopping two writers
+  from giving one concept two names — a brief read in slices with the shared names left
+  out is worse than a brief read whole
+- **the path, never the text.** Sections are named, not excerpted: excerpting is what
+  puts N copies in N contexts, which is the cost the brief exists to remove
 - its own subtask — key, summary, description
 - the boundary between its spec and its siblings', stated explicitly
 - the one path it may write, and nothing else
@@ -467,20 +548,8 @@ A change spanning several capabilities carries one delta per capability inside t
 same change folder, each with its own `Targets:`. One change, several amendments —
 not several changes racing each other.
 
-### If the project already has a convention
-
-Whatever exists wins. `spec-drift` (at `<skill-base>/../record-work/spec-drift`,
-next to the sibling `record-work` skill) looks for consolidated specs under
-`.agents/specs`, `specs`, `openspec`, `docs/specs`, `spec` — in that order — plus a
-single-file `docs/SPEC.md`, and for changes under `.agents/changes`, `changes`,
-`openspec/changes`.
-
-A single-file spec is legitimate for a small project and the tooling supports it.
-This repository is one.
-
-**Never create a `changes/` directory in a project that has none** without also
-doing the consolidation. A staging area nobody empties is just a second source of
-truth.
+The project's own layout is discovered, not assumed — see *If the project already has a
+convention* under step 2, where the same question is answered once for the whole skill.
 
 ## Output
 

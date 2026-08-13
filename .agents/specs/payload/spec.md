@@ -684,6 +684,41 @@ the copy stays comparable with upstream.
   scoping it the other way made the override itself the failure.
   Proof: scripts/check-payload
 
+- **a phase opens the spec that governs its work, never the corpus.** `write-spec` step 2
+  looks up the owning capability in a fixed order — the change's `Targets:`, then the
+  `Governs:` line claiming the path, then the project's index — and names reading the whole
+  spec root as the thing not to do. A specification is written to accumulate, so a phase
+  that opens all of it to learn one name pays for the corpus to answer a question one line
+  settles. None of the three found means no capability owns the path, which is a finding to
+  report rather than a licence to sweep. Stated without naming any repository's layout,
+  because the skill installs into projects that organise their specification differently —
+  **that property is a review-time reading and deliberately uncited**: no row can prove an
+  absence over an unbounded set.
+  **Proved as wiring only.**
+  Proof: scripts/check-payload
+- **a fan-out writer is given named brief sections, and always the vocabulary.** The brief's
+  five contents are a fixed, enumerated heading set, so the prompt can name sections back to
+  the writer and both sides hold the same list. Each writer opens what its subtask touches;
+  the vocabulary is never trimmed, because it is the whole mechanism stopping two writers
+  from giving one concept two names, and a brief read in slices without it is worse than a
+  brief read whole. **Sections are named, never excerpted** — excerpting puts N copies in N
+  contexts, which is the cost the brief was introduced to remove. The return contract is
+  unchanged and carries no criterion: `agents/spec-writer.md` already promises deltas rather
+  than restatements and already forbids the empty return, so a row over it would have been
+  green the moment it was written.
+  **Proved as wiring only.**
+  Proof: scripts/check-payload
+- **model and effort do not move part-way through a fan-out.** A phase is billed a fraction
+  of input price while its prefix stays byte-identical between calls; switching the tier
+  invalidates that prefix and rebills the whole context at full price, and a fan-out pays it
+  once per writer. `write-spec` step 2b states it beside the fan-out that costs it, and
+  `docs/FLOW.md` carries the same reasoning under *Delegation* — **uncontracted and cited by
+  nothing, because no capability governs `docs/`**, and a `Proof:` over an unowned file
+  anchors to nothing.
+  **Proved as wiring only**, and this one cannot be more even in principle: the dial is the
+  session's, and no skill can read it or stop a hand from moving it.
+  Proof: scripts/check-payload
+
 - **the retro wiring holds: capture in `evidence`, verbatim `Said:`, `Resolved:`-only
   marking, propose-never-apply, and the command routing to the skill.** Wiring only — a
   prompt is checked by running it, and these rows are what keeps the decisive words in
