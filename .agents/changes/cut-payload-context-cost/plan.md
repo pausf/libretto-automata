@@ -34,7 +34,10 @@ must be red before tasks 2–4 exist, or the rows prove nothing.
 These three edit one file, so they are **serial, not parallel**. One writer, and
 concurrent edits to one markdown is the lost-update race this plan's own rules forbid.
 
-- [ ] **2 · Rule 1 — select, don't load**
+- [x] **2 · Rule 1 — select, don't load** — row green, rows 3 and 4 still red, nothing
+      else in the script disturbed. The duplicate *If the project already has a
+      convention* section at the file's tail was collapsed into a pointer, so the layout
+      question is answered once rather than twice.
       `write-spec` step 2: the selection instruction (by `Targets:`, `Governs:`, or the
       project's index), naming reading the whole spec root as the thing not to do. Stated
       without naming any repository's layout.

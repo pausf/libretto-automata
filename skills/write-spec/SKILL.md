@@ -121,6 +121,54 @@ So read the code first. Specifically:
 With one spec, read the code inline. A sub-agent for a change you can hold in your
 head is a round trip for nothing.
 
+### The specification is selected, never the corpus
+
+That last bullet is a lookup, and it is one that gets done by reading everything. Do
+not. **Open the spec that governs this change, never the corpus**, and find it in this
+order:
+
+1. **the change's own `Targets:`**, when a delta already exists — that names the
+   capability outright, and it is how `review-work` already assembles a reviewer's world
+2. **the `Governs:` line** that claims the path being changed. That is what `Governs:`
+   is for, and it is the same lookup the bug branch above depends on
+3. **the project's index**, when it has one — a signpost listing the capabilities, which
+   costs one file to read and answers "which one" for a change that has neither of the
+   above yet
+
+None of the three found means the answer is *no capability owns this path*, and that is
+a finding worth reporting rather than a reason to go and read the whole specification.
+
+The gap is not marginal. A specification is written to accumulate — a directory of a
+dozen capabilities is a normal middle age for one — and a phase that opens all of it to
+answer *which one* pays for the whole corpus to learn a single name. Everything past the
+governing spec is context that changes no decision this phase makes.
+
+**Read the specs the change touches, and the ones a criterion here contradicts.** The
+second half is not licence to sweep: it means following a specific suspicion to a
+specific file, which is a read you can name a reason for. "I might find something" is
+not one.
+
+### If the project already has a convention
+
+Whatever exists wins, and **the layout is discovered rather than assumed** — this skill
+installs into projects that organise their specification differently, and one that names
+a path from somewhere else works only where it was written.
+
+`spec-drift` (at `<skill-base>/../record-work/spec-drift`, next to the sibling
+`record-work` skill) looks for consolidated specs under `.agents/specs`, `specs`,
+`openspec`, `docs/specs`, `spec` — in that order, first hit wins — plus a single-file
+spec, and for changes under `.agents/changes`, `changes`, `openspec/changes`. Run it, or
+read the directory, before believing any layout.
+
+A single-file spec is legitimate for a small project and the tooling supports it. So is
+a directory per capability with a separate index page listing them. The selection order
+above is written to work under all three, which is why it leads with `Targets:` and
+`Governs:` — those travel inside the files, and a path does not.
+
+**Never create a `changes/` directory in a project that has none** without also
+doing the consolidation. A staging area nobody empties is just a second source of
+truth.
+
 ## Step 2b — Several specs: the shared brief, then fan out
 
 Ten subtasks researched in this thread will exhaust the context, which is the exact
@@ -467,20 +515,8 @@ A change spanning several capabilities carries one delta per capability inside t
 same change folder, each with its own `Targets:`. One change, several amendments —
 not several changes racing each other.
 
-### If the project already has a convention
-
-Whatever exists wins. `spec-drift` (at `<skill-base>/../record-work/spec-drift`,
-next to the sibling `record-work` skill) looks for consolidated specs under
-`.agents/specs`, `specs`, `openspec`, `docs/specs`, `spec` — in that order — plus a
-single-file `docs/SPEC.md`, and for changes under `.agents/changes`, `changes`,
-`openspec/changes`.
-
-A single-file spec is legitimate for a small project and the tooling supports it.
-This repository is one.
-
-**Never create a `changes/` directory in a project that has none** without also
-doing the consolidation. A staging area nobody empties is just a second source of
-truth.
+The project's own layout is discovered, not assumed — see *If the project already has a
+convention* under step 2, where the same question is answered once for the whole skill.
 
 ## Output
 
