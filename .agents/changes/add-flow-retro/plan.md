@@ -43,15 +43,15 @@ Waits on: nothing.
 
 **Files:** Modify: `skills/evidence/SKILL.md`
 
-- [ ] **1.1** Add one section to `skills/evidence/SKILL.md`: on a user correction
+- [x] **1.1** Add one section to `skills/evidence/SKILL.md`: on a user correction
       (work already done was wrong — a changed ask is not a lesson), append to
       `.agents/lessons.md` one entry — header `## <date> · <change or -> · <phase
       skill>`, a `Said:` line with the user's words, a `Did:` line with what the
       flow had done — then carry on. Never interrupt, never ask, never edit or
       delete existing entries. State the format once, as the contract both the
       retro and `libretto metrics` parse.
-- [ ] **1.2** Run `scripts/check-payload`; expect pass (no new references yet).
-- [ ] **1.3** Commit: `feat(payload): evidence captures user corrections into the lessons ledger`
+- [x] **1.2** Run `scripts/check-payload`; expect pass (no new references yet).
+- [x] **1.3** Commit: `feat(payload): evidence captures user corrections into the lessons ledger`
 
 ### Task 2 — the `retro` skill
 
