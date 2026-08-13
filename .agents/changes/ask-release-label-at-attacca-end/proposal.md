@@ -1,7 +1,6 @@
 # ask-release-label-at-attacca-end
 
 Tracker: none
-Queued: 2026-08-13
 
 ## The ask, verbatim
 
