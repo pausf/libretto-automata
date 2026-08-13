@@ -17,7 +17,7 @@ recorded rather than assumed.
 
 ## The table — nothing renders until this exists
 
-- [ ] **1 · `recommend` and its table**
+- [x] **1 · `recommend` and its table** — seven entries, `false` for anything else.
       `cmd/libretto/recommend.go`: a `recommendation` carrying model, effort and reason;
       `recommend(name)` returning it with `false` for an unknown agent. Seven entries, the
       values and reasons from the `cli` delta's A1 table.
@@ -29,7 +29,10 @@ recorded rather than assumed.
       Proof: cmd/libretto/recommend_test.go TestAnUnknownAgentGetsNoRecommendation
       Proof: cmd/libretto/recommend_test.go TestEveryRecommendationCarriesAReason
 
-- [ ] **2 · The three integrity walks**
+- [x] **2 · The three integrity walks** — all four guards forced red on purpose, observed, reverted:
+      `sonnet-5` → *which the catalogue does not know*; `xhigh` on `haiku` → *which has no
+      levels*; `spec-writer` onto `fable` → *nothing is steered onto the priciest tiers*;
+      a reason emptied → *a verdict without one is an instruction*.
       Every entry passes `agentmodel.Valid`; every recommended effort passes
       `ValidEffort` **and** `SupportsEffort` for its recommended model; nothing names
       `opus` or `fable`.
