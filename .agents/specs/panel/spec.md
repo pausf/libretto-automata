@@ -824,3 +824,65 @@ The release notice:
   Proof: internal/ui/notice_test.go TestActionFeedbackDoesNotOverwriteUpdateNotice
 - and neither does moving the cursor, which does clear action feedback
   Proof: internal/ui/notice_test.go TestNavigationDoesNotClearUpdateNotice
+
+### The recommendation reaches the screen as a mark, and never as a reason
+
+The frame cannot afford a third value column, and that is arithmetic rather than caution:
+at the narrowest interior the panel supports, 58 columns, the row already spends 2 on the
+indent, 5 on the cursor and box, 12 on the model, 10 on the effort and 9 on the `shared`
+warning, leaving 20 for the name against a floor of 12. A column wide enough for
+`(session)` puts the name under that floor, and `pad` does not truncate — the row does not
+clip, it tears the border off every row on the screen. The rule above already settles what
+happens next: **the value columns and the warning never yield.**
+
+So the recommendation appears where the choice is made: in the model and effort
+catalogues, as a mark, with no reason text at all. The reasons run to seventy runes and
+live in `libretto models`, which has no width to defend.
+
+- **the open catalogue never outgrows the frame**, at any width, with the longest label the
+  catalogue ships. **This measured a tear that predates the recommendation entirely**: at a
+  58-column interior these lines already ran to 66 and 73 columns, because the row-width
+  test beside it renders resting rows with no catalogue open and nothing else looked. The
+  label now yields with a visible ellipsis, exactly as the name column always has.
+  Proof: internal/ui/models_test.go TestTheOpenCatalogueHoldsTheFrameAtItsNarrowest
+- **the catalogue marks what the marked set is recommended**, and the mark is a character —
+  legible in a pipe, on a mono terminal and in a screenshot, which is the same rule the row
+  mark and the `shared` warning already keep. It is ASCII, because this panel bans runes a
+  terminal may disagree about the width of and the mark sits inside a padded row.
+  Proof: internal/ui/models_test.go TestTheModelCatalogueMarksTheRecommendation
+  Proof: internal/ui/models_test.go TestTheRecommendationMarkIsLegibleWithoutColour
+- **the mark is explained in the catalogue's own title, never in the footer.** The legend
+  row is already full at `space mark · a all · m model · e effort · esc back`, and an
+  unexplained glyph is no affordance with extra ink. The title also absorbs the
+  disagreement notice, so **no line is added outside the open-catalogue row reservation** —
+  a line outside that count is a scroll bug on a short terminal.
+- **a set that disagrees is marked nowhere and told so.** Two agents recommended onto
+  different models get no mark, because one mark for a set that has no single
+  recommendation is the same failure as a marking mechanism that is sometimes ignored.
+  Proof: internal/ui/models_test.go TestAMixedMarkedSetIsNotGivenOneRecommendation
+- **each catalogue judges its own field.** A set agreeing on the model and differing on
+  depth is not a set that disagrees when the question on screen is which model.
+  Proof: internal/ui/models_test.go TestDisagreementIsJudgedPerCatalogue
+- **an agent with no opinion abstains rather than blocking.** Marking everything on a
+  machine carrying this payload plus the user's own agents would otherwise answer nothing,
+  for ever — which is the commonest gesture producing the useless result.
+  Proof: internal/ui/models_test.go TestAnUnknownAgentDoesNotBlockTheOthersRecommendation
+- **having no opinion and having no value are different things.** An agent recommended onto
+  a model with no effort levels is not silent about effort — it is saying no level applies,
+  and reading that as abstention let one other marked agent carry the set, so the screen
+  recommended `high` for a pair one of whose members had no level to give. Abstention turns
+  on whether the agent is recommended at all; the field is the vote. **Found by review, in
+  the code path rather than on screen.**
+  Proof: internal/ui/models_test.go TestARecommendationWithNoEffortIsAVoteNotAnAbstention
+- **the effort catalogue judges against the model each row declares**, inside the narrowing
+  it already applies, and marks nothing when the recommended level is outside the offer —
+  including the header, which would otherwise promise a recommendation the user hunts for
+  and never finds.
+  Proof: internal/ui/models_test.go TestTheEffortCatalogueMarksTheRecommendation
+- **an agent with no recommendation changes the catalogue not at all** — no mark, no
+  notice, no blank row standing in for one.
+  Proof: internal/ui/models_test.go TestAnUnrecommendedAgentAddsNothingToTheCatalogue
+- **nothing is preselected.** The catalogue opens where it has always opened; the
+  recommendation is marked, never chosen. Putting the cursor on it would be the tool typing
+  the answer with extra steps, which is the whole thing this feature refuses to do.
+  Proof: internal/ui/models_test.go TestTheRecommendationIsNeverPreselected
