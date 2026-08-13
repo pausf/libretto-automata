@@ -316,6 +316,28 @@ func TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne(t *testing.T) {
 	}
 }
 
+// The footer claims wall clock, so each calendar hour is counted once however many
+// changes were open during it. Summing per-change spans reported two weeks for two
+// changes open the same week — a number that was nobody's clock.
+func TestTotalSpanMergesOverlappingChanges(t *testing.T) {
+	now := time.Now().Unix()
+	logs := map[string]string{
+		// a: [now-10h, now], b: [now-5h, now] — inside a. c: [now-30h, now-28h] — disjoint.
+		"a": fmt.Sprintf("%d\n%d\n", now, now-10*3600),
+		"b": fmt.Sprintf("%d\n%d\n", now, now-5*3600),
+		"c": fmt.Sprintf("%d\n%d\n", now-28*3600, now-30*3600),
+	}
+	added := ".agents/changes/a/proposal.md\n.agents/changes/b/proposal.md\n.agents/changes/c/proposal.md\n"
+	var out strings.Builder
+	if err := metrics(&out, nil, fakeGit(added, logs, nil)); err != nil {
+		t.Fatal(err)
+	}
+	// Union: 10h + 2h = 12h. The naive sum says 17h.
+	if !strings.Contains(out.String(), "12h of wall clock") {
+		t.Fatalf("wanted the merged 12h in the footer, got:\n%s", out.String())
+	}
+}
+
 func TestHumanSpanDropsPrecisionItDoesNotHave(t *testing.T) {
 	// A change spanning four days did not get four days of attention. Minutes on that
 	// span is a number implying an accuracy the measurement cannot support.

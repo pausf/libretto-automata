@@ -264,7 +264,7 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 
 	fmt.Fprintf(w, "\n  %-34s %7s %8s %7s %7s  %s\n", "change", "commits", "span", "closed", "reopen", "state")
 	var totalCommits, totalReopen int
-	var totalSpan time.Duration
+	var spans []changeMetrics
 	for _, n := range names {
 		m, err := measure(git, root, n)
 		if err != nil {
@@ -287,12 +287,32 @@ func metrics(w io.Writer, args []string, git gitRunner) error {
 			planCell(m.planSeen, m.checked), churn, state)
 		totalCommits += m.commits
 		totalReopen += m.uncheck
-		totalSpan += m.span()
+		spans = append(spans, m)
 	}
 	fmt.Fprintf(w, "\n  %d change(s), %d commit(s), %s of wall clock, %d box(es) reopened\n\n",
-		len(names), totalCommits, humanSpan(totalSpan), totalReopen)
+		len(names), totalCommits, humanSpan(mergedSpan(spans)), totalReopen)
 	fmt.Fprintf(w, "%s\n\n", flowCeiling)
 	return nil
+}
+
+// mergedSpan sums [first, last] ranges counting each calendar hour once. The footer
+// says "wall clock", and two changes open the same week are one week of clock — the
+// plain sum reported both, which was nobody's calendar.
+func mergedSpan(ms []changeMetrics) time.Duration {
+	sort.Slice(ms, func(i, j int) bool { return ms[i].first.Before(ms[j].first) })
+	var total time.Duration
+	var end time.Time
+	for _, m := range ms {
+		start := m.first
+		if start.Before(end) {
+			start = end
+		}
+		if m.last.After(end) {
+			total += m.last.Sub(start)
+			end = m.last
+		}
+	}
+	return total
 }
 
 func planCell(seen bool, n int) string {
