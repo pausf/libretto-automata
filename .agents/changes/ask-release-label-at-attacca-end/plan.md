@@ -174,34 +174,41 @@ git commit -m "feat(record-work): the request says who chose the bump"
 
 **Produces:** `check_absent <file> <pattern> <description>`, the inverse of `check_wiring`.
 
-- [ ] **4.1 Write the helper and the three rows red**
+- [x] **4.1 Write the helper and the three rows red**
 
 ```bash
 check_absent() {  # <file> <pattern> <description>
   if rg -qN -- "$2" "$1" 2>/dev/null; then fail "$3 — $1 still contains /$2/"; else ok "$3"; fi
 }
-check_absent  commands/libretto-attacca.md 'or labelling the request'    'the command no longer forbids labelling outright'
+check_absent  commands/libretto-attacca.md 'or put a .release:. label on the request' 'the command no longer forbids labelling outright'
 check_absent  commands/libretto-attacca.md 'gh pr edit'                  'the command does not restate phase 8'
 check_wiring  commands/libretto-attacca.md 'a bump the user did not choose' 'labelling is forbidden only when unchosen'
 ```
 
-- [ ] **4.2 Run it and watch it fail**
+- [x] **4.2 Run it and watch it fail**
 
 Run: `scripts/check-payload > /tmp/cp.out 2>&1; echo $?`
-Expected: `1`. Two `FAIL` — the `or labelling the request` absence and the conditional
-wording. The `gh pr edit` row passes already, and that is the point: it is a **regression
-guard**, red only the day somebody copies the phase into the command.
+Expected: `1`. Two `FAIL` — the absence row and the conditional wording. The `gh pr edit`
+row passes already, and that is the point: it is a **regression guard**, red only the day
+somebody copies the phase into the command.
 
-- [ ] **4.3 Rewrite the one bullet in the `Never` list**
+**What actually happened, and it is why the red step exists.** The pattern above first
+read `or labelling the request` — the *payload spec's* wording, which the command has
+never contained. So the row was green the moment it was written and could not have gone
+red for any edit to the command. Caught by running it, corrected to the command's own
+string, and only then did it fail for the reason it was written. A plan can name the
+wrong pattern; a red step cannot be talked out of noticing.
+
+- [x] **4.3 Rewrite the one bullet in the `Never` list**
 
 From *"merge, tag, release, or put a `release:` label on the request"* to: merge, tag or
 release it, **or label it with a bump the user did not choose**. Merging, tagging and
 releasing stay absolute. Say in the same bullet why the exception holds — the run asks and
 types, it never reads; the reading is the user's, per `AGENTS.md`.
 
-- [ ] **4.4 Run it and watch it pass** → `0`, three `ok`.
+- [x] **4.4 Run it and watch it pass** → `0`, three `ok`.
 
-- [ ] **4.5 Six gates, then commit**
+- [x] **4.5 Six gates, then commit**
 
 ```bash
 git add commands/libretto-attacca.md scripts/check-payload .agents/changes/ask-release-label-at-attacca-end/plan.md

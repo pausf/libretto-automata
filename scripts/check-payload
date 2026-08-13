@@ -182,6 +182,18 @@ check_wiring skills/record-work/SKILL.md 'the bump is asked once' 'attacca asks 
 check_wiring skills/record-work/SKILL.md 'read the request back'  'the applied label is read back off the request'
 check_wiring skills/record-work/SKILL.md 'never the first option' 'release:major is never recommended'
 
+# The inverse. Two of this change's criteria are about what must NOT be in the command
+# that describes no phase, and a presence check cannot express either.
+check_absent() {  # <file> <pattern> <description>
+  if rg -qN -- "$2" "$1" 2>/dev/null; then fail "$3 — $1 still contains /$2/"; else ok "$3"; fi
+}
+# The pattern is the command's own wording, not the payload spec's. The plan named the
+# spec's phrase — which the command never contained — so the row was green the moment it
+# was written and proved nothing. The red step is what caught it.
+check_absent commands/libretto-attacca.md 'or put a .release:. label on the request' 'the command no longer forbids labelling outright'
+check_absent commands/libretto-attacca.md 'gh pr edit'               'the command does not restate phase 8'
+check_wiring commands/libretto-attacca.md 'a bump the user did not choose' 'labelling is forbidden only when unchosen'
+
 printf '\n── skills never point at an executable that is not installed ──\n'
 # `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
 # telling the user to run scripts/foo is broken for everyone who installed it:
