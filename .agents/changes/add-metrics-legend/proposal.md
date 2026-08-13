@@ -1,7 +1,6 @@
 # add-metrics-legend
 
 Tracker: none
-Queued: 2026-08-13
 
 ## The ask, verbatim
 
