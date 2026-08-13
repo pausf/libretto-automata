@@ -157,8 +157,13 @@ a path from somewhere else works only where it was written.
 `spec-drift` (at `<skill-base>/../record-work/spec-drift`, next to the sibling
 `record-work` skill) looks for consolidated specs under `.agents/specs`, `specs`,
 `openspec`, `docs/specs`, `spec` — in that order, first hit wins — plus a single-file
-spec, and for changes under `.agents/changes`, `changes`, `openspec/changes`. Run it, or
-read the directory, before believing any layout.
+spec at `docs/SPEC.md` and nowhere else, and for changes under `.agents/changes`,
+`changes`, `openspec/changes`. Run it, or read the directory, before believing any
+layout.
+
+**That one path is literal**, so a project keeping its single-file spec anywhere else is
+a project `spec-drift` will not see it in. Describing the tool loosely here would send a
+reader looking for support that is not written.
 
 A single-file spec is legitimate for a small project and the tooling supports it. So is
 a directory per capability with a separate index page listing them. The selection order
