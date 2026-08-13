@@ -84,12 +84,12 @@ Waits on: Task 2.
 
 **Files:** Create: `commands/libretto-retro.md`
 
-- [ ] **3.1** Write `commands/libretto-retro.md` in the shape of
+- [x] **3.1** Write `commands/libretto-retro.md` in the shape of
       `commands/libretto-status.md`: invoke `Skill(skill="retro")`, describe
       nothing the skill already says, carry the one-line why (spend the ledger so
       the same correction is not paid twice).
-- [ ] **3.2** Run `scripts/check-payload`; expect pass.
-- [ ] **3.3** Commit: `feat(payload): libretto-retro command routes to the retro skill`
+- [x] **3.2** Run `scripts/check-payload`; expect pass.
+- [x] **3.3** Commit: `feat(payload): libretto-retro command routes to the retro skill`
 
 ### Task 4 — wiring check in `check-payload`
 
