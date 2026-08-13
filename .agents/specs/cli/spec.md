@@ -854,7 +854,26 @@ A missing payload:
   Proof: cmd/libretto/metrics_test.go TestTheReportNamesWhatItCannotMeasure
 - a span drops precision it does not have — days, not minutes, on a multi-day change
   Proof: cmd/libretto/metrics_test.go TestHumanSpanDropsPrecisionItDoesNotHave
-- one change may be named; an unknown one and an unknown flag are both refused
+- **the footer total merges overlapping spans.** It says wall clock, so each calendar
+  hour counts once however many changes were open during it — the plain sum reported two
+  weeks for two changes open the same week, a number that was nobody's clock. Per-row
+  spans are untouched; only the total merges.
+  Proof: cmd/libretto/metrics_test.go TestTotalSpanMergesOverlappingChanges
+- **the closed cell carries its denominator.** `n/total` — boxes closed now over boxes
+  the plan holds — because a bare 5 hides whether the plan had 5 boxes or 18, and those
+  are opposite facts about a change in flight. The numerator is net current state;
+  cumulative churn stays in the reopen column. A reword moves neither number, and a
+  plan-less change keeps its dash, never `0/0`.
+  Proof: cmd/libretto/metrics_test.go TestClosedShowsItsDenominator
+- **the report explains its own columns.** A legend beside the not-measured note names
+  the six measured facts, including the `unreadable` state and the `—` cell. It already
+  printed what it cannot measure; what it does measure deserves no less.
+  Proof: cmd/libretto/metrics_test.go TestTheReportExplainsItsColumns
+- one change may be named, by full name or unambiguous prefix — a name is typed from
+  memory of how it starts. Exact wins even when it prefixes a sibling, an ambiguous
+  prefix is refused naming the candidates, and an unknown name and an unknown flag keep
+  their refusals.
+  Proof: cmd/libretto/metrics_test.go TestAPrefixSelectsAChangeUnlessAmbiguous
   Proof: cmd/libretto/metrics_test.go TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne
 - it reads the project's git history, so it is not gated on the payload
   Proof: cmd/libretto/metrics_test.go TestMetricsIsNotGatedOnThePayload
