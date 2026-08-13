@@ -17,3 +17,22 @@ designed refusal that the report does not predict reads as a broken pipeline, co
 user an alarm and a round trip, and the mode's whole visibility budget is that report.
 Resolved: 2026-08-13 · project knowledge — convention recorded in .agents/specs/ci/spec.md
 (prior decisions); the payload-side fix stays queued as ask-release-label-at-attacca-end
+
+## 2026-08-13 · ship-frugal-model-defaults · phase 1
+
+> /libretto-status: un proposal cuya rama ya lo despachó no va en la sección de cola, va
+> en vuelo o en ninguna. Un reporte que induce a rehacer trabajo terminado es peor que uno
+> que calla.
+
+Said after `/libretto-status` listed `ship-frugal-model-defaults` under **the queue**
+while its work was finished and open as PR #48. The scan is literal and reads the working
+tree: the `Queued:` line comes out in the pickup commit, which lives on the feature
+branch, so from `main` the proposal still carries it. Correct by the letter of the
+definition and wrong in every way that matters — the next command typed was
+`/libretto-attacca ship-frugal-model-defaults`, which would have branched from `main`,
+found the proposal still queued there, and rewritten ~1500 lines against a spec that
+already contained them. Two requests, one change, a guaranteed conflict on two capability
+specs.
+
+**The `Queued:` line is necessary and not sufficient.** A report that induces rework is
+worse than silence, because silence costs a question and this costs the work twice.
