@@ -14,7 +14,7 @@ rewritten, never kept.
 
 ## Foundation — nothing renders until this parses
 
-- [ ] **1 · The fixture root, and the streaming parse**
+- [x] **1 · The fixture root, and the streaming parse** — red on assertions against a zero-returning stub, then green.
       A `t.TempDir()` transcript root with a hand-written `.jsonl` carrying real entry
       shapes: an `assistant` entry with the full `usage` object, a `user` entry, a `mode`
       entry with no `cwd`/`gitBranch`/`timestamp`. Then `cmd/libretto/usage.go`: read line
@@ -24,14 +24,14 @@ rewritten, never kept.
       *Blocks:* everything. Nothing blocks it.
       Proof: `TestTheFourUsageNumbersAreKeptApart`
 
-- [ ] **2 · Everything that is absent, malformed or strange**
+- [x] **2 · Everything that is absent, malformed or strange** — red, then green.
       A line that is not JSON, an `assistant` entry with no `usage`, an entry with no
       `gitBranch`, a `<synthetic>` model with an all-zero usage object and null
       `service_tier`. None fatal, each counted where outcome 1 says.
       *From:* constraints · *Closes:* criterion 2. *Waits on:* 1.
       Proof: `TestAMalformedLineDoesNotCostTheRestOfTheFile`
 
-- [ ] **3 · Discovery, including the subagents**
+- [x] **3 · Discovery, including the subagents** — red, then green.
       Encode the repository root forward into the project directory name — every `/` to
       `-` — and **never invert it**. Find the top-level `*.jsonl` and the
       `*/subagents/agent-*.jsonl` beneath it.
@@ -40,7 +40,7 @@ rewritten, never kept.
       *From:* outcomes 5 · scope boundaries · *Closes:* criterion 3. *Waits on:* 1.
       Proof: `TestSubagentTranscriptsAreCounted`
 
-- [ ] **4 · The transcript root is never written**
+- [x] **4 · The transcript root is never written** — a negative assertion cannot go red against a do-nothing stub, so it was proved by deliberately making `readTranscript` write a `.tmp` beside each file: red, naming both created paths. Reverted. Same for the missing-directory test, forced red by returning `found=true`.
       Snapshot the fixture tree — every path, its size, the SHA-256 of its contents —
       before the read and compare after. Red on a create, a delete, a truncation and an
       in-place rewrite alike.
