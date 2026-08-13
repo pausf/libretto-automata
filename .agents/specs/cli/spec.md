@@ -894,6 +894,105 @@ A missing payload:
   reported in one line instead of silently dropped.
   Proof: cmd/libretto/metrics_test.go TestMalformedAndChangelessEntriesDoNotCrashTheCount
 
+#### Token cost, read off the session transcripts
+
+The git half above answers what a change took. It cannot answer what a change **cost**,
+so a context diet was guesswork — which bit once: five review lenses cost ~307k and the
+lens count turned out not to be the lever.
+
+The transcripts under the host's `projects/` directory carry `usage` on every assistant
+turn. This is a free rider on them, exactly as the corrections count free-rides on the
+lessons ledger, and it clears the same bar the no-instrumentation rule sets: nothing new
+is written, and nothing under the transcript root is written at all.
+
+- **the four usage numbers are read apart and never summed**, from `assistant` entries
+  only — the sole type carrying usage, measured at 8,944 of 8,944 — with
+  `.message.usage.iterations[]` ignored, because it repeats the same four numbers and
+  adding both double-counts every entry that has one. `int64` throughout: this
+  repository's cache-read total is 2.3 billion against 33 thousand plain input tokens, a
+  ratio near 70,000:1, **which is the whole reason a single "tokens" number would be a
+  cache-read number in disguise**.
+  Proof: cmd/libretto/usage_test.go TestTheFourUsageNumbersAreKeptApart
+- **a malformed line, a missing usage object and an absent field are all survivable.** An
+  81 MB corpus written by another program across many versions will contain something
+  unparseable, and whole entry types carry no envelope at all — no `cwd`, no `gitBranch`,
+  no `timestamp`. One bad line must not cost the other nine thousand.
+  Proof: cmd/libretto/usage_test.go TestAMalformedLineDoesNotCostTheRestOfTheFile
+- **subagent transcripts are counted.** They sit one level down, under
+  `<sessionId>/subagents/`, and one review-lens file alone holds 3,026,036 cache-read
+  tokens. **Ignoring them undercounts by more than the number being reported.** The two
+  locations are enumerated rather than walked for every `*.jsonl`, because the host keeps
+  `tool-results/` and `memory/` in the same tree and counting a mirror would inflate the
+  total silently.
+  Proof: cmd/libretto/usage_test.go TestSubagentTranscriptsAreCounted
+- **a dot in the repository path encodes to a dash, like a separator.** A home directory
+  called `pau.sanchez` maps to `pau-sanchez`, so a reader that preserved dots finds no
+  transcripts at all for that user. **Every fixture used a dotless path and none could
+  have caught it** — running the built binary against a real tree is what did. The
+  encoding is therefore lossy twice over and is never inverted.
+  Proof: cmd/libretto/usage_test.go TestADotInThePathBecomesADashToo
+- **`gitBranch` is read per entry, never per file.** One real session file was measured
+  spanning four branches; a per-file reading misattributes every entry after a checkout.
+  Proof: cmd/libretto/usage_test.go TestBranchIsReadPerEntryNotPerFile
+- **a conventional branch prefix is stripped and the rest is matched whole.** `feat/`,
+  `fix/`, `docs/`, `chore/`, `refactor/`, then an exact match against the change names git
+  has seen — never a prefix and never a substring, because a looser rule turns one wrong
+  guess into a number nobody can audit. An unrecognised prefix fails safe: unattributed
+  rather than the wrong change.
+  Proof: cmd/libretto/usage_test.go TestAPrefixIsStrippedAndTheNameMatchedWhole
+- **what cannot be attributed is bucketed and printed, never dropped, and the invariant is
+  readable off the output.** Attributed plus unattributed equals the corpus, on all four
+  numbers. **This is the criterion that carries the feature's honesty**: attribution is a
+  heuristic, not a mechanism — measured on this repository, 62% of entries attribute to no
+  change, because work happens on `main`, in a detached `HEAD`, and on branches named
+  unlike their change. The bucket is a headline rather than a footnote for that reason,
+  and the totals stay corpus-wide under a change filter so the invariant survives scoping.
+  Proof: cmd/libretto/usage_test.go TestUnattributedTokensAreReportedNotDiscarded
+  Proof: cmd/libretto/metrics_test.go TestTheTokenFooterIsCorpusWideUnderAFilter
+- **a miss rate above zero never prints as `0%`.** Integer division truncates, so one
+  unattributed entry in two hundred read as `0%` — the opposite of what a number the
+  report calls its own error bar is for. Under one percent it says `<1%`.
+  Proof: cmd/libretto/metrics_test.go TestASmallMissRateDoesNotRoundAwayToZero
+- **three states, and each prints differently.** No transcript root replaces the block
+  with one line; a root that reached nothing for a change prints a **dash**; a change that
+  was attributed and genuinely cost nothing prints **zeros**. The distinction is presence
+  in the attribution map, never a zero total — a `<synthetic>` entry carries an all-zero
+  usage object and reaches the third state, so it is reachable rather than theoretical,
+  and the first implementation collapsed it into the dash.
+  **This extends the ledger's dash rule rather than reusing it**: absent-versus-zero is
+  two states there and three here, and collapsing them would hide the miss rate above.
+  Proof: cmd/libretto/metrics_test.go TestAChangeWithNoTokensReportsADashNotAZero
+  Proof: cmd/libretto/metrics_test.go TestAnAttributedChangeWithZeroTokensIsNotADash
+- **the per-phase block carries its own unattributed row.** `attributionSkill` records the
+  flow phase, at a measured 4,728 entries against 4,216 without, so the remainder is shown
+  rather than distributed across the phases that did name one.
+  Proof: cmd/libretto/metrics_test.go TestPerPhaseCostCarriesAnUnattributedRow
+- **no transcript root is a state, not an error.** A checkout that never hosted a session
+  is the normal case; the git-derived report still prints in full.
+  Proof: cmd/libretto/metrics_test.go TestNoTranscriptRootStillReportsTheGitMetrics
+- **nothing under the transcript root is written.** The witness is a snapshot of every
+  path, its size and the SHA-256 of its contents, taken before the read and compared
+  after — red on a create, a delete, a truncation and an in-place rewrite alike, which an
+  mtime comparison is not.
+  Proof: cmd/libretto/usage_test.go TestTheTranscriptRootIsNeverWritten
+- **the ceiling says cost is measured, duration is not, and names the token block's own
+  limit.** Nothing in `flowCeiling` was retracted: it named per-phase *duration* and
+  `review-work` findings, and both still need a phase to write them down. Cost was never
+  on that list — it was simply not measured. Duration stays off with its own reason now:
+  the entries carry timestamps, but a phase's wall clock includes every wait for a human
+  and would report attention the work never had.
+  Proof: cmd/libretto/metrics_test.go TestTheCeilingSeparatesCostFromDuration
+
+**No new column in the change table, and no pricing.** The table is seven columns wide and
+the tests pick the corrections cell by counting from the right, so a column on that side
+breaks a proof for a cosmetic reason — and it would force a choice of one number among
+four, or a composite. Prices change under the repository, and a stale price table reports
+confident nonsense; tokens are what was measured.
+
+**Plain digits, no thousands separator and no exponent.** A space inside a number breaks
+every pipe a report gets read through, and an exponent throws away the precision that
+makes two runs comparable, which is the entire use this was built for.
+
 #### A per-agent model recommendation, and it is never applied
 
 `libretto models set` and `models effort` have existed since the selector did, but which
