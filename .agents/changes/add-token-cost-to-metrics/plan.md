@@ -49,21 +49,21 @@ rewritten, never kept.
 
 ## Attribution — where the honesty lives
 
-- [ ] **5 · Per entry, never per file**
+- [x] **5 · Per entry, never per file** — green on first run, because task 1's parse already read the branch per entry. Not accepted on that: forced red by making every entry inherit the file's first branch, observed `got map[feat/add-thing:3]`, reverted.
       One fixture file whose entries name two different branches. Each entry attributes to
       its own — a per-file reading misattributes everything after a checkout, and that was
       measured on a real session spanning four branches.
       *From:* prior decisions · *Closes:* criterion 4. *Waits on:* 1.
       Proof: `TestBranchIsReadPerEntryNotPerFile`
 
-- [ ] **6 · Prefix stripped, name matched whole**
+- [x] **6 · Prefix stripped, name matched whole** — red on seven of thirteen cases against a stub returning "", then green on all thirteen.
       `feat/`, `fix/`, `docs/`, `chore/`, `refactor/` stripped; the rest matched **whole**
       against the change names git has seen. The negative case is the point:
       `feat/add-thing-extra` must **not** attribute to `add-thing`.
       *From:* outcomes 2 · A3 · *Closes:* criterion 5. *Waits on:* 5.
       Proof: `TestAPrefixIsStrippedAndTheNameMatchedWhole`
 
-- [ ] **7 · The unattributed bucket, and the invariant**
+- [x] **7 · The unattributed bucket, and the invariant** — red, then green. The invariant holds: attributed + unattributed equals the corpus on all four numbers.
       `main`, `HEAD`, a branch matching no change, an absent field — all into one bucket.
       The assertion that matters: **attributed + unattributed = corpus**. That invariant is
       independent of rendering and is what stops a quiet drop.

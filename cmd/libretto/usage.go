@@ -149,3 +149,68 @@ func parseEntry(line string) *usageEntry {
 		cacheR: u.CacheR,
 	}
 }
+
+// usageTotals is the four numbers, never one. Cache reads were measured at 2.3 billion
+// against 33 thousand plain input tokens in this repository — a ratio near 70,000:1 —
+// so a sum is a cache-read count wearing a disguise.
+type usageTotals struct {
+	in     int64
+	out    int64
+	cacheW int64
+	cacheR int64
+}
+
+func (t usageTotals) plus(o usageTotals) usageTotals {
+	return usageTotals{t.in + o.in, t.out + o.out, t.cacheW + o.cacheW, t.cacheR + o.cacheR}
+}
+
+func (t usageTotals) zero() bool { return t == usageTotals{} }
+
+// branchPrefixes are the conventional segments stripped before matching. An
+// unrecognised prefix is left alone, which fails safe: the branch then matches no
+// change and lands in the unattributed bucket rather than in the wrong one.
+var branchPrefixes = []string{"feat/", "fix/", "docs/", "chore/", "refactor/"}
+
+// attributeBranch returns the change a branch names, or "" when it names none.
+//
+// The match is whole, never a prefix and never a substring: "feat/add-thing-more" must
+// not attribute to "add-thing". A looser rule turns one wrong guess into a number
+// nobody can audit, and the whole point of this report is that its uncertainty is
+// visible.
+func attributeBranch(branch string, changes []string) string {
+	if branch == "" {
+		return ""
+	}
+	name := branch
+	for _, p := range branchPrefixes {
+		if rest, ok := strings.CutPrefix(branch, p); ok {
+			name = rest
+			break
+		}
+	}
+	for _, c := range changes {
+		if name == c {
+			return c
+		}
+	}
+	return ""
+}
+
+// attribute splits every entry into the change it names and one unattributed bucket.
+//
+// Nothing is dropped: main, HEAD, a branch named unlike its change and an absent field
+// all land in the bucket, which is printed. 4,300 entries say main and 2,806 say HEAD,
+// so a total that quietly omitted them would omit most of the history.
+func attribute(es []usageEntry, changes []string) (map[string]usageTotals, usageTotals) {
+	byChange := map[string]usageTotals{}
+	var unattributed usageTotals
+	for _, e := range es {
+		t := usageTotals{e.in, e.out, e.cacheW, e.cacheR}
+		if c := attributeBranch(e.branch, changes); c != "" {
+			byChange[c] = byChange[c].plus(t)
+			continue
+		}
+		unattributed = unattributed.plus(t)
+	}
+	return byChange, unattributed
+}

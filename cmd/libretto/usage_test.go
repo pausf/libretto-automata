@@ -183,3 +183,89 @@ func TestAMissingProjectDirectoryIsAStateNotAnError(t *testing.T) {
 		t.Error("reported a transcript root that does not exist")
 	}
 }
+
+func TestBranchIsReadPerEntryNotPerFile(t *testing.T) {
+	// Measured on a real session: one file spanning four branches. A per-file reading
+	// misattributes every entry after a checkout.
+	root := transcriptRoot(t, "/repo", map[string][]string{
+		"a.jsonl": {
+			assistantLine("feat/add-thing", "write-spec", 1, 10, 100, 1000),
+			assistantLine("feat/other-thing", "write-spec", 2, 20, 200, 2000),
+		},
+	})
+	es, _ := readUsage(root, "/repo")
+
+	got := map[string]int64{}
+	for _, e := range es {
+		got[e.branch] += e.in
+	}
+	if got["feat/add-thing"] != 1 || got["feat/other-thing"] != 2 {
+		t.Errorf("got %v, want one entry on each branch", got)
+	}
+}
+
+func TestAPrefixIsStrippedAndTheNameMatchedWhole(t *testing.T) {
+	changes := []string{"add-thing", "add-thing-extra"}
+
+	cases := []struct {
+		branch string
+		want   string // "" means unattributed
+	}{
+		{"feat/add-thing", "add-thing"},
+		{"fix/add-thing", "add-thing"},
+		{"docs/add-thing", "add-thing"},
+		{"chore/add-thing", "add-thing"},
+		{"refactor/add-thing", "add-thing"},
+		{"add-thing", "add-thing"},
+		{"add-thing-extra", "add-thing-extra"},
+		// The negative is the point. A prefix or substring rule attributes this to
+		// add-thing, and one wrong guess becomes a number nobody can audit.
+		{"feat/add-thing-more", ""},
+		{"feat/unrelated", ""},
+		{"main", ""},
+		{"HEAD", ""},
+		{"", ""},
+		// An unrecognised prefix fails safe: unattributed, never the wrong change.
+		{"wip/add-thing", ""},
+	}
+	for _, c := range cases {
+		if got := attributeBranch(c.branch, changes); got != c.want {
+			t.Errorf("attributeBranch(%q) = %q, want %q", c.branch, got, c.want)
+		}
+	}
+}
+
+func TestUnattributedTokensAreReportedNotDiscarded(t *testing.T) {
+	root := transcriptRoot(t, "/repo", map[string][]string{
+		"a.jsonl": {
+			assistantLine("feat/add-thing", "write-spec", 1, 10, 100, 1000),
+			assistantLine("main", "write-spec", 2, 20, 200, 2000),
+			assistantLine("HEAD", "write-spec", 4, 40, 400, 4000),
+			assistantLine("feat/never-a-change", "write-spec", 8, 80, 800, 8000),
+			assistantLine("", "write-spec", 16, 160, 1600, 16000),
+		},
+	})
+	es, _ := readUsage(root, "/repo")
+
+	byChange, unattributed := attribute(es, []string{"add-thing"})
+
+	if byChange["add-thing"].in != 1 {
+		t.Errorf("attributed in=%d, want 1", byChange["add-thing"].in)
+	}
+	if unattributed.in != 30 {
+		t.Errorf("unattributed in=%d, want 30 — main, HEAD, an unmatched branch and an absent one", unattributed.in)
+	}
+
+	// The invariant that stops a quiet drop, and the reason this is not just two sums:
+	// every token read is in exactly one bucket.
+	corpusIn, corpusOut, corpusW, corpusR := totals(es)
+	var sum usageTotals
+	for _, t := range byChange {
+		sum = sum.plus(t)
+	}
+	sum = sum.plus(unattributed)
+	if sum.in != corpusIn || sum.out != corpusOut || sum.cacheW != corpusW || sum.cacheR != corpusR {
+		t.Errorf("attributed + unattributed = %+v, want corpus %d %d %d %d",
+			sum, corpusIn, corpusOut, corpusW, corpusR)
+	}
+}
