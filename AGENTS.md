@@ -303,6 +303,14 @@ trailing period, ≤72 chars.
 The body explains **why**. The diff already says what changed; it cannot say what the
 alternative was or why it lost.
 
+**A commit that removes or reverses a promise says so in the commit itself**: `!` after
+the scope — `feat(cli)!: prune no longer spares …` — or a `BREAKING CHANGE:` footer when
+the subject has no room. This changes nothing in the bump table: while this is `0.x` a
+broken promise is still a minor. What it buys is that `git log` carries the record with
+no forge attached — the label and the tag message live on GitHub, the `!` lives in every
+clone — and when the `1.0.0` debate arrives, `git log --oneline | rg '!'` lists every
+promise that moved.
+
 **No AI attribution.** No `Co-Authored-By` for a model, no generated-with trailer.
 
 One commit per finished unit of work, so a bisect lands on something meaningful. The
