@@ -179,3 +179,28 @@ func TestReadmeLinksResolve(t *testing.T) {
 		}
 	}
 }
+
+var mermaidFence = regexp.MustCompile("(?s)```mermaid(.*?)```")
+
+// Two diagrams live inside What you get — delivery and flow — because that section is
+// where a stranger decides whether to install. GitHub renders the fences as images; the
+// guard holds the shape (two fences, the stops named), never the drawing.
+func TestWhatYouGetCarriesTheDiagrams(t *testing.T) {
+	got := section(t, repoFile(t, "README.md"), "## What you get")
+
+	diagrams := mermaidFence.FindAllStringSubmatch(got, -1)
+	if len(diagrams) != 2 {
+		t.Fatalf("What you get carries %d mermaid diagrams, want 2 — delivery and flow", len(diagrams))
+	}
+
+	stopsNamed := false
+	for _, d := range diagrams {
+		body := flat(d[1])
+		if strings.Contains(body, "spec") && strings.Contains(body, "plan") && strings.Contains(body, "push") {
+			stopsNamed = true
+		}
+	}
+	if !stopsNamed {
+		t.Error("neither diagram names the three stops — spec, plan and push")
+	}
+}
