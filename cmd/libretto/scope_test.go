@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -416,4 +417,58 @@ func TestDestinationFlags(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestInstallCodexLeavesOthersAlone(t *testing.T) {
+	f := newFixture(t)
+	item := f.skill(t, "alpha")
+
+	if _, _, err := capture(t, func() error {
+		return install(f.Repo, target.Resolve(target.CodexScope, ""))
+	}); err != nil {
+		t.Fatalf("install --codex failed: %v", err)
+	}
+
+	if !isSymlinkTo(t, filepath.Join(f.Codex, "skills", "alpha"), item) {
+		t.Error("alpha is not linked in the codex destination")
+	}
+	for name, root := range map[string]string{
+		"global": f.Claude, "project": f.projectDest(), "opencode": f.Opencode,
+	} {
+		if _, err := os.Lstat(filepath.Join(root, "skills", "alpha")); !os.IsNotExist(err) {
+			t.Errorf("a codex install wrote into the %s destination", name)
+		}
+	}
+	for _, kind := range []string{"agents", "commands"} {
+		if _, err := os.Lstat(filepath.Join(f.Codex, kind)); !os.IsNotExist(err) {
+			t.Errorf("a codex install created a %s directory the target does not accept", kind)
+		}
+	}
+}
+
+func TestInstallOpencodeLeavesOthersAlone(t *testing.T) {
+	f := newFixture(t)
+	item := f.skill(t, "alpha")
+
+	if _, _, err := capture(t, func() error {
+		return install(f.Repo, target.Resolve(target.OpencodeScope, ""))
+	}); err != nil {
+		t.Fatalf("install --opencode failed: %v", err)
+	}
+
+	if !isSymlinkTo(t, filepath.Join(f.Opencode, "skills", "alpha"), item) {
+		t.Error("alpha is not linked in the opencode destination")
+	}
+	for name, root := range map[string]string{
+		"global": f.Claude, "project": f.projectDest(), "codex": f.Codex,
+	} {
+		if _, err := os.Lstat(filepath.Join(root, "skills", "alpha")); !os.IsNotExist(err) {
+			t.Errorf("an opencode install wrote into the %s destination", name)
+		}
+	}
+	for _, kind := range []string{"agents", "commands"} {
+		if _, err := os.Lstat(filepath.Join(f.Opencode, kind)); !os.IsNotExist(err) {
+			t.Errorf("an opencode install created a %s directory the target does not accept", kind)
+		}
+	}
 }

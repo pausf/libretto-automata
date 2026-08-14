@@ -180,12 +180,12 @@ help literal), `cmd/libretto/remembered.go` (`rememberedScope`),
 
 **Files:** modify `cmd/libretto/scope_test.go`, `cmd/libretto/main_test.go`
 
-- [ ] Failing tests, mirroring `TestInstallProjectScopeLeavesGlobalAlone`:
+- [x] Failing tests, mirroring `TestInstallProjectScopeLeavesGlobalAlone`:
   `install --codex` creates links under `f.Codex/skills` only — nothing under
   the global, project or opencode roots, and **no `agents/` or `commands/`
   dir appears under `f.Codex`**; symmetrical test for opencode; help output
   contains the two flags and the two env vars.
-- [ ] Run: red for the right reason (feature exists, isolation asserted) —
+- [x] Run: red for the right reason (feature exists, isolation asserted) —
   then green without code changes, or fix what leaks. Commit
   `test(cli): destination isolation for codex and opencode`.
 

@@ -382,3 +382,15 @@ func TestShort(t *testing.T) {
 		t.Errorf("short() truncated something already short: %q", got)
 	}
 }
+
+func TestHelpNamesEveryDestination(t *testing.T) {
+	_, stderr, err := capture(t, func() error { usage(); return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"--codex", "--opencode", "AGENTS_HOME", "OPENCODE_HOME"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("help does not mention %s", want)
+		}
+	}
+}
