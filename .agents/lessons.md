@@ -44,3 +44,11 @@ Did: rewrote commands/libretto-flow.md without an outcome naming it; the delta n
 ## 2026-08-14 · close-flow-open-questions · 6→7
 Said: a 6→7 entry is a finding wherever it sits, never a correction
 Did: counted an orphan 6→7 entry into the corrections-outside-any-change line; exclusion now outranks the orphan count
+
+## 2026-08-14 · add-multi-tool-skill-targets · 6→7
+Said: the env count lives in cli/spec.md, help and README, and all three move or drift
+Did: only cli/spec.md carries a count ("Five"); the delta now names the one real home and carries the two replacement rows for landing
+
+## 2026-08-14 · add-multi-tool-skill-targets · 6→7
+Said: every occurrence of Claude outside the allowlist fails the gate
+Did: the check filtered whole lines, so an addressee sharing a line with "Claude Code" escaped; allowlisted tokens are now deleted per-hit before the re-search, forced red on a mixed line

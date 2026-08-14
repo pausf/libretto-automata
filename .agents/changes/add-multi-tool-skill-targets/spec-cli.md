@@ -44,9 +44,14 @@ help text, README rows for the new flags.
 - The destination list the panel iterates (`scopeOrder`) is the one place the
   four are ordered: global, project, codex, opencode. Claude's two rows first
   because they are configured on every machine this tool has users on today.
-- The env-table sentence "five environment variables" becomes "seven" — the
-  count lives in `cli/spec.md`, help and README, and all three move in this
-  change or the number drifts.
+- The env-table sentence "Five environment variables" becomes "Seven" — the
+  count lives in exactly one place, `cli/spec.md`'s env table; help and README
+  list the variables without a number and already gained their rows in this
+  change. Landing this delta rewrites that sentence and adds two table rows:
+  `AGENTS_HOME` (the codex root, default `~/.agents`) and `OPENCODE_HOME`
+  (the opencode root, default `~/.config/opencode`), both marked
+  libretto-only overrides the vendor tools do not read. (Reviewer finding,
+  2026-08-14: the previous wording pointed at two counts that do not exist.)
 
 ## Task breakdown
 

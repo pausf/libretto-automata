@@ -266,8 +266,11 @@ printf '\n── prose addresses the agent, never Claude by name ──\n'
 # allowlist — factual uses: env var, file names, real paths, and the product name
 # "Claude Code" in a sentence about Claude Code. Anything else is an addressee
 # and fails. The check exercises no judgment, so it cannot drift.
+# Occurrence-level, not line-level: allowlisted tokens are deleted from each
+# hit first, so a bare Claude sharing a line with "Claude Code" still fails.
 addressee=$(rg -nN '\bClaude\b' skills commands -g '*.md' 2>/dev/null \
-              | rg -v 'CLAUDE_HOME|CLAUDE\.md|~/\.claude|\.claude/|Claude Code' || true)
+              | sed -E 's/CLAUDE_HOME|CLAUDE\.md|~\/\.claude|\.claude\///g; s/Claude Code//g' \
+              | rg '\bClaude\b' || true)
 if [ -z "$addressee" ]; then
   ok 'no bare Claude in payload prose'
 else
