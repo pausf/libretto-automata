@@ -452,6 +452,9 @@ func TestDestinationFlags(t *testing.T) {
 func TestInstallCodexLeavesOthersAlone(t *testing.T) {
 	f := newFixture(t)
 	item := f.skill(t, "alpha")
+	// A command in the repo is what makes "skills only" falsifiable: without one,
+	// the absent commands directory below proves nothing there was to install.
+	f.command(t, "beta")
 
 	if _, _, err := capture(t, func() error {
 		return install(f.Repo, target.Resolve(target.CodexTool, target.GlobalScope, ""))
@@ -476,9 +479,13 @@ func TestInstallCodexLeavesOthersAlone(t *testing.T) {
 	}
 }
 
+// OpenCode takes commands as well as skills, and it takes them as symlinks —
+// "installed" satisfied by a copy is the one outcome this target promises not to
+// produce, because a copy stops tracking the repo the moment either side moves.
 func TestInstallOpencodeLeavesOthersAlone(t *testing.T) {
 	f := newFixture(t)
 	item := f.skill(t, "alpha")
+	cmdItem := f.command(t, "beta")
 
 	if _, _, err := capture(t, func() error {
 		return install(f.Repo, target.Resolve(target.OpencodeTool, target.GlobalScope, ""))
@@ -489,16 +496,20 @@ func TestInstallOpencodeLeavesOthersAlone(t *testing.T) {
 	if !isSymlinkTo(t, filepath.Join(f.Opencode, "skills", "alpha"), item) {
 		t.Error("alpha is not linked in the opencode destination")
 	}
+	if !isSymlinkTo(t, filepath.Join(f.Opencode, "commands", "beta.md"), cmdItem) {
+		t.Error("beta.md is not linked in the opencode destination — the plural directory is one of the two OpenCode globs")
+	}
 	for name, root := range map[string]string{
 		"global": f.Claude, "project": f.projectDest(), "codex": f.Codex,
 	} {
 		if _, err := os.Lstat(filepath.Join(root, "skills", "alpha")); !os.IsNotExist(err) {
 			t.Errorf("an opencode install wrote into the %s destination", name)
 		}
-	}
-	for _, kind := range []string{"agents", "commands"} {
-		if _, err := os.Lstat(filepath.Join(f.Opencode, kind)); !os.IsNotExist(err) {
-			t.Errorf("an opencode install created a %s directory the target does not accept", kind)
+		if _, err := os.Lstat(filepath.Join(root, "commands", "beta.md")); !os.IsNotExist(err) {
+			t.Errorf("an opencode install wrote a command into the %s destination", name)
 		}
+	}
+	if _, err := os.Lstat(filepath.Join(f.Opencode, "agents")); !os.IsNotExist(err) {
+		t.Error("an opencode install created an agents directory the target does not accept")
 	}
 }

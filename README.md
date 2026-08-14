@@ -285,7 +285,7 @@ Two axes, combinable — the tool and the scope:
 |---|---|---|
 | `--claude` (default) | `~/.claude` | `<this directory>/.claude` |
 | `--codex` — skills only | `~/.agents` | `<this directory>/.agents` |
-| `--opencode` — skills only | `~/.config/opencode` | `<this directory>/.opencode` |
+| `--opencode` — skills and commands | `~/.config/opencode` | `<this directory>/.opencode` |
 
 So `libretto install --codex --project` links the skills into this directory's
 `.agents/`, and plain `libretto install` still means what it always did. A
@@ -297,11 +297,15 @@ In the panel the two axes stay separate: the strip shows one row per tool under 
 rows at once — the active row is gold.
 
 Codex and OpenCode read the same Claude-compatible `SKILL.md` format, so the skills
-link unchanged; agents and commands are simply absent from those destinations, not
-errors. One detail worth knowing: OpenCode also reads `~/.claude/skills` and
-`~/.agents/skills` directly, so a claude or codex install already reaches it — the
-`--opencode` tool exists for setups that keep OpenCode's own directory as the
-source of truth.
+link unchanged. OpenCode also reads commands — it looks for both `command/` and
+`commands/`, follows symlinks, and ignores frontmatter keys it does not know — so
+`commands/` links there too, unchanged and untransformed. Agents are absent from both
+destinations, and Codex takes skills alone; neither is an error.
+
+One detail worth knowing: OpenCode also reads `~/.claude/skills` and `~/.agents/skills`
+directly, so a claude or codex install already reaches its skills — the `--opencode`
+tool exists for setups that keep OpenCode's own directory as the source of truth, and
+it is the only way to reach its commands.
 
 Two flags on one axis is an error.
 

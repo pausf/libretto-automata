@@ -84,6 +84,23 @@ func (f fixture) skill(t *testing.T, name string) string {
 	return dir
 }
 
+// command writes a command into the repo and returns its path. A file, not a
+// directory — commands are single .md files, which is what target.Kind already says.
+func (f fixture) command(t *testing.T, name string) string {
+	t.Helper()
+
+	dir := filepath.Join(f.Repo, "commands")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, name+".md")
+	body := "---\ndescription: fixture\n---\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
 // dest is the path a repo item of this kind and name would be linked to.
 func (f fixture) dest(kind, name string) string {
 	return filepath.Join(f.Claude, kind, name)

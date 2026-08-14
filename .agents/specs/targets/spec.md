@@ -26,7 +26,7 @@ two axes as tools + scopes:
 |---|---|---|---|
 | `ClaudeTool` | `~/.claude`, honouring `CLAUDE_HOME` | `<dir>/.claude` | skills, agents, commands |
 | `CodexTool` | `~/.agents`, honouring `AGENTS_HOME` | `<dir>/.agents` | skills only |
-| `OpencodeTool` | `~/.config/opencode`, honouring `OPENCODE_HOME` | `<dir>/.opencode` | skills only |
+| `OpencodeTool` | `~/.config/opencode`, honouring `OPENCODE_HOME` | `<dir>/.opencode` | skills, commands |
 
 The two overrides on the new rows are libretto's own, for test safety — exactly
 `CLAUDE_HOME`'s role. Codex and OpenCode do not read those variables. Codex CLI
@@ -34,6 +34,15 @@ discovers Claude-compatible `SKILL.md` directories under `~/.agents/skills`, and
 OpenCode reads that same path plus `~/.claude/skills` and its own
 `~/.config/opencode/skills` — so one codex link also serves OpenCode, a fact the
 docs carry and the model does not.
+
+**OpenCode's commands directory is `<root>/commands`, which is what `dirUnderRoot`
+already produces**, so the kind needed no per-target directory name. OpenCode globs
+`{command,commands}/**/*.md` with `symlink: true`, so the plural is one of the two
+names it looks for and a linked file is read as a real one. Its frontmatter schema is
+an Effect `Schema.Struct`, which ignores keys it does not declare — so no transform,
+no key mapping, and nothing to drop. Read off `sst/opencode` on 2026-08-14, not the
+docs page, which names only the plural and would have left the singular looking
+required.
 
 `Resolve(scope, dir)` returns the target for a scope. An unrecognised scope resolves
 to **global**, not to nothing — a typo must not silently produce a rootless target
@@ -44,10 +53,15 @@ no `.claude/` has not opted in, which is a state and not an error; install creat
 the directory rather than demanding it.
 
 The two Claude scopes accept the same three kinds — an item that installs in one
-and silently vanishes in the other would be indistinguishable from a bug. The codex
-and opencode targets accept skills only: agents and commands are absent from those
-destinations, never errors, because those tools load different formats (queued as
-`add-opencode-command-target` and `add-transformed-agent-targets`).
+and silently vanishes in the other would be indistinguishable from a bug. **Codex accepts skills alone; OpenCode accepts skills and
+commands.** A kind a target does not accept is absent from that destination, never an
+error. Agents are the one kind neither takes, because both load a different agent
+format and that needs a transform rather than a link — still queued as
+`add-transformed-agent-targets`.
+
+**A kind added to a tool arrives in both of that tool's scopes.** That is not a
+separate decision, it is what orthogonal axes mean: the accepted set belongs to the
+tool, and the scope only moves the root.
 
 **There is no `All()`.** It listed every known target so callers could iterate, and
 every caller did — which with two destinations would write to both on every run,
@@ -66,9 +80,18 @@ resolution.
 - project-scoped variants of the codex and opencode targets. OpenCode already reads
   a project's `.claude/skills`, which the project scope serves; per-project Codex
   skills come back the day a user asks for them.
-- kinds other than skills for the codex and opencode targets — the two queued
-  follow-up changes own those.
-- Codex custom prompts. Vendor-deprecated; betting on them is debt on day one.
+- **the agents kind, for codex and opencode.** Both load a different agent format, so
+  it needs a frontmatter transform rather than a symlink — which is a different
+  mechanism, not a bigger `Kinds()`. `add-transformed-agent-targets` owns it.
+- **any content transform for OpenCode commands.** Out because it is not needed:
+  unknown frontmatter keys are ignored, not rejected, and this payload's commands carry
+  `description:` and nothing else. What brings it back is a command needing a key
+  OpenCode's schema refuses.
+- **the singular `command/` directory.** OpenCode accepts it and the plural equally, and
+  the plural is what the shared helper already emits. Supporting both would mean a
+  per-target directory-name override for no behavioural difference.
+- **commands for codex.** Its equivalent is custom prompts, which are
+  vendor-deprecated; betting on them is debt on day one.
 - reading or writing anything inside a target. Targets describe locations; `link-state`
   and `linking` act on them.
 
@@ -104,6 +127,27 @@ target that cannot say where it lives is a target nothing should be written to.
   same day's single-root reading: "en project solo se puede instalar en claude
   no tiene sentido". Tool and scope are separate axes precisely so the matrix
   costs no new rows anywhere.
+- **OpenCode's commands support was read off the source, and the docs page was
+  wrong-adjacent** — 2026-08-14. `packages/opencode/src/config/command.ts` globs
+  `{command,commands}/**/*.md` with `symlink: true`;
+  `packages/core/src/v1/config/command.ts` declares the frontmatter as an Effect
+  `Schema.Struct`, which ignores excess properties — proven by the loader passing a
+  `name` field the struct does not declare. The queued proposal said `command/`
+  singular and predicted a transform; the docs page says `commands/` plural only. The
+  source settles both: either name works, and no transform is needed. **A vendor's
+  docs page is a summary of its source, and this is the second time on this capability
+  that the source disagreed with it.**
+- **ASSUMED, unattended — the payload's commands install into OpenCode carrying
+  Claude's tool spellings.** `/libretto-attacca`, 2026-08-14, answered rather than
+  asked. Commands say things like `Skill(skill="find-work")`; OpenCode's skill tool
+  takes `name`, not `skill`. It degrades rather than breaking — the line is prose a
+  model reads, not a literal call — but the vocabulary is Claude's.
+  **What changes if this is wrong:** the install has to wait on
+  `adapt-payload-wording-to-three-hosts`, which is captured. The mechanism would not
+  change; only the order would.
+  **Ceiling named:** OpenCode is a real commands destination with Claude's vocabulary
+  inside the commands. The upgrade path is that captured change, never a transform
+  here.
 - Roots verified against vendor docs and the sst/opencode source on 2026-08-14; the
   reversal of "targets other than Claude Code" is recorded, dated, in
   `docs/STATE.md`.
@@ -151,8 +195,16 @@ Complete. Shipped in phase 1; scopes added later; codex and opencode added 2026-
   Proof: internal/target/codex_test.go TestCodexExists
 - the opencode root honours `OPENCODE_HOME` and falls back to `~/.config/opencode`
   Proof: internal/target/opencode_test.go TestOpencodeRootResolution
-- opencode serves skills at `<root>/skills` and rejects agents and commands
-  Proof: internal/target/opencode_test.go TestOpencodeAcceptsOnlySkills
-- every tool resolves in both scopes onto its own root, skills only for the
-  new tools
+- **opencode serves skills at `<root>/skills`, commands at `<root>/commands` — the
+  plural the shared helper already emits, and one of the two names OpenCode globs —
+  and rejects agents**
+  Proof: internal/target/opencode_test.go TestOpencodeAcceptsSkillsAndCommands
+- **every tool resolves in both scopes onto its own root, with the same accepted kinds
+  in both scopes: skills for codex, skills and commands for opencode**
   Proof: internal/target/scope_test.go TestResolveToolScopeMatrix
+
+**That a command actually gets linked — as a symlink, into `<root>/commands` — is
+`cli`'s criterion, not this one.** This spec says where a kind lives and which target
+takes it; `linking` and `cli` own what gets written there. Stating it in both would be
+one promise in two documents, and the copy nobody edits is the one that reads as
+authoritative.

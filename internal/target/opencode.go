@@ -11,9 +11,12 @@ import (
 // itself does not read this variable.
 const EnvOpencodeHome = "OPENCODE_HOME"
 
-// Opencode is OpenCode (opencode.ai), rooted at ~/.config/opencode. It
-// accepts only skills: OpenCode discovers Claude-compatible SKILL.md
-// directories under ~/.config/opencode/skills.
+// Opencode is OpenCode (opencode.ai), rooted at ~/.config/opencode. It accepts
+// skills and commands: OpenCode discovers Claude-compatible SKILL.md directories
+// under ~/.config/opencode/skills, and globs "{command,commands}/**/*.md" with
+// symlinks followed, so the plural directory every kind already uses is one of the
+// two names it looks for. Agents are absent — those need a frontmatter transform
+// rather than a link.
 type Opencode struct{ root string }
 
 // NewOpencode resolves the root from OPENCODE_HOME, falling back to
@@ -43,7 +46,7 @@ func NewOpencodeProject(dir string) Opencode {
 func (o Opencode) Name() string { return "opencode" }
 func (o Opencode) Root() string { return o.root }
 
-func (o Opencode) Kinds() []Kind { return []Kind{Skills} }
+func (o Opencode) Kinds() []Kind { return []Kind{Skills, Commands} }
 
 func (o Opencode) Dir(k Kind) string {
 	if o.root == "" {

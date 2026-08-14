@@ -32,21 +32,27 @@ func TestOpencodeRootResolution(t *testing.T) {
 	})
 }
 
-func TestOpencodeAcceptsOnlySkills(t *testing.T) {
+// The commands directory is the plural one dirUnderRoot already produces for every
+// kind. OpenCode globs "{command,commands}/**/*.md", so the plural is one of the two
+// names it looks for — verified in sst/opencode packages/opencode/src/config/command.ts,
+// which is also where `symlink: true` makes a linked file readable.
+func TestOpencodeAcceptsSkillsAndCommands(t *testing.T) {
 	sandbox := t.TempDir()
 	t.Setenv(EnvOpencodeHome, sandbox)
 	o := NewOpencode()
 
-	if got, want := o.Dir(Skills), filepath.Join(sandbox, "skills"); got != want {
-		t.Errorf("Dir(skills) = %q, want %q", got, want)
+	for _, k := range []Kind{Skills, Commands} {
+		if got, want := o.Dir(k), filepath.Join(sandbox, string(k)); got != want {
+			t.Errorf("Dir(%s) = %q, want %q", k, got, want)
+		}
+		if !o.Accepts(k) {
+			t.Errorf("Accepts(%s) = false, want true", k)
+		}
 	}
-	if !o.Accepts(Skills) {
-		t.Error("Accepts(skills) = false, want true")
+	if len(o.Kinds()) != 2 || o.Kinds()[0] != Skills || o.Kinds()[1] != Commands {
+		t.Errorf("Kinds() = %v, want [skills commands]", o.Kinds())
 	}
-	if len(o.Kinds()) != 1 || o.Kinds()[0] != Skills {
-		t.Errorf("Kinds() = %v, want [skills]", o.Kinds())
-	}
-	for _, k := range []Kind{Agents, Commands, Kind("hooks")} {
+	for _, k := range []Kind{Agents, Kind("hooks")} {
 		if o.Accepts(k) {
 			t.Errorf("Accepts(%s) = true, want false", k)
 		}
