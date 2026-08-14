@@ -9,7 +9,7 @@ criterion that closes it.
 
 - [x] 1. `spec-drift --block`: same checks as default, exit 1 when it warned, plus
       usage line and a self-test case. (payload · Proof: spec-drift --self-test)
-- [ ] 2. record-work SKILL.md: the copy-paste pre-commit snippet using `--block`,
+- [x] 2. record-work SKILL.md: the copy-paste pre-commit snippet using `--block`,
       framed opt-in, default unchanged; wiring row in check-payload. Waits on 1.
       (payload · Proof: scripts/check-payload)
 - [ ] 3. build-and-check SKILL.md: the visual-output rule — if judging it means
