@@ -893,6 +893,25 @@ A missing payload:
   report; entries whose change field is `-` (no change open) belong to no row and are
   reported in one line instead of silently dropped.
   Proof: cmd/libretto/metrics_test.go TestMalformedAndChangelessEntriesDoNotCrashTheCount
+- **corrections are broken down by phase, spelled as the ledger spells them.** One row per
+  distinct phase value, count beside it, sorted count-then-name so the biggest number is
+  the first thing read — the instrument the ask-more-questions debate gets decided with:
+  corrections at phase 2 are questions working, findings at 6→7 are questions that were
+  missing, corrections after phase 8 are the expensive kind. No normaliser — a second
+  spelling drifts — and no verdicts: the counting is here, the reading stays human.
+  Proof: cmd/libretto/metrics_test.go TestCorrectionsCountsByPhase
+- **the breakdown renders in the corpus report with its explanation line.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsReportsCorrectionsByPhase
+- **`6→7` entries are reviewer findings, not user corrections.** They count in the phase
+  breakdown and never in the per-change corrections column, whose meaning does not move.
+  Proof: cmd/libretto/metrics_test.go TestReviewerFindingsStayOutOfCorrections
+- **a `6→7` entry with no change open is still a finding.** The exclusion outranks the
+  orphan count, so it never lands in the corrections-outside-any-change line — surfaced
+  by this change's own 6→7 reviewer, on the first entries the rule ever produced.
+  Proof: cmd/libretto/metrics_test.go TestOrphanFindingIsNotAnOrphanCorrection
+- **absent, empty and populated ledgers are three facts.** Absent says capture is not in
+  use; present-but-empty says so in one line and renders no phase rows.
+  Proof: cmd/libretto/metrics_test.go TestMetricsPhaseBreakdownAbsentLedger
 
 #### Token cost, read off the session transcripts
 
