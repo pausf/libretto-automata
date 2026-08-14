@@ -31,9 +31,9 @@ func preferencePath() string {
 
 // rememberedScope is the destination the panel was left on.
 //
-// Absent, empty, unreadable, or holding anything but the two words all give global.
-// That is target.Resolve's rule and it is followed rather than reinvented: a value
-// nobody recognises must not produce a destination nobody chose.
+// Absent, empty, unreadable, or holding anything but a known destination all give
+// global. That is target.Resolve's rule and it is followed rather than reinvented:
+// a value nobody recognises must not produce a destination nobody chose.
 func rememberedScope() target.Scope {
 	path := preferencePath()
 	if path == "" {
@@ -44,8 +44,11 @@ func rememberedScope() target.Scope {
 	if err != nil {
 		return target.GlobalScope
 	}
-	if target.Scope(strings.TrimSpace(string(b))) == target.ProjectScope {
-		return target.ProjectScope
+	got := target.Scope(strings.TrimSpace(string(b)))
+	for _, s := range scopeOrder {
+		if got == s {
+			return s
+		}
 	}
 	return target.GlobalScope
 }

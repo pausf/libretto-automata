@@ -74,21 +74,22 @@ func scopeFlags(args []string) (target.Scope, string, []string, error) {
 	scope, chosen := target.GlobalScope, ""
 	rest := make([]string, 0, len(args))
 
+	flags := map[string]target.Scope{
+		"--global": target.GlobalScope, "-g": target.GlobalScope,
+		"--project": target.ProjectScope, "-p": target.ProjectScope,
+		"--codex":    target.CodexScope,
+		"--opencode": target.OpencodeScope,
+	}
 	for _, a := range args {
-		switch a {
-		case "--global", "-g":
-			if chosen == "project" {
-				return scope, "", nil, fmt.Errorf("--global and --project are two answers to one question; pick one")
-			}
-			scope, chosen = target.GlobalScope, "global"
-		case "--project", "-p":
-			if chosen == "global" {
-				return scope, "", nil, fmt.Errorf("--global and --project are two answers to one question; pick one")
-			}
-			scope, chosen = target.ProjectScope, "project"
-		default:
+		s, isFlag := flags[a]
+		if !isFlag {
 			rest = append(rest, a)
+			continue
 		}
+		if chosen != "" && chosen != string(s) {
+			return scope, "", nil, fmt.Errorf("--%s and %s are two answers to one question; pick one", chosen, a)
+		}
+		scope, chosen = s, string(s)
 	}
 	return scope, chosen, rest, nil
 }
@@ -364,7 +365,10 @@ func dispatch(action, root string, tg target.Target, confirm bool) error {
 
 // scopeOrder is the order destinations appear in the strip, and the order tab
 // cycles through them. Global first: it is the default everywhere else.
-var scopeOrder = []target.Scope{target.GlobalScope, target.ProjectScope}
+var scopeOrder = []target.Scope{
+	target.GlobalScope, target.ProjectScope,
+	target.CodexScope, target.OpencodeScope,
+}
 
 // panelData assembles the menu and the target strip for the active scope.
 //
@@ -1286,11 +1290,15 @@ func usage() {
 
   --global, -g          act on ~/.claude (the default)
   --project, -p         act on <this directory>/.claude
+  --codex               act on ~/.agents (Codex CLI; skills only)
+  --opencode            act on ~/.config/opencode (OpenCode; skills only)
 
   LIBRETTO_ASCII=safe   swap quadrant glyphs for half blocks
   LIBRETTO_THEME=dark|light  force a palette instead of detecting
   LIBRETTO_ROOT=<path>  the payload tree; default %[3]s
   CLAUDE_HOME=<path>    override Claude Code's root
+  AGENTS_HOME=<path>    override the Codex target's root
+  OPENCODE_HOME=<path>  override the OpenCode target's root
 
   installed with:  go install github.com/pausf/libretto-automata/cmd/libretto@latest
 `, version, n, "~/.local/share/libretto/current")

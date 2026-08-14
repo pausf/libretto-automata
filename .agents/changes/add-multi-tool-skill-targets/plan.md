@@ -161,16 +161,16 @@ help literal), `cmd/libretto/remembered.go` (`rememberedScope`),
 **Interfaces — produces:** flags `--codex`, `--opencode`;
 `scopeOrder = [global, project, codex, opencode]` (order is the strip order).
 
-- [ ] Failing tests: `TestDestinationFlags` table-drives `scopeFlags` over
+- [x] Failing tests: `TestDestinationFlags` table-drives `scopeFlags` over
   `--codex`, `--opencode`, and every two-flag pair (`-g --codex`,
   `--codex --opencode`, …) expecting one destination or an error; remembered
   test round-trips `codex`/`opencode` and falls back to global on `garbage`.
-- [ ] Implement: `scopeFlags` tracks one `chosen` string and errors on a
+- [x] Implement: `scopeFlags` tracks one `chosen` string and errors on a
   second destination flag with the existing two-flag error shape;
   `scopeOrder` grows to four; `rememberedScope` recognises the two new words;
   help's flag/env literal gains `--codex`, `--opencode`, `AGENTS_HOME`,
   `OPENCODE_HOME` (defaults named, same wording as `CLAUDE_HOME`'s row).
-- [ ] Suite green; commit
+- [x] Suite green; commit
   `feat(cli): codex and opencode destination flags`.
 
 ### Task 6: scope isolation + skills-only behaviour end to end — waits on 5

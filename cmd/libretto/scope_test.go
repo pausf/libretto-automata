@@ -210,8 +210,8 @@ func TestStripRowsReportTheirOwnState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 2 {
-		t.Fatalf("the strip has %d rows, want 2", len(rows))
+	if len(rows) != len(scopeOrder) {
+		t.Fatalf("the strip has %d rows, want %d", len(rows), len(scopeOrder))
 	}
 
 	global, project := rows[0].Info, rows[1].Info
@@ -383,4 +383,37 @@ func TestPanelPruneActsOnTheActiveDestinationOnly(t *testing.T) {
 	if _, err := os.Lstat(f.dest("skills", "gone")); err != nil {
 		t.Fatal("pruning the project removed a link from the global config")
 	}
+}
+
+func TestDestinationFlags(t *testing.T) {
+	t.Run("each new flag resolves its destination", func(t *testing.T) {
+		for flag, want := range map[string]target.Scope{
+			"--codex":    target.CodexScope,
+			"--opencode": target.OpencodeScope,
+		} {
+			scope, chosen, rest, err := scopeFlags([]string{flag, "install"})
+			if err != nil {
+				t.Fatalf("%s: %v", flag, err)
+			}
+			if scope != want || chosen != string(want) {
+				t.Errorf("%s resolved to %q/%q, want %q", flag, scope, chosen, want)
+			}
+			if len(rest) != 1 || rest[0] != "install" {
+				t.Errorf("%s: rest is %v, want [install]", flag, rest)
+			}
+		}
+	})
+
+	t.Run("any two destination flags is an error", func(t *testing.T) {
+		for _, args := range [][]string{
+			{"install", "--codex", "--opencode"},
+			{"install", "--global", "--codex"},
+			{"--opencode", "install", "-p"},
+			{"--codex", "install", "-g"},
+		} {
+			if _, _, _, err := scopeFlags(args); err == nil {
+				t.Errorf("%v was accepted; two answers to one question is a mistake, not a precedence rule", args)
+			}
+		}
+	})
 }

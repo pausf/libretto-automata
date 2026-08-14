@@ -211,3 +211,23 @@ func writePreference(t *testing.T, content string) {
 		t.Fatal(err)
 	}
 }
+
+func TestRememberedDestinationRecognisesNewTargets(t *testing.T) {
+	for _, want := range []target.Scope{target.CodexScope, target.OpencodeScope} {
+		t.Run(string(want), func(t *testing.T) {
+			newFixture(t)
+			remember(want)
+			if got := rememberedScope(); got != want {
+				t.Fatalf("remembered %q, got back %q", want, got)
+			}
+		})
+	}
+
+	t.Run("garbage still falls back to global", func(t *testing.T) {
+		newFixture(t)
+		remember(target.Scope("garbage"))
+		if got := rememberedScope(); got != target.GlobalScope {
+			t.Fatalf("garbage resolved to %q, want global", got)
+		}
+	})
+}
