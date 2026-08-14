@@ -52,3 +52,7 @@ Did: only cli/spec.md carries a count ("Five"); the delta now names the one real
 ## 2026-08-14 · add-multi-tool-skill-targets · 6→7
 Said: every occurrence of Claude outside the allowlist fails the gate
 Did: the check filtered whole lines, so an addressee sharing a line with "Claude Code" escaped; allowlisted tokens are now deleted per-hit before the re-search, forced red on a mixed line
+
+## 2026-08-14 · add-multi-tool-skill-targets · 7→8
+Said: en project solo se puede instalar en claude no tiene sentido; el menú se haría muy largo, hay que comprimirlo
+Did: shipped a flat destination list where only claude had a project side — reworked to orthogonal tool × scope axes (one row per tool, s flips the scope) before anything released; the free-text answer "que el usuario pueda elegir" had been read as "global-only phase 1" when it meant the full choice
