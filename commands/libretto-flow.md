@@ -225,12 +225,13 @@ precedents in the codebase, anything where guessing quietly breaks working behav
 ask with `AskUserQuestion`: the option you recommend, the real alternatives, and room to
 answer differently. One question, then stop and wait.
 
-**Phase 2 is the exception, and it asks up to three, in one call, before it writes the
-spec** — the contract gets
-built by two people rather than handed over finished. Zero is legitimate and is said in
-one line; a quota manufactures questions the code already answers. Phase 5 stops for the
-order and opens no second tranche, and no stop is added: the questions ride the one
-phase 2 already has.
+**Phase 2 is the exception, and it asks as many as a wrong guess would cost, in one
+call, before it writes the spec** — the contract gets built by two people rather than
+handed over finished, and the bias when in doubt is to ask. No hard cap, but judgment
+both ways: never a form-length interrogation of things the code already answers. Zero
+is legitimate and is said in one line; a quota manufactures questions the code already
+answers. Phase 5 stops for the order and opens no second tranche, and no stop is
+added: the questions ride the one phase 2 already has.
 
 **Ask it before the plan is agreed.** Phases 1, 2 and 5 are where a question is cheap,
 because nothing has been built on the answer yet. That is not a coincidence — the two

@@ -450,24 +450,31 @@ A path no spec claims is reported separately and more softly — not everything 
 a contract, and treating every unanchored file as an error trains people to ignore
 the warning.
 
-## Step 4 — Ask what cannot be settled here. Up to three.
+## Step 4 — Ask what cannot be settled here. As many as a wrong guess would cost.
 
 Some things are genuinely not yours to decide: a product tradeoff, a convention
 with two live precedents in the codebase, anything where guessing wrong quietly
 breaks working behaviour.
 
-**Ask up to three of them, in one `AskUserQuestion` call, before the file is
-written.** Each with the option you recommend, the real alternatives, and room to
-answer differently.
+**Ask them in one `AskUserQuestion` call, before the file is written.** Each with
+the option you recommend, the real alternatives, and room to answer differently.
 
 Drafting the six pillars is what surfaces them — a boundary the request left open, a
 scope decision that changes what gets built, two precedents with nothing choosing
 between them. So the questions come after step 3's thinking and before step 3's
 file. **The answers belong inside the contract, not bolted onto it afterwards.**
 
-**Three, and never a fourth.** The spec is a contract built by two people, and a
-phase that hands one over finished has decided alone everything it did not ask
-about. Three is where the questions worth a round trip run out.
+**There is no hard cap, and the bias is toward asking.** The spec is a contract
+built by two people, and a phase that hands one over finished has decided alone
+everything it did not ask about — the decisions made quietly are exactly the ones
+nobody reviews. When in doubt about whether a question is worth it, ask it: a
+question is cheaper than a contract that is confidently wrong, and better asked out
+of caution than swallowed out of fear.
+
+**The bound is judgment, and it cuts both ways.** Every question must be one a
+wrong guess would make expensive — never a form-length interrogation of things the
+code already answers. A dozen questions is not thoroughness, it is the phase
+handing its own job back; three sharp ones beat ten a reader skims.
 
 **Zero is a legitimate answer, and it is reported in one line.** When the code and
 the proposal already settle everything, say so and write the spec. A quota
@@ -475,8 +482,8 @@ manufactures questions the code answers, which `AGENTS.md` forbids in as many wo
 and a question whose only available answer is "yes, carry on" is a round trip charged
 for a rubber stamp.
 
-**One call, not three turns.** Three round trips to build one contract is the
-ceremony this flow spends its length arguing against.
+**One call, never a string of turns.** Serial round trips to build one contract is
+the ceremony this flow spends its length arguing against.
 
 **The answers go into the spec**, under prior decisions, next to what each one
 settled, attributed and dated. An answer that lives only in the conversation gets
@@ -495,8 +502,8 @@ contract to disagree about and nothing to ask about it.
 **Under `/libretto-attacca` the questions are not asked either — they are answered and
 marked.** For each one, take the option you would have recommended, write it under prior
 decisions **marked as assumed**, name what changes if it is wrong, and carry on. Never a
-default left silent, and never a guess written as though it were settled. The three that
-would have been asked are the three that must be findable afterwards, because nobody was
+default left silent, and never a guess written as though it were settled. The questions
+that would have been asked are the ones that must be findable afterwards, because nobody was
 there to answer them. The command carries why, and what it costs.
 
 ## Step 5 — Check it before handing it over

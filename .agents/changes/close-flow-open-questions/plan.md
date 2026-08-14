@@ -19,7 +19,7 @@ criterion that closes it.
 - [x] 4. review-work SKILL.md: append one ledger entry per finding, header contract
       `## <date> · <change> · 6→7`, wiring row. Independent.
       (payload · Proof: scripts/check-payload)
-- [ ] 5. write-spec SKILL.md step 4 recut: no hard cap, one call, zero legitimate,
+- [x] 5. write-spec SKILL.md step 4 recut: no hard cap, one call, zero legitimate,
       better-ask-than-silent, never a form; wiring row. Independent.
       (payload · Proof: scripts/check-payload)
 - [ ] 6. `corrections()` returns per-phase counts; `6→7` excluded from the

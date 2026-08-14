@@ -123,16 +123,21 @@ undocumented answer gets asked again next session.
 
 `AskUserQuestion` is native. Do not build a prompt system.
 
-### Three, at phase 2, and zero is allowed
+### As many as a wrong guess would cost, at phase 2, and zero is allowed
 
 The user's call, 2026-08-12: *"me gustaría que hagas más preguntas del estilo Claude, para
 que el plan se cree entre los 2 y no solo tú"*. A phase that hands over a finished spec has
 decided alone everything it did not ask about, and the decisions it made quietly are
 exactly the ones nobody reviews.
 
-So phase 2 asks up to three before it writes the file — **one call, not three turns.** Three
+So phase 2 asks before it writes the file — **one call, never a string of turns.** Serial
 round trips to build one contract is the ceremony this flow spends its length arguing
 against, and the answers have to be *in* the contract rather than bolted on afterwards.
+
+The count was capped at three until 2026-08-14, when the user lifted it: better asked out
+of caution than swallowed out of fear. What replaced the cap is judgment with both edges
+named — every question one a wrong guess would make expensive, and never a form-length
+interrogation of things the code already answers. The bias, when in doubt, is to ask.
 
 **Phase 2 alone, not phase 5**, which was offered and declined. The contract is where an
 answer changes the most and costs the least to change; phase 5 already stops for the order
