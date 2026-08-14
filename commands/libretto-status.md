@@ -8,6 +8,9 @@ Read-only. Reports; chooses nothing, changes nothing.
 Skill(skill="find-work")
 ```
 
+That is Claude Code's spelling. On another host, load the `find-work` skill with the
+host's own skill tool — the skill is the rule, not the tool name.
+
 Invoke it in **reporting mode**: two of its scans and no more — source 1
 (`.agents/changes/*/plan.md`, open boxes, what each plan says can start, and the unmerged
 branches) and **the queue** (its *captured, never started* scan). Then stop.
