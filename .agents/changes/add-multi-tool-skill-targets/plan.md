@@ -205,14 +205,14 @@ under `internal/ui/testdata/`)
 loops it; `nextScope` already wraps `len(Targets)`. Expect **no production
 change** in `internal/ui` — this task proves it.
 
-- [ ] Failing tests: strip renders four rows each with own state and exactly
+- [x] Failing tests: strip renders four rows each with own state and exactly
   one active; an unconfigured codex renders `○ … not configured` and stays
   tab-selectable; panel prune with codex active touches only `f.Codex`;
   `models` menu row absent when codex is the active destination; golden
   files for the four-row strip, colour and mono
   (`go test ./internal/ui/ -update` convention if present, else write
   goldens by hand from `make preview`-style forced-colour output).
-- [ ] Green; goldens reviewed by eye before committing. Commit
+- [x] Green; goldens reviewed by eye before committing. Commit
   `feat(panel): four destinations on the strip`.
 
 ### Task 8: README + docs — waits on 5 (parallel with 6, 7)

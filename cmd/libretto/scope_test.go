@@ -384,6 +384,21 @@ func TestPanelPruneActsOnTheActiveDestinationOnly(t *testing.T) {
 	if _, err := os.Lstat(f.dest("skills", "gone")); err != nil {
 		t.Fatal("pruning the project removed a link from the global config")
 	}
+
+	// The same isolation holds for the new destinations: pruning codex with its
+	// own orphan leaves the global one standing.
+	f.link(t, gone, filepath.Join(f.Codex, "skills", "gone"))
+	if _, _, err := capture(t, func() error {
+		return prune(f.Repo, target.Resolve(target.CodexScope, ""), []string{"--yes"})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(f.Codex, "skills", "gone")); !os.IsNotExist(err) {
+		t.Error("codex's stale link survived")
+	}
+	if _, err := os.Lstat(f.dest("skills", "gone")); err != nil {
+		t.Fatal("pruning codex removed a link from the global config")
+	}
 }
 
 func TestDestinationFlags(t *testing.T) {

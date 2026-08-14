@@ -1,0 +1,29 @@
+╭──────────────────────────────────────────────────────────╮
+│  ░▒▓█ ════════════════════════════════════════════ █▓▒░  │
+│                                                          │
+│    ▄▀▀▄                                                  │
+│   ▐▌  ▐▌    █    ▀█▀  █▀▄  █▀▄  █▀▀  ▀█▀  ▀█▀  ▄▀▄       │
+│ ──█▄▄▄▀──   █     █   █▀▄  █▀▄  █▀    █    █   █ █  ──   │
+│ ──█▀▀▀▄──   █▄▄  ▄█▄  █▄▀  █ ▀  █▄▄   █    █   ▀▄▀  ──   │
+│   ▐▌  ▐▌                                                 │
+│   ▐▙▄▄▟▘  ▏ A U T O M A T A                              │
+│    ▐▌     ▏ the libretto is written first ·              │
+│   ▄▀      ▏ the automaton performs it                    │
+│           ▏ b y   p a u s f                              │
+│                                                          │
+│  ░▒▓█ ════════════════════════════════════════════ █▓▒░  │
+├──────────────────────────────────────────────────────────┤
+│                                                          │
+│    ▸ install     link the score into ~/.claude           │
+│    ▸ update      git pull · relink · report              │
+│  ❯ ▸ status      what is linked                          │
+│    ▸ doctor      diagnose the orchestra                  │
+│    ▸ prune       drop links whose source is gone         │
+│                                                          │
+├──────────────────────────────────────────────────────────┤
+│  ❯ ● global   12 skills · 8 agents · 4 commands          │
+│    ● project  nothing linked                             │
+│    ● codex    3 skills linked                            │
+│    ○ opencode not configured                             │
+╰──────────────────────────────────────────────────────────╯
+      v0.1.0        ↑↓ · ⏎ select · tab scope · q quit      

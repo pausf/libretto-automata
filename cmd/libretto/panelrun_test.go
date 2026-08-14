@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -204,4 +205,94 @@ func keys(b ...byte) io.Reader {
 		time.Sleep(20 * time.Millisecond)
 	}()
 	return r
+}
+
+func TestStripShowsAllFourDestinations(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	_, rows, err := panelData(f.Repo, f.Project, target.CodexScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{"global", "project", "codex", "opencode"}
+	if len(rows) != len(want) {
+		t.Fatalf("the strip has %d rows, want %d", len(rows), len(want))
+	}
+	active := 0
+	for i, row := range rows {
+		if row.Name != want[i] {
+			t.Errorf("row %d is %q, want %q", i, row.Name, want[i])
+		}
+		if row.Active {
+			active++
+			if row.Name != "codex" {
+				t.Errorf("the active row is %q, want codex", row.Name)
+			}
+		}
+	}
+	if active != 1 {
+		t.Fatalf("%d rows are active, want exactly 1", active)
+	}
+}
+
+func TestUnconfiguredDestinationRow(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	// A codex root that does not exist: the row must say so, never error.
+	t.Setenv(target.EnvAgentsHome, filepath.Join(t.TempDir(), "nope"))
+
+	_, rows, err := panelData(f.Repo, f.Project, target.GlobalScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range rows {
+		if row.Name == "codex" {
+			if row.Configured {
+				t.Error("a missing codex root reports as configured")
+			}
+			return
+		}
+	}
+	t.Fatal("the strip has no codex row")
+}
+
+func TestModelsRowAbsentForSkillsOnlyDestination(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	agent := "---\nname: demo\ndescription: fixture\nmodel: haiku\n---\n"
+	if err := os.MkdirAll(filepath.Join(f.Claude, "agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(f.Claude, "agents", "demo.md"), []byte(agent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	menu, _, err := panelData(f.Repo, f.Project, target.GlobalScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasRow(menu, "models") {
+		t.Fatal("the global destination has agents installed and no models row — the test cannot see the row it wants absent")
+	}
+
+	menu, _, err = panelData(f.Repo, f.Project, target.CodexScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasRow(menu, "models") {
+		t.Error("a skills-only destination offers a models row over agents it cannot hold")
+	}
+}
+
+func hasRow(menu []ui.MenuItem, label string) bool {
+	for _, m := range menu {
+		if m.Label == label {
+			return true
+		}
+	}
+	return false
 }

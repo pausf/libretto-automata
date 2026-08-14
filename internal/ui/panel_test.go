@@ -2,6 +2,8 @@ package ui
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -1078,5 +1080,51 @@ func TestALongRefusalWrapsRatherThanBeingCut(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("%q did not survive the wrap:\n%s", want, out)
 		}
+	}
+}
+
+// fourDestinationPanel mirrors what cmd/libretto feeds the panel once the
+// destination order grew to four. The UI is dimension-agnostic; these goldens
+// pin the rendered strip so a torn row or a lost active mark is a diff, not a
+// surprise.
+func fourDestinationPanel() Panel {
+	p := demoPanel()
+	p.Targets = []TargetRow{
+		{Name: "global", Info: "12 skills · 8 agents · 4 commands", Configured: true, Active: true},
+		{Name: "project", Info: "nothing linked", Configured: true},
+		{Name: "codex", Info: "3 skills linked", Configured: true},
+		{Name: "opencode", Info: "not configured", Configured: false},
+	}
+	return p
+}
+
+// ponytail: UPDATE_GOLDEN=1 rewrites the files; a flag would collide with
+// go test's own registry for one write a year.
+func TestFourDestinationStripGolden(t *testing.T) {
+	forceTrueColor(t)
+	colour := darkTheme().Render(fourDestinationPanel())
+
+	for name, got := range map[string]string{
+		"four-destinations.colour": colour,
+		"four-destinations.mono":   strip(colour),
+	} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join("testdata", name)
+			if os.Getenv("UPDATE_GOLDEN") != "" {
+				if err := os.MkdirAll("testdata", 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			want, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("no golden at %s — run once with UPDATE_GOLDEN=1", path)
+			}
+			if got != string(want) {
+				t.Errorf("render differs from golden %s\ngot:\n%s", path, got)
+			}
+		})
 	}
 }
