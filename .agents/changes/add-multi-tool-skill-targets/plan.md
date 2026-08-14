@@ -122,15 +122,15 @@ func (c Codex) Exists() bool {
 **Interfaces — produces:** `target.CodexScope Scope = "codex"`,
 `target.OpencodeScope Scope = "opencode"`; `Resolve` returns them.
 
-- [ ] Failing tests: `TestResolveNewDestinations` asserts
+- [x] Failing tests: `TestResolveNewDestinations` asserts
   `Resolve(CodexScope, "")` names `codex`, `Resolve(OpencodeScope, "")` names
   `opencode`, and `Resolve("nonsense", "")` still names the global target.
   Extend `TestScopesNeverShareARoot` to all four under the three env vars set
   to distinct temp dirs. Extend `TestUnresolvableRootYieldsEmptyDirs` to the
   two new targets (empty `HOME` and env unset ⇒ `Dir(Skills)==""`).
-- [ ] Implement: two consts beside `GlobalScope`/`ProjectScope`; `Resolve`
+- [x] Implement: two consts beside `GlobalScope`/`ProjectScope`; `Resolve`
   gains a `switch` with the two arms before the existing global fallback.
-- [ ] `go test ./internal/target/ -count=1` green; commit
+- [x] `go test ./internal/target/ -count=1` green; commit
   `feat(target): resolve codex and opencode destinations`.
 
 ### Task 4: fixture safety — the three env vars everywhere — waits on 3

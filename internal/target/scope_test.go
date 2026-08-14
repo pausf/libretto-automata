@@ -76,18 +76,38 @@ func TestResolveScope(t *testing.T) {
 	}
 }
 
-// The two scopes must never be the same place, or "isolated from the global
-// config" is a claim with nothing behind it.
+func TestResolveNewDestinations(t *testing.T) {
+	agents := t.TempDir()
+	t.Setenv(EnvAgentsHome, agents)
+	opencode := t.TempDir()
+	t.Setenv(EnvOpencodeHome, opencode)
+
+	c := Resolve(CodexScope, "")
+	if c.Name() != "codex" || c.Root() != agents {
+		t.Fatalf("codex resolved to %s at %s", c.Name(), c.Root())
+	}
+
+	o := Resolve(OpencodeScope, "")
+	if o.Name() != "opencode" || o.Root() != opencode {
+		t.Fatalf("opencode resolved to %s at %s", o.Name(), o.Root())
+	}
+}
+
+// No two destinations may ever be the same place, or "isolated from the
+// global config" is a claim with nothing behind it.
 func TestScopesNeverShareARoot(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv(EnvClaudeHome, home)
+	t.Setenv(EnvClaudeHome, t.TempDir())
+	t.Setenv(EnvAgentsHome, t.TempDir())
+	t.Setenv(EnvOpencodeHome, t.TempDir())
 	project := t.TempDir()
 
-	g := Resolve(GlobalScope, project).Root()
-	p := Resolve(ProjectScope, project).Root()
-
-	if g == p {
-		t.Fatalf("both scopes resolved to %s", g)
+	seen := map[string]Scope{}
+	for _, s := range []Scope{GlobalScope, ProjectScope, CodexScope, OpencodeScope} {
+		root := Resolve(s, project).Root()
+		if prev, dup := seen[root]; dup {
+			t.Fatalf("%s and %s both resolved to %s", prev, s, root)
+		}
+		seen[root] = s
 	}
 }
 

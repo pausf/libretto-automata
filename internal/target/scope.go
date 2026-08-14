@@ -23,6 +23,12 @@ const (
 
 	// ProjectScope is <working directory>/.claude.
 	ProjectScope Scope = "project"
+
+	// CodexScope is ~/.agents, or AGENTS_HOME when set.
+	CodexScope Scope = "codex"
+
+	// OpencodeScope is ~/.config/opencode, or OPENCODE_HOME when set.
+	OpencodeScope Scope = "opencode"
 )
 
 // Global is the machine-wide target.
@@ -37,16 +43,22 @@ func Project(dir string) Target { return NewProject(dir) }
 
 // Resolve returns the target for a scope. dir is only consulted for
 // ProjectScope, and an empty dir falls back to the working directory.
+// An unrecognised scope resolves to global, not to nothing.
 func Resolve(s Scope, dir string) Target {
-	if s != ProjectScope {
-		return Global()
-	}
-	if dir == "" {
-		if wd, err := os.Getwd(); err == nil {
-			dir = wd
+	switch s {
+	case CodexScope:
+		return NewCodex()
+	case OpencodeScope:
+		return NewOpencode()
+	case ProjectScope:
+		if dir == "" {
+			if wd, err := os.Getwd(); err == nil {
+				dir = wd
+			}
 		}
+		return Project(dir)
 	}
-	return Project(dir)
+	return Global()
 }
 
 // Project is a project-local `.claude/` directory.
