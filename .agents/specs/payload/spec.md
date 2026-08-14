@@ -578,6 +578,17 @@ the copy stays comparable with upstream.
   Proof: scripts/check-payload
 - **no skill invokes a path that does not get installed**
   Proof: scripts/check-payload
+- **prose addresses the agent, never Claude by name.** The payload installs into Codex
+  and OpenCode too, and "ask Claude" read there is an instruction about somebody else.
+  Every occurrence of `Claude` in skill and command bodies must match the allowlist of
+  factual uses — `CLAUDE_HOME`, `CLAUDE.md`, real `.claude` paths, the product name
+  `Claude Code` — or the gate fails; the check deletes allowlisted tokens per hit
+  before re-searching, so an addressee sharing a line with a factual use still fails.
+  The classification lives entirely in the allowlist; the check exercises no judgment.
+  Where a skill depends on a Claude-Code-only mechanism (`AskUserQuestion`), the
+  dependency stays and the conversational fallback is named — canonically in
+  `record-work`, and at each mandate site.
+  Proof: scripts/check-payload
 - **no skill hardcodes the install layout.** A `~/.claude/` path is only true under
   `install --global`; a skill's tools resolve from its own base directory, which every
   invocation announces — `record-work` reaches `spec-drift` as its sibling, `write-spec`

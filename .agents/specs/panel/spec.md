@@ -38,6 +38,13 @@ A prompt asked once at startup would be worse: an answer given at the top of a s
 is invisible by the time you press a key, and *where did that just install?* is the
 question this strip exists to answer before it is asked.
 
+**The strip lists four destinations** — global, project, codex, opencode — in the
+order `cmd/libretto` hands them over; the UI renders whatever list arrives and `tab`
+cycles all of it. A skills-only destination's summary counts skills alone, and the
+`models` menu row is absent while such a destination is active — an entry that opens
+an empty screen is a promise the panel cannot keep. An unconfigured destination
+renders `○ … not configured` and stays selectable.
+
 **Each row reports its own state**, not the repository's contents. `2 missing` beside
 `1 linked · 1 missing` tells you which destination has what; the item counts of the
 repo, filtered by the kinds a target accepts, are identical for every destination by
@@ -506,7 +513,7 @@ default nobody chose.
 - [x] the active destination, visible and switchable
 - [x] 6.5 confirmation for destructive actions — in the model, not a Huh form
 - [x] the release banner, its field, and the `Init` seam that fills it
-- [ ] 6.6 target-strip golden files
+- [x] 6.6 target-strip golden files — the four-destination strip, colour and mono
 - [ ] 6.7 `teatest` end-to-end flow
 
 ## Verification criteria
@@ -594,6 +601,14 @@ The model:
   Proof: internal/ui/panel_test.go TestSelectingAnEnabledActionRunsAndStays
 - **the action is told which destination**, after a tab
   Proof: internal/ui/panel_test.go TestTheRunnerIsToldWhichDestination
+- **the strip shows all four destinations, exactly one active**
+  Proof: cmd/libretto/panelrun_test.go TestStripShowsAllFourDestinations
+- an unconfigured destination renders honestly and stays selectable
+  Proof: cmd/libretto/panelrun_test.go TestUnconfiguredDestinationRow
+- the `models` row is absent for a skills-only destination
+  Proof: cmd/libretto/panelrun_test.go TestModelsRowAbsentForSkillsOnlyDestination
+- **the four-row strip matches its goldens, colour and mono**
+  Proof: internal/ui/panel_test.go TestFourDestinationStripGolden
 - a refused action runs nothing and leaves no report
   Proof: internal/ui/panel_test.go TestSelectingADisabledActionRunsNothing
 - with no runner wired every action refuses

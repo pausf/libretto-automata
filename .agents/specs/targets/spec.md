@@ -2,8 +2,8 @@
 
 Governs: internal/target/**
 
-What an installable destination is. One interface, one implementation, and a hard rule
-that nothing outside this package may assume either.
+What an installable destination is. One interface, four implementations, and a hard
+rule that nothing outside this package may assume where any of them lives.
 
 ## Outcomes
 
@@ -16,14 +16,23 @@ A target declares three things and nothing else is asked of it:
 A kind knows its own shape: whether its items are directories or files, and which file
 extension counts. Callers ask the kind rather than deciding for themselves.
 
-### Two scopes, never both at once
+### One destination at a time, never several
 
 A command acts on **one** destination, chosen rather than assumed:
 
-| Scope | Root |
-|---|---|
-| `GlobalScope` | `~/.claude`, honouring `CLAUDE_HOME` |
-| `ProjectScope` | `<dir>/.claude`, where `dir` is the working directory |
+| Scope | Root | Kinds |
+|---|---|---|
+| `GlobalScope` | `~/.claude`, honouring `CLAUDE_HOME` | skills, agents, commands |
+| `ProjectScope` | `<dir>/.claude`, where `dir` is the working directory | skills, agents, commands |
+| `CodexScope` | `~/.agents`, honouring `AGENTS_HOME` | skills only |
+| `OpencodeScope` | `~/.config/opencode`, honouring `OPENCODE_HOME` | skills only |
+
+The two overrides on the new rows are libretto's own, for test safety — exactly
+`CLAUDE_HOME`'s role. Codex and OpenCode do not read those variables. Codex CLI
+discovers Claude-compatible `SKILL.md` directories under `~/.agents/skills`, and
+OpenCode reads that same path plus `~/.claude/skills` and its own
+`~/.config/opencode/skills` — so one codex link also serves OpenCode, a fact the
+docs carry and the model does not.
 
 `Resolve(scope, dir)` returns the target for a scope. An unrecognised scope resolves
 to **global**, not to nothing — a typo must not silently produce a rootless target
@@ -33,9 +42,11 @@ The project target reports **configured** only once its root exists. A project w
 no `.claude/` has not opted in, which is a state and not an error; install creates
 the directory rather than demanding it.
 
-Both scopes accept the same three kinds. Accepting different sets would mean an item
-that installs in one scope and silently vanishes in the other, which is
-indistinguishable from a bug.
+The two Claude scopes accept the same three kinds — an item that installs in one
+and silently vanishes in the other would be indistinguishable from a bug. The codex
+and opencode targets accept skills only: agents and commands are absent from those
+destinations, never errors, because those tools load different formats (queued as
+`add-opencode-command-target` and `add-transformed-agent-targets`).
 
 **There is no `All()`.** It listed every known target so callers could iterate, and
 every caller did — which with two destinations would write to both on every run,
@@ -51,19 +62,26 @@ resolution.
 - **`CLAUDE.md` and `settings.json`.** Other tooling rewrites regions of these files.
   Linking them would start a fight this tool cannot win, and losing it means
   corrupting the user's configuration.
-- targets other than Claude Code. The interface exists for them; the implementations
-  do not, and inventing one with no user is speculation.
+- project-scoped variants of the codex and opencode targets. OpenCode already reads
+  a project's `.claude/skills`, which the project scope serves; per-project Codex
+  skills come back the day a user asks for them.
+- kinds other than skills for the codex and opencode targets — the two queued
+  follow-up changes own those.
+- Codex custom prompts. Vendor-deprecated; betting on them is debt on day one.
 - reading or writing anything inside a target. Targets describe locations; `link-state`
   and `linking` act on them.
 
 ## Constraints
 
-**Nothing outside this package may name `~/.claude`, and nothing may assume a target
-has all three kinds.** Both assumptions would compile and both would be wrong the
-moment a second target exists. A target that accepts only skills must cause no error
-about agents.
+**No code outside this package may derive a path from `~/.claude`, `~/.agents` or
+`~/.config/opencode`, and nothing may assume a target has all three kinds.** Both
+assumptions would compile and both are wrong now that skills-only targets exist. A
+target that accepts only skills must cause no error about agents. Documentation
+strings — help's env table, the README — name the defaults, exactly as they always
+named `~/.claude`.
 
-**`CLAUDE_HOME` overrides the root.** This is not a convenience feature — **it is what
+**`CLAUDE_HOME` overrides the root, and `AGENTS_HOME`/`OPENCODE_HOME` do the same
+for the new targets.** This is not a convenience feature — **it is what
 makes the entire test suite safe.** Every test points it at a temporary directory, so
 no test can touch a real configuration. Remove it and the suite becomes something you
 cannot run twice.
@@ -76,7 +94,16 @@ target that cannot say where it lives is a target nothing should be written to.
 - Three kinds: `skills`, `agents`, `commands`. Skills are directories; agents and
   commands are `.md` files. This mirrors what Claude Code actually loads.
 - Adding a target is adding one implementation of one interface — no registry file, no
-  plugin mechanism, no configuration.
+  plugin mechanism, no configuration. Proven twice on 2026-08-14: codex and opencode
+  each arrived as one file and one `Resolve` arm.
+- **Two per-tool targets with disjoint roots**, not one shared `agents` target — user
+  decision, 2026-08-14. Per-tool rows keep doctor and uninstall honest; the
+  shared-path fact is documented, not modelled.
+- **The new targets are single-root** (no project variant) and a command still acts on
+  exactly one chosen destination, never all — user decision, 2026-08-14.
+- Roots verified against vendor docs and the sst/opencode source on 2026-08-14; the
+  reversal of "targets other than Claude Code" is recorded, dated, in
+  `docs/STATE.md`.
 - `Exists()` is discovered by interface assertion rather than required of every target,
   so a target that cannot answer is assumed present instead of blocking.
 - **Project scope is the working directory, never the repo root.** `repoRoot()` finds
@@ -85,7 +112,7 @@ target that cannot say where it lives is a target nothing should be written to.
 
 ## Task breakdown
 
-Complete. Shipped in phase 1; scopes added later.
+Complete. Shipped in phase 1; scopes added later; codex and opencode added 2026-08-14.
 
 ## Verification criteria
 
@@ -109,7 +136,19 @@ Complete. Shipped in phase 1; scopes added later.
   Proof: internal/target/scope_test.go TestProjectWithNoDirectoryIsInert
 - each scope resolves to its own root
   Proof: internal/target/scope_test.go TestResolveScope
-- **the two scopes never share a root**, or isolation is a claim with nothing behind it
+- **no two destinations share a root**, or isolation is a claim with nothing behind it
   Proof: internal/target/scope_test.go TestScopesNeverShareARoot
 - an unknown scope falls back to global rather than to nothing
   Proof: internal/target/scope_test.go TestUnknownScopeFallsBackToGlobal
+- the codex root honours `AGENTS_HOME` and falls back to `~/.agents`
+  Proof: internal/target/codex_test.go TestCodexRootResolution
+- codex serves skills at `<root>/skills` and rejects agents and commands
+  Proof: internal/target/codex_test.go TestCodexAcceptsOnlySkills
+- codex reports presence honestly
+  Proof: internal/target/codex_test.go TestCodexExists
+- the opencode root honours `OPENCODE_HOME` and falls back to `~/.config/opencode`
+  Proof: internal/target/opencode_test.go TestOpencodeRootResolution
+- opencode serves skills at `<root>/skills` and rejects agents and commands
+  Proof: internal/target/opencode_test.go TestOpencodeAcceptsOnlySkills
+- `Resolve` returns the codex and opencode targets for their scopes
+  Proof: internal/target/scope_test.go TestResolveNewDestinations
