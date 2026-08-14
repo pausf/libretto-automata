@@ -42,14 +42,14 @@ Spec traceability: each task names its delta. Criteria quoted are the delta's
 **Interfaces — produces:** `target.Codex` (implements `Target` + `Exists()`),
 `target.NewCodex()`, `target.EnvAgentsHome = "AGENTS_HOME"`.
 
-- [ ] Write the failing tests, mirroring `target_test.go`'s Claude set:
+- [x] Write the failing tests, mirroring `target_test.go`'s Claude set:
   root resolution (`AGENTS_HOME` wins via `t.Setenv`, `~/.agents` fallback),
   `Kinds()` exactly `[Skills]`, `Dir(Skills) == root/skills`,
   `Accepts(Agents)==false`, `Accepts(Commands)==false`, `Exists()` false on a
   missing dir and true after `os.MkdirAll`.
-- [ ] Run `go test ./internal/target/ -run TestCodex -v` — expect compile
+- [x] Run `go test ./internal/target/ -run TestCodex -v` — expect compile
   failure (`Codex` undefined).
-- [ ] Implement `codex.go` as `claude.go`'s 1:1 sibling (~40 lines):
+- [x] Implement `codex.go` as `claude.go`'s 1:1 sibling (~40 lines):
 
 ```go
 // EnvAgentsHome overrides the Codex target's root. Libretto-only, for test
@@ -90,7 +90,7 @@ func (c Codex) Exists() bool {
 }
 ```
 
-- [ ] `go test ./internal/target/ -count=1` green; commit
+- [x] `go test ./internal/target/ -count=1` green; commit
   `feat(target): codex target, skills only, rooted at ~/.agents`.
 
 ### Task 2: `target.Opencode` — waits on nothing (parallel with 1)
