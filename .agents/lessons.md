@@ -84,3 +84,11 @@ Did: pending, not missed — phase 8 applies the delta and deletes the folder in
 ## 2026-08-14 · add-opencode-command-target · 6→7
 Said: a queue capture (adapt-payload-wording-to-three-hosts) rides this feature branch into its PR
 Did: named in the phase 7 report and the request description; the capture is the honest home for the half of the ask this change does not do
+
+## 2026-08-14 · adapt-payload-wording-to-three-hosts · 6→7
+Said: the named ceiling understates the hole — any occurrence of the marker satisfies the gate, including one in prose unrelated to any mandate
+Did: fixed the criterion's ceiling to describe the real behaviour, reproduced with a probe file ("talk about a host's own dog here" passes with ok); the regex is left alone deliberately, because judging relevance is the paragraph parser the delta named out of scope
+
+## 2026-08-14 · adapt-payload-wording-to-three-hosts · 6→7
+Said: the delta was applied onto the capability spec but the change folder was not deleted in the same commit, which AGENTS.md requires
+Did: fixed properly this time — the folder deletion was amended into the same commit rather than added as a second one. The previous change deferred the same finding to a follow-up commit; the tension is that review-work needs a committed diff to review, and amending an unpushed commit resolves it without rewriting shared history

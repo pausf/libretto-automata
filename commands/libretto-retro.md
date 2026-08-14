@@ -6,6 +6,9 @@ description: Spend the lessons ledger — fix what the flow got corrected on, so
 Skill(skill="retro")
 ```
 
+That is Claude Code's spelling. On another host, load the `retro` skill with the host's
+own skill tool — the skill is the rule, not the tool name.
+
 The skill owns everything: reading `.agents/lessons.md`, classifying each open
 entry, recording project knowledge in the project's contract, proposing — never
 applying — diffs to the payload, and marking entries resolved. This command routes

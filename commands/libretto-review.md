@@ -8,6 +8,9 @@ Takes one input: the PR/MR URL.
 Skill(skill="review-project")
 ```
 
+That is Claude Code's spelling. On another host, load the `review-project` skill with the
+host's own skill tool — the skill is the rule, not the tool name.
+
 The skill owns everything — forge derivation, the clone check, worktree versus
 branch-switch, the reviewer, the restore. This command routes and never implements;
 a second statement of any of those rules here would be the copy nobody edits.

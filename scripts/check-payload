@@ -280,6 +280,36 @@ else
   done <<< "$addressee"
 fi
 
+printf '\n── a Claude-only mechanism names the host-neutral capability ──\n'
+# The payload keeps Claude Code's tool names — that is the contract, not an oversight.
+# What it owes alongside is the capability, so a model on Codex or OpenCode reaches for
+# its own equivalent instead of a tool it does not have.
+#
+# The classification is a marker lookup and exercises no judgment, exactly like the
+# addressee check above: `native prompt` for a mandate to ask, `host's own` for a mandate
+# to load a skill. Two alternatives because the four skills that already comply all carry
+# the first and none carries anything else — a single new marker would fail the files that
+# got it right.
+#
+# File-level, and newlines squashed before searching. Both matter: the marker phrase wraps
+# across line breaks in prose this width, and a line-scoped search reported a compliant
+# file as broken while this check was being written.
+#
+# agents/ is excluded on purpose. Agents install into Claude alone, so there is no second
+# host for their prose to be wrong for. That changes when they gain one.
+missing=''
+for f in $(rg -l 'AskUserQuestion|Skill\(skill=' skills commands -g '*.md' 2>/dev/null); do
+  tr '\n' ' ' < "$f" | rg -q "native +prompt|host's +own" || missing="$missing$f"$'\n'
+done
+if [ -z "$missing" ]; then
+  ok 'every Claude-only mandate names the capability beside it'
+else
+  while IFS= read -r m; do
+    [ -z "$m" ] && continue
+    fail "mandates a Claude-only tool and names no host-neutral capability: $m"
+  done <<< "$missing"
+fi
+
 printf '\n'
 if [ "$fails" -eq 0 ]; then
   printf 'check-payload: all checks passed\n\n'; exit 0

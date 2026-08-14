@@ -268,6 +268,10 @@ the workspace path, the frozen diff path, and its brief — nothing else:
   | `review-lens-reliability` | `Skill(skill="review-reliability")` |
   | `review-lens-tests` | `Skill(skill="review-tests")` |
 
+`Skill(skill="…")` is Claude Code's spelling. On another host the lens applies the same
+skill through the host's own skill tool — the four skills are the contract, the tool that
+loads them is not.
+
 **The agents are `review-lens-*`; the skills they apply keep the plain names.** Those
 two live in different directories and only the agents collided: `review-*` is a
 crowded namespace in a real `~/.claude`, and `review-reliability` hit an agent

@@ -14,6 +14,10 @@ work on something else instead is the surprise nobody wants.
 Skill(skill="find-work")
 ```
 
+Claude Code's spelling, and the same for `AskUserQuestion` below. Load the skill with the
+host's own skill tool, and ask with the host's own native prompt — or in conversation where
+there is none.
+
 Ask it for **the queue only** — its *captured, never started* scan, oldest first. Not
 source 1, not the tracker, and no phase begun: this command chooses the work itself in
 step 2.

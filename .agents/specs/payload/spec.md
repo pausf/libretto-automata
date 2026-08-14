@@ -585,9 +585,45 @@ the copy stays comparable with upstream.
   `Claude Code` — or the gate fails; the check deletes allowlisted tokens per hit
   before re-searching, so an addressee sharing a line with a factual use still fails.
   The classification lives entirely in the allowlist; the check exercises no judgment.
-  Where a skill depends on a Claude-Code-only mechanism (`AskUserQuestion`), the
-  dependency stays and the conversational fallback is named — canonically in
-  `record-work`, and at each mandate site.
+  Proof: scripts/check-payload
+- **a Claude-only mechanism names the host-neutral capability, in every file that mandates
+  one.** The dependency stays — `AskUserQuestion` and `Skill(skill="…")` keep Claude
+  Code's names, because a capability described and never named is a capability nobody can
+  invoke. What the file owes alongside is the capability, so a model on Codex or OpenCode
+  reaches for its own equivalent: a **marker phrase**, `native prompt` for a mandate to
+  ask and `host's own` for a mandate to load a skill. Either satisfies the check.
+  `record-work` remains the canonical statement of the rule; the per-file line points at
+  it and never restates it.
+
+  **This narrowed a promise.** It read "at each mandate *site*" and the gate it cited
+  checked no part of it — the addressee half was all `check-payload` ever tested, so the
+  criterion was green from the day it was written while seven files broke it. Site-level is
+  now file-level, which is what a check can enforce against prose that wraps.
+
+  **Two markers and not one**, because the four skills that already complied all carry
+  `native prompt` and none carries anything else; a single new marker would have failed the
+  files that got it right. **Newlines are squashed before searching** — the phrase wraps
+  across line breaks at this width, and a line-scoped search reported `write-plan` as
+  broken while this check was being written. `agents/**` is excluded: agents install into
+  Claude alone, so there is no second host for their prose to be wrong for.
+
+  **Ceiling named, and it is wider than "a file that already complied".** The check asks
+  whether the marker appears anywhere in the file, so **any** occurrence satisfies it —
+  including one in prose that has nothing to do with a mandate. A file whose only match is
+  the sentence "talk about a host's own dog here" passes, having never named a capability
+  at all; measured with a probe file, not reasoned about. A new bare mention riding into a
+  legitimately compliant file passes for the same reason.
+
+  This is accepted rather than closed, and the first draft of this bullet described only
+  the narrower half — which is the worse error of the two, because a ceiling stated in a
+  criterion is the one place a reader is entitled to trust about what the gate does not
+  catch. **The gate stops whole files with no pointer at all**, which is the failure that
+  actually happened: seven of eleven. It does not verify that a marker is doing its job,
+  and it cannot — "is this sentence about the mandate" is judgment, and the addressee check
+  beside it exists precisely because a check that exercises judgment drifts.
+
+  The replacement, the day a file drifts internally or somebody games it, is a check scoped
+  to the paragraph — never a longer regex.
   Proof: scripts/check-payload
 - **no skill hardcodes the install layout.** A `~/.claude/` path is only true under
   `install --global`; a skill's tools resolve from its own base directory, which every

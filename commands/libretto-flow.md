@@ -9,6 +9,14 @@ Input: `$ARGUMENTS` — a Jira issue key, an issue URL, a board URL, or empty.
 Invoke each skill with the `Skill` tool. Do not read their `SKILL.md` files directly
 and do not inline their logic here.
 
+**`Skill(skill="…")` and `AskUserQuestion` below are Claude Code's spellings, and this
+payload installs into three hosts.** Every one of them means a capability, not a product:
+load that skill with the host's own skill tool, and put a question to the user with the
+host's own native prompt — or in conversation where there is none. **The stop is the rule,
+never the widget**, and `record-work` states that once for the whole flow. Said here once
+rather than beside each of the twelve mentions below: a routing table annotated twelve
+times stops being scannable, which is the only reason it is a table.
+
 ## Standing rules
 
 `Skill(skill="evidence")` applies at every phase, not at one of them. Nothing is

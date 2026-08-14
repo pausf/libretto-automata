@@ -62,6 +62,12 @@ mid-run.
 Standing rules unchanged: `evidence` at every phase, `ponytail` throughout, every phase
 invoked even when its answer is "nothing here".
 
+`Skill(skill="…")` below is Claude Code's spelling; on another host, load that skill with
+the host's own skill tool. This command answers the stops rather than the widgets, so
+where a phase would have used a native prompt there is nothing to substitute — but the one
+question that survives, the bump at the very end, asks with the host's own native prompt
+or in conversation where there is none.
+
 ```
 Skill(skill="find-work")          1 · with a task given, that task; with none, home first —
                                       the oldest change with open boxes
