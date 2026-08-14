@@ -7,7 +7,7 @@ criterion that closes it.
 
 ## Tasks
 
-- [ ] 1. `spec-drift --block`: same checks as default, exit 1 when it warned, plus
+- [x] 1. `spec-drift --block`: same checks as default, exit 1 when it warned, plus
       usage line and a self-test case. (payload · Proof: spec-drift --self-test)
 - [ ] 2. record-work SKILL.md: the copy-paste pre-commit snippet using `--block`,
       framed opt-in, default unchanged; wiring row in check-payload. Waits on 1.

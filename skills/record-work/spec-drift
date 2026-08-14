@@ -35,13 +35,14 @@
 #   default    staged code whose owning spec did not move
 #   --anchors  every Proof: citation still resolves, test name included
 #   --trace    the whole tree: orphan code, dead ownership, unproven criteria
+#   --block    default's checks, but a warning exits 1 — for a hook you opted into
 #
 # Default mode always exits 0. It warns; blocking in someone else's project gets
 # the check deleted, and a deleted check finds nothing. --anchors exits 1, so CI
 # can gate on it. --trace exits 0 too: it is a map of where the contract is thin,
 # and in a repository that grew before its specs did that map is long on day one.
 #
-# Usage: spec-drift [--anchors|--trace|--self-test]
+# Usage: spec-drift [--anchors|--trace|--block|--self-test]
 
 set -uo pipefail   # deliberately not -e: this must never be what fails a commit
 
@@ -203,6 +204,9 @@ drift() {
   fi
 
   [ -z "$stale$unanchored" ] || printf '\n'
+  # --block: the opt-in gate. Same checks, but a warning becomes a refusal — for
+  # whoever wired it into a hook on purpose. The default stays exit 0 always.
+  [ "${BLOCK:-0}" = 1 ] && [ -n "$stale$unanchored" ] && exit 1
   exit 0
 }
 
@@ -452,6 +456,24 @@ also none' "$(criteria_without_proof "$tmp")"
   done
   want 'a live glob is not reported dead'  yes "$live_hit"
 
+  # --block is the opt-in gate: the same checks as default mode, exit 1 when it
+  # warned. Proven end-to-end in a throwaway repo, because drift() reads the index
+  # and nothing else can stage a file safely. Both runs use the same tree; the only
+  # difference is whether the governing spec moved too, which is the whole question.
+  self=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+  blockrepo=$(mktemp -d)
+  ( cd "$blockrepo" &&
+    git init -q && git config user.email t@t && git config user.name t &&
+    mkdir -p .agents/specs/thing && printf 'Governs: src/**\n' > .agents/specs/thing/spec.md &&
+    mkdir src && printf 'x\n' > src/a.txt &&
+    git add .agents src/a.txt && git commit -qm base &&
+    printf 'y\n' >> src/a.txt && git add src/a.txt )
+  ( cd "$blockrepo" && "$self" --block >/dev/null 2>&1 ); want '--block exits 1 on drift' 1 "$?"
+  ( cd "$blockrepo" && "$self" >/dev/null 2>&1 );         want 'default still exits 0 on drift' 0 "$?"
+  ( cd "$blockrepo" && printf 'moved\n' >> .agents/specs/thing/spec.md && git add .agents &&
+    "$self" --block >/dev/null 2>&1 ); want '--block exits 0 when the spec moved' 0 "$?"
+  rm -rf "$blockrepo"
+
   # The dependency guard: without rg this script must refuse loudly, never report
   # "no drift". bash by absolute path, so only rg is missing from the child's PATH.
   bash_bin=$(command -v bash)
@@ -470,6 +492,7 @@ case "${1:-}" in
   --self-test) self_test; exit $? ;;
   --anchors)   anchors;   exit $? ;;
   --trace)     trace;     exit $? ;;
+  --block)     BLOCK=1; drift ;;
   '')          drift ;;
-  *) printf 'usage: %s [--anchors|--trace|--self-test]\n' "$0" >&2; exit 2 ;;
+  *) printf 'usage: %s [--anchors|--trace|--block|--self-test]\n' "$0" >&2; exit 2 ;;
 esac
