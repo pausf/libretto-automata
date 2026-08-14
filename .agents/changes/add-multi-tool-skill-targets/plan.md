@@ -241,16 +241,16 @@ only if its codex row example now misleads
 **Files:** modify `scripts/check-payload`, plus every `skills/**/*.md` and
 `commands/**/*.md` the audit flags
 
-- [ ] Audit: `rg -n '\bClaude\b' skills commands --glob '*.md'` — classify
+- [x] Audit: `rg -n '\bClaude\b' skills commands --glob '*.md'` — classify
   each hit: **fact** (a real path `~/.claude`, `CLAUDE.md`, `CLAUDE_HOME`,
   or the product name `Claude Code` in a sentence about Claude Code
   specifically) or **addressee** (the text means *the agent running this*).
-- [ ] Rewrite the addressee hits: "the agent" / imperative voice; where a
+- [x] Rewrite the addressee hits: "the agent" / imperative voice; where a
   Claude-only mechanism is invoked (`AskUserQuestion`, `Skill` tool), keep it
   and name the generic fallback in place ("or ask in conversation when the
   native prompt does not exist"). Frontmatter `version:` bumps only where an
   instruction changed meaning, not for pronoun swaps.
-- [ ] Add the check to `scripts/check-payload`, allowlist-only, no judgment:
+- [x] Add the check to `scripts/check-payload`, allowlist-only, no judgment:
 
 ```bash
 # prose must not address Claude where it means the running agent.
@@ -262,7 +262,7 @@ prose_claude() {
 ```
   wired into the script's existing fail-collection pattern (match its style;
   the allowlist is the entire classification).
-- [ ] Force it red once on purpose (plant `ask Claude` in a scratch skill,
+- [x] Force it red once on purpose (plant `ask Claude` in a scratch skill,
   watch the gate fail, revert) — green on first run is not evidence. Then
   `scripts/check-payload` green; commit
   `feat(payload): tool-agnostic prose, enforced by check-payload`.

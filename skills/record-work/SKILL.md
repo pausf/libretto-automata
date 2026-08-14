@@ -206,6 +206,12 @@ the same rule arriving at the phase that used to be written as prose, and it is 
 here because a rule written only where the *asking* is described gets read as belonging
 to phase 4 alone.
 
+`AskUserQuestion` is Claude Code's native prompt, and this flow also runs in agents
+that have no such tool. **The rule is about the stop, not the widget**: where the
+native prompt does not exist, ask the same question in conversation — options listed,
+recommendation first — and wait for the answer. That fallback holds everywhere this
+document says `AskUserQuestion`, and everywhere another skill in this flow does.
+
 ### The one exception, and it is the whole of `/libretto-attacca`
 
 **Everything above — the question, the native prompt, the waiting — is the attended

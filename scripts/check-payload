@@ -260,6 +260,23 @@ while IFS= read -r p; do
   [ -e "$p" ] && ok "$p" || fail "referenced path does not exist: $p"
 done <<< "$paths"
 
+printf '\n── prose addresses the agent, never Claude by name ──\n'
+# Skills install into Codex and OpenCode too, and "ask Claude" read there is an
+# instruction about somebody else. The classification lives entirely in this
+# allowlist — factual uses: env var, file names, real paths, and the product name
+# "Claude Code" in a sentence about Claude Code. Anything else is an addressee
+# and fails. The check exercises no judgment, so it cannot drift.
+addressee=$(rg -nN '\bClaude\b' skills commands -g '*.md' 2>/dev/null \
+              | rg -v 'CLAUDE_HOME|CLAUDE\.md|~/\.claude|\.claude/|Claude Code' || true)
+if [ -z "$addressee" ]; then
+  ok 'no bare Claude in payload prose'
+else
+  while IFS= read -r hit; do
+    [ -z "$hit" ] && continue
+    fail "prose addresses Claude where it means the agent: $hit"
+  done <<< "$addressee"
+fi
+
 printf '\n'
 if [ "$fails" -eq 0 ]; then
   printf 'check-payload: all checks passed\n\n'; exit 0
