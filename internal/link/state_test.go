@@ -8,14 +8,16 @@ import (
 	"github.com/pausf/libretto-automata/internal/target"
 )
 
-// sandbox builds a repo and an empty target root, and points CLAUDE_HOME at the
-// target so nothing in this suite can reach the real ~/.claude.
+// sandbox builds a repo and an empty target root, and points every target's
+// home override at a temp dir so nothing in this suite can reach a real one.
 func sandbox(t *testing.T, repoPaths ...string) (repo string, tg target.Target) {
 	t.Helper()
 
 	repo = repoWith(t, repoPaths...)
 	home := t.TempDir()
 	t.Setenv(target.EnvClaudeHome, home)
+	t.Setenv(target.EnvAgentsHome, t.TempDir())
+	t.Setenv(target.EnvOpencodeHome, t.TempDir())
 
 	return repo, target.NewClaude()
 }

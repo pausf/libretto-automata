@@ -142,10 +142,10 @@ touch the new scopes.**
 **Files:** modify `cmd/libretto/helpers_test.go` (`newFixture`),
 `internal/link/state_test.go` (`sandbox()`)
 
-- [ ] `newFixture` and `sandbox()` additionally `t.Setenv(target.EnvAgentsHome,
+- [x] `newFixture` and `sandbox()` additionally `t.Setenv(target.EnvAgentsHome,
   t.TempDir())` and `t.Setenv(target.EnvOpencodeHome, t.TempDir())`, exposing
   both dirs on the fixture as `f.Codex`, `f.Opencode` for later tasks.
-- [ ] Full suite green (no behaviour change expected); commit
+- [x] Full suite green (no behaviour change expected); commit
   `test: sandbox the codex and opencode roots in every fixture`.
 
 ### Task 5: CLI flags and destination order — waits on 4

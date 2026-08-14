@@ -19,16 +19,23 @@ import (
 
 // fixture is a repo and a target, both temporary, both empty.
 type fixture struct {
-	Repo    string
-	Claude  string
-	Project string
+	Repo     string
+	Claude   string
+	Project  string
+	Codex    string
+	Opencode string
 }
 
 func newFixture(t *testing.T) fixture {
 	t.Helper()
 
-	f := fixture{Repo: t.TempDir(), Claude: t.TempDir(), Project: t.TempDir()}
+	f := fixture{
+		Repo: t.TempDir(), Claude: t.TempDir(), Project: t.TempDir(),
+		Codex: t.TempDir(), Opencode: t.TempDir(),
+	}
 	t.Setenv(claudeHomeEnv, f.Claude)
+	t.Setenv(target.EnvAgentsHome, f.Codex)
+	t.Setenv(target.EnvOpencodeHome, f.Opencode)
 	return f
 }
 
