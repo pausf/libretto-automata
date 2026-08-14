@@ -93,10 +93,10 @@ In: the six outcomes above. Out, named:
   Proof: scripts/check-payload
 - build-and-check carries the visual-output rule — a wiring row anchors it.
   Proof: scripts/check-payload
-- FLOW.md's Open section no longer lists the artifact question as open — checked by
-  reading the section in the same commit; no mechanical anchor reaches `docs/`, and
-  inventing one for a one-time closure is tooling for a single edit.
-  Proof: reviewed in the 6→7 seam against this criterion
+- FLOW.md's Open section no longer lists the artifact question as open — no
+  mechanical anchor reaches `docs/`, and inventing one for a one-time closure is
+  tooling for a single edit, so the 6→7 seam reads the section against this
+  criterion instead of a `Proof:` citation. A deliberate gap, named.
 - review-work instructs the ledger append with the exact header contract — a wiring
   row anchors it.
   Proof: scripts/check-payload
