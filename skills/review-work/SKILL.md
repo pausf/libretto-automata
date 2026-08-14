@@ -95,6 +95,17 @@ Per finding, in the order they came back:
 2. re-run **the proofs that finding touched**, in the foreground, and read the output.
    Not the whole suite unless the fix reaches that far
 3. record what changed, one line, for phase 7 to carry beside the finding
+4. append one entry to `.agents/lessons.md` — the same ledger `skills/evidence/`
+   writes, the same header contract, with the phase field exactly `6→7`:
+
+   ```
+   ## <date> · <change> · 6→7
+   ```
+
+   One entry per finding, fixed or not. This is what makes findings countable:
+   `libretto metrics` reads that phase value to say *where* corrections surface,
+   and keys on `6→7` to keep reviewer findings out of the user-corrections column.
+   The write is the seam's — the reviewer subagent itself still writes nothing.
 
 **Two failed attempts on one finding stops that finding.** Not a third try. It goes to
 phase 7 as *found, not fixed*, with what failed and what is still unknown — the stopped-item

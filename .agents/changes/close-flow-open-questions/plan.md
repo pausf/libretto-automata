@@ -16,7 +16,7 @@ criterion that closes it.
       looking at it, render and look before the seam — wiring row; and FLOW.md's
       Open section closes the artifact question. Independent.
       (payload · Proof: scripts/check-payload + seam readback for FLOW.md)
-- [ ] 4. review-work SKILL.md: append one ledger entry per finding, header contract
+- [x] 4. review-work SKILL.md: append one ledger entry per finding, header contract
       `## <date> · <change> · 6→7`, wiring row. Independent.
       (payload · Proof: scripts/check-payload)
 - [ ] 5. write-spec SKILL.md step 4 recut: no hard cap, one call, zero legitimate,
