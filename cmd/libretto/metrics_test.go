@@ -517,6 +517,128 @@ Did: wrote an unfalsifiable criterion
 	}
 }
 
+func TestCorrectionsCountsByPhase(t *testing.T) {
+	// The breakdown answers *where* corrections surface, spelled exactly as the
+	// ledger spells them — a normaliser would be a second spelling that drifts.
+	root := ledgerAt(t, `## 2026-08-13 · a · phase 2
+Said: one
+## 2026-08-13 · a · phase 2
+Said: two
+## 2026-08-14 · b · 6→7
+Said: a reviewer finding
+## 2026-08-14 · - · phase 8
+Said: an orphan still surfaced somewhere
+`)
+	counts, byPhase, orphans, seen := corrections(root)
+	if !seen {
+		t.Fatal("the ledger exists and must be seen")
+	}
+	if byPhase["phase 2"] != 2 || byPhase["6→7"] != 1 || byPhase["phase 8"] != 1 {
+		t.Fatalf("wanted phase 2:2, 6→7:1, phase 8:1, got %v", byPhase)
+	}
+	if orphans != 1 {
+		t.Fatalf("wanted 1 orphan, got %d", orphans)
+	}
+	if counts["b"] != 0 {
+		t.Fatalf("a 6→7 entry is a reviewer finding, not a user correction: got %d for b", counts["b"])
+	}
+}
+
+func TestOrphanFindingIsNotAnOrphanCorrection(t *testing.T) {
+	// A 6→7 entry with no change open is still a finding: it counts by phase and
+	// never in the "correction(s) outside any change" line, whose word is correction.
+	root := ledgerAt(t, `## 2026-08-14 · - · 6→7
+Said: a finding with no change open
+`)
+	_, byPhase, orphans, seen := corrections(root)
+	if !seen {
+		t.Fatal("the ledger exists and must be seen")
+	}
+	if orphans != 0 {
+		t.Fatalf("a 6→7 orphan is a finding, not a correction: got %d orphans", orphans)
+	}
+	if byPhase["6→7"] != 1 {
+		t.Fatalf("the finding must still count by phase, got %v", byPhase)
+	}
+}
+
+func TestReviewerFindingsStayOutOfCorrections(t *testing.T) {
+	// The per-change corr column keeps meaning user corrections only; the seam's
+	// findings arrive under 6→7 and count in the breakdown, never in the column.
+	root := ledgerAt(t, `## 2026-08-13 · a · build-and-check
+Said: a user correction
+## 2026-08-13 · a · 6→7
+Said: a reviewer finding
+`)
+	now := time.Now().Unix()
+	g := gitAtRoot(root, fakeGit(".agents/changes/a/proposal.md\n",
+		map[string]string{"a": fmt.Sprintf("%d\n", now)}, nil))
+
+	var out strings.Builder
+	if err := metrics(&out, nil, g, ""); err != nil {
+		t.Fatal(err)
+	}
+	if got := corrField(t, out.String(), "a"); got != "1" {
+		t.Fatalf("wanted 1 user correction for a, got %q in:\n%s", got, out.String())
+	}
+	if !strings.Contains(out.String(), "6→7") {
+		t.Fatalf("the finding must still appear in the phase breakdown:\n%s", out.String())
+	}
+}
+
+func TestMetricsReportsCorrectionsByPhase(t *testing.T) {
+	root := ledgerAt(t, `## 2026-08-13 · a · phase 2
+Said: early
+## 2026-08-14 · a · phase 8
+Said: late
+`)
+	now := time.Now().Unix()
+	g := gitAtRoot(root, fakeGit(".agents/changes/a/proposal.md\n",
+		map[string]string{"a": fmt.Sprintf("%d\n", now)}, nil))
+
+	var out strings.Builder
+	if err := metrics(&out, nil, g, ""); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"corrections by phase", "phase 2", "phase 8", "where the flow got corrected"} {
+		if !strings.Contains(out.String(), want) {
+			t.Fatalf("the breakdown must say %q:\n%s", want, out.String())
+		}
+	}
+}
+
+func TestMetricsPhaseBreakdownAbsentLedger(t *testing.T) {
+	// Absent, empty and populated are three facts. Absent means capture is not in
+	// use; present-but-empty means it is in use and nothing was captured yet.
+	now := time.Now().Unix()
+	g := gitAtRoot(t.TempDir(), fakeGit(".agents/changes/c/proposal.md\n",
+		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil))
+	var out strings.Builder
+	if err := metrics(&out, nil, g, ""); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "corrections not captured") {
+		t.Fatalf("an absent ledger must read as capture-not-in-use:\n%s", out.String())
+	}
+	if strings.Contains(out.String(), "corrections by phase") {
+		t.Fatalf("an absent ledger must render no phase rows:\n%s", out.String())
+	}
+
+	root := ledgerAt(t, "")
+	g = gitAtRoot(root, fakeGit(".agents/changes/c/proposal.md\n",
+		map[string]string{"c": fmt.Sprintf("%d\n", now)}, nil))
+	out.Reset()
+	if err := metrics(&out, nil, g, ""); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "no corrections captured yet") {
+		t.Fatalf("a present-but-empty ledger must say so in one line:\n%s", out.String())
+	}
+	if strings.Contains(out.String(), "corrections by phase") {
+		t.Fatalf("an empty ledger must render no phase rows:\n%s", out.String())
+	}
+}
+
 func TestNoLedgerReportsADashNotAZero(t *testing.T) {
 	// No ledger and a ledger with nothing for this change are different facts: the
 	// first means capture is not in use, the second means the flow ran uncorrected.

@@ -36,3 +36,11 @@ specs.
 
 **The `Queued:` line is necessary and not sufficient.** A report that induces rework is
 worse than silence, because silence costs a question and this costs the work twice.
+
+## 2026-08-14 · close-flow-open-questions · 6→7
+Said: code with no outcome behind it — the delta must name every file it moves
+Did: rewrote commands/libretto-flow.md without an outcome naming it; the delta now names all three homes of the rule
+
+## 2026-08-14 · close-flow-open-questions · 6→7
+Said: a 6→7 entry is a finding wherever it sits, never a correction
+Did: counted an orphan 6→7 entry into the corrections-outside-any-change line; exclusion now outranks the orphan count

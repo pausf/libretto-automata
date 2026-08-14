@@ -135,7 +135,17 @@ A deliberate no is a valid answer — say it out loud in the report so the next 
 knows the question was asked and not skipped.
 
 Anyone who wants it to be a gate can wire it into their own `pre-commit` hook or CI.
-That is their decision to make, not this flow's to make for them.
+That is their decision to make, not this flow's to make for them — and once made, it
+is one paste. `--block` runs the same checks and turns the warning into exit 1:
+
+```bash
+printf '#!/bin/sh\nexec <skill-base>/spec-drift --block\n' > .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+With `<skill-base>` spelled as the real installed path. **This is opt-in and stays
+opt-in**: nothing in the flow installs the hook, the default mode still always exits
+0, and removing the gate is deleting the hook file.
 
 The plan is updated in the same breath, per `skills/write-plan/` — by the
 orchestrator, never by a sub-agent.

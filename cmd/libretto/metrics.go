@@ -259,16 +259,22 @@ func boxIn(l string) string {
 // non-empty fields, date not validated. Anything else is skipped, never a crash — the
 // ledger is written by prompts, and a parser that dies on one bad line loses the report.
 //
-// Returns per-change counts, the entries whose change field is `-` (a correction with
-// no change open — counted nowhere, named in the report), and whether the file exists
-// at all. Absent and empty are different facts: absent means capture is not in use,
-// and printing 0 for that would read as a flow that was never corrected.
-func corrections(root string) (counts map[string]int, orphans int, seen bool) {
+// Returns per-change counts of user corrections, per-phase counts of everything,
+// the entries whose change field is `-` (a correction with no change open — in no
+// change's count, named in the report), and whether the file exists at all. Absent
+// and empty are different facts: absent means capture is not in use, and printing 0
+// for that would read as a flow that was never corrected.
+//
+// Phase values pass through exactly as the ledger spells them — a normaliser would
+// be a second spelling that drifts. `6→7` is the one value with meaning here: the
+// review seam ledgers its findings under it, and a finding is not a user
+// correction, so those entries count by phase and never in a change's column.
+func corrections(root string) (counts, byPhase map[string]int, orphans int, seen bool) {
 	b, err := os.ReadFile(path.Join(root, ".agents/lessons.md"))
 	if err != nil {
-		return nil, 0, false
+		return nil, nil, 0, false
 	}
-	counts = map[string]int{}
+	counts, byPhase = map[string]int{}, map[string]int{}
 	for _, l := range strings.Split(string(b), "\n") {
 		rest, ok := strings.CutPrefix(l, "## ")
 		if !ok {
@@ -282,13 +288,19 @@ func corrections(root string) (counts map[string]int, orphans int, seen bool) {
 		if date == "" || change == "" || phase == "" {
 			continue
 		}
+		byPhase[phase]++
+		// The exclusion outranks the orphan count: a 6→7 entry is a reviewer
+		// finding wherever it sits, and the orphans line says "correction(s)".
+		if phase == "6→7" {
+			continue
+		}
 		if change == "-" {
 			orphans++
 			continue
 		}
 		counts[change]++
 	}
-	return counts, orphans, true
+	return counts, byPhase, orphans, true
 }
 
 // The repository root comes from git rather than a parameter: the caller's cwd is where
@@ -340,7 +352,7 @@ func metrics(w io.Writer, args []string, git gitRunner, projects string) error {
 		return nil
 	}
 
-	corrCounts, orphans, ledgerSeen := corrections(root)
+	corrCounts, byPhase, orphans, ledgerSeen := corrections(root)
 
 	fmt.Fprintf(w, "\n  %-34s %7s %8s %7s %7s %7s  %s\n", "change", "commits", "span", "closed", "reopen", "corr", "state")
 	var totalCommits, totalReopen int
@@ -374,9 +386,41 @@ func metrics(w io.Writer, args []string, git gitRunner, projects string) error {
 	if orphans > 0 {
 		fmt.Fprintf(w, "  %d correction(s) outside any change\n", orphans)
 	}
+	phaseBreakdown(w, byPhase, ledgerSeen)
 	tokenBlock(w, projects, root, allNames, only)
 	fmt.Fprintf(w, "\n%s\n\n%s\n\n", flowLegend, flowCeiling)
 	return nil
+}
+
+// phaseBreakdown prints where corrections surfaced, one row per phase value the
+// ledger holds, spelled as the ledger spells it. Corrections at phase 2 are
+// questions working; findings at 6→7 are questions that were missing; corrections
+// after phase 8 are the expensive kind. The counting stays here and the reading
+// stays human. Sorted by count then name, so the ordering is deterministic and the
+// biggest number is the first thing read.
+func phaseBreakdown(w io.Writer, byPhase map[string]int, seen bool) {
+	if !seen {
+		fmt.Fprintf(w, "  corrections not captured — no .agents/lessons.md in this repository\n")
+		return
+	}
+	if len(byPhase) == 0 {
+		fmt.Fprintf(w, "  no corrections captured yet — the ledger exists and is empty\n")
+		return
+	}
+	phases := make([]string, 0, len(byPhase))
+	for p := range byPhase {
+		phases = append(phases, p)
+	}
+	sort.Slice(phases, func(i, j int) bool {
+		if byPhase[phases[i]] != byPhase[phases[j]] {
+			return byPhase[phases[i]] > byPhase[phases[j]]
+		}
+		return phases[i] < phases[j]
+	})
+	fmt.Fprintf(w, "\n  corrections by phase — where the flow got corrected, as the ledger spells it:\n")
+	for _, p := range phases {
+		fmt.Fprintf(w, "    %-20s %3d\n", p, byPhase[p])
+	}
 }
 
 // tokenBlock prints what the session transcripts say this repository's work cost.

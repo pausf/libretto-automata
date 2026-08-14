@@ -741,6 +741,40 @@ the copy stays comparable with upstream.
   prompt is checked by running it, and these rows are what keeps the decisive words in
   the files that own them.
   Proof: scripts/check-payload
+- **`spec-drift --block` turns the warning into exit 1, and only for whoever asked.** The
+  same checks as default mode; the default still always exits 0, because a gate that
+  surprises someone in their own project gets deleted and a deleted check finds nothing.
+  The flag exists so opting in costs one paste — `record-work` documents the pre-commit
+  snippet and names it opt-in — and nothing in the flow ever installs the hook. Proven
+  end-to-end in a throwaway repository inside the self-test: exit 1 on drift, exit 0
+  when the governing spec moved too, default unchanged.
+  Proof: skills/record-work/spec-drift --self-test
+- **the block hook snippet is documented as opt-in**, in the file that owns the
+  warn-never-block reasoning, so the gate and the reason it is not the default live one
+  paragraph apart.
+  Proof: scripts/check-payload
+- **if judging the change means looking at it, phase 6 renders it and looks before the
+  review seam.** A palette, a layout, a panel row, an image qualify; output that is read,
+  not looked at, does not. The project's own render path, what-was-seen in the evidence,
+  measured contrast where the change is about colour. A rule inside the phase, never a
+  stop — the seam's reviewer reads specs, diffs and test output, not pixels, so a render
+  nobody looked at in phase 6 is a render nobody looks at anywhere. The 1.4:1 palette
+  that satisfied its spec is the incident behind the rule. **Proved as wiring only.**
+  Proof: scripts/check-payload
+- **the 6→7 seam ledgers each finding under the phase value `6→7`**, one entry per
+  finding, fixed or not, on the same header contract `evidence` writes — which is what
+  makes findings countable and lets `libretto metrics` keep them out of the
+  user-corrections column. The write is the seam's; the reviewer subagent still writes
+  nothing. **Proved as wiring only.**
+  Proof: scripts/check-payload
+- **phase 2's questions are judgment with a one-call bound, biased to ask.** The hard cap
+  of three was lifted by the user on 2026-08-14 — better asked out of caution than
+  swallowed out of fear — and both edges stay named: every question one a wrong guess
+  would make expensive, never a form-length interrogation of things the code already
+  answers, zero still legitimate and said in one line. The promise lives in three homes —
+  `write-spec`, `docs/FLOW.md`, `commands/libretto-flow.md` — and moves in step or not at
+  all. **Proved as wiring only**, two rows: the judgment rule and its upper edge.
+  Proof: scripts/check-payload
 
 The bump question's rows, one per condition. **Each was written before the prose it
 describes and observed red**, except where noted in the change's own record — a row added
