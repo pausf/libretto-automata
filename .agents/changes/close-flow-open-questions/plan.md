@@ -22,11 +22,11 @@ criterion that closes it.
 - [x] 5. write-spec SKILL.md step 4 recut: no hard cap, one call, zero legitimate,
       better-ask-than-silent, never a form; wiring row. Independent.
       (payload · Proof: scripts/check-payload)
-- [ ] 6. `corrections()` returns per-phase counts; `6→7` excluded from the
+- [x] 6. `corrections()` returns per-phase counts; `6→7` excluded from the
       per-change corrections column. Independent — the `6→7` value is fixed by the
       spec, not by task 4 landing.
       (cli · Proof: TestCorrectionsCountsByPhase, TestReviewerFindingsStayOutOfCorrections)
-- [ ] 7. Corpus report renders the phase breakdown with its explanation line;
+- [x] 7. Corpus report renders the phase breakdown with its explanation line;
       absent ledger → not-in-use line; present-but-empty → one-line statement.
       Waits on 6.
       (cli · Proof: TestMetricsReportsCorrectionsByPhase, TestMetricsPhaseBreakdownAbsentLedger)
