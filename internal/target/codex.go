@@ -31,6 +31,16 @@ func NewCodex() Codex {
 	return Codex{root: filepath.Join(home, ".agents")}
 }
 
+// NewCodexProject roots the codex target at <dir>/.agents — Codex scans a
+// project's .agents/skills upward from the working directory. An empty dir is
+// inert, exactly as the Claude project target is.
+func NewCodexProject(dir string) Codex {
+	if dir == "" {
+		return Codex{}
+	}
+	return Codex{root: filepath.Join(dir, ".agents")}
+}
+
 func (c Codex) Name() string { return "codex" }
 func (c Codex) Root() string { return c.root }
 

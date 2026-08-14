@@ -185,25 +185,30 @@ command can live in `$GOBIN`, rebuilding into the clone upgrades a file nobody e
 
 ### Scope: where it writes
 
-| Invocation | Acts on |
-|---|---|
-| `--project` / `-p` | `<cwd>/.claude` |
-| `--global` / `-g` | `~/.claude` |
-| `--codex` | `~/.agents` — Codex CLI, skills only |
-| `--opencode` | `~/.config/opencode` — OpenCode, skills only |
-| none | **global** for every subcommand — what every invocation meant before scopes existed. The panel opens where it was left |
+Two axes, combinable — a tool flag and a scope flag answer different questions:
 
-Any two destination flags at once is an **error**, not a precedence rule. Two answers
-to one question is a mistake worth reporting rather than resolving by picking the last
-one and hoping. No short flags for the new destinations: `-g`/`-p` predate them, and a
-`-c` that might one day mean something else is not worth squatting.
+| Invocation | Meaning |
+|---|---|
+| `--claude` | Claude Code — the default tool |
+| `--codex` | Codex CLI, skills only |
+| `--opencode` | OpenCode, skills only |
+| `--global` / `-g` | the tool's machine-wide root — the default scope |
+| `--project` / `-p` | the tool's directory inside `<cwd>` |
+| none | **claude/global** for every subcommand — what every invocation meant before the axes existed. The panel opens where it was left |
+
+`--codex --project` acts on `<cwd>/.agents`; `--opencode` alone on
+`~/.config/opencode`. Two flags on **one axis** is an **error**, not a precedence
+rule — two answers to one question is a mistake worth reporting rather than
+resolving by picking the last one and hoping. No short flags for the tools:
+`-g`/`-p` predate them, and a `-c` that might one day mean something else is not
+worth squatting.
 
 A skills-only destination installs skills and nothing else: agents and commands are
 absent from the run and from the summary, never errors. `install --codex` reaches
 OpenCode too — it reads `~/.agents/skills` — a fact the README carries.
 
-The remembered panel destination recognises all four words; anything else still falls
-back to global.
+The remembered panel destination is a (tool, scope) pair; a legacy one-word file
+still reads, and anything unrecognised falls back to claude/global.
 
 Repeating the same flag is fine. It is unambiguous, and rejecting it would be pedantry.
 

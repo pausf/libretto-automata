@@ -69,6 +69,12 @@ type Panel struct {
 	Selected int
 	Targets  []TargetRow
 
+	// Scope is the side of every tool the strip is showing — global or project.
+	// One label above the rows rather than a row per (tool, scope) pair: the strip
+	// grows one row per tool and zero rows per scope. Empty hides the line, which
+	// keeps old fixtures and the preview rendering unchanged.
+	Scope string
+
 	// Results is the last action's report, one line per row, shown inside the frame
 	// below the strip. Empty until something has run.
 	//
@@ -361,8 +367,11 @@ func (t Theme) targets(p Panel) string {
 	// more strongly than a gold ◉ ring, which reads as an unticked radio button, so
 	// the inactive destination looked selected and correct behaviour got reported as
 	// a bug. The bullet now means one thing only.
-	rows := make([]string, len(p.Targets))
-	for i, tg := range p.Targets {
+	rows := make([]string, 0, len(p.Targets)+1)
+	if p.Scope != "" {
+		rows = append(rows, "  "+Fg(t.Muted).Render("scope ▸ ")+Fg(t.Steel).Render(p.Scope))
+	}
+	for _, tg := range p.Targets {
 		bullet, cursor := "○", " "
 		if tg.Configured {
 			bullet = "●"
@@ -374,19 +383,19 @@ func (t Theme) targets(p Panel) string {
 
 		switch {
 		case tg.Active:
-			rows[i] = "  " + Fg(t.Gold).Render(line)
+			rows = append(rows, "  "+Fg(t.Gold).Render(line))
 		case !tg.Configured:
 			// Recedes end to end — the whole row, not just its bullet.
-			rows[i] = "  " + Fg(t.Off).Render(line)
+			rows = append(rows, "  "+Fg(t.Off).Render(line))
 		default:
 			// Achromatic. The bullet used to be green, and green says "on" loudly
 			// enough that the inactive destination still looked like the chosen one
 			// even with gold on the active row. Two colours arguing about selection
 			// is one colour too many — the shape of the glyph carries configured-ness
 			// and nothing carries selection but gold.
-			rows[i] = "  " + Fg(t.Steel).Render(cursor+" "+bullet+" "+
-				pad(tg.Name, targetInfoCol-targetNameCol)) +
-				Fg(t.Muted).Render(tg.Info)
+			rows = append(rows, "  "+Fg(t.Steel).Render(cursor+" "+bullet+" "+
+				pad(tg.Name, targetInfoCol-targetNameCol))+
+				Fg(t.Muted).Render(tg.Info))
 		}
 	}
 	return strings.Join(rows, "\n")
@@ -449,7 +458,7 @@ func (t Theme) footer(p Panel, width int) string {
 	// believed, and never re-read. The selector's real keys used to live in the
 	// opening notice, where the first apply overwrote them and they were gone for the
 	// rest of the session.
-	hints, tight := "↑↓ · ⏎ select · tab scope · q quit", "⏎ select · tab · q"
+	hints, tight := "↑↓ · ⏎ · tab tool · s scope · q quit", "⏎ · tab · s · q"
 	switch {
 	case p.Confirm != "":
 		// While a question is open the only keys that matter are its answers.

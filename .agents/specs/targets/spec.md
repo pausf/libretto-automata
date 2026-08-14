@@ -16,16 +16,17 @@ A target declares three things and nothing else is asked of it:
 A kind knows its own shape: whether its items are directories or files, and which file
 extension counts. Callers ask the kind rather than deciding for themselves.
 
-### One destination at a time, never several
+### One (tool, scope) pair at a time, never several
 
-A command acts on **one** destination, chosen rather than assumed:
+A command acts on **one** destination, chosen rather than assumed. The two axes
+are deliberately never fused into one list — a flat list grows as tools × scopes,
+two axes as tools + scopes:
 
-| Scope | Root | Kinds |
-|---|---|---|
-| `GlobalScope` | `~/.claude`, honouring `CLAUDE_HOME` | skills, agents, commands |
-| `ProjectScope` | `<dir>/.claude`, where `dir` is the working directory | skills, agents, commands |
-| `CodexScope` | `~/.agents`, honouring `AGENTS_HOME` | skills only |
-| `OpencodeScope` | `~/.config/opencode`, honouring `OPENCODE_HOME` | skills only |
+| Tool | Global root | Project root | Kinds |
+|---|---|---|---|
+| `ClaudeTool` | `~/.claude`, honouring `CLAUDE_HOME` | `<dir>/.claude` | skills, agents, commands |
+| `CodexTool` | `~/.agents`, honouring `AGENTS_HOME` | `<dir>/.agents` | skills only |
+| `OpencodeTool` | `~/.config/opencode`, honouring `OPENCODE_HOME` | `<dir>/.opencode` | skills only |
 
 The two overrides on the new rows are libretto's own, for test safety — exactly
 `CLAUDE_HOME`'s role. Codex and OpenCode do not read those variables. Codex CLI
@@ -96,11 +97,13 @@ target that cannot say where it lives is a target nothing should be written to.
 - Adding a target is adding one implementation of one interface — no registry file, no
   plugin mechanism, no configuration. Proven twice on 2026-08-14: codex and opencode
   each arrived as one file and one `Resolve` arm.
-- **Two per-tool targets with disjoint roots**, not one shared `agents` target — user
+- **Per-tool targets with disjoint roots**, not one shared `agents` target — user
   decision, 2026-08-14. Per-tool rows keep doctor and uninstall honest; the
   shared-path fact is documented, not modelled.
-- **The new targets are single-root** (no project variant) and a command still acts on
-  exactly one chosen destination, never all — user decision, 2026-08-14.
+- **Every tool has both scopes** — user correction, 2026-08-14, reversing the
+  same day's single-root reading: "en project solo se puede instalar en claude
+  no tiene sentido". Tool and scope are separate axes precisely so the matrix
+  costs no new rows anywhere.
 - Roots verified against vendor docs and the sst/opencode source on 2026-08-14; the
   reversal of "targets other than Claude Code" is recorded, dated, in
   `docs/STATE.md`.
@@ -150,5 +153,6 @@ Complete. Shipped in phase 1; scopes added later; codex and opencode added 2026-
   Proof: internal/target/opencode_test.go TestOpencodeRootResolution
 - opencode serves skills at `<root>/skills` and rejects agents and commands
   Proof: internal/target/opencode_test.go TestOpencodeAcceptsOnlySkills
-- `Resolve` returns the codex and opencode targets for their scopes
-  Proof: internal/target/scope_test.go TestResolveNewDestinations
+- every tool resolves in both scopes onto its own root, skills only for the
+  new tools
+  Proof: internal/target/scope_test.go TestResolveToolScopeMatrix

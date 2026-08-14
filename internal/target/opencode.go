@@ -30,6 +30,16 @@ func NewOpencode() Opencode {
 	return Opencode{root: filepath.Join(home, ".config", "opencode")}
 }
 
+// NewOpencodeProject roots the opencode target at <dir>/.opencode — OpenCode
+// reads a project's .opencode/skills (and .claude/skills, which the claude
+// project target already serves). An empty dir is inert.
+func NewOpencodeProject(dir string) Opencode {
+	if dir == "" {
+		return Opencode{}
+	}
+	return Opencode{root: filepath.Join(dir, ".opencode")}
+}
+
 func (o Opencode) Name() string { return "opencode" }
 func (o Opencode) Root() string { return o.root }
 

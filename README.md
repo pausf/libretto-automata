@@ -258,26 +258,31 @@ effort available (weakest first; as of 2026-08; `models effort <level> <agent>�
 
 ### Where it installs
 
-| | |
-|---|---|
-| `--global`, `-g` | `~/.claude` — **the default** |
-| `--project`, `-p` | `<this directory>/.claude` |
-| `--codex` | `~/.agents` — Codex CLI, **skills only** |
-| `--opencode` | `~/.config/opencode` — OpenCode, **skills only** |
+Two axes, combinable — the tool and the scope:
 
-A project-local install keeps a flow scoped to one repository without editing the
-configuration every other project shares. In the panel, the strip shows every
-destination and `tab` switches which one the keys act on — the active one is marked
-`◉` in gold.
+| Tool | `--global` (default) | `--project` |
+|---|---|---|
+| `--claude` (default) | `~/.claude` | `<this directory>/.claude` |
+| `--codex` — skills only | `~/.agents` | `<this directory>/.agents` |
+| `--opencode` — skills only | `~/.config/opencode` | `<this directory>/.opencode` |
+
+So `libretto install --codex --project` links the skills into this directory's
+`.agents/`, and plain `libretto install` still means what it always did. A
+project-local install keeps a flow scoped to one repository without editing the
+configuration every other project shares.
+
+In the panel the two axes stay separate: the strip shows one row per tool under a
+`scope ▸ global` label, `tab` switches the tool and `s` flips the scope for all
+rows at once — the active row is gold.
 
 Codex and OpenCode read the same Claude-compatible `SKILL.md` format, so the skills
 link unchanged; agents and commands are simply absent from those destinations, not
 errors. One detail worth knowing: OpenCode also reads `~/.claude/skills` and
-`~/.agents/skills` directly, so a global or codex install already reaches it — the
-`--opencode` destination exists for setups that keep OpenCode's own directory as
-the source of truth.
+`~/.agents/skills` directly, so a claude or codex install already reaches it — the
+`--opencode` tool exists for setups that keep OpenCode's own directory as the
+source of truth.
 
-Passing both flags is an error.
+Two flags on one axis is an error.
 
 ### The five states
 

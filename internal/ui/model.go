@@ -11,6 +11,11 @@ import (
 // free of the filesystem and free of any dependency on the target package.
 type Refresh func(i int) ([]MenuItem, []TargetRow, error)
 
+// ToggleScope flips the scope every row shows — global to project and back — and
+// returns fresh figures for the tool at index i plus the new scope's name. The
+// model owns neither axis's meaning: tools arrive as rows, the scope as a label.
+type ToggleScope func(i int) ([]MenuItem, []TargetRow, string, error)
+
 // Model is the Bubbletea model driving the panel.
 type Model struct {
 	theme   Theme
@@ -19,6 +24,7 @@ type Model struct {
 	refused bool   // the notice is something the panel declined, not something it did
 	done    bool
 	refresh Refresh
+	toggle  ToggleScope
 	run     Runner
 
 	// pending is a destructive action that has shown its plan and is waiting on an
@@ -96,6 +102,20 @@ func (m Model) WithRefresh(r Refresh) Model {
 // which is honest: a menu that cannot run anything says so rather than pretending.
 func (m Model) WithRunner(r Runner) Model {
 	m.run = r
+	return m
+}
+
+// WithScopeToggle lets `s` flip the scope. Without it the key is inert, which is
+// what preview and every fixture that predates scopes want.
+func (m Model) WithScopeToggle(t ToggleScope) Model {
+	m.toggle = t
+	return m
+}
+
+// WithScopeLabel sets the strip's scope line for the first render; the toggle
+// keeps it current afterwards.
+func (m Model) WithScopeLabel(s string) Model {
+	m.panel.Scope = s
 	return m
 }
 
@@ -224,8 +244,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.panel.Selected = wrap(m.panel.Selected+1, len(m.panel.Menu))
 			return m, nil
 
-		case "tab", "s":
+		case "tab":
 			return m.nextScope()
+
+		case "s":
+			return m.toggleScope()
 
 		case "enter":
 			return m.selectCurrent()
@@ -259,6 +282,26 @@ func (m Model) nextScope() (tea.Model, tea.Cmd) {
 	// that both take looking for. A key whose effect you have to hunt for is a key
 	// people report as broken.
 	m = m.say("acting on " + m.panel.Targets[next].Name)
+	return m, nil
+}
+
+// toggleScope flips every row to the other scope and asks for figures that match.
+//
+// The same refusal rule as nextScope: a failed toggle leaves the previous state
+// alone, because figures from one scope under another's label are a lie.
+func (m Model) toggleScope() (tea.Model, tea.Cmd) {
+	if m.toggle == nil {
+		return m, nil
+	}
+
+	menu, targets, scope, err := m.toggle(m.activeScope())
+	if err != nil {
+		m = m.refuse("cannot switch scope: " + err.Error())
+		return m, nil
+	}
+
+	m.panel.Menu, m.panel.Targets, m.panel.Scope = menu, targets, scope
+	m = m.say("scope · " + scope)
 	return m, nil
 }
 

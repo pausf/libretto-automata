@@ -70,28 +70,39 @@ func main() {
 // one being a default and the other an instruction. Returned rather than recomputed
 // by a second scanner: two places deciding what a scope flag is would agree only by
 // accident, and this file already records that bug happening with the project root.
-func scopeFlags(args []string) (target.Scope, string, []string, error) {
-	scope, chosen := target.GlobalScope, ""
+func scopeFlags(args []string) (target.Tool, target.Scope, string, []string, error) {
+	tool, scope := target.ClaudeTool, target.GlobalScope
+	chosenTool, chosenScope := "", ""
 	rest := make([]string, 0, len(args))
 
-	flags := map[string]target.Scope{
+	scopes := map[string]target.Scope{
 		"--global": target.GlobalScope, "-g": target.GlobalScope,
 		"--project": target.ProjectScope, "-p": target.ProjectScope,
-		"--codex":    target.CodexScope,
-		"--opencode": target.OpencodeScope,
+	}
+	tools := map[string]target.Tool{
+		"--claude":   target.ClaudeTool,
+		"--codex":    target.CodexTool,
+		"--opencode": target.OpencodeTool,
 	}
 	for _, a := range args {
-		s, isFlag := flags[a]
-		if !isFlag {
-			rest = append(rest, a)
+		if sc, ok := scopes[a]; ok {
+			if chosenScope != "" && chosenScope != string(sc) {
+				return tool, scope, "", nil, fmt.Errorf("--%s and %s are two answers to one question; pick one", chosenScope, a)
+			}
+			scope, chosenScope = sc, string(sc)
 			continue
 		}
-		if chosen != "" && chosen != string(s) {
-			return scope, "", nil, fmt.Errorf("--%s and %s are two answers to one question; pick one", chosen, a)
+		if tl, ok := tools[a]; ok {
+			if chosenTool != "" && chosenTool != string(tl) {
+				return tool, scope, "", nil, fmt.Errorf("--%s and %s are two answers to one question; pick one", chosenTool, a)
+			}
+			tool, chosenTool = tl, string(tl)
+			continue
 		}
-		scope, chosen = s, string(s)
+		rest = append(rest, a)
 	}
-	return scope, chosen, rest, nil
+	chosen := chosenTool + chosenScope
+	return tool, scope, chosen, rest, nil
 }
 
 // openingScope is the destination the panel opens on.
@@ -103,15 +114,15 @@ func scopeFlags(args []string) (target.Scope, string, []string, error) {
 //
 // Subcommands never call this. That is what keeps a typed command from changing
 // meaning because of state left by a session the reader cannot see.
-func openingScope(flagged target.Scope, chosen string) target.Scope {
+func openingScope(flaggedTool target.Tool, flagged target.Scope, chosen string) (target.Tool, target.Scope) {
 	if chosen != "" {
-		return flagged
+		return flaggedTool, flagged
 	}
 	return rememberedScope()
 }
 
 func run(args []string) error {
-	scope, chosen, args, err := scopeFlags(args)
+	tool, scope, chosen, args, err := scopeFlags(args)
 	if err != nil {
 		return err
 	}
@@ -143,7 +154,7 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	tg := target.Resolve(scope, projectDir)
+	tg := target.Resolve(tool, scope, projectDir)
 
 	if len(args) == 0 {
 		// The no-TTY exit comes first, and before the payload check: a pipe with no
@@ -172,7 +183,8 @@ func run(args []string) error {
 		// Only the panel remembers. `tg` above is deliberately left alone, so the
 		// subcommand paths below cannot be reached by this at all — which is the
 		// promise, not an implementation detail.
-		return panelUI(root, projectDir, openingScope(scope, chosen))
+		openTool, openScope := openingScope(tool, scope, chosen)
+		return panelUI(root, projectDir, openTool, openScope)
 	}
 
 	// After the command, not before: the notice is news about something else, and a
@@ -208,15 +220,39 @@ func run(args []string) error {
 	}
 }
 
-func panelUI(root, projectDir string, scope target.Scope) error {
-	menu, targets, err := panelData(root, projectDir, scope)
+func panelUI(root, projectDir string, tool target.Tool, scope target.Scope) error {
+	menu, targets, err := panelData(root, projectDir, tool, scope)
 	if err != nil {
 		return err
 	}
 
+	// The scope is panel state owned here, read by every callback below and flipped
+	// only by the toggle. Bubbletea's Update runs on one goroutine, so a captured
+	// variable is race-free — and unlike the destination it is deliberately shared:
+	// `s` changes the side every row shows, not one row's side.
+	cur := scope
+
 	model := ui.NewModel(version, menu, targets, asciiSafe()).
-		WithRefresh(panelRefresh(root, projectDir)).
+		WithRefresh(panelRefresh(root, projectDir, &cur)).
+		WithScopeLabel(string(cur)).
 		WithReleaseCheck(func() string { return releaseNotice(root, version) })
+
+	model = model.WithScopeToggle(func(i int) ([]ui.MenuItem, []ui.TargetRow, string, error) {
+		if i < 0 || i >= len(toolOrder) {
+			return nil, nil, "", fmt.Errorf("no destination %d", i)
+		}
+		next := target.ProjectScope
+		if cur == target.ProjectScope {
+			next = target.GlobalScope
+		}
+		menu, targets, err := panelData(root, projectDir, toolOrder[i], next)
+		if err != nil {
+			return nil, nil, "", err
+		}
+		cur = next
+		remember(toolOrder[i], cur)
+		return menu, targets, string(cur), nil
+	})
 
 	// Actions run inside the panel and report there, so the destination, the state
 	// and the last report stay on screen together.
@@ -226,10 +262,10 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 	// a tab — the strip reading "project" while links disappear from the global
 	// config. Destructive and silent, which is the worst pair.
 	model = model.WithRunner(func(action string, dest int, confirm bool) ([]string, error) {
-		if dest < 0 || dest >= len(scopeOrder) {
+		if dest < 0 || dest >= len(toolOrder) {
 			return nil, fmt.Errorf("no destination %d", dest)
 		}
-		return runCaptured(action, root, target.Resolve(scopeOrder[dest], projectDir), confirm)
+		return runCaptured(action, root, target.Resolve(toolOrder[dest], cur, projectDir), confirm)
 	})
 
 	// The selector's two callbacks. The destination comes in as an argument, never
@@ -240,21 +276,21 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 		modelChoices(),
 		effortChoices(),
 		func(dest int) ([]ui.AgentRow, error) {
-			tg, err := destination(dest, projectDir)
+			tg, err := destination(dest, cur, projectDir)
 			if err != nil {
 				return nil, err
 			}
 			return agentRows(root, tg)
 		},
 		func(dest int, names []string, m string) error {
-			tg, err := destination(dest, projectDir)
+			tg, err := destination(dest, cur, projectDir)
 			if err != nil {
 				return err
 			}
 			return agentmodel.Apply(agentsDir(tg), names, m)
 		},
 		func(dest int, names []string, e string) error {
-			tg, err := destination(dest, projectDir)
+			tg, err := destination(dest, cur, projectDir)
 			if err != nil {
 				return err
 			}
@@ -269,9 +305,10 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 // panelRefresh gives the panel a fresh view of the destination at index i, and
 // remembers that it moved there.
 //
-// The panel changes which destination is active by asking for this. scopeOrder is the
-// single place that maps a row back to a scope, so the strip and the refresh can never
-// disagree about the order.
+// The panel changes which tool is active by asking for this. toolOrder is the
+// single place that maps a row back to a tool, so the strip and the refresh can
+// never disagree about the order. The scope comes from the panel state the toggle
+// owns, read through a pointer so a flip reaches every later refresh.
 //
 // The write happens *after* panelData succeeds, and only then. A failed refresh leaves
 // the panel where it was, and a file that disagrees with the screen is the same class
@@ -279,18 +316,22 @@ func panelUI(root, projectDir string, scope target.Scope) error {
 //
 // It is a named function rather than a closure so a test can hand it a bad index. The
 // panel's own path is unreachable from a test — `run` checks isatty first.
-func panelRefresh(root, projectDir string) func(int) ([]ui.MenuItem, []ui.TargetRow, error) {
+func panelRefresh(root, projectDir string, cur *target.Scope) func(int) ([]ui.MenuItem, []ui.TargetRow, error) {
 	return func(i int) ([]ui.MenuItem, []ui.TargetRow, error) {
-		if i < 0 || i >= len(scopeOrder) {
+		if i < 0 || i >= len(toolOrder) {
 			return nil, nil, fmt.Errorf("no destination %d", i)
 		}
+		scope := target.GlobalScope
+		if cur != nil {
+			scope = *cur
+		}
 
-		menu, targets, err := panelData(root, projectDir, scopeOrder[i])
+		menu, targets, err := panelData(root, projectDir, toolOrder[i], scope)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		remember(scopeOrder[i])
+		remember(toolOrder[i], scope)
 		return menu, targets, nil
 	}
 }
@@ -363,12 +404,10 @@ func dispatch(action, root string, tg target.Target, confirm bool) error {
 	}
 }
 
-// scopeOrder is the order destinations appear in the strip, and the order tab
-// cycles through them. Global first: it is the default everywhere else.
-var scopeOrder = []target.Scope{
-	target.GlobalScope, target.ProjectScope,
-	target.CodexScope, target.OpencodeScope,
-}
+// toolOrder is the order tools appear in the strip, and the order tab cycles
+// through them. Scope is the other axis: one label above the rows, flipped by
+// `s`, so the strip grows one row per tool and zero rows per scope.
+var toolOrder = target.Tools
 
 // panelData assembles the menu and the target strip for the active scope.
 //
@@ -379,10 +418,10 @@ var scopeOrder = []target.Scope{
 //
 // The install row names the active root, so the destination is legible without
 // counting bullets.
-func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui.TargetRow, error) {
-	active := target.Resolve(scope, projectDir)
+func panelData(root, projectDir string, tool target.Tool, scope target.Scope) ([]ui.MenuItem, []ui.TargetRow, error) {
+	active := target.Resolve(tool, scope, projectDir)
 
-	rows := make([]ui.TargetRow, 0, len(scopeOrder))
+	rows := make([]ui.TargetRow, 0, len(toolOrder))
 	overall := map[link.State]int{}
 
 	// Each row reports **its own** state, not the repo's contents.
@@ -395,8 +434,8 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 	//
 	// Scanning both costs a second read-only pass, which is the correct price for a
 	// strip that distinguishes its destinations.
-	for _, sc := range scopeOrder {
-		tg := target.Resolve(sc, projectDir)
+	for _, tl := range toolOrder {
+		tg := target.Resolve(tl, scope, projectDir)
 
 		entries, err := link.Scan(root, tg)
 		if err != nil {
@@ -404,17 +443,17 @@ func panelData(root, projectDir string, scope target.Scope) ([]ui.MenuItem, []ui
 		}
 		tally := link.Tally(entries)
 
-		if sc == scope {
+		if tl == tool {
 			for state, n := range tally {
 				overall[state] += n
 			}
 		}
 
 		rows = append(rows, ui.TargetRow{
-			Name:       string(sc),
+			Name:       string(tl),
 			Info:       pad(summarise(tally), 24) + shorten(tg.Root()),
 			Configured: configured(tg),
-			Active:     sc == scope,
+			Active:     tl == tool,
 		})
 	}
 
@@ -492,13 +531,13 @@ func agentRows(root string, tg target.Target) ([]ui.AgentRow, error) {
 	return rows, nil
 }
 
-// destination maps a strip row back to a target. scopeOrder is the single place that
+// destination maps a strip row back to a target. toolOrder is the single place that
 // mapping lives, so the strip and every callback agree by construction.
-func destination(i int, projectDir string) (target.Target, error) {
-	if i < 0 || i >= len(scopeOrder) {
+func destination(i int, scope target.Scope, projectDir string) (target.Target, error) {
+	if i < 0 || i >= len(toolOrder) {
 		return nil, fmt.Errorf("no destination %d", i)
 	}
-	return target.Resolve(scopeOrder[i], projectDir), nil
+	return target.Resolve(toolOrder[i], scope, projectDir), nil
 }
 
 func modelChoices() []ui.ModelChoice {
@@ -618,7 +657,7 @@ func preview(root string, tg target.Target) error {
 	if err != nil {
 		return err
 	}
-	menu, targets, err := panelData(root, projectDir, target.GlobalScope)
+	menu, targets, err := panelData(root, projectDir, target.ClaudeTool, target.GlobalScope)
 	if err != nil {
 		return err
 	}
@@ -632,6 +671,7 @@ func preview(root string, tg target.Target) error {
 		Menu:      menu,
 		Selected:  indexOf(menu, "status"),
 		Targets:   targets,
+		Scope:     string(target.GlobalScope),
 		Width:     terminalWidth(),
 		ASCIISafe: asciiSafe(),
 	}))
@@ -1288,10 +1328,11 @@ func usage() {
   %[2]s metrics        what every change cost, derived from git, read-only
   %[2]s metrics <change>   just that one
 
-  --global, -g          act on ~/.claude (the default)
-  --project, -p         act on <this directory>/.claude
-  --codex               act on ~/.agents (Codex CLI; skills only)
-  --opencode            act on ~/.config/opencode (OpenCode; skills only)
+  --claude              Claude Code (the default) · ~/.claude or <dir>/.claude
+  --codex               Codex CLI, skills only · ~/.agents or <dir>/.agents
+  --opencode            OpenCode, skills only · ~/.config/opencode or <dir>/.opencode
+  --global, -g          the tool's machine-wide root (the default)
+  --project, -p         the tool's directory inside this one; combines with any tool
 
   LIBRETTO_ASCII=safe   swap quadrant glyphs for half blocks
   LIBRETTO_THEME=dark|light  force a palette instead of detecting

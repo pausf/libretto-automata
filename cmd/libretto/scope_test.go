@@ -73,7 +73,7 @@ func TestPruneProjectScopeLeavesGlobalAlone(t *testing.T) {
 // ── flag parsing ─────────────────────────────────────────────────────────────
 
 func TestDefaultScopeIsGlobal(t *testing.T) {
-	scope, _, rest, err := scopeFlags([]string{"install"})
+	_, scope, _, rest, err := scopeFlags([]string{"install"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestDefaultScopeIsGlobal(t *testing.T) {
 func TestScopeFlagsAreRemovedFromTheArguments(t *testing.T) {
 	// A flag left in the arguments reaches the subcommand, and `prune --project`
 	// would be read as a confirmation that was never given.
-	scope, _, rest, err := scopeFlags([]string{"prune", "--project", "--yes"})
+	_, scope, _, rest, err := scopeFlags([]string{"prune", "--project", "--yes"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestBothScopeFlagsIsAnError(t *testing.T) {
 		{"install", "--project", "--global"},
 		{"-p", "install", "-g"},
 	} {
-		if _, _, _, err := scopeFlags(args); err == nil {
+		if _, _, _, _, err := scopeFlags(args); err == nil {
 			t.Errorf("%v was accepted; two answers to one question is a mistake, not a precedence rule", args)
 		}
 	}
@@ -114,7 +114,7 @@ func TestBothScopeFlagsIsAnError(t *testing.T) {
 
 func TestRepeatingTheSameScopeFlagIsFine(t *testing.T) {
 	// Harmless and unambiguous. Rejecting it would be pedantry.
-	scope, _, _, err := scopeFlags([]string{"--project", "install", "--project"})
+	_, scope, _, _, err := scopeFlags([]string{"--project", "install", "--project"})
 	if err != nil {
 		t.Fatalf("repeating --project was rejected: %v", err)
 	}
@@ -207,23 +207,23 @@ func TestStripRowsReportTheirOwnState(t *testing.T) {
 	// One of the two is linked globally. Nothing is linked in the project.
 	f.link(t, f.Repo+"/skills/alpha", f.dest("skills", "alpha"))
 
-	_, rows, err := panelData(f.Repo, f.Project, target.GlobalScope)
+	_, rows, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.GlobalScope)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != len(scopeOrder) {
-		t.Fatalf("the strip has %d rows, want %d", len(rows), len(scopeOrder))
+	if len(rows) != len(toolOrder) {
+		t.Fatalf("the strip has %d rows, want %d", len(rows), len(toolOrder))
 	}
 
-	global, project := rows[0].Info, rows[1].Info
-	if global == project {
-		t.Fatalf("both rows report %q — a strip whose rows cannot differ is a strip that misleads", global)
+	claude, codex := rows[0].Info, rows[1].Info
+	if claude == codex {
+		t.Fatalf("both rows report %q — a strip whose rows cannot differ is a strip that misleads", claude)
 	}
-	if !strings.Contains(global, "linked") {
-		t.Errorf("the global row does not mention the item that is linked: %q", global)
+	if !strings.Contains(claude, "linked") {
+		t.Errorf("the claude row does not mention the item that is linked: %q", claude)
 	}
-	if strings.Contains(project, "linked") {
-		t.Errorf("the project row claims something is linked when nothing is: %q", project)
+	if strings.Contains(codex, "linked") {
+		t.Errorf("the codex row claims something is linked when nothing is: %q", codex)
 	}
 }
 
@@ -234,11 +234,11 @@ func TestStatusRowFollowsTheActiveScope(t *testing.T) {
 	f.skill(t, "alpha")
 	f.link(t, f.Repo+"/skills/alpha", f.dest("skills", "alpha"))
 
-	g, _, err := panelData(f.Repo, f.Project, target.GlobalScope)
+	g, _, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.GlobalScope)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, _, err := panelData(f.Repo, f.Project, target.ProjectScope)
+	p, _, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.ProjectScope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func TestEveryMenuLabelDispatches(t *testing.T) {
 	f := newFixture(t)
 	f.skill(t, "alpha")
 
-	menu, _, err := panelData(f.Repo, f.Project, target.GlobalScope)
+	menu, _, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.GlobalScope)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,26 +329,26 @@ func TestStripAndRunnerAgreeOnTheProjectRoot(t *testing.T) {
 	f := newFixture(t)
 	f.skill(t, "alpha")
 
-	_, rows, err := panelData(f.Repo, f.Project, target.ProjectScope)
+	_, rows, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.ProjectScope)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	want := f.project().Root()
-	if !strings.Contains(rows[1].Info, shorten(want)) {
-		t.Fatalf("the strip names %q, the runner would write to %q", rows[1].Info, want)
+	if !strings.Contains(rows[0].Info, shorten(want)) {
+		t.Fatalf("the strip names %q, the runner would write to %q", rows[0].Info, want)
 	}
 
 	// Install through the same door the panel uses, then the strip must notice.
-	if _, err := runCaptured("install", f.Repo, target.Resolve(scopeOrder[1], f.Project), false); err != nil {
+	if _, err := runCaptured("install", f.Repo, target.Resolve(target.ClaudeTool, target.ProjectScope, f.Project), false); err != nil {
 		t.Fatal(err)
 	}
-	_, rows, err = panelData(f.Repo, f.Project, target.ProjectScope)
+	_, rows, err = panelData(f.Repo, f.Project, target.ClaudeTool, target.ProjectScope)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(rows[1].Info, "linked") {
-		t.Fatalf("the strip still reports %q after installing into that very destination", rows[1].Info)
+	if !strings.Contains(rows[0].Info, "linked") {
+		t.Fatalf("the strip still reports %q after installing into that very destination", rows[0].Info)
 	}
 }
 
@@ -365,7 +365,7 @@ func TestPanelPruneActsOnTheActiveDestinationOnly(t *testing.T) {
 	f.link(t, gone, f.projectDest("skills", "gone"))
 
 	// The panel's prune is dry, so it must remove nothing anywhere.
-	if _, err := runCaptured("prune", f.Repo, target.Resolve(scopeOrder[1], f.Project), false); err != nil {
+	if _, err := runCaptured("prune", f.Repo, target.Resolve(target.ClaudeTool, target.ProjectScope, f.Project), false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(f.projectDest("skills", "gone")); err != nil {
@@ -374,7 +374,7 @@ func TestPanelPruneActsOnTheActiveDestinationOnly(t *testing.T) {
 
 	// And with confirmation, only the active destination loses its link.
 	if _, _, err := capture(t, func() error {
-		return prune(f.Repo, target.Resolve(scopeOrder[1], f.Project), []string{"--yes"})
+		return prune(f.Repo, target.Resolve(target.ClaudeTool, target.ProjectScope, f.Project), []string{"--yes"})
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -389,7 +389,7 @@ func TestPanelPruneActsOnTheActiveDestinationOnly(t *testing.T) {
 	// own orphan leaves the global one standing.
 	f.link(t, gone, filepath.Join(f.Codex, "skills", "gone"))
 	if _, _, err := capture(t, func() error {
-		return prune(f.Repo, target.Resolve(target.CodexScope, ""), []string{"--yes"})
+		return prune(f.Repo, target.Resolve(target.CodexTool, target.GlobalScope, ""), []string{"--yes"})
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -402,17 +402,18 @@ func TestPanelPruneActsOnTheActiveDestinationOnly(t *testing.T) {
 }
 
 func TestDestinationFlags(t *testing.T) {
-	t.Run("each new flag resolves its destination", func(t *testing.T) {
-		for flag, want := range map[string]target.Scope{
-			"--codex":    target.CodexScope,
-			"--opencode": target.OpencodeScope,
+	t.Run("each tool flag resolves its tool", func(t *testing.T) {
+		for flag, want := range map[string]target.Tool{
+			"--claude":   target.ClaudeTool,
+			"--codex":    target.CodexTool,
+			"--opencode": target.OpencodeTool,
 		} {
-			scope, chosen, rest, err := scopeFlags([]string{flag, "install"})
+			tool, scope, chosen, rest, err := scopeFlags([]string{flag, "install"})
 			if err != nil {
 				t.Fatalf("%s: %v", flag, err)
 			}
-			if scope != want || chosen != string(want) {
-				t.Errorf("%s resolved to %q/%q, want %q", flag, scope, chosen, want)
+			if tool != want || scope != target.GlobalScope || chosen == "" {
+				t.Errorf("%s resolved to %q/%q (chosen %q), want %q/global", flag, tool, scope, chosen, want)
 			}
 			if len(rest) != 1 || rest[0] != "install" {
 				t.Errorf("%s: rest is %v, want [install]", flag, rest)
@@ -420,14 +421,28 @@ func TestDestinationFlags(t *testing.T) {
 		}
 	})
 
-	t.Run("any two destination flags is an error", func(t *testing.T) {
+	t.Run("a tool combines with a scope", func(t *testing.T) {
+		for _, args := range [][]string{
+			{"--codex", "--project", "install"},
+			{"--project", "install", "--codex"},
+		} {
+			tool, scope, _, _, err := scopeFlags(args)
+			if err != nil {
+				t.Fatalf("%v: %v", args, err)
+			}
+			if tool != target.CodexTool || scope != target.ProjectScope {
+				t.Errorf("%v resolved to %q/%q, want codex/project", args, tool, scope)
+			}
+		}
+	})
+
+	t.Run("two flags on one axis is an error", func(t *testing.T) {
 		for _, args := range [][]string{
 			{"install", "--codex", "--opencode"},
-			{"install", "--global", "--codex"},
-			{"--opencode", "install", "-p"},
-			{"--codex", "install", "-g"},
+			{"install", "--claude", "--codex"},
+			{"install", "--global", "--project"},
 		} {
-			if _, _, _, err := scopeFlags(args); err == nil {
+			if _, _, _, _, err := scopeFlags(args); err == nil {
 				t.Errorf("%v was accepted; two answers to one question is a mistake, not a precedence rule", args)
 			}
 		}
@@ -439,7 +454,7 @@ func TestInstallCodexLeavesOthersAlone(t *testing.T) {
 	item := f.skill(t, "alpha")
 
 	if _, _, err := capture(t, func() error {
-		return install(f.Repo, target.Resolve(target.CodexScope, ""))
+		return install(f.Repo, target.Resolve(target.CodexTool, target.GlobalScope, ""))
 	}); err != nil {
 		t.Fatalf("install --codex failed: %v", err)
 	}
@@ -466,7 +481,7 @@ func TestInstallOpencodeLeavesOthersAlone(t *testing.T) {
 	item := f.skill(t, "alpha")
 
 	if _, _, err := capture(t, func() error {
-		return install(f.Repo, target.Resolve(target.OpencodeScope, ""))
+		return install(f.Repo, target.Resolve(target.OpencodeTool, target.GlobalScope, ""))
 	}); err != nil {
 		t.Fatalf("install --opencode failed: %v", err)
 	}

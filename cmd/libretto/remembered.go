@@ -29,28 +29,35 @@ func preferencePath() string {
 	return filepath.Join(root, preferenceFile)
 }
 
-// rememberedScope is the destination the panel was left on.
+// rememberedScope is the (tool, scope) pair the panel was left on.
 //
-// Absent, empty, unreadable, or holding anything but a known destination all give
-// global. That is target.Resolve's rule and it is followed rather than reinvented:
-// a value nobody recognises must not produce a destination nobody chose.
-func rememberedScope() target.Scope {
+// Absent, empty, unreadable, or holding anything unrecognised gives claude/global.
+// That is target.Resolve's rule and it is followed rather than reinvented: a value
+// nobody recognises must not produce a destination nobody chose. The legacy
+// one-word forms survive: "project" reads as claude/project.
+func rememberedScope() (target.Tool, target.Scope) {
+	tool, scope := target.ClaudeTool, target.GlobalScope
+
 	path := preferencePath()
 	if path == "" {
-		return target.GlobalScope
+		return tool, scope
 	}
-
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return target.GlobalScope
+		return tool, scope
 	}
-	got := target.Scope(strings.TrimSpace(string(b)))
-	for _, s := range scopeOrder {
-		if got == s {
-			return s
+
+	for _, word := range strings.Fields(string(b)) {
+		for _, t := range target.Tools {
+			if word == string(t) {
+				tool = t
+			}
+		}
+		if word == string(target.ProjectScope) {
+			scope = target.ProjectScope
 		}
 	}
-	return target.GlobalScope
+	return tool, scope
 }
 
 // remember writes the destination, and says nothing when it cannot.
@@ -59,9 +66,9 @@ func rememberedScope() target.Scope {
 // that can fail the switch it decorates is worse than no convenience — the panel has
 // already moved by the time this runs, so there is nothing left to abort.
 //
-// ponytail: one word, no format. The moment a second thing wants remembering this
-// becomes a real file with a real shape, not a delimiter invented in place.
-func remember(s target.Scope) {
+// ponytail: two space-separated words, no format beyond that. The second thing
+// that wanted remembering arrived (the scope axis); a third gets a real file.
+func remember(t target.Tool, s target.Scope) {
 	path := preferencePath()
 	if path == "" {
 		return
@@ -69,5 +76,5 @@ func remember(s target.Scope) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return
 	}
-	_ = os.WriteFile(path, []byte(string(s)+"\n"), 0o644)
+	_ = os.WriteFile(path, []byte(string(t)+" "+string(s)+"\n"), 0o644)
 }

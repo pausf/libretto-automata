@@ -556,8 +556,10 @@ func TestTheFooterFollowsTheScreen(t *testing.T) {
 	theme := darkTheme()
 
 	menu := strip(theme.footer(Panel{Version: "v0"}, 90))
-	if !strings.Contains(menu, "⏎ select") {
-		t.Fatalf("the menu footer changed: %q", menu)
+	for _, want := range []string{"⏎", "tab tool", "s scope"} {
+		if !strings.Contains(menu, want) {
+			t.Fatalf("the menu footer does not mention %q: %q", want, menu)
+		}
 	}
 
 	sel := strip(theme.footer(Panel{Version: "v0", InSelector: true}, 90))
@@ -1083,15 +1085,15 @@ func TestALongRefusalWrapsRatherThanBeingCut(t *testing.T) {
 	}
 }
 
-// fourDestinationPanel mirrors what cmd/libretto feeds the panel once the
-// destination order grew to four. The UI is dimension-agnostic; these goldens
-// pin the rendered strip so a torn row or a lost active mark is a diff, not a
+// toolStripPanel mirrors what cmd/libretto feeds the panel: one row per tool,
+// the scope as a label above them. These goldens pin the rendered strip so a
+// torn row, a lost active mark or a vanished scope line is a diff, not a
 // surprise.
-func fourDestinationPanel() Panel {
+func toolStripPanel() Panel {
 	p := demoPanel()
+	p.Scope = "global"
 	p.Targets = []TargetRow{
-		{Name: "global", Info: "12 skills · 8 agents · 4 commands", Configured: true, Active: true},
-		{Name: "project", Info: "nothing linked", Configured: true},
+		{Name: "claude", Info: "12 skills · 8 agents · 4 commands", Configured: true, Active: true},
 		{Name: "codex", Info: "3 skills linked", Configured: true},
 		{Name: "opencode", Info: "not configured", Configured: false},
 	}
@@ -1100,13 +1102,13 @@ func fourDestinationPanel() Panel {
 
 // ponytail: UPDATE_GOLDEN=1 rewrites the files; a flag would collide with
 // go test's own registry for one write a year.
-func TestFourDestinationStripGolden(t *testing.T) {
+func TestToolStripGolden(t *testing.T) {
 	forceTrueColor(t)
-	colour := darkTheme().Render(fourDestinationPanel())
+	colour := darkTheme().Render(toolStripPanel())
 
 	for name, got := range map[string]string{
-		"four-destinations.colour": colour,
-		"four-destinations.mono":   strip(colour),
+		"tool-strip.colour": colour,
+		"tool-strip.mono":   strip(colour),
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := filepath.Join("testdata", name)

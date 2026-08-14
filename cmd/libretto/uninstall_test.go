@@ -162,7 +162,7 @@ func TestPanelOffersUninstallAsDestructive(t *testing.T) {
 	f := newFixture(t)
 	f.skill(t, "alpha")
 
-	menu, _, err := panelData(f.Repo, f.Project, target.GlobalScope)
+	menu, _, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.GlobalScope)
 	if err != nil {
 		t.Fatal(err)
 	}

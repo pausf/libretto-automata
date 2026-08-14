@@ -5,58 +5,79 @@ import (
 	"path/filepath"
 )
 
-// Where the payload goes.
+// Where the payload goes: a tool crossed with a scope.
 //
-// Claude Code reads a project-local `.claude/` as well as the global one, so the
-// same items can be installed for one repository without touching the
-// configuration every other project shares.
+// The two axes are orthogonal and deliberately never fused into one list. A flat
+// list of destinations grows as tools × scopes; two axes grow as tools + scopes,
+// and the panel's strip stays one row per tool whatever happens to scopes.
 //
-// The two are never written in the same run. Two roots in one command is two
-// answers to "where is my payload", and a bad day when they disagree.
+// A command still acts on exactly one (tool, scope) pair per run. Two roots in one
+// command is two answers to "where is my payload", and a bad day when they disagree.
 
-// Scope names a destination.
+// Tool names an agent installation family.
+type Tool string
+
+const (
+	// ClaudeTool is Claude Code.
+	ClaudeTool Tool = "claude"
+
+	// CodexTool is OpenAI Codex CLI.
+	CodexTool Tool = "codex"
+
+	// OpencodeTool is OpenCode.
+	OpencodeTool Tool = "opencode"
+)
+
+// Tools is the display order: Claude first, because it is configured on every
+// machine this tool has users on today.
+var Tools = []Tool{ClaudeTool, CodexTool, OpencodeTool}
+
+// Scope names which side of a tool a command acts on.
 type Scope string
 
 const (
-	// GlobalScope is ~/.claude, or CLAUDE_HOME when set.
+	// GlobalScope is the tool's machine-wide root.
 	GlobalScope Scope = "global"
 
-	// ProjectScope is <working directory>/.claude.
+	// ProjectScope is the tool's directory inside the working directory.
 	ProjectScope Scope = "project"
-
-	// CodexScope is ~/.agents, or AGENTS_HOME when set.
-	CodexScope Scope = "codex"
-
-	// OpencodeScope is ~/.config/opencode, or OPENCODE_HOME when set.
-	OpencodeScope Scope = "opencode"
 )
 
-// Global is the machine-wide target.
+// Global is the machine-wide Claude target.
 func Global() Target { return NewClaude() }
 
-// Project is the target inside a project directory.
+// Project is the Claude target inside a project directory.
 //
 // dir is where the user is, not where the repository being installed lives.
 // Conflating the two would install libretto's payload into libretto's own
 // `.claude/` regardless of where the command was run.
 func Project(dir string) Target { return NewProject(dir) }
 
-// Resolve returns the target for a scope. dir is only consulted for
-// ProjectScope, and an empty dir falls back to the working directory.
-// An unrecognised scope resolves to global, not to nothing.
-func Resolve(s Scope, dir string) Target {
-	switch s {
-	case CodexScope:
-		return NewCodex()
-	case OpencodeScope:
-		return NewOpencode()
-	case ProjectScope:
+// Resolve returns the target for a tool and scope. dir is only consulted for
+// ProjectScope, and an empty dir falls back to the working directory. An
+// unrecognised tool resolves to Claude and an unrecognised scope to global —
+// a typo must not silently produce a rootless target that writes nowhere and
+// reports success.
+func Resolve(tool Tool, s Scope, dir string) Target {
+	if s == ProjectScope {
 		if dir == "" {
 			if wd, err := os.Getwd(); err == nil {
 				dir = wd
 			}
 		}
+		switch tool {
+		case CodexTool:
+			return NewCodexProject(dir)
+		case OpencodeTool:
+			return NewOpencodeProject(dir)
+		}
 		return Project(dir)
+	}
+	switch tool {
+	case CodexTool:
+		return NewCodex()
+	case OpencodeTool:
+		return NewOpencode()
 	}
 	return Global()
 }

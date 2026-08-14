@@ -21,9 +21,9 @@
 │    ▸ prune       drop links whose source is gone         │
 │                                                          │
 ├──────────────────────────────────────────────────────────┤
-│  ❯ ● global   12 skills · 8 agents · 4 commands          │
-│    ● project  nothing linked                             │
+│  scope ▸ global                                          │
+│  ❯ ● claude   12 skills · 8 agents · 4 commands          │
 │    ● codex    3 skills linked                            │
 │    ○ opencode not configured                             │
 ╰──────────────────────────────────────────────────────────╯
-      v0.1.0        ↑↓ · ⏎ select · tab scope · q quit      
+      v0.1.0      ↑↓ · ⏎ · tab tool · s scope · q quit      

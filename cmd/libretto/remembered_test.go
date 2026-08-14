@@ -18,21 +18,21 @@ import (
 func TestNothingRememberedOpensGlobal(t *testing.T) {
 	newFixture(t)
 
-	if got := rememberedScope(); got != target.GlobalScope {
-		t.Errorf("with nothing remembered got %q, want %q", got, target.GlobalScope)
+	if tool, scope := rememberedScope(); tool != target.ClaudeTool || scope != target.GlobalScope {
+		t.Errorf("with nothing remembered got %q/%q, want claude/global", tool, scope)
 	}
 }
 
 // A word nobody recognises must not produce a destination nobody chose. This is
 // target.Resolve's rule, followed rather than reinvented.
 func TestUnrecognisedPreferenceIsGlobal(t *testing.T) {
-	for _, content := range []string{"", "\n", "  ", "globl", "project extra", "PROJECT", "0"} {
+	for _, content := range []string{"", "\n", "  ", "globl", "PROJECT", "0"} {
 		t.Run("content="+content, func(t *testing.T) {
 			newFixture(t)
 			writePreference(t, content)
 
-			if got := rememberedScope(); got != target.GlobalScope {
-				t.Errorf("%q gave %q, want %q", content, got, target.GlobalScope)
+			if tool, scope := rememberedScope(); tool != target.ClaudeTool || scope != target.GlobalScope {
+				t.Errorf("%q gave %q/%q, want claude/global", content, tool, scope)
 			}
 		})
 	}
@@ -43,19 +43,20 @@ func TestUnrecognisedPreferenceIsGlobal(t *testing.T) {
 func TestRememberThenReadIsARoundTrip(t *testing.T) {
 	newFixture(t)
 
-	remember(target.ProjectScope)
-	if got := rememberedScope(); got != target.ProjectScope {
-		t.Fatalf("got %q, want %q", got, target.ProjectScope)
+	remember(target.CodexTool, target.ProjectScope)
+	if tool, scope := rememberedScope(); tool != target.CodexTool || scope != target.ProjectScope {
+		t.Fatalf("got %q/%q, want codex/project", tool, scope)
 	}
 
+	// The legacy one-word file a pre-tools session left behind still reads.
 	writePreference(t, "  project\n")
-	if got := rememberedScope(); got != target.ProjectScope {
-		t.Errorf("padded value gave %q, want %q", got, target.ProjectScope)
+	if tool, scope := rememberedScope(); tool != target.ClaudeTool || scope != target.ProjectScope {
+		t.Errorf("legacy value gave %q/%q, want claude/project", tool, scope)
 	}
 
-	remember(target.GlobalScope)
-	if got := rememberedScope(); got != target.GlobalScope {
-		t.Errorf("after remembering global got %q", got)
+	remember(target.ClaudeTool, target.GlobalScope)
+	if tool, scope := rememberedScope(); tool != target.ClaudeTool || scope != target.GlobalScope {
+		t.Errorf("after remembering claude/global got %q/%q", tool, scope)
 	}
 }
 
@@ -70,7 +71,7 @@ func TestUninstallLeavesThePreferenceAlone(t *testing.T) {
 	if _, _, err := capture(t, func() error { return install(f.Repo, f.global()) }); err != nil {
 		t.Fatal(err)
 	}
-	remember(target.ProjectScope)
+	remember(target.ClaudeTool, target.ProjectScope)
 
 	if _, _, err := capture(t, func() error {
 		return uninstall(f.Repo, f.global(), []string{"--yes"})
@@ -78,8 +79,8 @@ func TestUninstallLeavesThePreferenceAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := rememberedScope(); got != target.ProjectScope {
-		t.Errorf("uninstall took the preference with it: now %q", got)
+	if _, scope := rememberedScope(); scope != target.ProjectScope {
+		t.Errorf("uninstall took the preference with it: now %q", scope)
 	}
 }
 
@@ -87,10 +88,10 @@ func TestUninstallLeavesThePreferenceAlone(t *testing.T) {
 // where it was left.
 func TestTheRememberedDestinationOpensThePanel(t *testing.T) {
 	newFixture(t)
-	remember(target.ProjectScope)
+	remember(target.CodexTool, target.ProjectScope)
 
-	if got := openingScope(target.GlobalScope, ""); got != target.ProjectScope {
-		t.Errorf("opened on %q, want %q", got, target.ProjectScope)
+	if tool, scope := openingScope(target.ClaudeTool, target.GlobalScope, ""); tool != target.CodexTool || scope != target.ProjectScope {
+		t.Errorf("opened on %q/%q, want codex/project", tool, scope)
 	}
 }
 
@@ -99,13 +100,13 @@ func TestTheRememberedDestinationOpensThePanel(t *testing.T) {
 // nothing.
 func TestAnExplicitFlagBeatsTheRememberedDestination(t *testing.T) {
 	newFixture(t)
-	remember(target.ProjectScope)
+	remember(target.ClaudeTool, target.ProjectScope)
 
-	if got := openingScope(target.GlobalScope, "global"); got != target.GlobalScope {
-		t.Errorf("--global gave %q, want %q", got, target.GlobalScope)
+	if _, scope := openingScope(target.ClaudeTool, target.GlobalScope, "global"); scope != target.GlobalScope {
+		t.Errorf("--global gave %q, want %q", scope, target.GlobalScope)
 	}
-	if got := rememberedScope(); got != target.ProjectScope {
-		t.Errorf("the flag overwrote the preference: now %q", got)
+	if _, scope := rememberedScope(); scope != target.ProjectScope {
+		t.Errorf("the flag overwrote the preference: now %q", scope)
 	}
 }
 
@@ -118,9 +119,9 @@ func TestAnExplicitFlagBeatsTheRememberedDestination(t *testing.T) {
 // repository is not a test worth having.
 func TestSubcommandsIgnoreTheRememberedDestination(t *testing.T) {
 	f := newFixture(t)
-	remember(target.ProjectScope)
+	remember(target.ClaudeTool, target.ProjectScope)
 
-	scope, chosen, rest, err := scopeFlags([]string{"install"})
+	_, scope, chosen, rest, err := scopeFlags([]string{"install"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +131,7 @@ func TestSubcommandsIgnoreTheRememberedDestination(t *testing.T) {
 	if scope != target.GlobalScope {
 		t.Errorf("scope = %q, want %q — subcommands do not read the preference", scope, target.GlobalScope)
 	}
-	if got := target.Resolve(scope, f.Project).Root(); got != f.global().Root() {
+	if got := target.Resolve(target.ClaudeTool, scope, f.Project).Root(); got != f.global().Root() {
 		t.Errorf("resolved to %q, want the global root %q", got, f.global().Root())
 	}
 	if len(rest) != 1 || rest[0] != "install" {
@@ -143,16 +144,17 @@ func TestSubcommandsIgnoreTheRememberedDestination(t *testing.T) {
 func TestSwitchingDestinationRemembersIt(t *testing.T) {
 	f := newFixture(t)
 
-	// scopeOrder is [global, project], so index 1 is the project.
-	menu, rows, err := panelRefresh(f.Repo, f.Project)(1)
+	// toolOrder is [claude, codex, opencode], so index 1 is codex.
+	scope := target.GlobalScope
+	menu, rows, err := panelRefresh(f.Repo, f.Project, &scope)(1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(menu) == 0 || len(rows) == 0 {
 		t.Fatal("the refresh returned an empty view")
 	}
-	if got := rememberedScope(); got != target.ProjectScope {
-		t.Errorf("after switching to the project, remembered %q", got)
+	if tool, _ := rememberedScope(); tool != target.CodexTool {
+		t.Errorf("after switching to codex, remembered %q", tool)
 	}
 }
 
@@ -162,7 +164,7 @@ func TestSwitchingDestinationRemembersIt(t *testing.T) {
 func TestAFailedSwitchRemembersNothing(t *testing.T) {
 	newFixture(t)
 
-	if _, _, err := panelRefresh(t.TempDir(), t.TempDir())(len(scopeOrder)); err == nil {
+	if _, _, err := panelRefresh(t.TempDir(), t.TempDir(), nil)(len(toolOrder)); err == nil {
 		t.Fatal("an out-of-range destination refreshed successfully")
 	}
 	if _, err := os.Stat(preferencePath()); !os.IsNotExist(err) {
@@ -185,7 +187,7 @@ func TestAFailedWriteDoesNotFailTheSwitch(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(f.Claude, 0o755) })
 
-	menu, rows, err := panelRefresh(f.Repo, f.Project)(1)
+	menu, rows, err := panelRefresh(f.Repo, f.Project, nil)(1)
 	if err != nil {
 		t.Fatalf("an unwritable preference failed the switch: %v", err)
 	}
@@ -193,8 +195,8 @@ func TestAFailedWriteDoesNotFailTheSwitch(t *testing.T) {
 		t.Error("the refresh returned an empty view")
 	}
 	// And it really was blocked, so this is not passing for the wrong reason.
-	if got := rememberedScope(); got != target.GlobalScope {
-		t.Errorf("the write was not actually blocked: remembered %q", got)
+	if tool, _ := rememberedScope(); tool != target.ClaudeTool {
+		t.Errorf("the write was not actually blocked: remembered %q", tool)
 	}
 }
 
@@ -213,21 +215,21 @@ func writePreference(t *testing.T, content string) {
 }
 
 func TestRememberedDestinationRecognisesNewTargets(t *testing.T) {
-	for _, want := range []target.Scope{target.CodexScope, target.OpencodeScope} {
+	for _, want := range []target.Tool{target.CodexTool, target.OpencodeTool} {
 		t.Run(string(want), func(t *testing.T) {
 			newFixture(t)
-			remember(want)
-			if got := rememberedScope(); got != want {
-				t.Fatalf("remembered %q, got back %q", want, got)
+			remember(want, target.ProjectScope)
+			if tool, scope := rememberedScope(); tool != want || scope != target.ProjectScope {
+				t.Fatalf("remembered %q/project, got back %q/%q", want, tool, scope)
 			}
 		})
 	}
 
-	t.Run("garbage still falls back to global", func(t *testing.T) {
+	t.Run("garbage still falls back to claude/global", func(t *testing.T) {
 		newFixture(t)
-		remember(target.Scope("garbage"))
-		if got := rememberedScope(); got != target.GlobalScope {
-			t.Fatalf("garbage resolved to %q, want global", got)
+		remember(target.Tool("garbage"), target.Scope("nonsense"))
+		if tool, scope := rememberedScope(); tool != target.ClaudeTool || scope != target.GlobalScope {
+			t.Fatalf("garbage resolved to %q/%q, want claude/global", tool, scope)
 		}
 	})
 }
