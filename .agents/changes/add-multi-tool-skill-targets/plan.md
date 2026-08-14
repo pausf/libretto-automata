@@ -224,13 +224,13 @@ authorised 2026-08-14)
 "Out of scope: targets other than Claude Code" entry), `docs/DESIGN.md`
 only if its codex row example now misleads
 
-- [ ] README: `--codex`/`--opencode` beside `--global`/`--project`; env table
+- [x] README: `--codex`/`--opencode` beside `--global`/`--project`; env table
   gains the two vars with defaults. `docs/STATE.md`: rewrite the out-of-scope
   entry to record the reversal, dated, citing the 2026-08-14 feasibility
   research (Codex reads `~/.agents/skills`; OpenCode reads it too plus
   `~/.claude/skills` and `~/.config/opencode`). Never delete the entry —
   a reversed decision that vanishes gets relitigated.
-- [ ] `go test ./cmd/libretto/ -run TestEveryCommandIsInTheReadme -count=1`
+- [x] `go test ./cmd/libretto/ -run TestEveryCommandIsInTheReadme -count=1`
   green (no new command, must stay green); commit
   `docs: codex and opencode destinations in README and STATE`.
 

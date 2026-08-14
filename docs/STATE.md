@@ -168,9 +168,18 @@ behaviour in prose.
   real repository. It had been `pausanchezv`, a guess that would have broken
   `go install` and every import for anyone but us.
 - **Out of scope:** `CLAUDE.md` and `settings.json` (other tooling rewrites them);
-  targets other than Claude Code; requiring `ponytail` or `caveman` (called when
+  requiring `ponytail` or `caveman` (called when
   present, reported by `doctor`, never required); migrating the author's existing
   skills out of `~/.claude` (only after `libretto install` is proven).
+- **Targets other than Claude Code — reversed, 2026-08-14.** This list said they
+  were out of scope while no second target had a user. The reversal was asked for
+  and authorised explicitly, backed by feasibility research against vendor docs
+  and the sst/opencode source: Codex CLI reads Claude-compatible `SKILL.md`
+  directories from `~/.agents/skills`, and OpenCode reads that same path plus
+  `~/.claude/skills` and `~/.config/opencode`. Skills-only `codex` and `opencode`
+  targets shipped in `add-multi-tool-skill-targets`; agents and commands for those
+  tools remain queued (`add-opencode-command-target`,
+  `add-transformed-agent-targets`).
 
 ## Spec drift — closed, and how it stays closed
 
