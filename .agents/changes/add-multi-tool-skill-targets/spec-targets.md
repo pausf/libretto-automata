@@ -4,12 +4,14 @@ Targets: targets
 
 ## Outcomes
 
-- `target.Codex` exists: root `~/.agents`, overridable by `AGENTS_HOME`; accepts
+- `target.Codex` exists: root `~/.agents`, overridable by `AGENTS_HOME` —
+  libretto's own test-safety override, exactly `CLAUDE_HOME`'s role; Codex
+  itself does not read the variable. Accepts
   exactly one kind, `Skills`, at `~/.agents/skills`. Codex CLI discovers skills
   there, and OpenCode reads the same path — one link serves both tools.
 - `target.Opencode` exists: root `~/.config/opencode`, overridable by
-  `OPENCODE_HOME`; accepts exactly one kind, `Skills`, at
-  `~/.config/opencode/skills`.
+  `OPENCODE_HOME` — the same libretto-only override, not a variable OpenCode
+  reads; accepts exactly one kind, `Skills`, at `~/.config/opencode/skills`.
 - `Scope` gains two values, `codex` and `opencode`, and `Resolve` returns the
   matching target for each. An unrecognised scope still resolves to global —
   that promise does not move.
@@ -38,8 +40,10 @@ their tests.
 
 ## Constraints
 
-- Nothing outside `internal/target` may name `~/.agents` or
+- No code outside `internal/target` may derive a path from `~/.agents` or
   `~/.config/opencode` — the same rule that already protects `~/.claude`.
+  Documentation strings (help's env table, the README) name the defaults,
+  exactly as they name `~/.claude` today.
 - A target that accepts only skills must cause no error about agents or
   commands anywhere downstream. `link.Counts` already omits rejected kinds and
   `agentsDir` already returns "" — the constraint is to keep that true.

@@ -14,10 +14,12 @@ Targets: payload
 - Literal `Claude` survives only where it is a fact, not an addressee: real
   paths (`~/.claude`, `CLAUDE.md`, `CLAUDE_HOME`), the product name when the
   sentence is about Claude Code specifically, and quotes.
-- `scripts/check-payload` gains a prose check that walks skill and command
-  bodies and flags `Claude`-as-addressee phrasings, with an explicit
-  allowlist for the factual uses above — so the property survives the next
-  skill written.
+- `scripts/check-payload` gains a prose check: every occurrence of `Claude`
+  in skill and command bodies that does not match the allowlist of factual
+  patterns (paths, `CLAUDE.md`, `CLAUDE_HOME`, product statements) fails the
+  gate. The classification lives entirely in the allowlist — the check
+  itself exercises no judgment — so the property survives the next skill
+  written and two implementers of the check cannot disagree.
 
 ## Scope boundaries
 
