@@ -92,3 +92,30 @@ Did: fixed the criterion's ceiling to describe the real behaviour, reproduced wi
 ## 2026-08-14 · adapt-payload-wording-to-three-hosts · 6→7
 Said: the delta was applied onto the capability spec but the change folder was not deleted in the same commit, which AGENTS.md requires
 Did: fixed properly this time — the folder deletion was amended into the same commit rather than added as a second one. The previous change deferred the same finding to a follow-up commit; the tension is that review-work needs a committed diff to review, and amending an unpushed commit resolves it without rewriting shared history
+## 2026-08-14 · add-transformed-agent-targets · 6→7
+Said: the widened Owned is not scoped to targets that generate anything, and `prune --claude --yes` offered to delete a hand-written file that merely carried a marker line
+Did: fixed — Owned is symlink-only again, OwnedEither is the widened question, and the kind is carried on the Entry so only a generated kind asks it. Watched red by reverting the split: both the unit refusal and the end-to-end prune test fail
+
+## 2026-08-14 · add-transformed-agent-targets · 6→7
+Said: a marker naming the repo root or any directory inside it was accepted, and prune --yes deleted both
+Did: fixed — strictly inside the root, and a path that exists and is a directory is refused. A missing source still stays ours, or prune could never remove an orphan. Watched red
+
+## 2026-08-14 · add-transformed-agent-targets · 6→7
+Said: "moving the repository orphans every generated file and prune is the remedy for both" is false — the file becomes foreign, so prune skips it and can never remove it
+Did: fixed the sentence. The remedy is uninstall from the old checkout before moving, or a manual delete after. True of the symlink arm too, and the sentence was new in this change
+
+## 2026-08-14 · add-transformed-agent-targets · 6→7
+Said: create on a generated kind loses the "appeared since the scan" refusal, because os.Rename replaces silently where os.Symlink returns file exists
+Did: fixed — create uses os.Link (ErrExist when the destination exists), repoint keeps rename because replacing is its intent. The first test written for this passed either way because create's own Lstat caught the case; replaced with one that asserts the write primitive itself, then watched red
+
+## 2026-08-14 · add-transformed-agent-targets · 6→7
+Said: the change folder was not deleted, so the same contract text lives in two places
+Did: `git rm -r -q -f` silently did nothing because the files were untracked in this session, and -q hid the error. Removed with rm -rf and amended into the one commit. Never trust a quiet git rm on paths that may be untracked
+
+## 2026-08-14 · add-transformed-agent-targets · 6→7
+Said: the targets criterion still read "skills and commands for opencode" while the test it cites now asserts three kinds — a criterion contradicting its own proof; and apply.go still claimed it never removes a real file
+Did: both fixed. The second is the more interesting one: the comment was true when written and the change is what falsified it
+
+## 2026-08-14 · add-transformed-agent-targets · 6→7
+Said: the marker is emitted as an unquoted YAML scalar, so a checkout path containing " #" would be read as a comment and OpenCode throws rather than skipping
+Did: the marker is now always emitted double-quoted, and the reader accepts quoted or bare. Six awkward paths covered by test — spaces, #, colon, quote, backslash

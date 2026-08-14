@@ -1,6 +1,7 @@
 package link
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"sort"
@@ -53,9 +54,26 @@ type Entry struct {
 	// DestPath is the path in the target.
 	DestPath string
 
-	// Actual is where an existing symlink currently points. Empty when DestPath
-	// is not a symlink.
+	// Actual is where an existing symlink currently points, or the source a
+	// generated file claims to come from. Empty when DestPath is neither.
 	Actual string
+
+	// GeneratedKind records that this entry's target installs this kind by transform.
+	//
+	// It is what scopes the marker arm of ownership. Without it `apply` would have to
+	// ask a widened Owned about every entry, and a review found that offering to
+	// delete a hand-written file in a destination this tool never generates into.
+	GeneratedKind bool
+
+	// Generated is the exact bytes that belong at DestPath, for a kind the target
+	// installs by transform. Nil for a symlinked kind, which is what `apply` reads
+	// to decide whether to write a file or make a link.
+	//
+	// It is carried on the entry rather than recomputed later because `classify`
+	// already produced it to decide the state, and because `Plan` is a pure
+	// function of entries with no target to ask — keeping it that way is what makes
+	// the dangerous half testable in memory.
+	Generated []byte
 }
 
 // Scan classifies every item of every kind the target accepts, and finds owned
@@ -99,6 +117,13 @@ func classify(repoRoot string, t target.Target, kind target.Kind, item Item) Ent
 		DestPath: dest,
 	}
 
+	// A kind the target installs by transform is judged by its content, not by a link
+	// destination. Everything else falls through to the symlink path unchanged.
+	if want, ok := transformFor(t, kind, item); ok {
+		e.GeneratedKind = true
+		return classifyGenerated(repoRoot, e, want)
+	}
+
 	if _, err := os.Lstat(dest); err != nil {
 		e.State = Missing
 		return e
@@ -121,6 +146,76 @@ func classify(repoRoot string, t target.Target, kind target.Kind, item Item) Ent
 	return e
 }
 
+// transformFor returns the bytes that should be at the destination, when this target
+// installs this kind by transform.
+//
+// A source that cannot be transformed returns ok with nil content, which classify
+// turns into a Conflict: we cannot say what belongs there, so nothing is touched. A
+// target that does not transform returns false and the caller takes the symlink path.
+func transformFor(t target.Target, kind target.Kind, item Item) ([]byte, bool) {
+	tr, ok := t.(target.Transformer)
+	if !ok || !tr.Transforms(kind) {
+		// Either the target links everything, or it links this kind. Asking first is
+		// what keeps a transforming target's linked kinds on the symlink path.
+		return nil, false
+	}
+	content, err := os.ReadFile(item.Path)
+	if err != nil {
+		return nil, true
+	}
+	want, err := tr.Transform(kind, item.Path, content)
+	if err != nil {
+		return nil, true
+	}
+	return want, true
+}
+
+// classifyGenerated decides the state of one generated item.
+//
+// The five states carry it with nothing added. want is nil when the source could not
+// be transformed, and the honest answer there is Conflict — the state that means
+// "reported, never touched".
+func classifyGenerated(repoRoot string, e Entry, want []byte) Entry {
+	if want == nil {
+		e.State = Conflict
+		return e
+	}
+	e.Generated = want
+
+	fi, err := os.Lstat(e.DestPath)
+	if err != nil {
+		e.State = Missing
+		return e
+	}
+	if !fi.Mode().IsRegular() || !OwnedEither(repoRoot, e.DestPath) {
+		// A directory, a symlink, or a file with no marker. Somebody put it there.
+		e.State = Conflict
+		if source, ok := GeneratedSource(e.DestPath); ok {
+			e.Actual = source
+		}
+		return e
+	}
+
+	// Actual is where this thing claims to come from — the same meaning the field
+	// carries for a symlink.
+	if source, ok := GeneratedSource(e.DestPath); ok {
+		e.Actual = source
+	}
+
+	have, err := os.ReadFile(e.DestPath)
+	if err != nil {
+		// Owned but unreadable. Ours to fix, and rewriting is the fix.
+		e.State = WrongTarget
+		return e
+	}
+	if bytes.Equal(have, want) {
+		e.State = Linked
+		return e
+	}
+	e.State = WrongTarget
+	return e
+}
+
 // staleIn finds owned links in a target directory that no current item explains.
 func staleIn(repoRoot string, t target.Target, kind target.Kind, known map[string]bool) ([]Entry, error) {
 	dir := t.Dir(kind)
@@ -138,6 +233,14 @@ func staleIn(repoRoot string, t target.Target, kind target.Kind, known map[strin
 		return nil, err
 	}
 
+	// The marker arm of ownership applies only to a kind this target generates. In
+	// every other directory a regular file is somebody's own work, whatever it
+	// contains.
+	generatedKind := false
+	if tr, ok := t.(target.Transformer); ok && tr.Transforms(kind) {
+		generatedKind = true
+	}
+
 	var stale []Entry
 	for _, de := range dirEntries {
 		name := de.Name()
@@ -145,18 +248,28 @@ func staleIn(repoRoot string, t target.Target, kind target.Kind, known map[strin
 			continue
 		}
 		path := filepath.Join(dir, name)
-		if !Owned(repoRoot, path) {
+		owned := Owned(repoRoot, path)
+		if generatedKind {
+			owned = OwnedEither(repoRoot, path)
+		}
+		if !owned {
 			// Somebody else's entry. Not our business.
 			continue
 		}
-		actual, _ := LinkTarget(path)
+		actual, isLink := LinkTarget(path)
+		if !isLink {
+			// A generated orphan: owned by its marker, with no item behind it. Same
+			// concept as a broken link, same remedy, so the same state.
+			actual, _ = GeneratedSource(path)
+		}
 		stale = append(stale, Entry{
-			Target:   t.Name(),
-			Kind:     kind,
-			Name:     name,
-			State:    Stale,
-			DestPath: path,
-			Actual:   actual,
+			Target:        t.Name(),
+			Kind:          kind,
+			Name:          name,
+			State:         Stale,
+			DestPath:      path,
+			Actual:        actual,
+			GeneratedKind: generatedKind,
 		})
 	}
 

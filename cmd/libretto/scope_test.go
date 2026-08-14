@@ -486,6 +486,7 @@ func TestInstallOpencodeLeavesOthersAlone(t *testing.T) {
 	f := newFixture(t)
 	item := f.skill(t, "alpha")
 	cmdItem := f.command(t, "beta")
+	agentItem := f.agentItem(t, "gamma")
 
 	if _, _, err := capture(t, func() error {
 		return install(f.Repo, target.Resolve(target.OpencodeTool, target.GlobalScope, ""))
@@ -499,6 +500,31 @@ func TestInstallOpencodeLeavesOthersAlone(t *testing.T) {
 	if !isSymlinkTo(t, filepath.Join(f.Opencode, "commands", "beta.md"), cmdItem) {
 		t.Error("beta.md is not linked in the opencode destination — the plural directory is one of the two OpenCode globs")
 	}
+
+	// Agents are written, not linked. A symlink there would break OpenCode's config
+	// load rather than being ignored, because our `tools:` is a string where its
+	// schema wants a map and ConfigParse.schema throws on a mismatch.
+	agentDest := filepath.Join(f.Opencode, "agents", "gamma.md")
+	fi, err := os.Lstat(agentDest)
+	if err != nil {
+		t.Fatalf("gamma.md was not written into the opencode destination: %v", err)
+	}
+	if !fi.Mode().IsRegular() {
+		t.Errorf("gamma.md is %v, want a regular generated file", fi.Mode())
+	}
+	written, err := os.ReadFile(agentDest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(written), "tools:") {
+		t.Error("tools: survived into the opencode agent — the schema throws on a string there")
+	}
+	if !strings.Contains(string(written), "mode: subagent") {
+		t.Error("the generated agent does not declare mode: subagent")
+	}
+	if !strings.Contains(string(written), target.MarkerKey+`: "`+agentItem+`"`) {
+		t.Error("the generated agent carries no marker, so nothing can prove it is ours")
+	}
 	for name, root := range map[string]string{
 		"global": f.Claude, "project": f.projectDest(), "codex": f.Codex,
 	} {
@@ -509,7 +535,41 @@ func TestInstallOpencodeLeavesOthersAlone(t *testing.T) {
 			t.Errorf("an opencode install wrote a command into the %s destination", name)
 		}
 	}
-	if _, err := os.Lstat(filepath.Join(f.Opencode, "agents")); !os.IsNotExist(err) {
-		t.Error("an opencode install created an agents directory the target does not accept")
+
+}
+
+// A generated agent is ours and comes back out; a file somebody else put at the same
+// path is kept and reported. This is uninstall's whole promise applied to a kind that
+// is written rather than linked — and it needed no code, because UninstallPlan is a
+// pure function of states and no state was added.
+func TestUninstallOpencodeRemovesGeneratedAgents(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	f.agentItem(t, "gamma")
+
+	tg := target.Resolve(target.OpencodeTool, target.GlobalScope, "")
+	if _, _, err := capture(t, func() error { return install(f.Repo, tg) }); err != nil {
+		t.Fatalf("install --opencode failed: %v", err)
+	}
+
+	ours := filepath.Join(f.Opencode, "agents", "gamma.md")
+	if _, err := os.Lstat(ours); err != nil {
+		t.Fatalf("gamma.md was not installed: %v", err)
+	}
+
+	theirs := filepath.Join(f.Opencode, "agents", "theirs.md")
+	if err := os.WriteFile(theirs, []byte("---\nname: theirs\n---\n\nhands off\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err := capture(t, func() error { return uninstall(f.Repo, tg, []string{"--yes"}) }); err != nil {
+		t.Fatalf("uninstall failed: %v", err)
+	}
+
+	if _, err := os.Lstat(ours); !os.IsNotExist(err) {
+		t.Error("uninstall left our generated agent behind")
+	}
+	if _, err := os.Lstat(theirs); err != nil {
+		t.Error("uninstall removed a file that was not ours")
 	}
 }

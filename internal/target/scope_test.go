@@ -93,8 +93,8 @@ func TestResolveToolScopeMatrix(t *testing.T) {
 	}{
 		{CodexTool, GlobalScope, "codex", agents, []Kind{Skills}},
 		{CodexTool, ProjectScope, "codex", filepath.Join(project, ".agents"), []Kind{Skills}},
-		{OpencodeTool, GlobalScope, "opencode", opencode, []Kind{Skills, Commands}},
-		{OpencodeTool, ProjectScope, "opencode", filepath.Join(project, ".opencode"), []Kind{Skills, Commands}},
+		{OpencodeTool, GlobalScope, "opencode", opencode, []Kind{Skills, Commands, Agents}},
+		{OpencodeTool, ProjectScope, "opencode", filepath.Join(project, ".opencode"), []Kind{Skills, Commands, Agents}},
 	}
 	for _, c := range cases {
 		got := Resolve(c.tool, c.scope, project)

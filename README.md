@@ -285,7 +285,7 @@ Two axes, combinable — the tool and the scope:
 |---|---|---|
 | `--claude` (default) | `~/.claude` | `<this directory>/.claude` |
 | `--codex` — skills only | `~/.agents` | `<this directory>/.agents` |
-| `--opencode` — skills and commands | `~/.config/opencode` | `<this directory>/.opencode` |
+| `--opencode` — all three | `~/.config/opencode` | `<this directory>/.opencode` |
 
 So `libretto install --codex --project` links the skills into this directory's
 `.agents/`, and plain `libretto install` still means what it always did. A
@@ -299,8 +299,17 @@ rows at once — the active row is gold.
 Codex and OpenCode read the same Claude-compatible `SKILL.md` format, so the skills
 link unchanged. OpenCode also reads commands — it looks for both `command/` and
 `commands/`, follows symlinks, and ignores frontmatter keys it does not know — so
-`commands/` links there too, unchanged and untransformed. Agents are absent from both
-destinations, and Codex takes skills alone; neither is an error.
+`commands/` links there too, unchanged and untransformed. Codex takes skills alone,
+which is not an error.
+
+**OpenCode's agents are the one thing this tool writes rather than links.** Its agent
+frontmatter types `tools` as a map where ours is a comma-separated string, and it
+*rejects* a file that disagrees rather than skipping it — so one symlinked agent would
+break its config load. Each agent is therefore transformed on install: `tools:` and
+`model:` are dropped, `mode: subagent` is added, and a `x-libretto-source` line records
+which repo file it came from. That line is what makes the file provably ours, so
+`prune` and `uninstall` can take it back out and will never touch an agent you wrote
+yourself. Edit the agent in this repository and run `libretto install` again.
 
 One detail worth knowing: OpenCode also reads `~/.claude/skills` and `~/.agents/skills`
 directly, so a claude or codex install already reaches its skills — the `--opencode`

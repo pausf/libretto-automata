@@ -70,6 +70,27 @@ would be two names for one situation and two code paths to keep in agreement.
 Complete. Shipped in phase 2.
 
 ## Verification criteria
+- **a generated file whose bytes match the transform is `linked`**, and its `Actual`
+  carries the marker's source — the same meaning the field has for a symlink
+  Proof: internal/link/generated_test.go TestGeneratedMatchingContentIsLinked
+- **a generated file whose bytes differ is `wrong target`**, not a sixth state: ours, at
+  the right path, with the wrong content, fixable by rewriting — which is what `wrong
+  target` already means
+  Proof: internal/link/generated_test.go TestGeneratedDriftIsWrongTarget
+- **a markerless file at a generated item's path is a `conflict`**, reported and never
+  overwritten
+  Proof: internal/link/generated_test.go TestMarkerlessFileIsAConflict
+- **a generated file whose source item is gone is `stale`** — prune's, not install's
+  Proof: internal/link/generated_test.go TestGeneratedOrphanIsStale
+- **a source whose frontmatter cannot be transformed is a `conflict`**, never `linked`
+  and never a crash: we cannot say what belongs there, so nothing is touched
+  Proof: internal/link/generated_test.go TestUntransformableSourceIsAConflict
+- **a target that does not transform classifies exactly as before**
+  Proof: internal/link/generated_test.go TestNonTransformingTargetIsUnaffected
+- **a transforming target still symlinks the kinds it does not transform** — the bug the
+  first `Transformer` interface had, where every skill in the opencode destination read
+  as a conflict
+  Proof: internal/link/generated_test.go TestTransformingTargetStillLinksItsOtherKinds
 
 - every state is produced for the situation that defines it
   Proof: internal/link/state_test.go TestScanStates
