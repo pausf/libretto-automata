@@ -289,11 +289,13 @@ func corrections(root string) (counts, byPhase map[string]int, orphans int, seen
 			continue
 		}
 		byPhase[phase]++
-		if change == "-" {
-			orphans++
+		// The exclusion outranks the orphan count: a 6→7 entry is a reviewer
+		// finding wherever it sits, and the orphans line says "correction(s)".
+		if phase == "6→7" {
 			continue
 		}
-		if phase == "6→7" {
+		if change == "-" {
+			orphans++
 			continue
 		}
 		counts[change]++

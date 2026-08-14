@@ -69,3 +69,7 @@ In: the breakdown above, in the corpus-wide report. Out, named:
 - `6→7` entries count in the phase breakdown and never in the per-change
   corrections column.
   Proof: cmd/libretto/metrics_test.go TestReviewerFindingsStayOutOfCorrections
+- A `6→7` entry whose change field is `-` is a finding too: counted by phase,
+  never in the corrections-outside-any-change line. The exclusion outranks the
+  orphan count — surfaced by the 6→7 reviewer of this very change.
+  Proof: cmd/libretto/metrics_test.go TestOrphanFindingIsNotAnOrphanCorrection

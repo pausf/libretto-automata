@@ -544,6 +544,24 @@ Said: an orphan still surfaced somewhere
 	}
 }
 
+func TestOrphanFindingIsNotAnOrphanCorrection(t *testing.T) {
+	// A 6→7 entry with no change open is still a finding: it counts by phase and
+	// never in the "correction(s) outside any change" line, whose word is correction.
+	root := ledgerAt(t, `## 2026-08-14 · - · 6→7
+Said: a finding with no change open
+`)
+	_, byPhase, orphans, seen := corrections(root)
+	if !seen {
+		t.Fatal("the ledger exists and must be seen")
+	}
+	if orphans != 0 {
+		t.Fatalf("a 6→7 orphan is a finding, not a correction: got %d orphans", orphans)
+	}
+	if byPhase["6→7"] != 1 {
+		t.Fatalf("the finding must still count by phase, got %v", byPhase)
+	}
+}
+
 func TestReviewerFindingsStayOutOfCorrections(t *testing.T) {
 	// The per-change corr column keeps meaning user corrections only; the seam's
 	// findings arrive under 6→7 and count in the breakdown, never in the column.

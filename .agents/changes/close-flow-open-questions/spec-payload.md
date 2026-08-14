@@ -29,7 +29,10 @@ nobody counts, and phase 2's fear of asking.
    `AskUserQuestion` call, still zero-is-legitimate, but the count is judgment —
    ask what a wrong guess would make expensive, and when in doubt, ask. The prose
    carries the user's own boundary: better to ask than to stay silent, and never a
-   form-length interrogation of things the code already answers.
+   form-length interrogation of things the code already answers. The same promise is
+   restated in `docs/FLOW.md` and `commands/libretto-flow.md`, and both move in the
+   same commit — a rule updated in one of its three homes is a rule that contradicts
+   itself.
 
 ## Scope boundaries
 
