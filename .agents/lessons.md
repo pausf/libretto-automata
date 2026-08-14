@@ -45,6 +45,18 @@ Did: rewrote commands/libretto-flow.md without an outcome naming it; the delta n
 Said: a 6→7 entry is a finding wherever it sits, never a correction
 Did: counted an orphan 6→7 entry into the corrections-outside-any-change line; exclusion now outranks the orphan count
 
+## 2026-08-14 · add-system-diagram-to-readme · 6→7
+Said: the outcome promised eight phases in order; the diagram named five nodes and the guard cannot count phases
+Did: the flow diagram now carries all eight numbers (2-4 share a node, as the flow itself rides asking on the spec) and phase 8 precedes the push stop
+
+## 2026-08-14 · add-system-diagram-to-readme · 6→7
+Said: the constraint reads ASCII-safe and the middle dot U+00B7 is not ASCII
+Did: label separators switched to plain periods; the contract held as written rather than reworded around the code
+
+## 2026-08-14 · add-system-diagram-to-readme · 6→7
+Said: nothing in the artifacts records that the renders were looked at
+Did: the looking happened (mermaid-cli, both diagrams, tilde verified at 3x) and the phase 7 report now names it as evidence
+
 ## 2026-08-14 · add-multi-tool-skill-targets · 6→7
 Said: the env count lives in cli/spec.md, help and README, and all three move or drift
 Did: only cli/spec.md carries a count ("Five"); the delta now names the one real home and carries the two replacement rows for landing

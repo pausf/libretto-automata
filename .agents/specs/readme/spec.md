@@ -58,6 +58,13 @@ no spec governs is a path where drift is nobody's finding.
    **The directory is read, never a list in the test.** A list is the same failure one level
    down — somebody adds a command, forgets the list, and the guard stays green.
 
+7. **`What you get` shows how the system works in two Mermaid diagrams**, rendered by
+   GitHub as images: the delivery diagram — this repository's payload, `libretto install`
+   linking it item by item into `~/.claude`, Claude Code sessions reading it from there,
+   direction visible — and the flow diagram, the eight phases in order with the three
+   stops (spec, plan, push) marked as decisions. No new section: both live inside
+   section 2, so the reading order of outcome 1 is untouched.
+
 ## Scope boundaries
 
 **In:** `README.md`'s structure, and the test that holds it.
@@ -73,6 +80,9 @@ no spec governs is a path where drift is nobody's finding.
 - **Whether the result reads well.** No test holds that. See *Prior decisions*.
 - **Screenshots and recordings** beyond `docs/panel.svg`, which is captured from the
   binary.
+- **Exported images of the diagrams.** The Mermaid source is the only source; an SVG/PNG
+  export falls back in the day the pkg.go.dev or terminal-README audience matters,
+  generated from the same Mermaid, never drawn separately.
 - **Translation.** The repository is English.
 
 ## Constraints
@@ -86,6 +96,9 @@ no spec governs is a path where drift is nobody's finding.
   document desynchronises exactly like one in a source file, and silently.
 - The proof reads files as text. No Markdown parser — a dependency added to check a
   document is a dependency added to check a checker.
+- **Diagram labels are ASCII** — the glyph rule with room to spare, and nothing Mermaid
+  needs escaped. Styling stays Mermaid defaults: GitHub themes the render for light and
+  dark itself, and hand-set colors fight that and lose on one of the two.
 
 ## Prior decisions
 
@@ -124,6 +137,16 @@ no spec governs is a path where drift is nobody's finding.
 - **"Does it read well to a stranger" is verified by reading, and said out loud.** It is
   the one thing here no test can hold, and pretending otherwise is what produced the
   README this replaced — every fact in that version was correct.
+
+- **The diagrams are Mermaid, not committed images.** User, 2026-08-14. Versionable
+  text, GitHub-native rendering, theme-aware, nothing to regenerate. Two diagrams rather
+  than one panoramic (offered and declined as too dense), placed inside `What you get`
+  rather than a new section (offered and declined; the order test stays untouched).
+  **Ceiling:** Mermaid does not render on pkg.go.dev or in terminal READMEs.
+
+- **The diagrams are judged by looking, not only by the guard.** Rendered with
+  mermaid-cli and read before the review seam, 2026-08-14 — which is how `~/.claude`'s
+  tilde was confirmed a tilde and not a dash at small sizes.
 
 ## Task breakdown
 
@@ -171,3 +194,12 @@ Held by this capability going forward, not open work:
   **Ceiling named:** it proves a *name* appears. It cannot tell a real description from a
   placeholder row, and it will not catch a row that says something false. The replacement,
   the day that matters, is a criterion about what a row must contain — not a longer regex.
+
+- **Outcome 7** — two ```mermaid fences inside `What you get`, and one of them names the
+  three stops — spec, plan and push.
+  Proof: cmd/libretto/readme_test.go TestWhatYouGetCarriesTheDiagrams
+
+  **Ceiling named:** the guard counts fences and stop names. It cannot count phases or
+  judge the drawing — a diagram that loses a phase stays green, which the 6→7 reviewer
+  demonstrated on this outcome's first run. The looking is the check, per
+  build-and-check's render rule.
