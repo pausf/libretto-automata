@@ -36,11 +36,32 @@ Two things, and the first one is the point:
 | **The payload** | an eight-phase spec-driven flow for Claude Code, as skills and commands |
 | **The CLI** | a Go binary that symlinks the payload into `~/.claude` |
 
+```mermaid
+flowchart LR
+    repo["this repository<br/>skills/ agents/ commands/"]
+    home["~/.claude<br/>one symlink per item"]
+    cc["Claude Code<br/>sessions"]
+    repo -->|"libretto install<br/>links, never copies"| home
+    home -->|reads| cc
+```
+
 What changes in practice: you say what you want, and before any code exists you get a
 **contract** — what "done" means, what is deliberately out of scope, and how each promise
 will be proven. You approve that, then a plan, then the work happens against it. A fresh
 reviewer that saw none of the session checks the result, and the last question is always
 whether to push.
+
+```mermaid
+flowchart LR
+    f1["1. find the work"] --> f2["2-4. write the spec,<br/>ask what is open"]
+    f2 --> s1{"stop: agree<br/>the spec"}
+    s1 --> f5["5. write the plan"]
+    f5 --> s2{"stop: agree<br/>the plan"}
+    s2 --> f6["6. build and check"]
+    f6 --> f7["7. review, present"]
+    f7 --> f8["8. record"]
+    f8 --> s3{"stop:<br/>push?"}
+```
 
 Links are made **per item, never per directory**, so this coexists with anything else
 installed into `~/.claude`. Anything already there that this tool did not create is left
