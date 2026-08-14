@@ -269,9 +269,9 @@ prose_claude() {
 
 ### Task 10: gates, boxes, close — waits on all
 
-- [ ] All six gates: `gofmt -l .` prints nothing, `go vet ./...`,
+- [x] All six gates: `gofmt -l .` prints nothing, `go vet ./...`,
   `go test ./... -count=1`, `scripts/check-payload`,
   `spec-drift --self-test`, `spec-drift --anchors` (every `Proof:` above now
   names a test that exists).
-- [ ] Every box above marked in the commits that closed it; plan never
+- [x] Every box above marked in the commits that closed it; plan never
   batched.
