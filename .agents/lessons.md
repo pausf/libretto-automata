@@ -68,3 +68,19 @@ Did: the check filtered whole lines, so an addressee sharing a line with "Claude
 ## 2026-08-14 · add-multi-tool-skill-targets · 7→8
 Said: en project solo se puede instalar en claude no tiene sentido; el menú se haría muy largo, hay que comprimirlo
 Did: shipped a flat destination list where only claude had a project side — reworked to orthogonal tool × scope axes (one row per tool, s flips the scope) before anything released; the free-text answer "que el usuario pueda elegir" had been read as "global-only phase 1" when it meant the full choice
+
+## 2026-08-14 · add-opencode-command-target · 6→7
+Said: docs/STATE.md still says commands for opencode remain queued, and this change is what shipped them
+Did: not fixed — the sentence sits under *decisions not to relitigate*, which AGENTS.md marks ask-first, so the edit is the user's call; the exact replacement wording is in the phase 7 report
+
+## 2026-08-14 · add-opencode-command-target · 6→7
+Said: the README edit rewrote two prose paragraphs the delta and plan named nowhere, in a file the delta was careful to say it does not own
+Did: spec-cli task 3 and plan task 6 now name the paragraphs and why the correction is required rather than optional; the prose itself was accurate and stays
+
+## 2026-08-14 · add-opencode-command-target · 6→7
+Said: the change folder carries promises that are also in the capability specs now
+Did: pending, not missed — phase 8 applies the delta and deletes the folder in the commit that lands it
+
+## 2026-08-14 · add-opencode-command-target · 6→7
+Said: a queue capture (adapt-payload-wording-to-three-hosts) rides this feature branch into its PR
+Did: named in the phase 7 report and the request description; the capture is the honest home for the half of the ask this change does not do

@@ -191,7 +191,7 @@ Two axes, combinable — a tool flag and a scope flag answer different questions
 |---|---|
 | `--claude` | Claude Code — the default tool |
 | `--codex` | Codex CLI, skills only |
-| `--opencode` | OpenCode, skills only |
+| `--opencode` | OpenCode, skills and commands |
 | `--global` / `-g` | the tool's machine-wide root — the default scope |
 | `--project` / `-p` | the tool's directory inside `<cwd>` |
 | none | **claude/global** for every subcommand — what every invocation meant before the axes existed. The panel opens where it was left |
@@ -203,9 +203,16 @@ resolving by picking the last one and hoping. No short flags for the tools:
 `-g`/`-p` predate them, and a `-c` that might one day mean something else is not
 worth squatting.
 
-A skills-only destination installs skills and nothing else: agents and commands are
-absent from the run and from the summary, never errors. `install --codex` reaches
-OpenCode too — it reads `~/.agents/skills` — a fact the README carries.
+**A destination installs the kinds it accepts and nothing else**, and the kinds it does
+not accept are absent from the run and from the summary, never errors. `--codex` is the
+skills-only one: `install --codex` links skills alone, and it reaches OpenCode too
+because OpenCode reads `~/.agents/skills` — a fact the README carries.
+`install --opencode` links skills **and commands**, and creates no `agents` directory.
+
+The paragraph used to say "a skills-only destination" and mean both new tools. The rule
+was right and the list was not, which is the shape a sentence goes stale in: it names
+the members instead of the property, so adding a kind to one tool makes it false without
+touching a word of it.
 
 The remembered panel destination is a (tool, scope) pair; a legacy one-word file
 still reads, and anything unrecognised falls back to claude/global.
@@ -624,14 +631,30 @@ typing has gaps in it; the harness has to as well.
 - **`--codex` and `--opencode` resolve their targets, and any two destination flags
   together is an error**
   Proof: cmd/libretto/scope_test.go TestDestinationFlags
-- **a codex install links skills only and leaves every other destination alone**
+- **a codex install links skills only and leaves every other destination alone** —
+  with a command present in the repo, so the absent `commands/` proves something
   Proof: cmd/libretto/scope_test.go TestInstallCodexLeavesOthersAlone
-- **an opencode install links skills only and leaves every other destination alone**
+- **an opencode install links a command as a symlink into `<root>/commands`**, links
+  the skill too, creates no `agents` directory, and leaves every other destination
+  alone
   Proof: cmd/libretto/scope_test.go TestInstallOpencodeLeavesOthersAlone
+
+  **The symlink half is the load-bearing word.** "Links commands" is satisfied by a
+  copy, and a copy stops tracking the repo the moment either side moves — the one
+  outcome this promises not to produce. Four properties of one install run, joined on
+  purpose because one test asserts all four; a criterion joined by *and* whose proof
+  checks one half is the failure this shape usually hides. **Watched red before green**
+  by reverting `Opencode.Kinds()` alone: the command assertion failed and nothing else
+  did.
 - the remembered destination round-trips the new words and falls back to global
   Proof: cmd/libretto/remembered_test.go TestRememberedDestinationRecognisesNewTargets
 - help names the new flags and both env overrides
   Proof: cmd/libretto/main_test.go TestHelpNamesEveryDestination
+
+  **Ceiling named:** it proves each flag appears, never that the row beside it says
+  something true — `--opencode` described as skills-only would still satisfy it. The
+  row's accuracy is held by reading, and the replacement the day that bites is a
+  criterion about what a row must contain.
 
 Finding the payload:
 

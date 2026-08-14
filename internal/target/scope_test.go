@@ -89,11 +89,12 @@ func TestResolveToolScopeMatrix(t *testing.T) {
 		scope Scope
 		name  string
 		root  string
+		kinds []Kind
 	}{
-		{CodexTool, GlobalScope, "codex", agents},
-		{CodexTool, ProjectScope, "codex", filepath.Join(project, ".agents")},
-		{OpencodeTool, GlobalScope, "opencode", opencode},
-		{OpencodeTool, ProjectScope, "opencode", filepath.Join(project, ".opencode")},
+		{CodexTool, GlobalScope, "codex", agents, []Kind{Skills}},
+		{CodexTool, ProjectScope, "codex", filepath.Join(project, ".agents"), []Kind{Skills}},
+		{OpencodeTool, GlobalScope, "opencode", opencode, []Kind{Skills, Commands}},
+		{OpencodeTool, ProjectScope, "opencode", filepath.Join(project, ".opencode"), []Kind{Skills, Commands}},
 	}
 	for _, c := range cases {
 		got := Resolve(c.tool, c.scope, project)
@@ -101,8 +102,18 @@ func TestResolveToolScopeMatrix(t *testing.T) {
 			t.Errorf("%s/%s resolved to %s at %s, want %s at %s",
 				c.tool, c.scope, got.Name(), got.Root(), c.name, c.root)
 		}
-		if got.Accepts(Agents) || got.Accepts(Commands) {
-			t.Errorf("%s/%s accepts a kind beyond skills", c.tool, c.scope)
+		// A kind added to a tool arrives in every scope that tool has — the two
+		// axes are orthogonal, so the accepted set cannot differ between them.
+		for _, k := range []Kind{Skills, Agents, Commands} {
+			want := false
+			for _, have := range c.kinds {
+				if have == k {
+					want = true
+				}
+			}
+			if got.Accepts(k) != want {
+				t.Errorf("%s/%s Accepts(%s) = %v, want %v", c.tool, c.scope, k, !want, want)
+			}
 		}
 	}
 }
