@@ -104,11 +104,11 @@ func (c Codex) Exists() bool {
 **Interfaces — produces:** `target.Opencode`, `target.NewOpencode()`,
 `target.EnvOpencodeHome = "OPENCODE_HOME"`.
 
-- [ ] Same test set as Task 1 with root fallback
+- [x] Same test set as Task 1 with root fallback
   `filepath.Join(home, ".config", "opencode")`; run, expect compile failure.
-- [ ] Implement `opencode.go` exactly as Task 1's shape: `Name() "opencode"`,
+- [x] Implement `opencode.go` exactly as Task 1's shape: `Name() "opencode"`,
   env const `OPENCODE_HOME`, comment noting it is libretto-only.
-- [ ] Suite green; commit
+- [x] Suite green; commit
   `feat(target): opencode target, skills only, rooted at ~/.config/opencode`.
 
 ### Task 3: the two new scopes through `Resolve` — waits on 1, 2
