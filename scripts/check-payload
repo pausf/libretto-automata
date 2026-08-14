@@ -178,6 +178,7 @@ check_wiring skills/write-spec/SKILL.md  'never the corpus'             'phase 2
 check_wiring skills/write-spec/SKILL.md  'always the vocabulary'        'a fan-out brief section is named per subtask, vocabulary always'
 check_wiring skills/write-spec/SKILL.md  'rebills the whole context'    'the fan-out states what a mid-phase model switch costs'
 check_wiring skills/record-work/SKILL.md 'opt-in and stays' 'the block hook snippet is documented as opt-in'
+check_wiring skills/build-and-check/SKILL.md 'judging the change means looking' 'phase 6 renders and looks at visual output'
 check_wiring skills/evidence/SKILL.md    'lessons\.md'                  'evidence captures corrections into the ledger'
 check_wiring skills/evidence/SKILL.md    'Said:'                        'the capture keeps the user words, not a paraphrase'
 check_wiring skills/retro/SKILL.md       'Resolved:'                    'retro spends entries by marking, never editing'

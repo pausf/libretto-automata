@@ -80,6 +80,17 @@ That last row is not laziness. A test for a change with no logic in it tests the
 language, fails only when something unrelated moves, and gets deleted by whoever is
 annoyed by it first.
 
+**And one check no table row covers: if judging the change means looking at it,
+render it and look — before the review seam.** A palette, a layout, a panel row, an
+image all qualify; a flag whose output is read, not looked at, does not. Use the
+project's own render path — a preview command, a test's output, an existing script —
+and put what was rendered and what was seen in the evidence. Where the change is
+about colour, measure the contrast rather than eyeballing it. This is a rule inside
+this phase, not a stop: the builder looks, and the report carries what was looked at.
+The reviewer in the seam reads specs, diffs and test output — never pixels — so a
+render nobody looked at here is a render nobody looks at anywhere. The palette that
+satisfied its spec at 1.4:1 contrast is why this line exists.
+
 **Proportion is about how many, never about how honest.** A test that exists is never
 weakened, skipped, deleted or wrapped in a false condition to get a green run. When
 one fails: fix the cause, or stop and say why. Those are the only two moves.

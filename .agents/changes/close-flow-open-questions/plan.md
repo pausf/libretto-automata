@@ -12,7 +12,7 @@ criterion that closes it.
 - [x] 2. record-work SKILL.md: the copy-paste pre-commit snippet using `--block`,
       framed opt-in, default unchanged; wiring row in check-payload. Waits on 1.
       (payload · Proof: scripts/check-payload)
-- [ ] 3. build-and-check SKILL.md: the visual-output rule — if judging it means
+- [x] 3. build-and-check SKILL.md: the visual-output rule — if judging it means
       looking at it, render and look before the seam — wiring row; and FLOW.md's
       Open section closes the artifact question. Independent.
       (payload · Proof: scripts/check-payload + seam readback for FLOW.md)

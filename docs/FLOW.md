@@ -487,14 +487,15 @@ copies coexist by namespace.
 
 Not decided yet. Recorded so they are not lost.
 
-**Where does the artifact get looked at?** This repository's first palette
-satisfied its spec and was unreadable — 1.4:1 on borders. What caught it was
-`docs/preview.py`, a throwaway that rendered the panel in a terminal before
-`internal/ui/theme.go` existed, and then a WCAG measurement of that render. The
-requirements for fluid width, centring and the single-colour menu all came from
-looking at it, not from the ticket. Whether that becomes a phase of its own, or a
-rule inside 2 and 6, is undecided. The reviewer in the 6→7 seam does not answer it:
-it reads specs, diffs and test output, not pixels.
+**Settled since — where the artifact gets looked at.** This repository's first
+palette satisfied its spec and was unreadable — 1.4:1 on borders. What caught it was
+`docs/preview.py`, a throwaway that rendered the panel before the theme existed, and
+a WCAG measurement of that render. The answer became a rule inside phase 6, not a
+phase of its own: **if judging the change means looking at it, the builder renders it
+and looks before the review seam**, measured contrast where the change is about
+colour, with what was seen carried in the evidence. See `skills/build-and-check/`.
+The reviewer in the 6→7 seam still reads specs, diffs and test output, never pixels —
+which is exactly why the look happens before it.
 
 **Settled since:** who keeps the spec true. Phase 8 commits the spec alongside the
 code that taught it — see `skills/record-work/`. The three divergences in this
