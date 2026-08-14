@@ -120,14 +120,14 @@ func TestClaudeExists(t *testing.T) {
 // return a path relative to the process working directory and writes would land
 // somewhere unexpected.
 func TestUnresolvableRootYieldsEmptyDirs(t *testing.T) {
-	c := Claude{}
-
-	if c.Exists() {
-		t.Error("Exists() = true for an empty root")
-	}
-	for _, k := range c.Kinds() {
-		if got := c.Dir(k); got != "" {
-			t.Errorf("Dir(%s) = %q, want empty", k, got)
+	for _, tg := range []Target{Claude{}, Codex{}, Opencode{}} {
+		if e, ok := tg.(interface{ Exists() bool }); ok && e.Exists() {
+			t.Errorf("%s: Exists() = true for an empty root", tg.Name())
+		}
+		for _, k := range tg.Kinds() {
+			if got := tg.Dir(k); got != "" {
+				t.Errorf("%s: Dir(%s) = %q, want empty", tg.Name(), k, got)
+			}
 		}
 	}
 }

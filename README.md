@@ -279,17 +279,31 @@ effort available (weakest first; as of 2026-08; `models effort <level> <agent>�
 
 ### Where it installs
 
-| | |
-|---|---|
-| `--global`, `-g` | `~/.claude` — **the default** |
-| `--project`, `-p` | `<this directory>/.claude` |
+Two axes, combinable — the tool and the scope:
 
-A project-local install keeps a flow scoped to one repository without editing the
-configuration every other project shares. In the panel, the strip shows both
-destinations and `tab` switches which one the keys act on — the active one is marked
-`◉` in gold.
+| Tool | `--global` (default) | `--project` |
+|---|---|---|
+| `--claude` (default) | `~/.claude` | `<this directory>/.claude` |
+| `--codex` — skills only | `~/.agents` | `<this directory>/.agents` |
+| `--opencode` — skills only | `~/.config/opencode` | `<this directory>/.opencode` |
 
-Passing both flags is an error.
+So `libretto install --codex --project` links the skills into this directory's
+`.agents/`, and plain `libretto install` still means what it always did. A
+project-local install keeps a flow scoped to one repository without editing the
+configuration every other project shares.
+
+In the panel the two axes stay separate: the strip shows one row per tool under a
+`scope ▸ global` label, `tab` switches the tool and `s` flips the scope for all
+rows at once — the active row is gold.
+
+Codex and OpenCode read the same Claude-compatible `SKILL.md` format, so the skills
+link unchanged; agents and commands are simply absent from those destinations, not
+errors. One detail worth knowing: OpenCode also reads `~/.claude/skills` and
+`~/.agents/skills` directly, so a claude or codex install already reaches it — the
+`--opencode` tool exists for setups that keep OpenCode's own directory as the
+source of truth.
+
+Two flags on one axis is an error.
 
 ### The five states
 
@@ -308,6 +322,8 @@ Passing both flags is an error.
 | | |
 |---|---|
 | `CLAUDE_HOME` | Claude Code's root instead of `~/.claude`. What makes the test suite safe. |
+| `AGENTS_HOME` | the Codex destination's root instead of `~/.agents`. Libretto-only; Codex does not read it. |
+| `OPENCODE_HOME` | the OpenCode destination's root instead of `~/.config/opencode`. Libretto-only. |
 | `LIBRETTO_ROOT` | the repo location, instead of deriving it from the binary |
 | `LIBRETTO_ASCII=safe` | swap the clef's quadrant glyphs for half blocks |
 | `LIBRETTO_THEME` | `dark` or `light`, instead of detecting |

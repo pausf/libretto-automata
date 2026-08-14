@@ -125,7 +125,7 @@ func updateFromRelease(ctx context.Context) error {
 		// The new version's directory, not payloadRoot(): this process reports the old version,
 		// so resolving again would link the payload it is already on.
 		relink: func(root string) error {
-			return install(root, target.Resolve(target.GlobalScope, ""))
+			return install(root, target.Resolve(target.ClaudeTool, target.GlobalScope, ""))
 		},
 	})
 }

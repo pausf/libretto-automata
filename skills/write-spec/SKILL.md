@@ -456,7 +456,8 @@ Some things are genuinely not yours to decide: a product tradeoff, a convention
 with two live precedents in the codebase, anything where guessing wrong quietly
 breaks working behaviour.
 
-**Ask them in one `AskUserQuestion` call, before the file is written.** Each with
+**Ask them in one `AskUserQuestion` call — one conversational message where the
+native prompt does not exist — before the file is written.** Each with
 the option you recommend, the real alternatives, and room to answer differently.
 
 Drafting the six pillars is what surfaces them — a boundary the request left open, a

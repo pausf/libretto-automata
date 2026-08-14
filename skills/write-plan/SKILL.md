@@ -119,7 +119,8 @@ Report where the plan is, how many tasks, and which can start immediately.
 
 Then stop. Writing the plan is not starting the work.
 
-**Ask for the go-ahead with `AskUserQuestion`, never as a sentence at the end of the
+**Ask for the go-ahead with `AskUserQuestion` — in conversation where the native
+prompt does not exist — never as a sentence at the end of the
 report.** Start the work — recommended, and saying which task runs first — change the order
 first, or go back to the contract. **And room to answer differently**: the thing wrong with
 an order is often not one of the three ways it could be wrong.

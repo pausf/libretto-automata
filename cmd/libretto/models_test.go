@@ -362,7 +362,7 @@ func TestMenuTallyCountsTheActiveTargetsAgents(t *testing.T) {
 	f.foreign(t, "sdd-apply", "haiku")
 	f.foreign(t, "jd-judge-a", "opus")
 
-	menu, _, err := panelData(f.Repo, f.Project, target.GlobalScope)
+	menu, _, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.GlobalScope)
 	if err != nil {
 		t.Fatal(err)
 	}

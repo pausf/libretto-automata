@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -19,20 +20,33 @@ func TestPanelRunsInstallAndReportsInPlace(t *testing.T) {
 	f := newFixture(t)
 	item := f.skill(t, "alpha")
 
-	menu, targets, err := panelData(f.Repo, f.Project, target.GlobalScope)
+	menu, targets, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.GlobalScope)
 	if err != nil {
 		t.Fatal(err)
 	}
+	cur := target.GlobalScope
 	model := ui.NewModel("v0", menu, targets, false).
 		WithRefresh(func(i int) ([]ui.MenuItem, []ui.TargetRow, error) {
-			return panelData(f.Repo, f.Project, scopeOrder[i])
+			return panelData(f.Repo, f.Project, toolOrder[i], cur)
+		}).
+		WithScopeToggle(func(i int) ([]ui.MenuItem, []ui.TargetRow, string, error) {
+			next := target.ProjectScope
+			if cur == target.ProjectScope {
+				next = target.GlobalScope
+			}
+			menu, targets, err := panelData(f.Repo, f.Project, toolOrder[i], next)
+			if err != nil {
+				return nil, nil, "", err
+			}
+			cur = next
+			return menu, targets, string(cur), nil
 		}).
 		WithRunner(func(action string, dest int, _ bool) ([]string, error) {
-			return runCaptured(action, f.Repo, target.Resolve(scopeOrder[dest], f.Project), false)
+			return runCaptured(action, f.Repo, target.Resolve(toolOrder[dest], cur, f.Project), false)
 		})
 
-	// tab → project, enter → install (row 0), q → leave.
-	in := keys(0x09, 0x0d, 'q')
+	// s → project scope, enter → install (row 0), q → leave.
+	in := keys('s', 0x0d, 'q')
 	p := tea.NewProgram(model, tea.WithInput(in), tea.WithOutput(io.Discard))
 
 	done := make(chan tea.Model, 1)
@@ -57,7 +71,7 @@ func TestPanelRunsInstallAndReportsInPlace(t *testing.T) {
 		t.Fatal("the panel reported an install that did not happen")
 	}
 	if _, err := os.Lstat(f.dest("skills", "alpha")); !os.IsNotExist(err) {
-		t.Fatal("the panel installed into the global config after tabbing to the project")
+		t.Fatal("the panel installed into the global config after toggling to the project scope")
 	}
 }
 
@@ -114,16 +128,16 @@ func TestPanelPruneConfirmsInPlace(t *testing.T) {
 	f.link(t, gone, f.dest("skills", "gone"))
 	f.link(t, gone, f.projectDest("skills", "gone"))
 
-	menu, targets, err := panelData(f.Repo, f.Project, target.ProjectScope)
+	menu, targets, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.ProjectScope)
 	if err != nil {
 		t.Fatal(err)
 	}
 	model := ui.NewModel("v0", menu, targets, false).
 		WithRefresh(func(i int) ([]ui.MenuItem, []ui.TargetRow, error) {
-			return panelData(f.Repo, f.Project, scopeOrder[i])
+			return panelData(f.Repo, f.Project, toolOrder[i], target.ProjectScope)
 		}).
 		WithRunner(func(action string, dest int, confirm bool) ([]string, error) {
-			return runCaptured(action, f.Repo, target.Resolve(scopeOrder[dest], f.Project), confirm)
+			return runCaptured(action, f.Repo, target.Resolve(toolOrder[dest], target.ProjectScope, f.Project), confirm)
 		}).
 		SetSelectedForTest(rowOf(t, menu, "prune"))
 
@@ -158,13 +172,13 @@ func TestPanelPruneOnOnePressRemovesNothing(t *testing.T) {
 	f.skill(t, "alpha")
 	f.link(t, f.Repo+"/skills/gone", f.projectDest("skills", "gone"))
 
-	menu, targets, err := panelData(f.Repo, f.Project, target.ProjectScope)
+	menu, targets, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.ProjectScope)
 	if err != nil {
 		t.Fatal(err)
 	}
 	model := ui.NewModel("v0", menu, targets, false).
 		WithRunner(func(action string, dest int, confirm bool) ([]string, error) {
-			return runCaptured(action, f.Repo, target.Resolve(scopeOrder[dest], f.Project), confirm)
+			return runCaptured(action, f.Repo, target.Resolve(toolOrder[dest], target.ProjectScope, f.Project), confirm)
 		}).
 		SetSelectedForTest(rowOf(t, menu, "prune"))
 
@@ -204,4 +218,94 @@ func keys(b ...byte) io.Reader {
 		time.Sleep(20 * time.Millisecond)
 	}()
 	return r
+}
+
+func TestStripShowsEveryTool(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	_, rows, err := panelData(f.Repo, f.Project, target.CodexTool, target.GlobalScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{"claude", "codex", "opencode"}
+	if len(rows) != len(want) {
+		t.Fatalf("the strip has %d rows, want %d", len(rows), len(want))
+	}
+	active := 0
+	for i, row := range rows {
+		if row.Name != want[i] {
+			t.Errorf("row %d is %q, want %q", i, row.Name, want[i])
+		}
+		if row.Active {
+			active++
+			if row.Name != "codex" {
+				t.Errorf("the active row is %q, want codex", row.Name)
+			}
+		}
+	}
+	if active != 1 {
+		t.Fatalf("%d rows are active, want exactly 1", active)
+	}
+}
+
+func TestUnconfiguredDestinationRow(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	// A codex root that does not exist: the row must say so, never error.
+	t.Setenv(target.EnvAgentsHome, filepath.Join(t.TempDir(), "nope"))
+
+	_, rows, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.GlobalScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range rows {
+		if row.Name == "codex" {
+			if row.Configured {
+				t.Error("a missing codex root reports as configured")
+			}
+			return
+		}
+	}
+	t.Fatal("the strip has no codex row")
+}
+
+func TestModelsRowAbsentForSkillsOnlyDestination(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	agent := "---\nname: demo\ndescription: fixture\nmodel: haiku\n---\n"
+	if err := os.MkdirAll(filepath.Join(f.Claude, "agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(f.Claude, "agents", "demo.md"), []byte(agent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	menu, _, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.GlobalScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasRow(menu, "models") {
+		t.Fatal("the global destination has agents installed and no models row — the test cannot see the row it wants absent")
+	}
+
+	menu, _, err = panelData(f.Repo, f.Project, target.CodexTool, target.GlobalScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasRow(menu, "models") {
+		t.Error("a skills-only destination offers a models row over agents it cannot hold")
+	}
+}
+
+func hasRow(menu []ui.MenuItem, label string) bool {
+	for _, m := range menu {
+		if m.Label == label {
+			return true
+		}
+	}
+	return false
 }

@@ -56,3 +56,15 @@ Did: label separators switched to plain periods; the contract held as written ra
 ## 2026-08-14 · add-system-diagram-to-readme · 6→7
 Said: nothing in the artifacts records that the renders were looked at
 Did: the looking happened (mermaid-cli, both diagrams, tilde verified at 3x) and the phase 7 report now names it as evidence
+
+## 2026-08-14 · add-multi-tool-skill-targets · 6→7
+Said: the env count lives in cli/spec.md, help and README, and all three move or drift
+Did: only cli/spec.md carries a count ("Five"); the delta now names the one real home and carries the two replacement rows for landing
+
+## 2026-08-14 · add-multi-tool-skill-targets · 6→7
+Said: every occurrence of Claude outside the allowlist fails the gate
+Did: the check filtered whole lines, so an addressee sharing a line with "Claude Code" escaped; allowlisted tokens are now deleted per-hit before the re-search, forced red on a mixed line
+
+## 2026-08-14 · add-multi-tool-skill-targets · 7→8
+Said: en project solo se puede instalar en claude no tiene sentido; el menú se haría muy largo, hay que comprimirlo
+Did: shipped a flat destination list where only claude had a project side — reworked to orthogonal tool × scope axes (one row per tool, s flips the scope) before anything released; the free-text answer "que el usuario pueda elegir" had been read as "global-only phase 1" when it meant the full choice

@@ -185,14 +185,30 @@ command can live in `$GOBIN`, rebuilding into the clone upgrades a file nobody e
 
 ### Scope: where it writes
 
-| Invocation | Acts on |
-|---|---|
-| `--project` / `-p` | `<cwd>/.claude` |
-| `--global` / `-g` | `~/.claude` |
-| neither | **global** for every subcommand — what every invocation meant before scopes existed. The panel opens where it was left |
+Two axes, combinable — a tool flag and a scope flag answer different questions:
 
-Both flags at once is an **error**, not a precedence rule. Two answers to one question
-is a mistake worth reporting rather than resolving by picking the last one and hoping.
+| Invocation | Meaning |
+|---|---|
+| `--claude` | Claude Code — the default tool |
+| `--codex` | Codex CLI, skills only |
+| `--opencode` | OpenCode, skills only |
+| `--global` / `-g` | the tool's machine-wide root — the default scope |
+| `--project` / `-p` | the tool's directory inside `<cwd>` |
+| none | **claude/global** for every subcommand — what every invocation meant before the axes existed. The panel opens where it was left |
+
+`--codex --project` acts on `<cwd>/.agents`; `--opencode` alone on
+`~/.config/opencode`. Two flags on **one axis** is an **error**, not a precedence
+rule — two answers to one question is a mistake worth reporting rather than
+resolving by picking the last one and hoping. No short flags for the tools:
+`-g`/`-p` predate them, and a `-c` that might one day mean something else is not
+worth squatting.
+
+A skills-only destination installs skills and nothing else: agents and commands are
+absent from the run and from the summary, never errors. `install --codex` reaches
+OpenCode too — it reads `~/.agents/skills` — a fact the README carries.
+
+The remembered panel destination is a (tool, scope) pair; a legacy one-word file
+still reads, and anything unrecognised falls back to claude/global.
 
 Repeating the same flag is fine. It is unambiguous, and rejecting it would be pedantry.
 
@@ -404,11 +420,13 @@ required, and failing on an optional absence trains people to ignore the section
 `skills/`, or `commands/`. Checking only one place reports an installed tool as missing,
 which is worse than not checking, because it sends people to install what they have.
 
-**Five environment variables, each with a working default:**
+**Seven environment variables, each with a working default:**
 
 | Variable | Effect |
 |---|---|
 | `CLAUDE_HOME` | Claude Code's root instead of `~/.claude`. What makes the test suite safe. |
+| `AGENTS_HOME` | the codex destination's root instead of `~/.agents`. Libretto-only; Codex does not read it |
+| `OPENCODE_HOME` | the opencode destination's root instead of `~/.config/opencode`. Libretto-only |
 | `LIBRETTO_ROOT` | the payload clone, instead of resolving it; default `~/.libretto-automata`. **The whole configuration surface for where the clone lives**, which is why no `--no-bootstrap` flag exists |
 | `LIBRETTO_ASCII` | `safe` swaps quadrant glyphs for half blocks |
 | `LIBRETTO_THEME` | `dark` or `light`, instead of detecting |
@@ -603,6 +621,17 @@ typing has gaps in it; the harness has to as well.
   Proof: cmd/libretto/scope_test.go TestPruneProjectScopeLeavesGlobalAlone
 - no flag means global
   Proof: cmd/libretto/scope_test.go TestDefaultScopeIsGlobal
+- **`--codex` and `--opencode` resolve their targets, and any two destination flags
+  together is an error**
+  Proof: cmd/libretto/scope_test.go TestDestinationFlags
+- **a codex install links skills only and leaves every other destination alone**
+  Proof: cmd/libretto/scope_test.go TestInstallCodexLeavesOthersAlone
+- **an opencode install links skills only and leaves every other destination alone**
+  Proof: cmd/libretto/scope_test.go TestInstallOpencodeLeavesOthersAlone
+- the remembered destination round-trips the new words and falls back to global
+  Proof: cmd/libretto/remembered_test.go TestRememberedDestinationRecognisesNewTargets
+- help names the new flags and both env overrides
+  Proof: cmd/libretto/main_test.go TestHelpNamesEveryDestination
 
 Finding the payload:
 
