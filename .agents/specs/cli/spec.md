@@ -191,7 +191,7 @@ Two axes, combinable — a tool flag and a scope flag answer different questions
 |---|---|
 | `--claude` | Claude Code — the default tool |
 | `--codex` | Codex CLI, skills only |
-| `--opencode` | OpenCode, skills and commands |
+| `--opencode` | OpenCode, all three kinds — agents generated, not linked |
 | `--global` / `-g` | the tool's machine-wide root — the default scope |
 | `--project` / `-p` | the tool's directory inside `<cwd>` |
 | none | **claude/global** for every subcommand — what every invocation meant before the axes existed. The panel opens where it was left |
@@ -207,7 +207,12 @@ worth squatting.
 not accept are absent from the run and from the summary, never errors. `--codex` is the
 skills-only one: `install --codex` links skills alone, and it reaches OpenCode too
 because OpenCode reads `~/.agents/skills` — a fact the README carries.
-`install --opencode` links skills **and commands**, and creates no `agents` directory.
+`install --opencode` links skills and commands and **writes** agents: that destination
+takes all three, and one of them is generated rather than linked. `status` and `doctor`
+report a generated agent through the same five states with no new vocabulary — drift reads
+`wrong target`, a file of somebody's own at that path reads `conflict`, an agent whose
+source is gone reads `stale`. `uninstall --opencode --yes` takes ours back out and keeps
+theirs.
 
 The paragraph used to say "a skills-only destination" and mean both new tools. The rule
 was right and the list was not, which is the shape a sentence goes stale in: it names
@@ -635,9 +640,13 @@ typing has gaps in it; the harness has to as well.
   with a command present in the repo, so the absent `commands/` proves something
   Proof: cmd/libretto/scope_test.go TestInstallCodexLeavesOthersAlone
 - **an opencode install links a command as a symlink into `<root>/commands`**, links
-  the skill too, creates no `agents` directory, and leaves every other destination
-  alone
+  the skill too, **writes the agent as a regular file with no `tools:` and a marker in
+  it**, and leaves every other destination alone
   Proof: cmd/libretto/scope_test.go TestInstallOpencodeLeavesOthersAlone
+- **`uninstall --opencode --yes` removes a generated agent and keeps a file somebody else
+  put at the same path** — the promise applied to a kind that is written rather than
+  linked, and it needed no code
+  Proof: cmd/libretto/scope_test.go TestUninstallOpencodeRemovesGeneratedAgents
 
   **The symlink half is the load-bearing word.** "Links commands" is satisfied by a
   copy, and a copy stops tracking the repo the moment either side moves — the one

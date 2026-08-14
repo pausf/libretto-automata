@@ -26,7 +26,7 @@ two axes as tools + scopes:
 |---|---|---|---|
 | `ClaudeTool` | `~/.claude`, honouring `CLAUDE_HOME` | `<dir>/.claude` | skills, agents, commands |
 | `CodexTool` | `~/.agents`, honouring `AGENTS_HOME` | `<dir>/.agents` | skills only |
-| `OpencodeTool` | `~/.config/opencode`, honouring `OPENCODE_HOME` | `<dir>/.opencode` | skills, commands |
+| `OpencodeTool` | `~/.config/opencode`, honouring `OPENCODE_HOME` | `<dir>/.opencode` | skills, commands, agents |
 
 The two overrides on the new rows are libretto's own, for test safety — exactly
 `CLAUDE_HOME`'s role. Codex and OpenCode do not read those variables. Codex CLI
@@ -53,11 +53,17 @@ no `.claude/` has not opted in, which is a state and not an error; install creat
 the directory rather than demanding it.
 
 The two Claude scopes accept the same three kinds — an item that installs in one
-and silently vanishes in the other would be indistinguishable from a bug. **Codex accepts skills alone; OpenCode accepts skills and
-commands.** A kind a target does not accept is absent from that destination, never an
-error. Agents are the one kind neither takes, because both load a different agent
-format and that needs a transform rather than a link — still queued as
-`add-transformed-agent-targets`.
+and silently vanishes in the other would be indistinguishable from a bug. **Codex accepts skills alone; OpenCode accepts all three.** A kind a target does not
+accept is absent from that destination, never an error.
+
+**And OpenCode does not accept all three the same way.** Skills and commands are
+symlinked; **agents are generated** — the file at the destination is derived from the
+repo's agent, not a link to it. That is the only place this tool writes content rather
+than linking it, and it is forced rather than chosen: OpenCode types agent `tools` as a
+map where ours is a comma-separated string, and `ConfigParse.schema` **throws** on a
+mismatch rather than skipping the file, so one symlinked agent would break the host's
+whole config load. A target declares which kinds it generates through the `Transformer`
+interface, discovered by assertion.
 
 **A kind added to a tool arrives in both of that tool's scopes.** That is not a
 separate decision, it is what orthogonal axes mean: the accepted set belongs to the
@@ -80,9 +86,24 @@ resolution.
 - project-scoped variants of the codex and opencode targets. OpenCode already reads
   a project's `.claude/skills`, which the project scope serves; per-project Codex
   skills come back the day a user asks for them.
-- **the agents kind, for codex and opencode.** Both load a different agent format, so
-  it needs a frontmatter transform rather than a symlink — which is a different
-  mechanism, not a bigger `Kinds()`. `add-transformed-agent-targets` owns it.
+- **agents for codex.** The destination does not exist. Codex declares agents in the
+  user's `config.toml` under `[agents]`, where `agents.<name>.config_file` names a
+  *settings* layer and not a prompt — so there is nowhere to put an agent's body, and
+  writing one would mean editing a shared config file, which this spec already refuses
+  for `CLAUDE.md` and `settings.json`. Read off `openai/codex` on 2026-08-14: `docs/`
+  ships `skills.md` and `slash_commands.md` and no agents equivalent, and
+  `codex-rs/core/src/agents_md*.rs` is about `AGENTS.md` instruction files. **What brings
+  it back: Codex shipping a directory of agent definition files.**
+- **translating an agent's `tools:` or `model:` for OpenCode.** Both keys are dropped
+  rather than mapped. `tools` on Claude is a comma-separated string and a *safety
+  property* — what keeps a review lens read-only; OpenCode's map is keyed on its own tool
+  names, which do not correspond one-to-one and have no entry for `Skill`. A wrong
+  mapping's failure mode is a reviewer that can write, so the key is left out and
+  OpenCode's own default governs. `model:` goes for the narrower reason that a Claude
+  tier name is not a `provider/model-id`. **Ceiling named: on OpenCode a lens runs with
+  whatever that host gives a subagent by default, which is more than its Claude
+  frontmatter allows.** What brings either back is a reviewed name-to-name mapping, which
+  is a decision about what a lens may do and therefore the user's.
 - **any content transform for OpenCode commands.** Out because it is not needed:
   unknown frontmatter keys are ignored, not rejected, and this payload's commands carry
   `description:` and nothing else. What brings it back is a command needing a key
@@ -195,12 +216,30 @@ Complete. Shipped in phase 1; scopes added later; codex and opencode added 2026-
   Proof: internal/target/codex_test.go TestCodexExists
 - the opencode root honours `OPENCODE_HOME` and falls back to `~/.config/opencode`
   Proof: internal/target/opencode_test.go TestOpencodeRootResolution
-- **opencode serves skills at `<root>/skills`, commands at `<root>/commands` — the
-  plural the shared helper already emits, and one of the two names OpenCode globs —
-  and rejects agents**
-  Proof: internal/target/opencode_test.go TestOpencodeAcceptsSkillsAndCommands
+- **opencode serves skills, commands and agents, each at `<root>/<kind>`** — the plural
+  the shared helper already emits, and one of the two names OpenCode globs for each
+  Proof: internal/target/opencode_test.go TestOpencodeAcceptsSkillsCommandsAndAgents
+- **the agent transform drops `tools:` and `model:`, adds `mode: subagent` and the
+  ownership marker, and leaves the prose body byte-identical** — the body is the prompt,
+  so a changed byte is changed behaviour
+  Proof: internal/target/transform_test.go TestOpencodeAgentTransform
+- **the transform is deterministic**, or every scan reports drift and install rewrites
+  forever. Frontmatter is emitted in encounter order, never from a Go map
+  Proof: internal/target/transform_test.go TestAgentTransformIsDeterministic
+- **transforming the transform's own output changes nothing** — no stacked marker, no
+  second `mode:`
+  Proof: internal/target/transform_test.go TestTransformIsIdempotentOverItsOwnOutput
+- **a source with no usable frontmatter is refused** rather than emitted, because
+  OpenCode throws on a malformed agent instead of skipping it
+  Proof: internal/target/transform_test.go TestTransformRefusesAFileWithNoFrontmatter
+- **`Transforms` answers per kind, and only opencode implements `Transformer`** — two
+  questions, two methods. With only `Transform`, an error meant both "this failed" and
+  "this kind is linked", and every skill and command in the opencode destination was
+  classified as a conflict
+  Proof: internal/target/transform_test.go TestOnlyOpencodeTransforms
+  Proof: internal/target/transform_test.go TestTransformRefusesALinkedKind
 - **every tool resolves in both scopes onto its own root, with the same accepted kinds
-  in both scopes: skills for codex, skills and commands for opencode**
+  in both scopes: skills for codex, all three for opencode**
   Proof: internal/target/scope_test.go TestResolveToolScopeMatrix
 
 **That a command actually gets linked — as a symlink, into `<root>/commands` — is

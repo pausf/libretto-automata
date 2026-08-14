@@ -101,6 +101,23 @@ func (f fixture) command(t *testing.T, name string) string {
 	return path
 }
 
+// agent writes an agent into the repo and returns its path. Real frontmatter,
+// because the opencode target transforms it rather than linking it.
+func (f fixture) agentItem(t *testing.T, name string) string {
+	t.Helper()
+
+	dir := filepath.Join(f.Repo, "agents")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, name+".md")
+	body := "---\nname: " + name + "\ndescription: fixture\ntools: Read, Grep\nmodel: sonnet\n---\n\nbody\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
 // dest is the path a repo item of this kind and name would be linked to.
 func (f fixture) dest(kind, name string) string {
 	return filepath.Join(f.Claude, kind, name)

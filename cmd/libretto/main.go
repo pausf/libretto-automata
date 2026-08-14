@@ -1330,7 +1330,7 @@ func usage() {
 
   --claude              Claude Code (the default) · ~/.claude or <dir>/.claude
   --codex               Codex CLI, skills only · ~/.agents or <dir>/.agents
-  --opencode            OpenCode, skills and commands · ~/.config/opencode or <dir>/.opencode
+  --opencode            OpenCode, all three · agents generated, not linked
   --global, -g          the tool's machine-wide root (the default)
   --project, -p         the tool's directory inside this one; combines with any tool
 

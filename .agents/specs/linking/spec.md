@@ -70,6 +70,29 @@ creating missing parent directories.
 - git, remotes, rebuilds — that is `repo-sync`
 - prompting. Confirmation is `cli`'s concern.
 
+### The four acts cover a written file too
+
+`Create` makes the destination correct, `Repoint` makes an owned destination correct,
+`Remove` deletes an owned destination with nothing behind it, `Skip` refuses. **What
+varies is how, and the target decides — not the plan.** For a kind installed by
+transform, `Create` and `Repoint` write bytes instead of making a link, and the bytes
+travel on the entry: `link-state` already computed them to decide the state, so `Plan`
+stays a pure function of entries with no target to ask.
+
+**`Plan`, `PrunePlan` and `UninstallPlan` are untouched by that**, which is the payoff for
+`link-state` refusing a sixth state — and it is why `uninstall` takes generated agents
+back out with nothing added: `Linked`, `WrongTarget` and `Stale` already map to `Remove`
+and `Conflict` to `Skip`. That is a guarantee from the state vocabulary, not a case
+somebody remembered to add.
+
+**A generated write is atomic**: a temporary file in the destination directory, renamed
+over the target. Not a nicety — OpenCode throws on a malformed agent rather than skipping
+it, so a torn write does not degrade one agent, it breaks the host's config load. The temp
+file never goes in the system temp directory, because `os.Rename` fails across
+filesystems. **Ceiling named:** atomic per file, not per plan — an `Apply` interrupted
+between two files leaves one new and one old, the same guarantee linking already gives for
+symlinks.
+
 ## Constraints
 
 **Ownership is re-checked at the moment of writing.** A plan is a snapshot of a
@@ -106,6 +129,30 @@ memory.
 Complete. Phase 3.1 planning, 3.2 applying, 3.3 prune, and `uninstall` after it.
 
 ## Verification criteria
+- **`Create` on a generated kind writes the file** — a regular file at 0644, carrying the
+  marker, and recognised as ours immediately afterwards
+  Proof: internal/link/apply_generated_test.go TestCreateWritesGeneratedContent
+- **`Repoint` rewrites a drifted generated file whole.** Nothing in it is the user's;
+  every byte was derived
+  Proof: internal/link/apply_generated_test.go TestRepointRewritesGeneratedContent
+- **`Repoint` refuses a file that stopped being ours between the scan and the apply**, and
+  leaves it byte-identical. The plan is computed from a scan that is already stale by the
+  time it runs, and this re-check is the last thing between a race and somebody's file
+  Proof: internal/link/apply_generated_test.go TestRepointRefusesAForeignFileAtApplyTime
+- **`Remove` deletes an owned generated file and spares a markerless one** at the same
+  path
+  Proof: internal/link/apply_generated_test.go TestRemoveDeletesAnOwnedGeneratedFile
+- **a second install of a generated tree plans nothing** — idempotence is the promise that
+  makes install safe to re-run, and a generated tree that rewrote itself every run would
+  also mean `status` never reads clean
+  Proof: internal/link/apply_generated_test.go TestGeneratedApplyIsIdempotent
+- **no temporary file survives a write**, so a scan never finds a half-written neighbour
+  and calls it a conflict
+  Proof: internal/link/apply_generated_test.go TestGeneratedWriteLeavesNoTempFile
+- **the temporary file is created in the destination directory**, never the system temp
+  directory: `os.Rename` fails across filesystems and a target root is often on another
+  one
+  Proof: internal/link/apply_generated_test.go TestGeneratedWriteUsesTheDestinationDirectory
 
 - each state maps to its action, and `linked`/`stale` map to nothing
   Proof: internal/link/plan_test.go TestPlan
