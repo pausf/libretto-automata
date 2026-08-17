@@ -4,7 +4,7 @@ description: "Trigger: specs are written and the work needs an ordered checklist
 license: MIT
 metadata:
   author: pausf
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## What this does
@@ -96,6 +96,50 @@ answer anyone can read off the file.
 
 Independent tasks may be marked as such. Parallel by default is how a plan becomes
 a race.
+
+## Cut each box so it stands alone
+
+Ordering says which box comes first. **This says what belongs inside one**, and it is the
+harder half: a plan can be perfectly ordered and still be cut wrong.
+
+A box is one end-to-end change — the code and the proof that closes it, together. Not a
+layer of one. Closing a box leaves the tree green and mergeable **on its own**, with
+nothing half-built waiting for the next box to make sense of it.
+
+So the test is not "is this task small" but: **could this box merge by itself?** If the
+answer is no because the box after it is what makes it work, they are not two boxes.
+Two boxes where the first only makes sense once the second lands are one badly cut box,
+and the fix is to merge them rather than to order them.
+
+What the horizontal cut looks like, because it is the default and it reads as tidy:
+
+| Cut | Boxes | Merge the first one alone and you get |
+|---|---|---|
+| by layer | the model · the handler · the tests | a model nothing calls, then a handler nothing proves |
+| end to end | one field, stored, served and proved · the next field | a working field |
+
+**The capability spec is not part of a box.** A delta lands on it once, in the final
+commit, exactly as it always has — what a box owes is its own proof, never a slice of the
+delta.
+
+### When a box cannot be cut that way
+
+That is a finding about the **spec**, not a licence to ship a layer. Phase 2's task
+breakdown was cut along components, and the rule above about tasks that trace to no spec
+already says what to do with a task the spec got wrong: find out which end is wrong before
+writing it down. Take it back to the contract.
+
+### What this buys, and it is not tidiness
+
+`libretto loop` runs one fresh session per open box. A box that does not stand alone leaves
+the tree broken between sessions — the next session opens on work it did not do and cannot
+see the reasoning for, which is the failure the loop is most exposed to and the one it has
+no way to detect.
+
+**Ceiling named:** nothing here can check a plan. Whether a box genuinely merges alone is
+judgment, and the payload's own gate only verifies that this mandate is present in this
+file. A box cut horizontally under a mandate sitting three paragraphs above it surfaces at
+phase 6 or in the 6→7 review, never in a gate.
 
 ## Where it lives
 
