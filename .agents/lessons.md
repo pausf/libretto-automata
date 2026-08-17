@@ -123,3 +123,15 @@ Did: the marker is now always emitted double-quoted, and the reader accepts quot
 ## 2026-08-17 · make-test-badge-live · 6→7
 Said: the word-check half scans the raw README, and badgeImage's `[^)\s]+` cannot cross a newline — so a literal status badge whose markdown wraps between `![Build](` and its URL slips past entirely, while the six honest badges keep the count non-zero and the guard green. The delta's own Constraints demanded flat() normalisation and only the endpoint half did it
 Did: the scan now runs over flat(readme), with `\s*` after the paren for what flat leaves behind. Proved with the reviewer's own probe — a wrapped `build-passing` badge appended to the README, exit 1 naming `build`, exit 0 once removed. **Second time this file has shipped a guard that silently could not fire**: the capability already records `"checksum database"` never matching because the README wrapped between those two words. A new substring guard in this file starts from flat(), not from the raw document
+
+## 2026-08-17 · consolidate-license-files · 6→7
+Said: THIRD-PARTY.md gained a four-line explanatory paragraph that no outcome asked for — the In list named only the link lines
+Did: added it to outcome 2 rather than deleting it. The prose is the half of this fix that is presentation rather than layout: the ask misread the root listing as offering alternatives, so a move with no explanation invites the same misreading. Scope arriving without an outcome behind it is still unnamed scope even when it is right
+
+## 2026-08-17 · consolidate-license-files · 6→7
+Said: outcome 3's Governs: widening exists only as an uncommitted working-tree change, so --anchors green for the new payload citation was measured against a dirty tree
+Did: not a defect — box 2 was open and phase 8 in progress. Re-ran every gate after the landing commit rather than carrying the dirty-tree measurement into the report. Worth keeping because "green" measured mid-phase-8 is a real way to report a gate that was never run on what shipped
+
+## 2026-08-17 · consolidate-license-files · 6→7
+Said: "LICENSE does not move" and "the vendored table is not touched" were confirmed by inspection with nothing to catch a regression — is the root LICENSE worth one line in the same test?
+Did: yes, added. The existing loop says which files must leave the root and is satisfied by a root with no licence at all, which is the wrong tidy — GitHub reads root LICENSE for the displayed licence and the API field. Proved it can fire by exporting the branch with git archive and moving LICENSE aside, so the repo was never touched. The vendored table stays unguarded: check-payload already fails loudly on a parse returning nothing or everything

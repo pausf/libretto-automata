@@ -265,6 +265,14 @@ func TestThirdPartyLinksResolve(t *testing.T) {
 			t.Errorf("%s is still at the root — LICENSE is the only licence file that belongs there", name)
 		}
 	}
+
+	// The loop above says which licence files must leave the root and would be satisfied by a
+	// root with no licence at all. GitHub reads root LICENSE to display the repository's
+	// licence and to fill the API field, so the tidying this test enforces must not take it:
+	// the 6→7 reviewer confirmed it by inspection and asked what would catch a regression.
+	if _, err := os.Stat(filepath.Join("..", "..", "LICENSE")); err != nil {
+		t.Error("LICENSE is not at the root — GitHub reads it there to display the licence")
+	}
 }
 
 var mermaidFence = regexp.MustCompile("(?s)```mermaid(.*?)```")

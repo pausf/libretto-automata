@@ -22,7 +22,17 @@ list, so that file is already load-bearing for a gate while being governed by no
 1. **`LICENSE` is alone at the root.** The three vendored licence texts live in
    `licenses/`, keeping their names.
 
-2. **`THIRD-PARTY.md` points at them where they now are**, and its links resolve.
+2. **`THIRD-PARTY.md` points at them where they now are**, and its links resolve. It also
+   **says why they are in a directory** — that none of the three is an alternative to root
+   `LICENSE`, and that deleting one to tidy the root would be a licensing failure. The ask
+   misread the root listing exactly that way, so a move that leaves no explanation invites the
+   same misreading from the next reader; the paragraph is the half of the fix that is
+   presentation rather than layout.
+
+   **Added after the 6→7 reviewer found it as unnamed scope.** The prose shipped with no
+   outcome behind it, which is how scope arrives without being asked for even when it is
+   right — the reviewer was correct to name it, and the answer was an outcome rather than a
+   deletion.
 
 3. **`payload` governs the vendoring record.** Its `Governs:` line gains `THIRD-PARTY.md`
    and `licenses/**`. `payload` is the right owner because it already carries the constraint
@@ -34,8 +44,8 @@ list, so that file is already load-bearing for a gate while being governed by no
 
 ## Scope boundaries
 
-**In:** three `git mv`s, the link lines in `THIRD-PARTY.md`, `payload`'s `Governs:` line, and
-one new test case.
+**In:** three `git mv`s, the link lines and the explanatory paragraph in `THIRD-PARTY.md`,
+`payload`'s `Governs:` line, and one new test case.
 
 **Out**, named:
 
