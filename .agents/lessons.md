@@ -135,3 +135,19 @@ Did: not a defect — box 2 was open and phase 8 in progress. Re-ran every gate 
 ## 2026-08-17 · consolidate-license-files · 6→7
 Said: "LICENSE does not move" and "the vendored table is not touched" were confirmed by inspection with nothing to catch a regression — is the root LICENSE worth one line in the same test?
 Did: yes, added. The existing loop says which files must leave the root and is satisfied by a root with no licence at all, which is the wrong tidy — GitHub reads root LICENSE for the displayed licence and the API field. Proved it can fire by exporting the branch with git archive and moving LICENSE aside, so the repo was never touched. The vendored table stays unguarded: check-payload already fails loudly on a parse returning nothing or everything
+
+## 2026-08-17 · add-contributing-guide · 6→7
+Said: criterion 1's "work does not come from a tracker" clause was tested by nothing — deleting the whole section from a copy left the guard at zero failures
+Did: one assertion per clause, anchored on the heading rather than a sentence so improving the prose does not break the guard. This is the recorded "a criterion can cite a gate that tests half of it" class, and the delta declared no ceiling for it — a four-clause criterion citing one test needs four assertions or a stated ceiling, never the citation alone
+
+## 2026-08-17 · add-contributing-guide · 6→7
+Said: "the six gates as a runnable block" was held by one of the six — five gate lines removed from a copy and the guard stayed green
+Did: all six asserted individually. The value of that section is that a contributor can paste and run it, so five commands vanishing undetected destroys the outcome while leaving the criterion green. A block asserted by one of its lines is a block nothing holds
+
+## 2026-08-17 · add-contributing-guide · 6→7
+Said: `## What to expect on review` is content no outcome names — scope arrived without asking
+Did: made it an outcome rather than deleting it. Second time in this batch the same finding landed, after THIRD-PARTY.md's paragraph — writing prose that is clearly wanted still needs an outcome behind it, or the contract does not cover what shipped
+
+## 2026-08-17 · add-contributing-guide · 6→7
+Said: unverified question — the guide attached `--force` to the gates, while AGENTS.md uses it about never overwriting what the tool did not create
+Did: reworded. Gates have no `--force`; the sentence conflated two rules and would have taught a contributor something untrue about the gates. Raised as a question rather than a finding, and it was the most wrong line in the file
