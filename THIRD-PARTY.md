@@ -16,8 +16,15 @@ first. They are vendored deliberately, not by accident.
 | `skills/caveman/` | [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman) | 0.1.0 · `11ddc0c` | MIT · Copyright (c) 2026 Julius Brussee |
 | `skills/caveman-commit/` | [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman) | 0.1.0 · `11ddc0c` | MIT · Copyright (c) 2026 Julius Brussee |
 
-Full licence texts: [`LICENSE-superpowers`](LICENSE-superpowers),
-[`LICENSE-ponytail`](LICENSE-ponytail), [`LICENSE-caveman`](LICENSE-caveman).
+Full licence texts, in [`licenses/`](licenses):
+[`LICENSE-superpowers`](licenses/LICENSE-superpowers),
+[`LICENSE-ponytail`](licenses/LICENSE-ponytail),
+[`LICENSE-caveman`](licenses/LICENSE-caveman).
+
+They live in a directory rather than at the root so that `LICENSE` — this repository's own —
+is the only licence file a reader meets there. **None of them is an alternative to it.** Each
+is the upstream licence of a vendored skill, and a vendored copy has to carry its own text:
+deleting one to tidy the root would be a licensing failure, not a cleanup.
 
 Copied unmodified. If one of them needs changing for this flow, the change goes in
 the Libretto skill that calls it — never into the vendored copy, so the copy stays

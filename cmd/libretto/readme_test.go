@@ -229,6 +229,44 @@ func TestNoBadgeAssertsAStatus(t *testing.T) {
 	}
 }
 
+// THIRD-PARTY.md is the record that every vendored skill carries its own licence and
+// version, and check-payload already parses its table to derive the vendored list — so the
+// file was load-bearing for a gate while no capability's Governs: claimed it. Moving the
+// three licence texts into licenses/ is exactly the change that breaks its links, and
+// nothing was watching.
+//
+// The scan runs over flat(), like every substring assertion in this file: two guards here
+// have already shipped unable to fire because Markdown wrapped between the words they
+// looked for. A third would not be an accident.
+func TestThirdPartyLinksResolve(t *testing.T) {
+	links := readmeLink.FindAllStringSubmatch(flat(repoFile(t, "THIRD-PARTY.md")), -1)
+	if len(links) == 0 {
+		t.Fatal("no links matched — the pattern is broken, not THIRD-PARTY.md")
+	}
+
+	for _, match := range links {
+		target := strings.TrimSpace(match[1])
+		if strings.HasPrefix(target, "http") || strings.HasPrefix(target, "mailto:") {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join("..", "..", target)); err != nil {
+			t.Errorf("THIRD-PARTY.md links to %s, which does not exist", target)
+		}
+	}
+
+	// Checking the links alone would pass with one licence moved and two forgotten, since a
+	// link nobody updated points at a file that is still there. So the layout is asserted
+	// directly: three under licenses/, none left at the root.
+	for _, name := range []string{"LICENSE-caveman", "LICENSE-ponytail", "LICENSE-superpowers"} {
+		if _, err := os.Stat(filepath.Join("..", "..", "licenses", name)); err != nil {
+			t.Errorf("licenses/%s does not exist — a vendored copy must carry its licence text", name)
+		}
+		if _, err := os.Stat(filepath.Join("..", "..", name)); err == nil {
+			t.Errorf("%s is still at the root — LICENSE is the only licence file that belongs there", name)
+		}
+	}
+}
+
 var mermaidFence = regexp.MustCompile("(?s)```mermaid(.*?)```")
 
 // Two diagrams live inside What you get — delivery and flow — because that section is
