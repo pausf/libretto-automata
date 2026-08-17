@@ -9,7 +9,8 @@ to look for, and then sends you there.
 
 ## 1 · Run the six gates before you open anything
 
-All six pass, or the change is not ready. There is no partial credit and no `--force`.
+All six pass, or the change is not ready. There is no partial credit, and a failing test is
+fixed or explained — never weakened, skipped or deleted to get a green result.
 
 ```bash
 gofmt -l .                                       # must print nothing

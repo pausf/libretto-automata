@@ -290,12 +290,32 @@ func TestContributingIsADoorNotACopy(t *testing.T) {
 	// What lives nowhere else, and what an outside contributor cannot guess.
 	for _, must := range []string{
 		"release:patch", // the designed refusal that reads as a broken pipeline unpredicted
-		"scripts/check-payload",
 		".agents/specs/",
 		"1.0.0",
+		// The 6→7 reviewer measured that deleting this whole section left the guard at zero
+		// failures: the clause was in the criterion and in nothing that could fail. The
+		// heading is the anchor rather than a sentence, so improving the prose does not
+		// break the guard.
+		"Work does not come from a tracker",
 	} {
 		if !strings.Contains(guide, must) {
 			t.Errorf("CONTRIBUTING.md never mentions %q — it is one of the few things only this file says", must)
+		}
+	}
+
+	// All six, not one of six. The reviewer removed five gate lines from a copy and the guard
+	// stayed green — so the contributor's paste-and-run block could lose five of the six
+	// commands undetected, which is the whole value of that section.
+	for _, gate := range []string{
+		"gofmt -l .",
+		"go vet ./...",
+		"go test ./... -count=1",
+		"scripts/check-payload",
+		"spec-drift --self-test",
+		"spec-drift --anchors",
+	} {
+		if !strings.Contains(guide, gate) {
+			t.Errorf("CONTRIBUTING.md omits the gate %q — all six pass or the change is not ready", gate)
 		}
 	}
 

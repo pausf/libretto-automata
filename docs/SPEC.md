@@ -41,6 +41,7 @@ from being overwritten by other tooling that writes into the same directories.
 | [distribution](../.agents/specs/distribution/spec.md) | `internal/dist/**` | where an installed copy's payload is, and asking for a newer one |
 | [ci](../.agents/specs/ci/spec.md) | `.github/**`, `Makefile` | the six gates on a machine that is not the author's, and the release target |
 | [readme](../.agents/specs/readme/spec.md) | `README.md`, `cmd/libretto/readme_test.go` | the front door: what it is, how to install it, what to type — and that the reasoning it no longer carries is in `docs/` rather than gone |
+| [contributing](../.agents/specs/contributing/spec.md) | `CONTRIBUTING.md` | the contributor's door: the gates as a runnable block, the `release:` label the run refuses without, that work comes from no tracker — and no rule `AGENTS.md` already owns |
 | [review-project](../.agents/specs/review-project/spec.md) | `skills/review-*/**`, `agents/review-*.md`, `commands/libretto-review.md` | reviewing somebody else's PR/MR without disturbing your own state |
 
 The flow's own reasoning — its eight phases and why they are those — is
