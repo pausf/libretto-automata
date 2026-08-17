@@ -110,6 +110,34 @@ func TestMovedReasoningLandedInDocs(t *testing.T) {
 		{"the payload is not compiled in, paraphrased", "wins over"},
 		{"model aliases rather than ids", "two spellings of one state"},
 		{"spec-drift warns, never blocks", "a deleted check finds nothing"},
+		// Five more, moved out when the README was cut from 389 lines to fit under its own
+		// ceiling. Each anchor is the phrase a paraphrase would have to lose — the lesson
+		// above about "module cache" is why they are chosen that way and not by convenience.
+		//
+		// Two of these were re-chosen after the 6→7 reviewer found what was wrong with them,
+		// and both mistakes are worth knowing:
+		//
+		//   "costs a line" could not fail on the docs side. The same diff that moved the
+		//   argument to FLOW.md introduced the identical phrase into DESIGN.md, and the
+		//   assertion reads the two files concatenated — so deleting the paragraph the anchor
+		//   guards left the guard green. An anchor has to be unique across both destinations,
+		//   not merely characteristic of its source.
+		//
+		//   "never merges, tags or releases" made a *behaviour fact* unmentionable in the
+		//   README. That phrase says what the mode does, and what a command does stays in the
+		//   README by this capability's own prior decision — so anchoring on it forced the
+		//   fact out along with the argument. The anchor now sits on the reasoning instead.
+		{"the spec stop is the cheap place to disagree", "more expensive than this one"},
+		{"phase 1's source order is the point", "gets abandoned"},
+		{"attacca will not answer a gate", "it would be unverified"},
+		{"an alias resolves per provider from the environment", "no request, no"},
+		// Third attempt at this one, and the first two both failed the same way. "not thin, it
+		// is broken" was already in FLOW.md before this change, and the assertion reads both
+		// docs concatenated — so it passed on a pre-existing sentence in the wrong file and
+		// deleting the relocated section would have left it green. Every anchor above was
+		// therefore re-counted against the *base* of both documents, not just against the
+		// branch: an anchor that was already there guards nothing.
+		{"other people's skills are vendored only in part", "the owner of behaviour it never reviews"},
 	} {
 		if strings.Contains(readme, moved.phrase) {
 			t.Errorf("%s is still argued in the README", moved.subject)
@@ -169,6 +197,18 @@ func TestReadmeLinksResolve(t *testing.T) {
 		t.Fatal("no links matched — the pattern is broken, not the README")
 	}
 
+	// Resolving the links it has says nothing about the one it must have: a README with no
+	// CONTRIBUTING.md link at all passes the loop below. The contributor's door is reached
+	// from the front door or it is reached by nobody browsing.
+	//
+	// Scoped to Learn more, not the whole file. The 6→7 reviewer pointed out that a link
+	// arriving in the footer would satisfy a whole-file check while missing the outcome, which
+	// names that section — and the footer already mentions the licence and third-party files,
+	// so it is exactly where a stray link would plausibly land.
+	if !strings.Contains(flat(section(t, repoFile(t, "README.md"), "## Learn more")), "CONTRIBUTING.md") {
+		t.Error("Learn more never links to CONTRIBUTING.md — the contributor's door is unreachable from the front")
+	}
+
 	for _, match := range links {
 		target := match[1]
 		if strings.HasPrefix(target, "http") || strings.HasPrefix(target, "mailto:") {
@@ -177,6 +217,29 @@ func TestReadmeLinksResolve(t *testing.T) {
 		if _, err := os.Stat(filepath.Join("..", "..", target)); err != nil {
 			t.Errorf("the README links to %s, which does not exist", target)
 		}
+	}
+}
+
+// A front door that grows never shrinks back, and this one had reached 389 lines with
+// arguments in it that docs/ already owned. The capability's own ceilings proposed this
+// mechanism for themselves before it was needed: a criterion about how long the file may get.
+//
+// It is a ratchet against growth, not a measure of readability — a README rewritten as 340
+// very long lines passes. Readability is the one thing no test here holds, which the
+// capability records and which is why that is said out loud rather than implied.
+func TestReadmeStaysShort(t *testing.T) {
+	// 380, and the first draft said 340 — chosen before anything was measured. Removing one
+	// duplicate and relocating five arguments netted 13 lines, not 49: the relocations swap
+	// prose for a pointer, so each one saves less than it reads like it should. What remains is
+	// reference — the commands table, the model and effort listings, the five states, the
+	// environment table — and cutting those to hit a number would leave a worse README that
+	// passes its own guard, which is the failure this whole capability exists to prevent.
+	//
+	// So this is a ratchet against growth, deliberately tight. Raising it is the wrong fix; the
+	// right one is moving an argument out, which is what the message says.
+	const ceiling = 380
+	if n := strings.Count(repoFile(t, "README.md"), "\n"); n > ceiling {
+		t.Errorf("README.md is %d lines, over its %d ceiling — move an argument to docs/ rather than raising this", n, ceiling)
 	}
 }
 

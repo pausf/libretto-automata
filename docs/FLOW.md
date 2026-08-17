@@ -54,6 +54,21 @@ and a flow that reads the queue on its own would have to decide when to override
 abandoning an idea costs nothing and a queue that is expensive to add to is a queue nobody
 uses.
 
+### Why the source order is the point, and not merely an order
+
+Phase 1 asks three sources — a change already in flight, a tracker key or URL, and what you
+said — and it asks them in that sequence rather than picking whichever is easiest to read.
+
+**Home first, because starting something new while a change sits half-finished is how the
+half-finished thing gets abandoned.** The cost is not the wasted work. It is a
+`.agents/changes/` directory nobody trusts any more: once two abandoned changes are sitting
+there, the next session cannot tell a live plan from a dead one, and the honest response is to
+stop reading the directory at all. That is the point where the flow's memory stops working, and
+it is reached by convenience rather than by decision.
+
+Which is also why what you said is a **source and not a fallback**. It is how most work
+arrives, and every change in this repository so far arrived that way.
+
 ## 2 · Write the spec
 
 An easy task is one spec and one session.
@@ -335,6 +350,25 @@ Three stops. Two inside the work, one at the door.
 **A stop is a place where the user changes something.** That is the entire test. A stop
 whose only available answer is "yes, carry on" is a round trip charged for a rubber
 stamp, and it does not become one by being called a decision point.
+
+**The spec stop is the cheap place to disagree, and that is why it is second rather than
+later.** A wrong sentence in the contract costs a line to fix. The same misunderstanding
+costs a day once it has become code, and by phase 7 it costs the reviewer measuring the work
+against a promise nobody could have failed. Every stop after this one is more expensive than
+this one, which is the argument for making the contract the first thing anybody reads.
+
+### What `attacca` answers, and what it cannot
+
+`/libretto-attacca` answers the three stops in advance — the invocation *is* the answer, given
+before the work starts. What it will not answer is a **gate**: a failing check stops it where
+it stands, and it never merges, tags or releases. That boundary is the whole of what makes the
+mode safe rather than merely fast, because a mode that answered a gate would not be unattended,
+it would be unverified.
+
+The version bump is the sharpest case. It turns on whether a promise in `.agents/specs/` moved,
+which is a reading of the specification rather than of the commit types — and a version number
+cannot be recalled once the module proxy has cached it. So the reading stays the user's even
+under a mode built to answer everything else.
 
 **And every one of them is a native question**, `AskUserQuestion`, never a sentence at the
 end of a report — along with phase 1's choice between work already in flight and something

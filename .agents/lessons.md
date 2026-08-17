@@ -151,3 +151,23 @@ Did: made it an outcome rather than deleting it. Second time in this batch the s
 ## 2026-08-17 · add-contributing-guide · 6→7
 Said: unverified question — the guide attached `--force` to the gates, while AGENTS.md uses it about never overwriting what the tool did not create
 Did: reworded. Gates have no `--force`; the sentence conflated two rules and would have taught a contributor something untrue about the gates. Raised as a question rather than a finding, and it was the most wrong line in the file
+
+## 2026-08-17 · split-readme-into-sections · 6→7
+Said: the `"costs a line"` anchor could not fail on the docs side — the same diff that moved the argument into FLOW.md introduced the identical phrase into DESIGN.md, and the assertion reads both files concatenated, so deleting the guarded paragraph left the guard green
+Did: re-anchored on "more expensive than this one". **Then made the same mistake again in the fix**: the replacement anchor for the vendoring move, "not thin, it is broken", was already in FLOW.md at base, so it passed on a pre-existing sentence in the wrong file. An anchor must be counted against the BASE of every destination document, not just against the branch — and counted the way flat() counts, because rg is line-scoped and these phrases wrap. Third and fourth instances of the guard-that-reads-green-while-unable-to-fire class in this one file
+
+## 2026-08-17 · split-readme-into-sections · 6→7
+Said: outcome 1 claims five relocated arguments and only four anchors exist — the vendoring move had nothing holding it, so it is the one relocation that could be silently reverted
+Did: fifth anchor added. The count in the outcome and the count in the test are two places holding one number, which is the drift AGENTS.md opens by naming — and here the spec was the copy that was right
+
+## 2026-08-17 · split-readme-into-sections · 6→7
+Said: the plan's box-1 evidence describes five anchors failing on both ends, and four anchors existed — the plan is what the next reader trusts
+Did: corrected. Writing evidence from what the run intended rather than from what it observed is the failure `evidence` exists to prevent, committed in the artifact that exists to prevent it
+
+## 2026-08-17 · split-readme-into-sections · 6→7
+Said: unverified question — three behaviour statements left the README beyond the phrases the table names: the unresolvable-provider fallback, "never a variable that holds a secret", and the merges/tags half of attacca's refusal
+Did: all three restored compactly. The capability's own prior decision settles it — what a command *does* is a reference fact and stays, why it is that way is an argument and goes. The second one is a security promise, which is on the never-scoped-out list. And anchoring on "never merges, tags or releases" had made a behaviour fact unmentionable in the README: an anchor chosen from the *fact* rather than the *reasoning* drags the fact out with the argument
+
+## 2026-08-17 · split-readme-into-sections · 6→7
+Said: the CONTRIBUTING assertion scans the whole README while the outcome names Learn more — a link arriving in the footer would satisfy the guard without satisfying the outcome
+Did: scoped to the Learn more section. The footer already mentions the licence and third-party files, so it is exactly where a stray link would plausibly land

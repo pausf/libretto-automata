@@ -81,6 +81,24 @@ no spec governs is a path where drift is nobody's finding.
    **This capability had seven criteria and none touched a badge.** That is the hole the false
    claim came through, and it is why the criterion exists rather than only the fix.
 
+9. **`README.md` is at most 380 lines, and `CONTRIBUTING.md` is reached from *Learn more*.** The
+   front door had grown to 389 lines with one mode explained twice and five arguments in it that
+   `docs/` already owned. The length ceiling is the mechanism this capability's own outcome-6
+   ceiling proposed for itself: **a ratchet against growth**, not a measure of readability.
+
+   **The number was 340 before it was measured, and 340 was wrong.** Removing the duplicate and
+   relocating five arguments netted 13 lines, not 49 — a relocation swaps prose for a pointer, so
+   it saves far less than it reads like it should. Reaching 340 would have meant cutting the
+   commands table, the model and effort listings, the five states or the environment table:
+   **reference a reader wants**, and a README shortened that way is a worse README that passes its
+   own guard, which is the failure this whole capability was created to prevent. So the ceiling was
+   corrected rather than met, and the derivation is recorded — a ceiling nobody can see the
+   derivation of is a ceiling the next person raises.
+
+   The ask that produced this read *long and sometimes prescriptive*. The prescriptive half was
+   real. **The long half mostly is not fixable by moving prose**, because what remains is
+   reference, and a reference that stops listing things is not shorter — it is incomplete.
+
 ## Scope boundaries
 
 **In:** `README.md`'s structure, and the test that holds it.
@@ -186,11 +204,30 @@ Held by this capability going forward, not open work:
   stop, the plan stop and the push.
   Proof: cmd/libretto/readme_test.go TestReadmeWalksAFirstRun
 
-- **Outcome 4** — all eight relocated arguments absent from `README.md` and present in
-  `docs/DESIGN.md` or `docs/FLOW.md`.
+- **Outcome 4** — all **thirteen** relocated arguments absent from `README.md` and present in
+  `docs/DESIGN.md` or `docs/FLOW.md`. Eight from the original move, five more when the README was
+  brought under its length ceiling.
   Proof: cmd/libretto/readme_test.go TestMovedReasoningLandedInDocs
 
-- **Outcome 5** — every relative link resolves, and the link pattern matched something.
+  **Two rules about choosing an anchor, both learned the expensive way, both from guards that read
+  green while unable to fire:**
+
+  - **Count an anchor against the *base* of every destination document, the way `flat()` counts.**
+    One anchor was introduced twice by the same diff — into `FLOW.md` as the relocated argument and
+    into `DESIGN.md` in another new section — and since the assertion reads the two files
+    concatenated, deleting the guarded paragraph left it green. Its replacement was **already in
+    `FLOW.md` before the change**, so it passed on a pre-existing sentence in the wrong file and
+    guarded nothing. Line-scoped counting hides both, because these phrases wrap: `rg` reported
+    zero occurrences of a phrase the test matches.
+  - **Choose the anchor from the reasoning, never from the fact.** `never merges, tags or releases`
+    says what `attacca` *does*, and what a command does stays in the README by this capability's
+    own prior decision — so anchoring there forced a behaviour fact out along with the argument.
+
+- **Outcome 5** — every relative link resolves, the link pattern matched something, and
+  `CONTRIBUTING.md` is linked **from within `## Learn more`** rather than anywhere in the file: a
+  link arriving in the footer would satisfy a whole-file check while missing the outcome, and the
+  footer already carries the licence and third-party links, so that is exactly where a stray one
+  would land.
   Proof: cmd/libretto/readme_test.go TestReadmeLinksResolve
 
 - **Outcome 6** — every `commands/*.md` basename appears in `README.md`, the failure names
@@ -247,3 +284,14 @@ Held by this capability going forward, not open work:
   criterion about what a badge may *link to*, not a longer list. And a URL broken *mid-URL*
   across lines still escapes the scan; accepted, because a markdown link target cannot contain
   unescaped whitespace, so such a badge is already visibly broken.
+
+- **Outcome 9** — `README.md` is at most 380 lines, counted on the file itself.
+  Proof: cmd/libretto/readme_test.go TestReadmeStaysShort
+
+  **Ceiling, and it is real:** a line count says nothing about density. A README rewritten as 380
+  very long lines passes. It is a ratchet against growth, and the failure message says so — *move
+  an argument to `docs/` rather than raising this*. Readability remains the one thing no test here
+  holds.
+
+  **Watched biting**, not merely passing: six blank lines appended in an exported copy gives
+  `README.md is 382 lines, over its 380 ceiling`.

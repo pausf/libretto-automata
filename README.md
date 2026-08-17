@@ -125,8 +125,7 @@ Claude Code** — what follows are slash commands, not shell commands.
 
 2. **It stops at the spec.** You get the contract: outcomes, what is out of scope, the
    constraints it found in your code, and the test that will prove each promise. **This is
-   the cheap place to disagree** — a wrong sentence here costs a line, and the same
-   misunderstanding costs a day once it is code.
+   the cheap place to disagree.**
 3. **It stops at the plan.** An ordered checklist, with what can start now.
 4. **It builds**, marking boxes as it goes, and leaves a proportionate test behind — one
    runnable check for real logic, none for a one-liner with no logic in it.
@@ -137,8 +136,7 @@ Claude Code** — what follows are slash commands, not shell commands.
 7. **It asks once about pushing.** That answer is always yours.
 
 Those are the three places it waits, and each one is a question your terminal puts in front
-of you — not a line at the bottom of a report. **`/libretto-attacca` answers all three in
-advance**, for when you want the whole thing to run without you.
+of you — not a line at the bottom of a report.
 
 Nothing else to learn to start. The rest is knowing which door to use:
 
@@ -155,14 +153,14 @@ Nothing else to learn to start. The rest is knowing which door to use:
 
 **`/libretto-attacca` answers those stops in advance.** Same phases, same spec, same plan,
 same report — it just does not wait for you at any of them, and it ends with the branch
-pushed and the request open. What it will not do is answer a *gate*: a failing check still
-stops it where it stands, and it never merges, tags or releases. `attacca` is what a score
-writes to mean *go on to the next movement without pausing*.
+pushed and the request open. It will not answer a *gate* — a failing check still stops it
+where it stands — and it never merges, tags or releases; [FLOW.md](docs/FLOW.md) says why
+that boundary is where it is. `attacca` is what a score writes to mean *go on to the next
+movement without pausing*.
 
 **The flow does not begin at a tracker.** Phase 1 asks three sources in order — a change
-already in flight, a tracker key or URL, and what you said — and the order is the point:
-starting something new while a change sits half-finished is how the half-finished thing
-gets abandoned.
+already in flight, a tracker key or URL, and what you said — and the order is deliberate:
+[FLOW.md](docs/FLOW.md) says why.
 
 | | Phase | Skill |
 |---|---|---|
@@ -230,10 +228,8 @@ rather than written and ignored, and moving an agent onto Haiku clears any level
 declared — the listing says so on the row it happened to.
 
 **And which levels an alias has depends on where your requests go.** `opus` and `sonnet`
-do not name the same model on every provider — on Amazon Bedrock `sonnet` is Sonnet 4.5,
-which has no effort at all, and on Microsoft Foundry `opus` is Opus 4.6, which has four of
-the five. So the alias is resolved from your environment first, and the listing names the
-provider it resolved for:
+do not name the same model on every provider, so the alias is resolved from your
+environment first and the listing names the provider it resolved for:
 
 ```
 $ CLAUDE_CODE_USE_BEDROCK=1 libretto models
@@ -244,10 +240,10 @@ $ CLAUDE_CODE_USE_BEDROCK=1 libretto models
   resolved for Amazon Bedrock
 ```
 
-That is `os.Getenv` on variables Claude Code already documents — **no request, no
-credential, and never a variable that holds a secret.** An explicit
-`ANTHROPIC_DEFAULT_SONNET_MODEL` pin takes precedence over the provider default, and
-anything this build cannot resolve is treated as capable rather than refused.
+An explicit `ANTHROPIC_DEFAULT_SONNET_MODEL` pin takes precedence over the provider
+default, and a provider this build cannot resolve is treated as capable rather than
+refused. Reading your environment is all it does — **no request, and never a variable
+holding a secret.** Why, in [DESIGN.md](docs/DESIGN.md).
 
 The panel has both behind its `models` row: mark agents with `space`, or all of them with
 `a`, then `m` for the model and `e` for the effort.
@@ -351,6 +347,7 @@ There is no configuration file. A value that never varies is not configuration.
 | [docs/FLOW.md](docs/FLOW.md) | the eight phases, where the flow stops and why only there |
 | [docs/DESIGN.md](docs/DESIGN.md) | why it is built this way — symlinks, no `--force`, the palette |
 | [`.agents/specs/`](.agents/specs/) | the specification, one directory per capability |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | **start here to contribute** — the gates to run, and the `release:` label a merge needs |
 | [AGENTS.md](AGENTS.md) | working *on* this repository: the gates, the commit rules, versioning |
 | [THIRD-PARTY.md](THIRD-PARTY.md) | the vendored skills, their licences and versions |
 
@@ -361,23 +358,15 @@ nothing else installed. Copied unmodified, licence and version recorded in
 [THIRD-PARTY.md](THIRD-PARTY.md):
 
 - [**obra/superpowers**](https://github.com/obra/superpowers) — `writing-plans`,
-  `test-driven-development`, `using-git-worktrees`. The flow's own skills are thin
-  because they delegate to these, and a thin skill whose delegate is missing is not
-  thin, it is broken.
+  `test-driven-development`, `using-git-worktrees`
 - [**DietrichGebert/ponytail**](https://github.com/DietrichGebert/ponytail) —
-  `ponytail`, `ponytail-debt`. Decides how much gets built: the ladder runs from
-  *does this need to exist at all?* down to *only then, the minimum that works*, and
-  it carries the list of things that are never trimmed: trust boundaries, data loss,
-  security, accessibility. The flow invokes it in phase 2, on requirements, because
-  that is where removing work is cheapest.
+  `ponytail`, `ponytail-debt`. Decides how much gets built
 - [**JuliusBrussee/caveman**](https://github.com/JuliusBrussee/caveman) — `caveman`,
-  `caveman-commit`. Decides how much gets said. Compresses prose; ponytail compresses
-  what gets built. No overlap.
+  `caveman-commit`. Decides how much gets said
 
 Shipped is not required: nothing fails without them, and they prune like any other
-item. Only what the flow calls by name is vendored — the rest of both plugins,
-including always-on hook mode, stays with the upstream plugins, and the two coexist
-by namespace.
+item. Why each is vendored rather than depended on, and why only the parts the flow
+calls by name, is in [DESIGN.md](docs/DESIGN.md).
 
 ## Not managed here
 
