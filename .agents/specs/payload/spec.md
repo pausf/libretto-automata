@@ -341,6 +341,12 @@ not an oversight.
 
 ## Constraints
 
+**No skill, agent or command references `docs/PAYLOAD.md`, and nothing gates that.** The
+uninstalled-path check is scoped to executables — `scripts/` and `bin/` — because prose mentioning
+`docs/` is describing rather than instructing, and failing those turns the check into noise nobody
+reads. So the index sits in the same position as `docs/FLOW.md`: a path this repository has that the
+user's project does not, held by this constraint rather than by a gate.
+
 **A skill may only invoke what gets installed.** `libretto install` links `skills/`,
 `agents/` and `commands/` — nothing else. A skill telling the user to run `scripts/foo`
 is broken for everyone who installed it, because `scripts/` never reaches their
@@ -679,6 +685,38 @@ finding, which is the sentence the `readme` capability was created to answer abo
   present in `skills/write-plan/SKILL.md`** after the edit. Two criteria and not one joined by
   `and`: separate checks, separate failure modes, and joined either could be half-met and read
   as done.
+  Proof: scripts/check-payload
+- **`docs/PAYLOAD.md` lists every skill, agent and command that ships, and the gate fails when it
+  has drifted.** `scripts/check-payload --index` writes it; the default run regenerates in memory
+  and compares. One parse serves both, so a page and a gate cannot disagree about what an item is
+  called — and `--index` writes while the default run only compares, because a gate that repairs
+  what it measures can never fail.
+
+  **Generated, never typed.** A hand-written list of directories is the failure this repository has
+  paid for twice; `docs/SPEC.md` is the only place the capability list lives for exactly that
+  reason, and a typed `PAYLOAD.md` reproduces it one directory deeper.
+
+  **Watched biting, not merely passing**: absent page, a hand-edited description, an added item, a
+  removed row — all four red with the fix named in the message.
+
+  **Two defects the 6→7 reviewer found here, both of which had the gate green:**
+
+  - **A folded `description:` produced an empty cell.** Four items — `caveman`, `caveman-commit`,
+    `ponytail`, `ponytail-debt` — write `description: >`, so the page carried a literal `>` for
+    four of thirty-six rows. The delta had named single-line descriptions as a *ceiling* and
+    deferred the fix to "the day an item needs a folded description": **that day was already four
+    items in the past.** A ceiling is a claim about the future, and one line of `rg` would have
+    checked whether the present already broke it. Both block forms are read now; anything more
+    exotic must `fail` rather than reach a YAML parser.
+  - **The sort collation was unpinned.** With empty cells the order turned on punctuation alone,
+    and glibc collates that differently from byte order — so the gate would report drift on a page
+    nobody edited, on CI rather than on the author's machine. `LC_ALL=C` is pinned inside the
+    pipeline; output verified byte-identical across three locales.
+
+  Also: **the page's own boilerplate claimed everything is installed by symlink**, which is false
+  for an OpenCode agent — a derived file this tool writes — and for Codex, which takes skills only.
+  A generated file's prose is the part nobody re-reads on regeneration, so a false claim in it
+  survives every future run.
   Proof: scripts/check-payload
 - **every relative link in `THIRD-PARTY.md` resolves**, scanned over the flattened document
   because two guards in that test file have already shipped unable to fire on a wrapped

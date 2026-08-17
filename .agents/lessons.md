@@ -171,3 +171,19 @@ Did: all three restored compactly. The capability's own prior decision settles i
 ## 2026-08-17 · split-readme-into-sections · 6→7
 Said: the CONTRIBUTING assertion scans the whole README while the outcome names Learn more — a link arriving in the footer would satisfy the guard without satisfying the outcome
 Did: scoped to the Learn more section. The footer already mentions the licence and third-party files, so it is exactly where a stray link would plausibly land
+
+## 2026-08-17 · add-payload-index · 6→7
+Said: outcome 1 unmet for 4 of 36 rows with the gate green — caveman, caveman-commit, ponytail and ponytail-debt write `description: >` as a folded YAML scalar, so the page carried a literal `>` and no text. The delta's constraint claimed "a description: is a single frontmatter line here, which is how every payload item is already written", and that was false at HEAD
+Did: the parse now reads the two block forms that exist here, `>` and `|` with or without a chomping indicator, and nothing else — not a YAML parser, because payload records that a dependency added to check a document is a dependency added to check a checker. **The lesson is not the parser.** The delta named this as a ceiling and deferred the fix to "the day an item needs a folded description", and that day was already four items in the past. A ceiling is a statement about the future; before writing one, check whether the present already violates it
+
+## 2026-08-17 · add-payload-index · 6→7
+Said: with four rows having no text after the name, `sort` decides their order on punctuation alone — byte order puts `caveman-commit` first, glibc's punctuation-ignoring collation puts `caveman` first, and CI runs on ubuntu-latest. So the gate could report drift on a page nobody edited
+Did: pinned `LC_ALL=C` inside the pipeline, so the caller's locale cannot move it and the page a contributor generates is the page CI compares. Verified byte-identical under C, en_US.UTF-8 and en_GB.UTF-8. **The reviewer could not observe GNU sort on this machine and said so rather than concluding** — an unverified question reported as one is worth more than a confident guess, and pinning the collation settles it without needing the observation
+
+## 2026-08-17 · add-payload-index · 6→7
+Said: the page claims "what libretto install links into a target, and nothing else" — false for OpenCode, whose agents are installed by writing a derived file rather than linking, and Codex takes skills only
+Did: reworded after verifying `func (o Opencode) Transforms(k Kind) bool { return k == Agents }`. A generated page's boilerplate is prose nobody reviews on regeneration, so a false claim in it survives every future run of the generator — the one part of a generated file that needs reviewing like hand-written text
+
+## 2026-08-17 · add-payload-index · 6→7
+Said: the new comment hardcodes "22 skills, 7 agents and 7 commands" — a typed count sitting next to a generator whose stated reason for existing is that a typed count drifted
+Did: removed the count. Writing the failure and then committing it two lines below the explanation
