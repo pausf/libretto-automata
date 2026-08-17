@@ -119,3 +119,7 @@ Did: both fixed. The second is the more interesting one: the comment was true wh
 ## 2026-08-14 · add-transformed-agent-targets · 6→7
 Said: the marker is emitted as an unquoted YAML scalar, so a checkout path containing " #" would be read as a comment and OpenCode throws rather than skipping
 Did: the marker is now always emitted double-quoted, and the reader accepts quoted or bare. Six awkward paths covered by test — spaces, #, colon, quote, backslash
+
+## 2026-08-17 · make-test-badge-live · 6→7
+Said: the word-check half scans the raw README, and badgeImage's `[^)\s]+` cannot cross a newline — so a literal status badge whose markdown wraps between `![Build](` and its URL slips past entirely, while the six honest badges keep the count non-zero and the guard green. The delta's own Constraints demanded flat() normalisation and only the endpoint half did it
+Did: the scan now runs over flat(readme), with `\s*` after the paren for what flat leaves behind. Proved with the reviewer's own probe — a wrapped `build-passing` badge appended to the README, exit 1 naming `build`, exit 0 once removed. **Second time this file has shipped a guard that silently could not fire**: the capability already records `"checksum database"` never matching because the README wrapped between those two words. A new substring guard in this file starts from flat(), not from the raw document
