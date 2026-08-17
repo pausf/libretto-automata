@@ -44,6 +44,19 @@ reader.* `CONTRIBUTING.md` is that reader, so folding it into `readme` would con
 4. **Every relative link resolves**, and the link pattern must match something — a door made of
    no links is not a door, and a scan finding none would pass vacuously.
 
+   **No link points at a path whose existence depends on work being unfinished.**
+   `.agents/changes/` is the case: git does not track empty directories, so once every change has
+   landed the directory is not in a fresh checkout at all. This shipped as a link and broke CI
+   on the one branch where the queue had finally emptied — green on the author's machine, where
+   six queued proposals were sitting on `main`, and green on the two branches before it, which
+   still had folders left.
+
+   **The guard could not catch it and still cannot.** Link resolution reads the working tree, so
+   a link to a directory that exists only while work is in flight passes while work is in flight.
+   The directory is named in prose now, never linked. **Ceiling:** nothing gates this — the
+   replacement, the day it recurs, is a link check run against `git ls-files` rather than the
+   filesystem, which is a real change to how that test works and not worth it for one path.
+
 ## Scope boundaries
 
 **In:** `CONTRIBUTING.md`, and the test that holds it.

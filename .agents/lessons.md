@@ -187,3 +187,7 @@ Did: reworded after verifying `func (o Opencode) Transforms(k Kind) bool { retur
 ## 2026-08-17 · add-payload-index · 6→7
 Said: the new comment hardcodes "22 skills, 7 agents and 7 commands" — a typed count sitting next to a generator whose stated reason for existing is that a typed count drifted
 Did: removed the count. Writing the failure and then committing it two lines below the explanation
+
+## 2026-08-17 · add-payload-index · CI
+Said: gates failed on CI with `CONTRIBUTING.md links to .agents/changes/, which does not exist` — red on the branch, green on this machine
+Did: de-linked the path; it is named in prose now. **The mechanism is the lesson.** Git does not track empty directories, so once the last change folder landed, `.agents/changes/` was absent from a fresh checkout. It passed locally because `main` still had six queued proposals on disk, and it passed on the two branches before it because each still had folders left — so the guard was green three times for a reason that had nothing to do with correctness. Link resolution reads the working tree, so a link to a directory that exists only while work is unfinished passes while work is unfinished. Reproduced with `git archive`, which drops empty directories exactly as a checkout does — that is the way to see what CI sees without waiting for CI
