@@ -299,7 +299,13 @@ check_wiring skills/record-work/SKILL.md 'label the user did not choose' 'the pu
 # Line-scoped, like every row above: the phrase has to sit on one line in the skill. It
 # proves the mandate is present and nothing about whether a plan obeyed it — that is
 # judgment, and it belongs to phase 6 and the 6→7 reviewer.
-check_wiring skills/write-plan/SKILL.md 'one badly cut box' 'a box is cut to stand alone, and two dependent boxes are one'
+check_wiring skills/write-tasks/SKILL.md 'one badly cut box' 'a box is cut to stand alone, and two dependent boxes are one'
+# The checklist moved out of write-plan on 2026-08-17 and this row moved with it. Both
+# halves are checked, because the failure the split invites is a plan that keeps the
+# checkbox vocabulary: phase 5 writing state again is the drift back to what was reported.
+check_wiring skills/write-plan/SKILL.md 'No checkboxes.' 'the plan holds the approach and never the state'
+check_wiring skills/write-plan/SKILL.md 'Why it lost' 'the plan records the alternatives the approach beat'
+check_wiring skills/write-tasks/SKILL.md 'task-cutter' 'the checklist is cut by a subagent that never saw the design'
 
 # The inverse. Two of this change's criteria are about what must NOT be in the command
 # that describes no phase, and a presence check cannot express either.

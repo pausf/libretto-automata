@@ -160,11 +160,23 @@ func measure(git gitRunner, root, name string) (changeMetrics, error) {
 	// — so every box ever closed also appears as a `-[x]`, every change reads as
 	// completely reopened and nothing reads as closed. Measured here on real history:
 	// 52 reopenings and 0 closes on a change that had neither.
-	plan := path.Join(dir, "plan.md")
-	diff, err := git("log", "--full-history", "--diff-filter=AM", "-p", "--format=%H", "--", plan)
-	if err == nil && strings.TrimSpace(diff) != "" {
-		m.planSeen = true
-		m.checked, m.uncheck, m.boxes = churn(diff)
+	//
+	// Two paths, tried in order, because the checklist was renamed and this reads history
+	// rather than disk: `tasks.md` is what the 5→6 seam cuts now, `plan.md` is what every
+	// change that landed before the rename carries — and their folders are gone, so they
+	// will never have the new name. One pathspec covering both was the shorter version and
+	// it is wrong: `plan.md` is now the technical approach, a prose document allowed to
+	// show a checkbox in an example, and counting its diffs would inflate the churn of
+	// every change from here on.
+	//
+	// ponytail: the second call goes when no `.agents/changes/*/plan.md` anywhere holds a checkbox.
+	for _, name := range []string{"tasks.md", "plan.md"} {
+		diff, err := git("log", "--full-history", "--diff-filter=AM", "-p", "--format=%H", "--", path.Join(dir, name))
+		if err == nil && strings.TrimSpace(diff) != "" {
+			m.planSeen = true
+			m.checked, m.uncheck, m.boxes = churn(diff)
+			break
+		}
 	}
 	return m, nil
 }

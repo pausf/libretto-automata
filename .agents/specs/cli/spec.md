@@ -796,11 +796,18 @@ A missing payload:
   `AGENTS.md` and the plan's own boxes. Copying the structure would duplicate state; the
   engine was the only piece genuinely missing.
   Proof: cmd/libretto/loop_test.go TestTheLoopPromptRoutesAndNeverAuthorises
-- **it owns no state.** `.agents/changes/<change>/plan.md` is the state — the file phase 5
-  writes and phase 6 marks — and the loop reads the boxes and nothing else. Only the box is
-  parsed, never the task text: the flow owns the plan's shape, and a runner that understood
-  it would be a second opinion about what a task is.
+- **it owns no state.** `.agents/changes/<change>/tasks.md` is the state — the file the
+  5→6 seam cuts and phase 6 marks — and the loop reads the boxes and nothing else. Only the
+  box is parsed, never the task text: the flow owns the checklist's shape, and a runner that
+  understood it would be a second opinion about what a task is.
   Proof: cmd/libretto/loop_test.go TestCountBoxesReadsOnlyTheBox
+- **it reads a change created before the checklist was renamed.** `tasks.md` when it is
+  there, `plan.md` otherwise, and the prompt names whichever was found. The checklist
+  carried the name `plan.md` until 2026-08-17, when `plan.md` became the technical
+  approach; a rename that stranded work already in flight would have cost more than the
+  name was worth, and with neither file present the error names the current one so it
+  teaches the layout the flow actually writes.
+  Proof: cmd/libretto/loop_test.go TestChecklistPathFallsBackToPlan
 - one session per open box, and it stops when the last one closes
   Proof: cmd/libretto/loop_test.go TestLoopStopsWhenEveryBoxIsClosed
 - **two consecutive rounds that close nothing stop the loop.** This is the guardrail the
@@ -865,6 +872,15 @@ A missing payload:
   **no `plan.md` was found for any of them**, so every churn column read as "no plan" on
   changes that plainly had one.
   Proof: cmd/libretto/metrics_test.go TestChangeNamesSeesLandedChangesNotJustOpenOnes
+- **churn is read from `tasks.md`, then from `plan.md`, and the second query is not
+  optional.** Every change that landed before 2026-08-17 carries the checklist under its
+  old name and a folder that no longer exists, so it can never acquire the new one — and
+  this report is retroactive by design. Dropping the legacy path would blank the churn
+  column for the whole history to tidy a filename, which is the same failure the bullet
+  above already records paying for once. Two queries and not one pathspec covering both:
+  `plan.md` is the technical approach now, a prose document allowed to show a checkbox in
+  an example, and counting its diffs would inflate every change from here on.
+  Proof: cmd/libretto/metrics_test.go TestMetricsFallsBackToLegacyPlan
 - **the churn query excludes deletions, or every number inverts.** A change lands by
   deleting its folder, and that commit's diff removes every line of `plan.md` — so every
   box ever closed also appears as a removed `[x]`, and the report reads as 0 closed and 52

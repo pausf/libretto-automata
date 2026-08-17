@@ -48,14 +48,15 @@ lane below.
 
 ### The flow stops in three places
 
-**Two of them, and only two, are inside the work:** after the spec and after the plan.
-Everything else runs through.
+**Two of them, and only two, are inside the work:** after the spec, and after the plan's
+tasks are cut. Everything else runs through.
 
 | After | Stops | Because |
 |---|---|---|
 | 1 · find-work | no | the reading is stated; the place to disagree with it is the spec |
 | 2–3 · write-spec | **yes** | the contract, and it is cheapest to change here |
-| 5 · write-plan | **yes** | the order, and what waits on what |
+| 5 · write-plan | no | the approach is agreed at the stop below, with the boxes it produced |
+| 5→6 · write-tasks | **yes** | the approach, the order, and what the cutter found missing |
 | 6 · build-and-check | no | |
 | 6→7 · review-work | no | it fixes what it finds rather than asking |
 | 7 · present-work | no | the report and the commits land together |
@@ -156,11 +157,32 @@ so the findings have to be on the table while the agreement is still being made.
 Skill(skill="write-plan")
 ```
 
-Turns the task breakdown into the single file holding live state. One writer: the
-orchestrator marks boxes, sub-agents report.
+Writes the **how**: technical context, the approach and the alternatives it beat, risks,
+validation, rollback. No boxes — this file holds no state.
+
+**Do not wait here.** Splitting the plan from the checklist invited a third stop, and the
+flow spends its length arguing against exactly that. The stop moves one seam later
+instead, where the user sees the approach *and* the boxes it produced *and* whatever the
+cutter found missing — the same single decision, made with more on the table.
+
+## 5→6 · Cut the tasks
+
+```
+Skill(skill="write-tasks")
+```
+
+Launches one fresh `task-cutter` with the spec and the plan and nothing else, then writes
+the checklist it returns. One writer: the orchestrator marks boxes, sub-agents report.
+
+**Not a numbered phase, on purpose** — the same answer the 6→7 review already gives.
+Independence comes from the fresh context, not from renumbering everything that says
+eight.
+
+Report what the cutter said the documents failed to answer, in its words. A gap goes back
+to phase 5 or to the contract; it never becomes a box that says "figure out X".
 
 Then **wait**. The second stop and the last one before the work runs — what is being
-agreed is the order and what waits on what.
+agreed is the approach, the order, and what waits on what.
 
 ## 6 · Build it
 
@@ -238,7 +260,7 @@ call, before it writes the spec** — the contract gets built by two people rath
 handed over finished, and the bias when in doubt is to ask. No hard cap, but judgment
 both ways: never a form-length interrogation of things the code already answers. Zero
 is legitimate and is said in one line; a quota manufactures questions the code already
-answers. Phase 5 stops for the order and opens no second tranche, and no stop is
+answers. The 5→6 seam stops for the approach and the order, and opens no second tranche, and no stop is
 added: the questions ride the one phase 2 already has.
 
 **Ask it before the plan is agreed.** Phases 1, 2 and 5 are where a question is cheap,

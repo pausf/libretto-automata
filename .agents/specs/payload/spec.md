@@ -22,9 +22,49 @@ Installing this repository gives a working flow on a machine that has nothing el
   the branch, removes the `Queued:` line and enters the flow at phase 2, because phase
   1's artifact already exists
 - one skill per phase, each of which stops where its phase stops
-- **a plan whose boxes are cut to stand alone, not ordered layers.** Phase 5 required a plan
+- **a plan that holds the how, and a checklist that holds the state — two files, not
+  one.** Phase 5 produced a checklist and called it a plan, so the technical reasoning
+  behind a change was never written anywhere: the approach chosen, the alternatives it
+  beat, the risks and how it gets validated all died with the session that had them. That
+  was reported from outside — specs reading like plans, plans reading like task lists.
+  `plan.md` is now the approach and holds no state; `tasks.md` is the checklist and holds
+  nothing else. **The alternatives table is the pillar that pays**: a diff shows what was
+  built, and nothing in a repository shows what was not built and why
+- **the checklist is cut by an agent that never saw the design.** One fresh `task-cutter`,
+  given the spec and the plan by path and nothing else, in the seam between phases 5 and 6.
+  The session that argued its way to an approach cannot distinguish what it wrote down
+  from what it merely decided, and cuts boxes against the argument — which the next fresh
+  session cannot read. The cutter returns the checklist **and what those two documents
+  failed to answer**, and the second half is the only check this flow has that a plan says
+  enough to be built from. It writes no file: one writer is still the orchestrator
+- **a plan cannot be deleted taking its reasoning with it.** The landing commit removes
+  the change folder, and with it the alternatives table whose whole argument is that a
+  diff shows what was built and nothing shows what was not built and why. `spec-drift
+  --retired` — inside `--anchors` — fails that commit unless a capability spec's *Prior
+  decisions* section moved in it. **That section, never the file**: the delta lands in the
+  same commit by definition, so "a spec was edited" is green on every landing and measures
+  nothing. The escape is a declaration in the plan being deleted, `Durable decisions:
+  none`, and not a flag — a flag is typed by whoever wants the commit through, a line in
+  the plan is written by the person who knew. **What no mechanism can stop is that line
+  becoming a reflex**, and `review-work` is what reads a full alternatives table sitting
+  beside a `none`
+- **a criterion that can be failed, not merely read.** Verification criteria are written
+  in one of the five EARS patterns, and `spec-drift --ears` — inside `--anchors`, so the
+  gate count stays at six — fails a change delta whose criterion carries no `shall`. A
+  criterion in prose can only be interpreted, and one nobody can fail is treated as
+  satisfied by default: the same failure the `Proof:` anchor exists to prevent, arriving
+  one line higher up. **Hard on deltas, a warning on capability specs**, because 545
+  criteria predate the syntax and rewriting them in one unreviewable diff is 545 chances
+  to change a promise that works today. A capability migrates when a delta lands on it.
+  The gate checks the marker and never the sentence — *"the system shall behave
+  correctly"* passes it, and `review-spec` is what asks whether the response is concrete
+- **the stop moved rather than multiplied.** Splitting the plan from the checklist invited
+  a third stop — one for the approach, one for the order — so phase 5 runs through and the
+  5→6 seam stops for both at once, with the cutter's gaps on the table. The count stays at
+  three, two of them inside the work
+- **a checklist whose boxes are cut to stand alone, not ordered layers.** Phase 5 required a plan
   to be ordered and derived; it never required a box to be worth closing on its own, so the
-  plan inherited phase 2's cut along capabilities. `write-plan` now states that a box is one
+  checklist inherited phase 2's cut along capabilities. `write-tasks` now states that a box is one
   end-to-end change — the code and the proof that closes it — and that two boxes where the
   first only makes sense once the second lands are **one badly cut box**, to be merged rather
   than ordered. A box that cannot be cut that way is a finding about the spec, routed back
@@ -57,7 +97,7 @@ Installing this repository gives a working flow on a machine that has nothing el
   touches and returns findings, which phase 7 carries attributed and unedited **with the
   repair beside each one**
 - three standing rules: **commit** and **evidence** hold at every phase; **ask** holds at
-  phases 1, 2 and 5 and nowhere after
+  phases 1, 2 and the 5→6 seam, and nowhere after
 - **ceremony proportional to the change** — two stops for a change with a contract, none
   for a change too small to have one, and phase 8's question in both
 - the vendored delegates the thin skills depend on, so a thin skill is never a broken
@@ -245,8 +285,8 @@ built by two people rather than handed over finished, and the answers sit inside
 than bolted on. Three is where the questions worth a round trip run out. **Zero is a
 legitimate answer, reported in one line:** a quota manufactures questions the code already
 answers, which is the rubber-stamp round trip removed from three other phases arriving
-back through the door marked collaboration. Phase 5 stops for the order and opens no
-second tranche, and **the stop count does not move** — the questions ride the stop phase 2
+back through the door marked collaboration. The 5→6 seam stops for the approach and the
+order and opens no second tranche, and **the stop count does not move** — the questions ride the stop phase 2
 already has. The trivial lane asks nothing, because *no spec needed* means there is no
 contract to disagree about.
 
@@ -277,7 +317,7 @@ had, in substance. Nothing said so.
 
 | Source | When |
 |---|---|
-| a change already in flight | unchecked boxes in `.agents/changes/*/plan.md` |
+| a change already in flight | unchecked boxes in `.agents/changes/*/tasks.md`, and in `plan.md` for a change created before the rename |
 | a tracker key or URL | one was given |
 | what the user said | anything else — the request *is* the input |
 
@@ -328,7 +368,7 @@ branches when it writes the proposal**, and phase 6's step 0 *ensures* a branch 
 creating one. A step that assumes it is first makes a second branch and splits one change
 across two.
 
-**A branch is work in flight too.** Scanning `.agents/changes/*/plan.md` cannot see the
+**A branch is work in flight too.** Scanning `.agents/changes/*/tasks.md` cannot see the
 trivial lane: a change that needed no spec has no plan to scan, so it exists only as
 commits on a branch. The lane's first real run produced exactly that, and the next phase 1
 reported an empty house. Phase 1 also reads `git branch --no-merged` and the forge's open
@@ -609,6 +649,21 @@ finding, which is the sentence the `readme` capability was created to answer abo
 
 ## Verification criteria
 
+- **If** a staged commit deletes a change's `plan.md` and no capability spec's *Prior
+  decisions* section differs between `HEAD` and the index, **then** `spec-drift` **shall**
+  fail and name the change being landed — **where** the deleted plan declared `Durable
+  decisions: none`, it **shall** pass instead. **When** no such deletion is staged, it
+  **shall** report nothing and **shall not** fail. Driven through real temporary
+  repositories, because a fixture made of strings would prove the awk and not the git
+  plumbing, and the plumbing is where a gate goes silent — which reads as green.
+  Proof: skills/record-work/spec-drift --self-test
+- **If** a verification criterion carries no EARS `shall`, **then** `spec-drift` **shall**
+  read it as unfailable — **where** emphasis or backticks wrap the keyword, it **shall**
+  still be read as present. **Ceiling named:** the self-test drives the marker through the
+  same `is_ears` the gate calls, so a matcher that breaks fails here. What it does not
+  cover is the hard-on-deltas, soft-on-capabilities asymmetry, which has no fixture and is
+  observed only by running the gate.
+  Proof: skills/record-work/spec-drift --self-test
 - frontmatter parses, and `name:` matches the directory or filename
   Proof: scripts/check-payload
 - no stray file sits where the linker would install it as an item

@@ -12,7 +12,7 @@ That is Claude Code's spelling. On another host, load the `find-work` skill with
 host's own skill tool — the skill is the rule, not the tool name.
 
 Invoke it in **reporting mode**: two of its scans and no more — source 1
-(`.agents/changes/*/plan.md`, open boxes, what each plan says can start, and the unmerged
+(`.agents/changes/*/tasks.md`, plus the pre-2026-08-17 `plan.md`, open boxes, what each checklist says can start, and the unmerged
 branches) and **the queue** (its *captured, never started* scan). Then stop.
 
 Both are named because "source 1 only" left the queue ambiguous: the queue is not a

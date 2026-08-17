@@ -19,9 +19,9 @@ import (
 // context per iteration, and a skill runs inside the context it would be trying to
 // discard. So the engine has to sit outside, which is the binary.
 //
-// It owns no state of its own. `.agents/changes/<change>/plan.md` is the state, the
-// same file phase 5 writes and phase 6 marks, and the loop's only job is to notice
-// when the boxes stop moving. Everything the iteration does — reading the plan,
+// It owns no state of its own. `.agents/changes/<change>/tasks.md` is the state, the
+// same file the 5→6 seam cuts and phase 6 marks, and the loop's only job is to notice
+// when the boxes stop moving. Everything the iteration does — reading the checklist,
 // building, gating, committing — belongs to the flow and stays there.
 
 // planLine matches a markdown task checkbox at any indentation: `- [ ]` or `- [x]`.
@@ -62,14 +62,14 @@ func readPlan(path string) (planCount, error) {
 // loopPrompt is what each fresh session is handed. It routes and does not instruct:
 // every rule the iteration needs already lives in a skill, and restating one here
 // creates a second copy that drifts from the installed one.
-func loopPrompt(change string) string {
+func loopPrompt(change, checklist string) string {
 	return fmt.Sprintf(`/libretto-attacca continue the change %q.
 
-Read .agents/changes/%s/plan.md, take the FIRST unchecked box, and do only that one.
+Read .agents/changes/%s/%s, take the FIRST unchecked box, and do only that one.
 Mark it the moment it is genuinely finished, and commit. Then stop — do not take a
 second box, and do not push or open a request. Another session follows this one.
 
-If a gate fails twice on this box, stop and say what you observed.`, change, change)
+If a gate fails twice on this box, stop and say what you observed.`, change, change, checklist)
 }
 
 type loopOpts struct {
@@ -124,13 +124,13 @@ func loop(projectDir string, args []string) error {
 	if err != nil {
 		return err
 	}
-	// The plan is checked before PATH is, and the order is the point: `loop <typo>` on a
-	// machine without `claude` should name the plan it could not find, not a dependency
-	// that is irrelevant to the mistake actually made.
-	plan := planPath(projectDir, o.change)
-	if _, err := os.Stat(plan); err != nil {
-		return fmt.Errorf("no plan at %s\n"+
-			"       the loop drives a change that phase 5 already planned", plan)
+	// The checklist is checked before PATH is, and the order is the point: `loop <typo>`
+	// on a machine without `claude` should name the file it could not find, not a
+	// dependency that is irrelevant to the mistake actually made.
+	checklist := checklistPath(projectDir, o.change)
+	if _, err := os.Stat(checklist); err != nil {
+		return fmt.Errorf("no checklist at %s\n"+
+			"       the loop drives a change the 5→6 seam already cut into tasks", checklist)
 	}
 	if !o.dryRun {
 		if _, err := exec.LookPath("claude"); err != nil {
@@ -152,19 +152,38 @@ func loop(projectDir string, args []string) error {
 //
 // It never pushes, never merges, never tags. Those are attacca's answered questions
 // for one branch, and nothing here was asked.
-func planPath(projectDir, change string) string {
-	return filepath.Join(projectDir, ".agents", "changes", change, "plan.md")
+// checklistPath answers "which file holds this change's boxes", and it answers it twice
+// because the file was renamed. `tasks.md` is what the 5→6 seam cuts now that `plan.md`
+// holds the technical approach instead; `plan.md` is what every change created before
+// that rename still carries. A loop that could not drive one of those would have broken
+// work already in flight to tidy a name.
+//
+// When neither is there it returns the current name, so the error names the file the
+// change should have rather than the one it has not needed since.
+//
+// ponytail: the fallback goes when no `.agents/changes/*/plan.md` anywhere holds a checkbox.
+func checklistPath(projectDir, change string) string {
+	dir := filepath.Join(projectDir, ".agents", "changes", change)
+	tasks := filepath.Join(dir, "tasks.md")
+	if _, err := os.Stat(tasks); err == nil {
+		return tasks
+	}
+	legacy := filepath.Join(dir, "plan.md")
+	if _, err := os.Stat(legacy); err == nil {
+		return legacy
+	}
+	return tasks
 }
 
 func runLoop(w io.Writer, projectDir string, o loopOpts, run loopRunner) error {
-	plan := planPath(projectDir, o.change)
-	before, err := readPlan(plan)
+	checklist := checklistPath(projectDir, o.change)
+	before, err := readPlan(checklist)
 	if err != nil {
-		return fmt.Errorf("no plan at %s\n"+
-			"       the loop drives a change that phase 5 already planned", plan)
+		return fmt.Errorf("no checklist at %s\n"+
+			"       the loop drives a change the 5→6 seam already cut into tasks", checklist)
 	}
 	if before.open == 0 && before.done == 0 {
-		return fmt.Errorf("%s has no task boxes — nothing to drive", plan)
+		return fmt.Errorf("%s has no task boxes — nothing to drive", checklist)
 	}
 
 	fmt.Fprintf(w, "\n  %s — %d open, %d done, at most %d iteration(s)\n\n",
@@ -175,21 +194,21 @@ func runLoop(w io.Writer, projectDir string, o loopOpts, run loopRunner) error {
 		fmt.Fprintf(w, "  ── %d/%d · %d box(es) open\n", i, o.max, before.open)
 
 		if o.dryRun {
-			fmt.Fprintf(w, "\n%s\n\n", loopPrompt(o.change))
+			fmt.Fprintf(w, "\n%s\n\n", loopPrompt(o.change, filepath.Base(checklist)))
 			return nil
 		}
 
-		// A failed session is not a failed loop. The plan is the state, so the next
+		// A failed session is not a failed loop. The checklist is the state, so the next
 		// round reads whatever this one managed to finish and carries on from there;
 		// what an exit code cannot distinguish is a crash from a deliberate stop.
 		// Stuck detection is what catches the difference, by looking at the boxes.
-		if err := run(loopPrompt(o.change)); err != nil {
+		if err := run(loopPrompt(o.change, filepath.Base(checklist))); err != nil {
 			fmt.Fprintf(w, "     session exited with an error: %v\n", err)
 		}
 
-		after, err := readPlan(plan)
+		after, err := readPlan(checklist)
 		if err != nil {
-			return fmt.Errorf("plan disappeared mid-loop: %w", err)
+			return fmt.Errorf("checklist disappeared mid-loop: %w", err)
 		}
 		// Boxes *closed*, not boxes remaining. A session that finishes one task and splits
 		// another in two leaves `open` unchanged, and reading that as no progress stops the
@@ -201,8 +220,8 @@ func runLoop(w io.Writer, projectDir string, o loopOpts, run loopRunner) error {
 			fmt.Fprintf(w, "     no box closed (%d round(s))\n", stuck)
 			if stuck >= 2 {
 				fmt.Fprintf(w, "\n  stopped: two rounds closed nothing. %d box(es) still open in\n"+
-					"  %s — a third fresh session reads the same plan and does the same.\n\n",
-					after.open, plan)
+					"  %s — a third fresh session reads the same checklist and does the same.\n\n",
+					after.open, checklist)
 				return fmt.Errorf("loop made no progress in 2 rounds")
 			}
 		} else {

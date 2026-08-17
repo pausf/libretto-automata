@@ -36,8 +36,9 @@ specification is [SPEC.md](SPEC.md). This page is only what ships.
 | `review-work` | Trigger: phase 6 finished and the work has a spec; before present-work reports; asking whether the work matches its contract. The seam between build and present. Launches one fresh work-reviewer subagent that re-runs the proofs, relays what it found attributed and unedited, then fixes every finding without asking. |
 | `test-driven-development` | Use when implementing any feature or bugfix, before writing implementation code |
 | `using-git-worktrees` | Use when starting feature work that needs isolation from current workspace or before executing implementation plans - ensures an isolated workspace exists via native tools or git worktree fallback |
-| `write-plan` | Trigger: specs are written and the work needs an ordered checklist; tracking task state across agents; marking a task done. Phase 5 of the flow. Turns the task breakdown into the one file that holds live state. |
+| `write-plan` | Trigger: the spec is written and the work needs an approach before any code; choosing between two ways to build something; recording why an alternative lost; naming what could go wrong. Phase 5 of the flow. Writes the how — the document that used to not exist. |
 | `write-spec` | Trigger: a task has been read and needs a specification; writing or extending a spec; splitting a large task into several specs; recording a decision or an answer into a spec. Phase 2 of the flow. Writes the contract before any code exists. |
+| `write-tasks` | Trigger: the spec and the plan are written and the work needs an ordered checklist; tracking task state across agents; marking a task done. The seam between phases 5 and 6. Launches one fresh cutter, then owns the file it returns. |
 | `writing-plans` | Use when you have a spec or requirements for a multi-step task, before touching code |
 
 ## Agents
@@ -50,6 +51,7 @@ specification is [SPEC.md](SPEC.md). This page is only what ships.
 | `review-lens-security` | The security lens of review-project. Reads one frozen diff for vulnerabilities an attacker could reach, and reports only what it can trace a path to. |
 | `review-lens-tests` | The tests lens of review-project. Reads one frozen diff for whether the change carries its proof, whether the tests test behaviour, and whether any existing proof was quietly weakened. |
 | `spec-writer` | Writes one delta spec from a shared brief. Phase 3 of the Libretto flow — the fan-out, one instance per subtask. Launch several in parallel; each writes exactly one file and returns what the brief got wrong. |
+| `task-cutter` | Cuts one change's checklist from its spec and its plan. The seam between phases 5 and 6 of the Libretto flow — launched fresh, once, with none of the conversation that produced the design. Returns the boxes and what the two documents failed to answer. |
 | `work-reviewer` | Reviews one finished change against its spec — launched fresh by review-work in the seam between build and present. Reads the contract and the diff, re-runs every proof the change touches, and returns findings. It saw none of the session that wrote the code; that is the point. |
 
 ## Commands

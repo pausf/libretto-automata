@@ -8,17 +8,22 @@ import (
 	"testing"
 )
 
-func writePlan(t *testing.T, dir, change string, body string) string {
+func writeChecklist(t *testing.T, dir, change, name, body string) string {
 	t.Helper()
 	p := filepath.Join(dir, ".agents", "changes", change)
 	if err := os.MkdirAll(p, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	f := filepath.Join(p, "plan.md")
+	f := filepath.Join(p, name)
 	if err := os.WriteFile(f, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return f
+}
+
+func writeTasks(t *testing.T, dir, change, body string) string {
+	t.Helper()
+	return writeChecklist(t, dir, change, "tasks.md", body)
 }
 
 func TestCountBoxesReadsOnlyTheBox(t *testing.T) {
@@ -41,7 +46,7 @@ Prose mentioning - [ ] mid-line does not count
 
 func TestLoopStopsWhenEveryBoxIsClosed(t *testing.T) {
 	dir := t.TempDir()
-	plan := writePlan(t, dir, "c", "- [ ] one\n- [ ] two\n")
+	plan := writeTasks(t, dir, "c", "- [ ] one\n- [ ] two\n")
 
 	runs := 0
 	run := func(string) error {
@@ -66,7 +71,7 @@ func TestLoopStopsWhenEveryBoxIsClosed(t *testing.T) {
 // without this the cap is the only thing between that and a burnt budget.
 func TestLoopStopsAfterTwoRoundsThatCloseNothing(t *testing.T) {
 	dir := t.TempDir()
-	writePlan(t, dir, "c", "- [ ] one\n- [ ] two\n")
+	writeTasks(t, dir, "c", "- [ ] one\n- [ ] two\n")
 
 	runs := 0
 	run := func(string) error { runs++; return nil }
@@ -79,7 +84,7 @@ func TestLoopStopsAfterTwoRoundsThatCloseNothing(t *testing.T) {
 	if runs != 2 {
 		t.Fatalf("wanted exactly 2 rounds before giving up, got %d", runs)
 	}
-	if !strings.Contains(out.String(), "same plan") {
+	if !strings.Contains(out.String(), "same checklist") {
 		t.Fatalf("the stop must say why a third round is pointless, got:\n%s", out.String())
 	}
 }
@@ -88,7 +93,7 @@ func TestLoopStopsAfterTwoRoundsThatCloseNothing(t *testing.T) {
 // that crashed be followed by one that works.
 func TestOneBarrenRoundDoesNotStopTheLoop(t *testing.T) {
 	dir := t.TempDir()
-	plan := writePlan(t, dir, "c", "- [ ] one\n")
+	plan := writeTasks(t, dir, "c", "- [ ] one\n")
 
 	runs := 0
 	run := func(string) error {
@@ -111,7 +116,7 @@ func TestOneBarrenRoundDoesNotStopTheLoop(t *testing.T) {
 // the loop saying "two rounds closed nothing" when two things were done.
 func TestAPlanThatGrowsIsProgressNotAStall(t *testing.T) {
 	dir := t.TempDir()
-	plan := writePlan(t, dir, "c", "- [ ] one\n- [ ] two\n")
+	plan := writeTasks(t, dir, "c", "- [ ] one\n- [ ] two\n")
 
 	runs := 0
 	run := func(string) error {
@@ -142,7 +147,7 @@ func TestTheMissingPlanIsReportedBeforeTheMissingDependency(t *testing.T) {
 	if err == nil {
 		t.Fatal("wanted a refusal")
 	}
-	if !strings.Contains(err.Error(), "no plan at") {
+	if !strings.Contains(err.Error(), "no checklist at") {
 		t.Fatalf("wanted the missing plan named, got %v", err)
 	}
 }
@@ -152,7 +157,7 @@ func TestTheMissingPlanIsReportedBeforeTheMissingDependency(t *testing.T) {
 func TestDryRunNeedsNoClaudeOnPath(t *testing.T) {
 	t.Setenv("PATH", "")
 	dir := t.TempDir()
-	writePlan(t, dir, "c", "- [ ] one\n")
+	writeTasks(t, dir, "c", "- [ ] one\n")
 	if err := loop(dir, []string{"c", "--dry-run"}); err != nil {
 		t.Fatalf("--dry-run must work with an empty PATH, got %v", err)
 	}
@@ -160,7 +165,7 @@ func TestDryRunNeedsNoClaudeOnPath(t *testing.T) {
 
 func TestLoopStopsAtTheCapAndSaysSo(t *testing.T) {
 	dir := t.TempDir()
-	plan := writePlan(t, dir, "c", "- [ ] one\n- [ ] two\n- [ ] three\n")
+	plan := writeTasks(t, dir, "c", "- [ ] one\n- [ ] two\n- [ ] three\n")
 
 	run := func(string) error {
 		b, _ := os.ReadFile(plan)
@@ -181,7 +186,7 @@ func TestLoopStopsAtTheCapAndSaysSo(t *testing.T) {
 // code, is what notices a session that achieved nothing.
 func TestASessionErrorDoesNotAbortTheLoop(t *testing.T) {
 	dir := t.TempDir()
-	plan := writePlan(t, dir, "c", "- [ ] one\n")
+	plan := writeTasks(t, dir, "c", "- [ ] one\n")
 
 	run := func(string) error {
 		if err := os.WriteFile(plan, []byte("- [x] one\n"), 0o644); err != nil {
@@ -200,7 +205,7 @@ func TestLoopRefusesAPlanThatIsNotThere(t *testing.T) {
 		t.Fatal("no session may start without a plan")
 		return nil
 	})
-	if err == nil || !strings.Contains(err.Error(), "no plan at") {
+	if err == nil || !strings.Contains(err.Error(), "no checklist at") {
 		t.Fatalf("wanted a refusal naming the missing plan, got %v", err)
 	}
 }
@@ -209,7 +214,7 @@ func TestLoopRefusesAPlanThatIsNotThere(t *testing.T) {
 // wrote. Reading it as "0 open, therefore done" would report success having run nothing.
 func TestLoopRefusesAPlanWithNoBoxes(t *testing.T) {
 	dir := t.TempDir()
-	writePlan(t, dir, "c", "# Plan\n\nSome prose and no checkboxes.\n")
+	writeTasks(t, dir, "c", "# Plan\n\nSome prose and no checkboxes.\n")
 	err := runLoop(io.Discard, dir, loopOpts{change: "c", max: 1}, func(string) error {
 		t.Fatal("no session may start against a plan with no tasks")
 		return nil
@@ -221,7 +226,7 @@ func TestLoopRefusesAPlanWithNoBoxes(t *testing.T) {
 
 func TestDryRunPrintsThePromptAndStartsNoSession(t *testing.T) {
 	dir := t.TempDir()
-	writePlan(t, dir, "c", "- [ ] one\n")
+	writeTasks(t, dir, "c", "- [ ] one\n")
 	var out strings.Builder
 	if err := runLoop(&out, dir, loopOpts{change: "c", max: 5, dryRun: true}, func(string) error {
 		t.Fatal("--dry-run must not start a session")
@@ -268,12 +273,47 @@ func TestParseLoopArgs(t *testing.T) {
 	}
 }
 
+// The checklist used to be `plan.md` and is now `tasks.md`, and a change created before
+// that rename still has the old name on disk. The loop reads it — a rename that stranded
+// work already in flight would have cost more than the name was worth. It also has to
+// name the *current* file when neither exists, or the error teaches the reader to create
+// the file the flow no longer writes.
+func TestChecklistPathFallsBackToPlan(t *testing.T) {
+	dir := t.TempDir()
+	writeChecklist(t, dir, "legacy", "plan.md", "- [ ] one\n")
+	if got := checklistPath(dir, "legacy"); filepath.Base(got) != "plan.md" {
+		t.Errorf("a change with only plan.md must still be drivable, got %s", got)
+	}
+
+	writeChecklist(t, dir, "both", "plan.md", "- [ ] stale\n")
+	writeChecklist(t, dir, "both", "tasks.md", "- [ ] current\n")
+	if got := checklistPath(dir, "both"); filepath.Base(got) != "tasks.md" {
+		t.Errorf("tasks.md wins when both are there, got %s", got)
+	}
+
+	if got := checklistPath(dir, "neither"); filepath.Base(got) != "tasks.md" {
+		t.Errorf("with neither present the error must name the current file, got %s", got)
+	}
+
+	// And the prompt has to carry the file that was actually found, not a constant.
+	var out strings.Builder
+	if err := runLoop(&out, dir, loopOpts{change: "legacy", max: 1, dryRun: true}, func(string) error {
+		t.Fatal("--dry-run must not start a session")
+		return nil
+	}); err != nil {
+		t.Fatalf("a legacy plan must drive the loop, got %v", err)
+	}
+	if !strings.Contains(out.String(), "plan.md") {
+		t.Errorf("the prompt must point the session at the file that exists:\n%s", out.String())
+	}
+}
+
 // The loop hands work to the flow; it never restates what the flow already decides.
 // A prompt that grew instructions would be a second copy of a skill, drifting from the
 // installed one — and it must never authorise what attacca answers for one branch only.
 func TestTheLoopPromptRoutesAndNeverAuthorises(t *testing.T) {
-	p := loopPrompt("add-thing")
-	for _, want := range []string{"libretto-attacca", "add-thing", "plan.md", "FIRST unchecked box"} {
+	p := loopPrompt("add-thing", "tasks.md")
+	for _, want := range []string{"libretto-attacca", "add-thing", "tasks.md", "FIRST unchecked box"} {
 		if !strings.Contains(p, want) {
 			t.Errorf("prompt must contain %q:\n%s", want, p)
 		}

@@ -244,7 +244,7 @@ sub-agent    ──returns──▶ findings in its reply  (never to a file)
 ```
 
 **Sub-agents never write to the brief.** N writers on one file is the lost-update
-race that `skills/write-plan/` exists to avoid — two reads of the same content, two
+race that `skills/write-tasks/` exists to avoid — two reads of the same content, two
 writes, the second silently discarding the first. Findings come back in the return
 value.
 
@@ -407,13 +407,58 @@ decision that should not be rediscovered from scratch.
 ### Task breakdown
 
 Atomic units. Each one independently assignable, each one small enough that a
-single failure does not take the rest with it. This becomes the plan in phase 5;
-it is not the plan yet.
+single failure does not take the rest with it.
+
+**This is not the checklist and it is not the plan.** It is the input phase 5 reasons
+about and the 5→6 cutter cuts against — both of which are free to arrive at different
+boxes, because they know how the change is being built and this pillar does not. A
+breakdown transcribed straight into checkboxes is what made the plan a task list until
+2026-08-17.
 
 ### Verification criteria
 
-How each unit is proven — **each criterion naming the test that proves it**, by
-file and case.
+How each unit is proven — **each criterion written so it can be failed, and naming the
+test that proves it**, by file and case.
+
+#### Write them in EARS. This is checked.
+
+A criterion in free prose cannot be failed, only interpreted — and one nobody can fail
+is treated as satisfied by default. EARS (Mavin et al., RE'09) is the de facto syntax
+for fixing that, and its payoff is that a criterion maps almost 1:1 onto the test below
+it. Five patterns cover everything:
+
+| Pattern | Shape | When to reach for it |
+|---|---|---|
+| ubiquitous | The `<system>` **shall** `<response>` | always true, no trigger |
+| state-driven | **While** `<precondition>`, the `<system>` **shall** `<response>` | true for as long as a state holds |
+| event-driven | **When** `<trigger>`, the `<system>` **shall** `<response>` | a response to something happening |
+| unwanted | **If** `<condition>`, **then** the `<system>` **shall** `<response>` | errors, failures, refusals |
+| optional | **Where** `<feature>`, the `<system>` **shall** `<response>` | only when a feature is present |
+
+Before and after, from this repository's own history:
+
+```
+- loop reads a legacy plan.md when no tasks.md is present          ← cannot be failed
+- Where a change holds plan.md and no tasks.md, the runner shall
+  drive plan.md, and shall name it in the prompt it hands the
+  session.                                                          ← one test, no reading
+```
+
+The second one told the person writing the test what to assert. The first one did not,
+which is how a criterion ends up with a test that proves a neighbouring thing.
+
+**`shall` is the marker, and `spec-drift --ears` fails a delta without it** — inside
+`--anchors`, so it is one of the six gates rather than a seventh. The keyword is not
+checked, because ubiquitous requirements have none by design. Bold it or do not; the
+check strips emphasis.
+
+**Capability specs written before 2026-08-17 are warned about, never failed.** 545
+criteria predate this, and rewriting all of them in one unreviewable diff is 545 chances
+to change a promise that works today. A capability migrates when a delta lands on it.
+
+**When the shape genuinely does not fit, say so in the criterion rather than dropping
+`shall`.** A criterion that resists all five patterns is usually two criteria, or one
+that has not decided what it promises.
 
 The tests do not exist yet. Name them anyway. That citation is what makes them get
 written, and it is what makes this pillar falsifiable instead of decorative. A
@@ -490,7 +535,7 @@ the ceremony this flow spends its length arguing against.
 settled, attributed and dated. An answer that lives only in the conversation gets
 asked again next session, and the second answer will not always match the first.
 
-**Phase 2 is the only phase that asks this way.** Phase 5 stops for the order and
+**Phase 2 is the only phase that asks this way.** The 5→6 seam stops for the approach and the order, and
 what waits on what; it does not open a second tranche of questions. The contract is
 where an answer changes the most and costs the least to change, and asking twice
 before the first line of code is how a three-stop flow starts growing back.
@@ -531,7 +576,8 @@ Fix them here. Every one of these is cheap now and expensive in phase 6.
     └── add-relative-discounts/
         ├── proposal.md           the ticket, the intent, the non-goals
         ├── spec.md               Targets: bundle-products — the delta
-        └── plan.md               the checklist
+        ├── plan.md               the approach, and what it beat
+        └── tasks.md              the checklist
 ```
 
 **One spec per capability, never per ticket.** This matters more than it looks. A

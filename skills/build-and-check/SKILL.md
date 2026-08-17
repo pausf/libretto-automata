@@ -133,7 +133,7 @@ green before it is unproven again.
 
 A task is done when the criterion the plan named for it is met, and the run that
 proves it was watched. Then the box gets marked — by the orchestrator, per
-`skills/write-plan/`.
+`skills/write-tasks/`.
 
 Two failed gates on one task: stop the task. Not a third attempt. Report what
 failed, what was tried, and what is still unknown.
