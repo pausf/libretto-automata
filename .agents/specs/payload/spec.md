@@ -1,6 +1,6 @@
 # Payload
 
-Governs: skills/** commands/** agents/** scripts/**
+Governs: skills/** commands/** agents/** scripts/** THIRD-PARTY.md licenses/**
 
 The reason the project exists. Everything else is delivery.
 
@@ -375,6 +375,18 @@ default takes over — and the default is to guess plausibly.
 change needed for this flow goes in the skill that calls them, never into the copy, so
 the copy stays comparable with upstream.
 
+**That record is `THIRD-PARTY.md`, and this capability governs it.** The three upstream
+licence texts live in `licenses/`, so root-level `LICENSE` is the only licence file a reader
+meets there — none of the three is an alternative to it, which is how the root listing read.
+**No vendored licence text is ever deleted, reworded or merged**: a vendored copy has to carry
+its own licence, and tidying one out of a directory listing is a licensing failure rather than
+a cleanup.
+
+`THIRD-PARTY.md`'s relative links resolve, and that is checked — the gate above already
+*parses* that file's table to derive the vendored list, so it was load-bearing while no
+capability's `Governs:` claimed it. A path nobody owns is a path where drift is nobody's
+finding, which is the sentence the `readme` capability was created to answer about `README.md`.
+
 ## Prior decisions
 
 - The tracker is read through its CLI, never MCP, never the REST API.
@@ -668,6 +680,27 @@ the copy stays comparable with upstream.
   `and`: separate checks, separate failure modes, and joined either could be half-met and read
   as done.
   Proof: scripts/check-payload
+- **every relative link in `THIRD-PARTY.md` resolves**, scanned over the flattened document
+  because two guards in that test file have already shipped unable to fire on a wrapped
+  phrase; **and the three vendored licence texts are under `licenses/` with none left at the
+  root**, asserted directly because a link nobody updated still points at a file that is still
+  there — so the link half alone passes with one moved and two forgotten.
+  Proof: cmd/libretto/readme_test.go TestThirdPartyLinksResolve
+
+  **Both halves watched red, separately.** Layout first, against the files still at the root.
+  Then the links, against the files moved and the two lines untouched — which is precisely the
+  silent breakage this criterion exists for.
+
+  **`payload`'s `Governs:` is now wider than the payload directories**, so a licence-only
+  commit reads as payload drift. That is the intent; the replacement, if it becomes noise, is a
+  `vendoring` capability rather than a narrower glob.
+
+  **No criterion asserts the `Governs:` widening itself.** The obvious citation was
+  `spec-drift --trace`, and it cannot fail — `--trace` is a map and returns 0 whatever it
+  finds, which its own line 42 says. A criterion citing a gate that can never be red reads as
+  proven and is worse than one with no citation, so the widening is an observation in the
+  report instead. The alternative was a test asserting that one line of one spec file contains
+  two strings, which is machinery to check a document the next reader checks for free.
 - glob matching, capability derivation and citation extraction behave
   Proof: skills/record-work/spec-drift --self-test
 - **an anchor inside a fenced code block is an illustration, not a declaration.** Any
