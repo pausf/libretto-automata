@@ -55,7 +55,7 @@ of the table. Until it is made, nothing about this tool's interface is stable.
 ## 3 · Work does not come from a tracker
 
 There is no board to pick from. Work arrives from one of three places, asked in that order:
-a change already in flight under [`.agents/changes/`](.agents/changes/), a tracker key if one
+a change already in flight under `.agents/changes/`, a tracker key if one
 was handed over, or **what somebody said** — which is a legitimate input here, not a fallback,
 and is how every change in this repository so far arrived.
 
