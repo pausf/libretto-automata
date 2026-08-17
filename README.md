@@ -47,10 +47,9 @@ flowchart LR
 
 What changes in practice: you say what you want, and before any code exists you get a
 **contract** — what "done" means, what is deliberately out of scope, and how each promise
-will be proven. You approve that, then a **plan** — how it gets built, and which
-alternatives lost — with the checklist an agent cut from it without having sat through the
-argument. Then the work happens against both. A fresh reviewer that saw none of the
-session checks the result, and the last question is always whether to push.
+will be proven. You approve that, then a **plan** — how it gets built and which alternatives
+lost — with the checklist an agent cut from it without sitting through the argument. A fresh
+reviewer that saw none of the session checks the result, and the last question is whether to push.
 
 ```mermaid
 flowchart LR
@@ -128,12 +127,9 @@ Claude Code** — what follows are slash commands, not shell commands.
 2. **It stops at the spec.** You get the contract: outcomes, what is out of scope, the
    constraints it found in your code, and the test that will prove each promise. **This is
    the cheap place to disagree.**
-3. **It writes the plan** — how it will be built, the alternatives that lost and why,
-   what could go wrong and how that gets caught. It does not wait here.
-4. **It stops once the tasks are cut.** A fresh agent, given the spec and the plan and
-   none of the conversation, turns them into an ordered checklist and reports **anything
-   those two documents failed to answer**. You agree the approach and the order together,
-   with those gaps in front of you.
+3. **It writes the plan** — how it gets built, and which alternatives lost. It does not wait.
+4. **It stops once the tasks are cut** by a fresh agent that saw none of the conversation,
+   which reports **what the spec and the plan failed to answer**. You agree both at once.
 5. **It builds**, marking boxes as it goes, and leaves a proportionate test behind — one
    runnable check for real logic, none for a one-liner with no logic in it.
 6. **A fresh reviewer reads the result.** It saw none of the session that wrote the code,
@@ -158,16 +154,14 @@ Nothing else to learn to start. The rest is knowing which door to use:
 /libretto-attacca             # the same flow, without stopping — straight to a pushed PR
 ```
 
-**`/libretto-attacca` answers those stops in advance.** Same phases, same spec, same plan and tasks,
-same report — it just does not wait for you at any of them, and it ends with the branch
-pushed and the request open. It will not answer a *gate* — a failing check still stops it
-where it stands — and it never merges, tags or releases; [FLOW.md](docs/FLOW.md) says why
-that boundary is where it is. `attacca` is what a score writes to mean *go on to the next
-movement without pausing*.
+**`/libretto-attacca` answers those stops in advance.** Same phases, same spec, same plan
+and tasks, same report — it just never waits, and it ends with the branch pushed and the
+request open. A failing gate still stops it where it stands, and it never merges, tags or
+releases; [FLOW.md](docs/FLOW.md) says why that boundary is where it is. `attacca` is what
+a score writes to mean *go on to the next movement without pausing*.
 
 **The flow does not begin at a tracker.** Phase 1 asks three sources in order — a change
-already in flight, a tracker key or URL, and what you said — and the order is deliberate:
-[FLOW.md](docs/FLOW.md) says why.
+already in flight, a tracker key or URL, and what you said — and [FLOW.md](docs/FLOW.md) says why.
 
 | | Phase | Skill |
 |---|---|---|
