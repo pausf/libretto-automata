@@ -38,8 +38,17 @@ func fakeGit(added string, logs, diffs map[string]string) gitRunner {
 			if !strings.Contains(joined, "--diff-filter=AM") {
 				return "", fmt.Errorf("the churn query must exclude deletions: %q", joined)
 			}
+			// Keys are change names and stand for the current checklist, `tasks.md`. A key
+			// that names its file explicitly — `add-thing/plan.md` — fixes a change to the
+			// pre-rename layout, which is the only way to tell the two queries apart: a
+			// fake that answered both would let the legacy fallback carry every test and
+			// leave the path actually in use unproven.
 			for k, v := range diffs {
-				if strings.Contains(joined, k+"/plan.md") {
+				want := k + "/tasks.md"
+				if strings.Contains(k, "/") {
+					want = k
+				}
+				if strings.Contains(joined, want) {
 					return v, nil
 				}
 			}
@@ -135,6 +144,31 @@ cccccccccccccccccccccccccccccccccccccccc
 	// Commit a closed two boxes, commit c closed the reopened one again: three closes.
 	if m.checked != 3 {
 		t.Fatalf("wanted 3 boxes closed, got %d", m.checked)
+	}
+}
+
+// Every change that landed before the checklist was renamed has `plan.md` in its history
+// and a folder that no longer exists, so it can never acquire the new name. This metric
+// is retroactive by design — `.agents/specs/cli/spec.md` records the churn column reading
+// "no plan" for twelve changes once already — and a rename that dropped the old path
+// would have blanked it for the entire history to tidy a filename.
+func TestMetricsFallsBackToLegacyPlan(t *testing.T) {
+	now := time.Now().Unix()
+	diff := `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
++- [x] one
++- [ ] two
+`
+	m, err := measureAt(fakeGit("",
+		map[string]string{"c": fmt.Sprintf("%d\n", now)},
+		map[string]string{"c/plan.md": diff}), "c")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !m.planSeen {
+		t.Fatal("a change that only ever had plan.md must still report churn, not a dash")
+	}
+	if m.checked != 1 || m.boxes != 2 {
+		t.Fatalf("wanted 1 of 2 boxes closed out of the legacy path, got %d of %d", m.checked, m.boxes)
 	}
 }
 
