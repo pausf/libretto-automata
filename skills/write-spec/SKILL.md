@@ -244,7 +244,7 @@ sub-agent    ──returns──▶ findings in its reply  (never to a file)
 ```
 
 **Sub-agents never write to the brief.** N writers on one file is the lost-update
-race that `skills/write-plan/` exists to avoid — two reads of the same content, two
+race that `skills/write-tasks/` exists to avoid — two reads of the same content, two
 writes, the second silently discarding the first. Findings come back in the return
 value.
 
@@ -407,8 +407,13 @@ decision that should not be rediscovered from scratch.
 ### Task breakdown
 
 Atomic units. Each one independently assignable, each one small enough that a
-single failure does not take the rest with it. This becomes the plan in phase 5;
-it is not the plan yet.
+single failure does not take the rest with it.
+
+**This is not the checklist and it is not the plan.** It is the input phase 5 reasons
+about and the 5→6 cutter cuts against — both of which are free to arrive at different
+boxes, because they know how the change is being built and this pillar does not. A
+breakdown transcribed straight into checkboxes is what made the plan a task list until
+2026-08-17.
 
 ### Verification criteria
 
@@ -490,7 +495,7 @@ the ceremony this flow spends its length arguing against.
 settled, attributed and dated. An answer that lives only in the conversation gets
 asked again next session, and the second answer will not always match the first.
 
-**Phase 2 is the only phase that asks this way.** Phase 5 stops for the order and
+**Phase 2 is the only phase that asks this way.** The 5→6 seam stops for the approach and the order, and
 what waits on what; it does not open a second tranche of questions. The contract is
 where an answer changes the most and costs the least to change, and asking twice
 before the first line of code is how a three-stop flow starts growing back.
@@ -531,7 +536,8 @@ Fix them here. Every one of these is cheap now and expensive in phase 6.
     └── add-relative-discounts/
         ├── proposal.md           the ticket, the intent, the non-goals
         ├── spec.md               Targets: bundle-products — the delta
-        └── plan.md               the checklist
+        ├── plan.md               the approach, and what it beat
+        └── tasks.md              the checklist
 ```
 
 **One spec per capability, never per ticket.** This matters more than it looks. A

@@ -56,7 +56,7 @@ from, and in practice the least common:
 
 | Source | When |
 |---|---|
-| **a change already in flight** | there are unchecked boxes in `.agents/changes/*/plan.md` |
+| **a change already in flight** | there are unchecked boxes in `.agents/changes/*/tasks.md` |
 | **a tracker key or URL** | one was given |
 | **what the user said** | anything else — the request *is* the input |
 
@@ -69,16 +69,23 @@ is not the wasted work — it is a `.agents/changes/` directory nobody trusts an
 Look at home before looking anywhere else.
 
 ```
-rg -c '^\s*- \[ \]' .agents/changes/*/plan.md
-rg -c '^\s*- \[x\]' .agents/changes/*/plan.md
+rg -c '^\s*- \[ \]' .agents/changes/*/tasks.md .agents/changes/*/plan.md
+rg -c '^\s*- \[x\]' .agents/changes/*/tasks.md .agents/changes/*/plan.md
 ```
+
+**Both names, and the second one is not a typo.** The checklist was `plan.md` until
+2026-08-17, when `plan.md` became the technical approach and the boxes moved to
+`tasks.md`. A change created before that still carries the old layout, and a search that
+saw only the new name would report the work in flight as nothing in flight — which is
+precisely the failure this source exists to prevent, arriving through the fix for a
+different one.
 
 A change with open boxes is work waiting. For each one, report:
 
 - its name, and what its `proposal.md` says it is for in one line
 - how many boxes are open out of how many
-- **what its plan says can start now** — the plans record dependencies, and a plan whose
-  dependencies nobody reads is a list, not a plan
+- **what its checklist says can start now** — it records dependencies, and dependencies
+  nobody reads make it a list rather than a plan
 
 Then ask: continue one, or begin something else. **Never choose.** Picking up somebody's
 half-finished work without asking is a decision about their priorities.
@@ -101,7 +108,7 @@ That is a state, not an error — say it in one line and move on.
 
 **The scan above cannot see the trivial lane.** A change that needed no spec never creates
 a `changes/` directory — by definition it has no spec and no plan — so it lives only as
-commits on a branch, and `rg` over `plan.md` reports nothing in flight while the work sits
+commits on a branch, and `rg` over `tasks.md` reports nothing in flight while the work sits
 there unmerged.
 
 That is not hypothetical: the lane's own first run produced a commit on a local branch,

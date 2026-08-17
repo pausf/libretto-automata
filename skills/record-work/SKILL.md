@@ -147,7 +147,7 @@ With `<skill-base>` spelled as the real installed path. **This is opt-in and sta
 opt-in**: nothing in the flow installs the hook, the default mode still always exits
 0, and removing the gate is deleting the hook file.
 
-The plan is updated in the same breath, per `skills/write-plan/` — by the
+The checklist is updated in the same breath, per `skills/write-tasks/` — by the
 orchestrator, never by a sub-agent.
 
 ## Messages

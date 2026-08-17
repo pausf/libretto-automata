@@ -100,7 +100,8 @@ by statistical association:
     └── add-relative-discounts/
         ├── proposal.md
         ├── spec.md               Targets: bundle-products
-        └── plan.md
+        ├── plan.md               the approach
+        └── tasks.md              the checklist
 ```
 
 **One spec per capability, never per ticket.** A capability spec accumulates and
@@ -155,8 +156,8 @@ named — every question one a wrong guess would make expensive, and never a for
 interrogation of things the code already answers. The bias, when in doubt, is to ask.
 
 **Phase 2 alone, not phase 5**, which was offered and declined. The contract is where an
-answer changes the most and costs the least to change; phase 5 already stops for the order
-and what waits on what. Asking twice before the first line of code is how a three-stop flow
+answer changes the most and costs the least to change; the 5→6 seam already stops for the
+approach, the order and what waits on what. Asking twice before the first line of code is how a three-stop flow
 grows back into a nine-stop one, one defensible exception at a time.
 
 **Zero is legitimate, and it is said in one line.** The alternative — always three, stretched
@@ -169,13 +170,60 @@ has.
 
 ## 5 · The plan
 
-One markdown file. One line per task, checked off as work lands, so an agent
-joining late reads current state instead of guessing.
+**The how.** Until 2026-08-17 this phase produced a checklist and called it a plan,
+which is what a Lead reading the output reported: the specs read like plans and the
+plans read like task lists. The diagnosis was one line long — the spec's task breakdown
+was transcribed into checkboxes, so the *technical reasoning* never got written down
+anywhere at all.
 
-**One writer.** The orchestrator owns this file. Sub-agents report completion and
-the orchestrator marks the box. Several agents editing one markdown concurrently
-lose updates, and a checklist that silently forgets a finished task is worse than
-no checklist.
+`plan.md` now holds six things, and the fourth is the one this flow had no home for:
+
+| | |
+|---|---|
+| summary | the shape of the approach, in a paragraph |
+| technical context | what it is built against, and the blast radius |
+| the approach | the mechanism, in enough detail to be built from |
+| **the alternatives it beat** | **one row each, and why it lost** |
+| risks | what breaks, and the mechanism that catches it |
+| validation and rollback | which gates carry it, which test would pass for the wrong reason, how it comes back out |
+
+A diff shows what was built. Nothing in a repository shows what was **not** built and
+why — so if it is not here it is gone, and the decision gets made again by somebody with
+less context in the middle of phase 6.
+
+No checkboxes. No state. That is the next seam.
+
+## Between 5 and 6 · The tasks
+
+`tasks.md` — the checklist that used to be phase 5's output, with everything it always
+guaranteed: one writer, derived from the contract, ordered by dependency, every box cut
+to merge on its own.
+
+What is new is who cuts it. **One fresh `task-cutter` subagent, given the spec and the
+plan and nothing else** — none of the conversation, none of the design argument, none of
+what was considered and dropped. The session that argued its way to an approach cannot
+tell the difference between what it wrote down and what it merely decided, and it cuts
+boxes against the argument: it writes "wire up the adapter" and knows what that means,
+and nobody else does — including the fresh session `libretto loop` starts tomorrow.
+
+So the cutter returns two things, and the second is the point: the checklist, and **what
+the spec and the plan failed to answer.** A cutter that cannot produce a box because the
+plan never said how something gets built has found a defect in the plan, at the last
+moment it is cheap to fix — and it is the only check this flow has that a plan says
+enough to be built from.
+
+**One writer still.** The cutter returns; the orchestrator writes and owns the file.
+Several agents editing one markdown concurrently lose updates, and a checklist that
+silently forgets a finished task is worse than no checklist.
+
+**The stop moved here rather than multiplying.** Splitting the plan from the checklist
+invited a third stop — one for the approach, one for the order — and this document spends
+its length arguing that a stop whose only answer is "yes, carry on" is a round trip
+charged for a rubber stamp. Phase 5 runs through; the user is asked once, here, with the
+approach and the boxes and the cutter's gaps all on the table at the same time.
+
+Not a numbered phase, on the same grounds as the 6→7 review: independence comes from the
+fresh context, not from renumbering everything that says eight.
 
 ## 6 · Build and test
 

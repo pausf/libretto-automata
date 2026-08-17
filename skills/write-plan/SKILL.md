@@ -1,175 +1,145 @@
 ---
 name: write-plan
-description: "Trigger: specs are written and the work needs an ordered checklist; tracking task state across agents; marking a task done. Phase 5 of the flow. Turns the task breakdown into the one file that holds live state."
+description: "Trigger: the spec is written and the work needs an approach before any code; choosing between two ways to build something; recording why an alternative lost; naming what could go wrong. Phase 5 of the flow. Writes the how — the document that used to not exist."
 license: MIT
 metadata:
   author: pausf
-  version: "1.1"
+  version: "2.0"
 ---
 
 ## What this does
 
-Phase 5 of the Libretto flow: turn the specs' task breakdown into the single file that
-says what is done and what is next.
+Phase 5 of the Libretto flow: decide **how** the change gets built, and write the
+reasoning down before it evaporates with the session that had it.
 
-**Delegate the shape.** `skills/writing-plans/` already covers task right-sizing, plan
-structure, the no-placeholders rule and self-review. Invoke it for how a plan is
-written — it ships with this repository, see `THIRD-PARTY.md`.
+The spec says what and why. This says how. The checklist that says in what order is
+`write-tasks`, in the seam after this one — **it is not this file, and until 2026-08-17
+it was.**
 
-**What it decides that this flow overrides.** Delegation without stated
-overrides is two skills quietly disagreeing:
+## Why this phase exists at all
 
-| It says | Here | Why |
-|---|---|---|
-| save to `docs/superpowers/plans/<date>-<name>.md` | `.agents/changes/<change>/plan.md` | the plan belongs inside the change it belongs to, beside the proposal and the delta, and it disappears with them when the change lands |
-| the plan is the handoff to execution | the plan is **live state** | several agents read it while the work runs, so it is written continuously, not handed over once |
-| the worktree came from `superpowers:using-git-worktrees` | `using-git-worktrees` | the payload ships that skill unnamespaced. The namespace names a plugin the user may not have; the skill itself is right here |
-| execution needs `superpowers:subagent-driven-development` or `superpowers:executing-plans` | `build-and-check`, phase 6 | **neither is shipped, by anybody, on a machine that installed only this.** A plan whose header demands a skill that does not exist is a plan that stalls on its own first line |
+It was reported missing. A Lead read this flow's output and found specs that read like
+plans and plans that read like task lists, and the diagnosis was one line long: phase 5
+transcribed the spec's task breakdown into checkboxes and called it a plan.
 
-**Write the header without those two names.** `writing-plans` mandates a header
-naming `superpowers:subagent-driven-development`; here the plan is live state that
-phase 6 reads, so the header names `build-and-check` and nothing else. Same for the
-execution-handoff question at the end — the flow already routed, so there is no
-choice left to offer.
+So the technical reasoning — the approach chosen, the two that were rejected, the thing
+that will probably go wrong — happened in a session and died there. Every later reader
+got the *what* twice and the *how* never, and the first person to ask "why is it built
+like this?" got an answer reconstructed from the diff.
 
-Everything else it says stands. What follows is only what it does not cover.
+**A decision nobody wrote down gets made again**, and the second time it is made by
+somebody with less context, under more pressure, in the middle of phase 6.
 
-**The vendored copy is not edited to say this.** `THIRD-PARTY.md` keeps it byte-comparable
-with upstream, so a divergence has exactly one place to live and it is this table. The
-repository's payload gate enforces it: a namespaced skill a vendored copy cites, which the
-payload does not ship, has to be answered here or the gate fails.
+## What goes in it
 
-## The plan is derived, not invented
+Six things. The fourth and the sixth are the ones that get skipped, and they are the two
+worth the most in six months.
 
-Every task traces to a spec. If a task is in the plan and in no spec, either the
-spec is incomplete or the task is scope that arrived without asking — find out
-which before writing it down.
+### Summary
 
-Carry the link both ways: each task names the spec it comes from, and each task
-names **the verification criterion that closes it**. A task whose criterion is
-already met is not a task.
+What is being built and the shape of the approach, in a paragraph. Somebody who reads
+only this should be able to say whether the rest is worth their time.
 
-## One writer
+### Technical context
 
-This is the rule the whole file exists for.
+What the change is built against, concretely enough to be wrong: language and version,
+the dependencies in play, where the tests live, what gates it has to pass, what is
+generated rather than written.
 
-**The orchestrator owns the plan.** Sub-agents never edit it. They report what they
-finished; the orchestrator marks the box.
+**And the blast radius** — which files, how many. A change that names its own edges is
+a change whose review can be scoped.
 
-Several agents editing one markdown concurrently lose updates — two reads of the
-same content, two writes, the second silently discarding the first. The symptom is
-a finished task whose box is empty, and nobody notices until something downstream
-waits forever for work that was already done.
+Vague context is worse than none. "Uses the existing test setup" tells a reader nothing
+they could contradict.
 
-One writer removes the problem instead of managing it. No locks, no merge logic, no
-retry.
+### The approach
 
-## State is written when it changes, not at the end
+The decision, and the mechanism. Enough that somebody could build it from this document
+without the conversation that produced it — which is exactly the test the task cutter
+applies in the next seam, because it has nothing else.
 
-A box is marked the moment its task is genuinely finished — verified, not hoped, per
-`skills/evidence/`. Not batched, not at the end of a session.
+### The alternatives it beat
 
-An agent joining late reads this file and believes it. That is its whole purpose,
-and a plan updated in batches is a plan that was wrong for most of its life.
+**This is the pillar the flow was missing, and it is the one that pays.**
 
-**A marked box that was never committed was never marked.** It ships in the same commit
-as the task that closed it, exactly as the spec does — a `git add` scoped to the code
-leaves the plan behind in the working tree, and a change that lands deletes the folder
-with every unrecorded mark still in it. That is not hypothetical: the reviewer of the run
-that added this line read six commits and found 0/24 boxes ticked on a plan whose work was
-finished, because every mark lived only in a working tree.
+One row per real alternative: what it was, and why it lost. Not a strawman — something
+that was genuinely considered, by somebody who could have chosen it.
 
-Phase 1 reads unchecked boxes to decide what is in flight, so a plan that never moves
-reports as fully open right up until it disappears.
+| Considered | Why it lost |
+|---|---|
 
-Record three things per task and nothing more: done or not, where the evidence is,
-and — if it was stopped — why. Discussion belongs in the spec.
+A diff can show what was built. Nothing in a repository can show what was *not* built
+and why, so if it is not here it is gone. And the alternative that lost for a reason
+that later stops being true is the single most valuable thing in this file: it is the
+change somebody should make next, and without this table they will never know it was
+already on the table.
 
-## Order by dependency, not by convenience
+**"It was obvious" is not a row.** If it was obvious there was no decision, and the
+table is shorter. An empty table is legitimate and says so in one line.
 
-Tasks that unblock others come first. Shared foundations before the things that
-build on them.
+### Risks
 
-Mark what each task waits on. Without that, two agents pick tasks that touch the
-same ground and one of them wastes its work. With it, "what can start now?" has an
-answer anyone can read off the file.
+What could go wrong, and what catches it. One row each — the mitigation names a
+mechanism, never an intention.
 
-Independent tasks may be marked as such. Parallel by default is how a plan becomes
-a race.
+"Be careful with the migration" is not a mitigation. "The migration runs behind a
+feature flag, and `TestMigrationIsReversible` proves the rollback" is.
 
-## Cut each box so it stands alone
+The risk with no mitigation is still worth writing down. It becomes the thing phase 7
+reports as accepted rather than the thing that surprises somebody.
 
-Ordering says which box comes first. **This says what belongs inside one**, and it is the
-harder half: a plan can be perfectly ordered and still be cut wrong.
+### Validation and rollback
 
-A box is one end-to-end change — the code and the proof that closes it, together. Not a
-layer of one. Closing a box leaves the tree green and mergeable **on its own**, with
-nothing half-built waiting for the next box to make sense of it.
+How the change gets proved, and how it gets taken back out.
 
-So the test is not "is this task small" but: **could this box merge by itself?** If the
-answer is no because the box after it is what makes it work, they are not two boxes.
-Two boxes where the first only makes sense once the second lands are one badly cut box,
-and the fix is to merge them rather than to order them.
+Which gates carry it, which tests are new, and — the part that goes missing — **which
+of them would pass for the wrong reason.** Code that only runs on a path the tests do
+not take passes green and proves nothing. Say which test has to be forced red on purpose
+before it is believed, per `skills/evidence/`.
 
-What the horizontal cut looks like, because it is the default and it reads as tidy:
+Rollback is usually one line ("one revert, nothing migrates"). When it is not one line,
+that is the finding.
 
-| Cut | Boxes | Merge the first one alone and you get |
-|---|---|---|
-| by layer | the model · the handler · the tests | a model nothing calls, then a handler nothing proves |
-| end to end | one field, stored, served and proved · the next field | a working field |
+### Complexity deliberately kept
 
-**The capability spec is not part of a box.** A delta lands on it once, in the final
-commit, exactly as it always has — what a box owes is its own proof, never a slice of the
-delta.
+Where the change is not the simplest thing that works, and why the simpler thing was
+wrong. `ponytail:` in the code marks the site; this says what the site is for.
 
-### When a box cannot be cut that way
+Absent this, the next reader deletes it — correctly, on the evidence they have.
 
-That is a finding about the **spec**, not a licence to ship a layer. Phase 2's task
-breakdown was cut along components, and the rule above about tasks that trace to no spec
-already says what to do with a task the spec got wrong: find out which end is wrong before
-writing it down. Take it back to the contract.
+## What does not go in it
 
-### What this buys, and it is not tidiness
-
-`libretto loop` runs one fresh session per open box. A box that does not stand alone leaves
-the tree broken between sessions — the next session opens on work it did not do and cannot
-see the reasoning for, which is the failure the loop is most exposed to and the one it has
-no way to detect.
-
-**Ceiling named:** nothing here can check a plan. Whether a box genuinely merges alone is
-judgment, and the payload's own gate only verifies that this mandate is present in this
-file. A box cut horizontally under a mandate sitting three paragraphs above it surfaces at
-phase 6 or in the 6→7 review, never in a gate.
+- **No checkboxes.** No state, no progress, no "done". That is `tasks.md`, and a plan
+  that grows a checkbox becomes a second source of truth about what is finished.
+- **No task list.** Ordering, dependency and what-can-start-now belong to the next seam.
+- **No restatement of the spec.** Link it. A copied requirement is a requirement that
+  will disagree with its original.
 
 ## Where it lives
 
-`.agents/changes/<change-name>/plan.md` — inside the change, beside the proposal
-and the spec delta it implements.
+`.agents/changes/<change-name>/plan.md` — beside the proposal and the spec delta.
 
-That placement is deliberate: the plan is as temporary as the change. When the
-change lands and its delta is folded into the capability spec, the plan goes with
-it. A plan that outlives its change becomes a list of things that may or may not
-still be true.
+It is as temporary as the change. When the change lands, the delta folds into the
+capability spec and this goes with it. What survives is what the *spec* records; a plan
+that outlived its change would be a list of decisions that may or may not still hold.
 
-Follow the project's layout if it differs; `skills/write-spec/` has the detection
-order.
+**The decision worth keeping outlives the file.** A choice that will still constrain
+work after this change lands belongs in the capability spec's *Prior decisions*, and
+phase 8 is where it moves. A plan is where a decision is made, never where it retires.
 
-One plan per change. A second file tracking the same work is two sources of truth,
-and they will disagree exactly when it matters.
+Follow the project's layout if it differs; `skills/write-spec/` has the detection order.
 
 ## Output
 
-Report where the plan is, how many tasks, and which can start immediately.
+Report where the plan is, the approach in a sentence, and any risk with no mitigation.
 
-Then stop. Writing the plan is not starting the work.
+**Then carry on to `write-tasks`. This phase does not stop, and that is deliberate.**
 
-**Ask for the go-ahead with `AskUserQuestion` — in conversation where the native
-prompt does not exist — never as a sentence at the end of the
-report.** Start the work — recommended, and saying which task runs first — change the order
-first, or go back to the contract. **And room to answer differently**: the thing wrong with
-an order is often not one of the three ways it could be wrong.
+Splitting the plan out of the checklist invited a third stop — one for the approach, one
+for the order — and this flow spends its length arguing that a stop where the only
+available answer is "yes, carry on" is a round trip charged for a rubber stamp. So the
+stop moved one seam later rather than multiplying: the user is asked once, with the
+approach *and* the boxes it produced *and* whatever the cutter found the documents failed
+to answer, all on the table at the same time. One decision, better informed.
 
-Same rule as every stop. The reason lives once, in `skills/record-work/`.
-
-Unless the run is `/libretto-attacca`, where the invocation already agreed the order. The
-plan is written and committed exactly the same; only the wait is answered.
+**Writing the plan is not starting the work**, and nothing here touches code.

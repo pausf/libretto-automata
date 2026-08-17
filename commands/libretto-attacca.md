@@ -78,7 +78,13 @@ Skill(skill="review-spec")        3→5 · reads the contract, only when one was
                                       the only thing between an unfailable criterion and
                                       a plan built on it. It still only reports — see
                                       below for who acts on it
-Skill(skill="write-plan")         5 · then carry on
+Skill(skill="write-plan")         5 · the approach. It never stopped anyway
+Skill(skill="write-tasks")        5→6 · one fresh cutter, then carry on. **What the
+                                      cutter says the spec and the plan failed to
+                                      answer is the one thing here nobody else will
+                                      read**: unattended, it becomes an assumption
+                                      recorded in the spec and the report, exactly
+                                      like a question this command cannot ask
 Skill(skill="build-and-check")    6
 Skill(skill="review-work")        6→7 · it already fixes rather than asks
 Skill(skill="present-work")       7 · naming what this command answered, and every

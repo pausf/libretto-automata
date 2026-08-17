@@ -11,7 +11,8 @@
 #       └── add-relative-discounts/
 #           ├── proposal.md           why, scope, non-goals
 #           ├── spec.md               Targets: bundle-products
-#           └── plan.md               the checklist
+#           ├── plan.md               the approach
+#           └── tasks.md              the checklist
 #
 # One spec per capability, not per ticket. A capability spec accumulates and stays
 # true; a ticket spec is dead the day the ticket closes.
