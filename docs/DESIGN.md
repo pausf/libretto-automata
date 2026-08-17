@@ -400,6 +400,33 @@ standing in is the installation.
 installed command and no stale binary can pretend to be current. It refuses to overwrite a
 `libretto` it did not create.
 
+## Why other people's skills are vendored, and only in part
+
+Seven skills from three upstreams ship inside this repository, copied unmodified with their
+licence and version recorded in `THIRD-PARTY.md`.
+
+**The flow's own skills are thin because they delegate to these, and a thin skill whose delegate
+is missing is not thin — it is broken.** That is the whole argument for vendoring rather than
+depending: `write-plan` hands the shape of a plan to `writing-plans`, so a machine that installed
+only Libretto and got no `writing-plans` has a phase 5 that stalls on its own first line.
+
+What each one decides, and why they do not overlap:
+
+- **ponytail** decides how much gets *built*. Its ladder runs from *does this need to exist at
+  all?* down to *only then, the minimum that works*, and it carries the list of things that are
+  never trimmed: trust boundaries, data loss, security, accessibility. The flow invokes it in
+  phase 2, on requirements rather than on code, because that is where removing work is cheapest —
+  deleting a requirement costs a line, deleting the code it would have produced costs a day.
+- **caveman** decides how much gets *said*. It compresses prose; ponytail compresses what gets
+  built. Two dials, no overlap.
+
+**Only what the flow calls by name is vendored.** The rest of both plugins — including always-on
+hook mode — stays with the upstream plugins, and the two coexist by namespace. Copying a whole
+plugin to reach two of its skills would make this repository the owner of behaviour it never
+reviews, and the copy stops being comparable with upstream the first time either side moves.
+
+Shipped is not required. Nothing fails without them, and they prune like any other item.
+
 ## Why models are named by alias, not by id
 
 `libretto models set haiku …` writes an alias, so an agent file does not need editing the
@@ -413,3 +440,25 @@ eventually treats as meaningful.
 A row marked `shared` is a file this repository owns, reached from more than one
 destination: writing it changes every project on the machine. An unmarked row is a real
 file in that destination and changing it changes nothing else.
+
+### Why an alias resolves from the environment, and what that resolution never touches
+
+An alias is not a fixed model. `opus` and `sonnet` do not name the same model on every
+provider — on Amazon Bedrock `sonnet` is Sonnet 4.5, which has no effort levels at all, and on
+Microsoft Foundry `opus` is Opus 4.6, which has four of the five. So a listing that reported one
+fixed set of effort levels would be wrong for two of the three providers, and wrong silently:
+the user would set a level that the provider quietly ignores.
+
+The resolution is `os.Getenv` on variables Claude Code already documents — **no request, no
+credential, and never a variable that holds a secret.** That constraint is why this is
+resolution rather than detection: asking the provider would be more accurate and would mean a
+read-only local command making a network call with somebody's key, which is not a trade this
+tool makes.
+
+An explicit `ANTHROPIC_DEFAULT_SONNET_MODEL` pin takes precedence over the provider default,
+because a pin is a statement and a default is a guess.
+
+**Anything this build cannot resolve is treated as capable rather than refused.** The failure
+modes are not symmetric: refusing a level on an unrecognised provider blocks a user whose setup
+is simply newer than the binary, while permitting one that turns out to be ignored costs
+nothing the listing does not already say.

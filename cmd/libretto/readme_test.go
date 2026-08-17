@@ -110,6 +110,13 @@ func TestMovedReasoningLandedInDocs(t *testing.T) {
 		{"the payload is not compiled in, paraphrased", "wins over"},
 		{"model aliases rather than ids", "two spellings of one state"},
 		{"spec-drift warns, never blocks", "a deleted check finds nothing"},
+		// Four more, moved out when the README was cut from 389 lines to fit under its own
+		// ceiling. Each anchor is the phrase a paraphrase would have to lose — the lesson
+		// above about "module cache" is why they are chosen that way and not by convenience.
+		{"the spec stop is the cheap place to disagree", "costs a line"},
+		{"phase 1's source order is the point", "gets abandoned"},
+		{"attacca will not answer a gate", "never merges, tags or releases"},
+		{"an alias resolves per provider from the environment", "no request, no"},
 	} {
 		if strings.Contains(readme, moved.phrase) {
 			t.Errorf("%s is still argued in the README", moved.subject)
@@ -169,6 +176,13 @@ func TestReadmeLinksResolve(t *testing.T) {
 		t.Fatal("no links matched — the pattern is broken, not the README")
 	}
 
+	// Resolving the links it has says nothing about the one it must have: a README with no
+	// CONTRIBUTING.md link at all passes the loop below. The contributor's door is reached
+	// from the front door or it is reached by nobody browsing.
+	if !strings.Contains(flat(repoFile(t, "README.md")), "CONTRIBUTING.md") {
+		t.Error("the README never links to CONTRIBUTING.md — the contributor's door is unreachable from the front")
+	}
+
 	for _, match := range links {
 		target := match[1]
 		if strings.HasPrefix(target, "http") || strings.HasPrefix(target, "mailto:") {
@@ -177,6 +191,29 @@ func TestReadmeLinksResolve(t *testing.T) {
 		if _, err := os.Stat(filepath.Join("..", "..", target)); err != nil {
 			t.Errorf("the README links to %s, which does not exist", target)
 		}
+	}
+}
+
+// A front door that grows never shrinks back, and this one had reached 389 lines with
+// arguments in it that docs/ already owned. The capability's own ceilings proposed this
+// mechanism for themselves before it was needed: a criterion about how long the file may get.
+//
+// It is a ratchet against growth, not a measure of readability — a README rewritten as 340
+// very long lines passes. Readability is the one thing no test here holds, which the
+// capability records and which is why that is said out loud rather than implied.
+func TestReadmeStaysShort(t *testing.T) {
+	// 380, and the first draft said 340 — chosen before anything was measured. Removing one
+	// duplicate and relocating five arguments netted 13 lines, not 49: the relocations swap
+	// prose for a pointer, so each one saves less than it reads like it should. What remains is
+	// reference — the commands table, the model and effort listings, the five states, the
+	// environment table — and cutting those to hit a number would leave a worse README that
+	// passes its own guard, which is the failure this whole capability exists to prevent.
+	//
+	// So this is a ratchet against growth, deliberately tight. Raising it is the wrong fix; the
+	// right one is moving an argument out, which is what the message says.
+	const ceiling = 380
+	if n := strings.Count(repoFile(t, "README.md"), "\n"); n > ceiling {
+		t.Errorf("README.md is %d lines, over its %d ceiling — move an argument to docs/ rather than raising this", n, ceiling)
 	}
 }
 
