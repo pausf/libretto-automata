@@ -123,9 +123,29 @@ It is as temporary as the change. When the change lands, the delta folds into th
 capability spec and this goes with it. What survives is what the *spec* records; a plan
 that outlived its change would be a list of decisions that may or may not still hold.
 
-**The decision worth keeping outlives the file.** A choice that will still constrain
-work after this change lands belongs in the capability spec's *Prior decisions*, and
-phase 8 is where it moves. A plan is where a decision is made, never where it retires.
+**The decision worth keeping outlives the file, and this is now measured.** A choice that
+will still constrain work after this change lands belongs in the capability spec's *Prior
+decisions*, and phase 8 is where it moves. A plan is where a decision is made, never where
+it retires.
+
+`spec-drift --retired` — inside `--anchors`, one of the six gates — fails the landing
+commit when a `plan.md` is deleted and no capability spec's *Prior decisions* section
+moved with it. Not "the spec was edited": that happens in the same commit by definition,
+since the delta lands there. **That section.**
+
+So a plan carries one line, near the top, and it is written while the plan is:
+
+```
+Durable decisions: the two in Prior decisions below
+Durable decisions: none
+```
+
+**`none` is legitimate and it is a claim.** A rename, a typo fix that grew a plan, a
+change whose only alternative was doing nothing — those genuinely retire nothing. What
+the gate cannot stop is `none` becoming a reflex, and no mechanism can: a plan with a
+full alternatives table and `none` beside it is a contradiction only a reader catches.
+`review-work` has the plan and the diff. Write it honestly, because the cost of a wrong
+`none` is paid by whoever asks, two changes from now, why it was built this way.
 
 Follow the project's layout if it differs; `skills/write-spec/` has the detection order.
 
