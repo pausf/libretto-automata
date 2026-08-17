@@ -37,6 +37,17 @@ Installing this repository gives a working flow on a machine that has nothing el
   session cannot read. The cutter returns the checklist **and what those two documents
   failed to answer**, and the second half is the only check this flow has that a plan says
   enough to be built from. It writes no file: one writer is still the orchestrator
+- **a plan cannot be deleted taking its reasoning with it.** The landing commit removes
+  the change folder, and with it the alternatives table whose whole argument is that a
+  diff shows what was built and nothing shows what was not built and why. `spec-drift
+  --retired` — inside `--anchors` — fails that commit unless a capability spec's *Prior
+  decisions* section moved in it. **That section, never the file**: the delta lands in the
+  same commit by definition, so "a spec was edited" is green on every landing and measures
+  nothing. The escape is a declaration in the plan being deleted, `Durable decisions:
+  none`, and not a flag — a flag is typed by whoever wants the commit through, a line in
+  the plan is written by the person who knew. **What no mechanism can stop is that line
+  becoming a reflex**, and `review-work` is what reads a full alternatives table sitting
+  beside a `none`
 - **a criterion that can be failed, not merely read.** Verification criteria are written
   in one of the five EARS patterns, and `spec-drift --ears` — inside `--anchors`, so the
   gate count stays at six — fails a change delta whose criterion carries no `shall`. A
@@ -638,6 +649,14 @@ finding, which is the sentence the `readme` capability was created to answer abo
 
 ## Verification criteria
 
+- **If** a staged commit deletes a change's `plan.md` and no capability spec's *Prior
+  decisions* section differs between `HEAD` and the index, **then** `spec-drift` **shall**
+  fail and name the change being landed — **where** the deleted plan declared `Durable
+  decisions: none`, it **shall** pass instead. **When** no such deletion is staged, it
+  **shall** report nothing and **shall not** fail. Driven through real temporary
+  repositories, because a fixture made of strings would prove the awk and not the git
+  plumbing, and the plumbing is where a gate goes silent — which reads as green.
+  Proof: skills/record-work/spec-drift --self-test
 - **If** a verification criterion carries no EARS `shall`, **then** `spec-drift` **shall**
   read it as unfailable — **where** emphasis or backticks wrap the keyword, it **shall**
   still be read as present. **Ceiling named:** the self-test drives the marker through the

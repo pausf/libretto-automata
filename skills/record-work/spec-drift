@@ -34,7 +34,12 @@
 # ── the three questions ──────────────────────────────────────────────────────
 #
 #   default    staged code whose owning spec did not move
-#   --anchors  every Proof: citation still resolves, test name included
+#   --anchors  three questions about whether a criterion is real, and one gate:
+#                · every Proof: citation still resolves, test name included
+#                · --ears     every criterion in a change delta carries EARS `shall`
+#                · --retired  no plan is deleted taking its decisions with it
+#              Each runs alone under its own flag; --anchors is what CI gates on, so
+#              the count "six gates" — written in ten places here — does not move.
 #   --trace    the whole tree: orphan code, dead ownership, unproven criteria
 #   --block    default's checks, but a warning exits 1 — for a hook you opted into
 #
@@ -43,7 +48,7 @@
 # can gate on it. --trace exits 0 too: it is a map of where the contract is thin,
 # and in a repository that grew before its specs did that map is long on day one.
 #
-# Usage: spec-drift [--anchors|--trace|--block|--self-test]
+# Usage: spec-drift [--anchors|--ears|--retired|--trace|--block|--self-test]
 
 set -uo pipefail   # deliberately not -e: this must never be what fails a commit
 
@@ -65,6 +70,11 @@ command -v rg >/dev/null 2>&1 || {
   printf 'spec-drift: rg (ripgrep) is required and not on PATH — brew install ripgrep\n' >&2
   exit 2
 }
+
+# An absolute path to this script, resolved before anything changes directory. The
+# self-test runs the real check inside temporary repositories, and a relative $0 stops
+# resolving the moment it does.
+SELF=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
 
 # Consolidated specs, in precedence order. First hit wins.
 SPEC_ROOTS='.agents/specs specs openspec docs/specs spec'
@@ -311,6 +321,86 @@ anchors() {
 # criteria_of <spec_file> — one line per criterion, continuations folded in, up to its
 # Proof:. Same bullet grammar as criteria_without_proof: a criterion is a column-0
 # `- ` and everything indented under it belongs to it.
+# ── retired decisions ────────────────────────────────────────────────────────
+#
+# A plan is as temporary as the change that holds it: phase 8 applies the delta onto the
+# capability spec and deletes the folder. That destroys the alternatives table — the one
+# section whose whole argument is that a diff shows what was built and nothing shows what
+# was *not* built and why. It survives in git history, and nobody reads deleted files.
+#
+# `write-plan` says the durable decision moves to the capability spec's *Prior decisions*
+# before the plan goes. This is what measures it. A promise written without a mechanism is
+# the pattern this repository documents having paid for three times, each one written down
+# by somebody who meant it.
+#
+# **The section, not the file.** Requiring any edit to a capability spec would pass on the
+# delta application alone, which happens in that same commit by definition — a gate green
+# on every landing, measuring nothing.
+#
+# **The escape is a declaration, not a flag.** `Durable decisions: none` on one line of the
+# plan being deleted. A flag is typed by whoever wants the commit to go through; a line in
+# the plan is written while the plan is, by the person who knew. What it cannot stop is
+# that line becoming a reflex — that is a judgment, and `review-work` reads the plan and
+# the diff together.
+
+# section_of <heading regex> — reads a markdown document on stdin, prints one section.
+section_of() {
+  awk -v want="$1" '
+    /^##[[:space:]]/ { inbody = (tolower($0) ~ want); next }
+    inbody           { print }
+  '
+}
+
+# staged_or_empty <rev> <path> — the file at a revision, or nothing when it is not there.
+# `git show` writes to stderr and returns non-zero for a path a revision does not have,
+# which is the normal case for a spec being added in this very commit.
+staged_or_empty() { git show "$1:$2" 2>/dev/null || true; }
+
+retired() {
+  local dying spec plan change before after moved=0 landing=0 bad=0
+
+  # ponytail: two `git show` calls per staged spec rather than parsing `diff -U0` hunks
+  # and deciding which fall inside a section. The hunk version gets the boundary wrong at
+  # a heading; this one is obvious and slower by an amount nobody will measure.
+  dying=$(git diff --cached --diff-filter=D --name-only 2>/dev/null | rg -N '^\.agents/changes/[^/]+/plan\.md$' || true)
+  if [ -z "$dying" ]; then
+    printf '  no plan is being retired in this commit\n'
+    return 0
+  fi
+
+  while IFS= read -r spec; do
+    [ -n "$spec" ] || continue
+    before=$(staged_or_empty HEAD "$spec" | section_of 'prior decisions')
+    after=$(staged_or_empty '' "$spec" | section_of 'prior decisions')
+    [ "$before" = "$after" ] || moved=1
+  done <<< "$(git diff --cached --name-only 2>/dev/null | rg -N '^\.agents/specs/[^/]+/spec\.md$' || true)"
+
+  while IFS= read -r plan; do
+    [ -n "$plan" ] || continue
+    landing=$((landing + 1))
+    change=${plan#.agents/changes/}; change=${change%/plan.md}
+
+    if [ "$moved" -eq 1 ]; then
+      printf '  ok      %s — a Prior decisions section moved with it\n' "$change"
+      continue
+    fi
+    if staged_or_empty HEAD "$plan" | rg -qN '^[[:space:]]*Durable decisions:[[:space:]]*none[[:space:]]*$'; then
+      printf '  ok      %s — its plan declared it had nothing to retire\n' "$change"
+      continue
+    fi
+    printf '  RETIRED %s — its plan is deleted and no capability spec'"'"'s Prior decisions moved.\n' "$change"
+    printf '          Move the decision that outlives this change, or write `Durable decisions: none` in the plan.\n'
+    bad=$((bad + 1))
+  done <<< "$dying"
+
+  if [ "$bad" -eq 0 ]; then
+    printf 'spec-drift: %d plan(s) retired, every decision accounted for\n' "$landing"
+    return 0
+  fi
+  printf '\nspec-drift: %d plan(s) deleted with their reasoning\n' "$bad"
+  return 1
+}
+
 # is_ears <criterion text> — true when the criterion carries the EARS marker.
 #
 # Emphasis is formatting, never meaning. `**shall**` reads as `shall` to a human and as
@@ -513,6 +603,55 @@ self_test() {
   # shellcheck disable=SC2086
   want 'a glob over real dirs still matches' yes "$(glob 'skills/evidence/SKILL.md' $real)"
 
+  # The retirement gate, driven through real temporary repositories rather than string
+  # fixtures. The awk is the easy half; what can actually be wrong is the git plumbing —
+  # a --diff-filter that matches nothing, a `git show :path` that reads the working tree
+  # instead of the index, a glob that never fires. A fixture made of strings would test
+  # none of that and pass while the gate was silent, which is the failure mode a gate has
+  # least room for: silent means green.
+  #
+  # `land` builds a repo where a change is being retired and returns the exit status of
+  # the check. HOME and the config are pinned so a contributor's global git settings —
+  # a default branch name, a commit template, gpg signing — cannot decide the result.
+  land() { # land <migrate: yes|no> <declare: yes|no>
+    local d rc
+    d=$(mktemp -d) || return 99
+    (
+      cd "$d" || exit 99
+      export HOME="$d" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+      git init -q .
+      git config user.email t@t; git config user.name t
+
+      mkdir -p .agents/specs/thing .agents/changes/a-change
+      printf '# Thing\n\nGoverns: src/**\n\n## Prior decisions\n\n- the original one\n\n## Verification criteria\n\n- it shall work\n' \
+        > .agents/specs/thing/spec.md
+      printf '# Plan\n\n%s\n\n## Summary\n\nsomething\n' \
+        "$( [ "$2" = yes ] && printf 'Durable decisions: none' || printf 'Durable decisions: the one below' )" \
+        > .agents/changes/a-change/plan.md
+      git add -A && git commit -qm base
+
+      # The landing commit: the plan goes, and the capability spec may or may not
+      # gain the decision it was holding.
+      git rm -q .agents/changes/a-change/plan.md
+      if [ "$1" = yes ]; then
+        printf '# Thing\n\nGoverns: src/**\n\n## Prior decisions\n\n- the original one\n- the one the plan was holding\n\n## Verification criteria\n\n- it shall work\n' \
+          > .agents/specs/thing/spec.md
+        git add .agents/specs/thing/spec.md
+      fi
+
+      "$SELF" --retired >/dev/null 2>&1
+    )
+    rc=$?
+    rm -rf "$d"
+    printf '%s\n' "$rc"
+  }
+
+  want 'a plan retired with its decision passes'   0 "$(land yes no)"
+  want 'a plan deleted with its reasoning fails'   1 "$(land no  no)"
+  want 'a plan declaring it holds none passes'     0 "$(land no  yes)"
+  # The asymmetry is the check. Both `yes` cases pass a gate that does nothing at all,
+  # so only the middle one proves it fires — which is why it is the case to break first.
+
   want 'capability from a directory'   bundle-products "$(capability_of '.agents/specs/bundle-products/spec.md')"
   want 'capability from a single file'  SPEC           "$(capability_of 'docs/SPEC.md')"
 
@@ -609,6 +748,8 @@ anchors_and_ears() {
   anchors || rc=1
   printf '\n'
   ears || rc=1
+  printf '\n'
+  retired || rc=1
   return $rc
 }
 
@@ -616,8 +757,9 @@ case "${1:-}" in
   --self-test) self_test; exit $? ;;
   --anchors)   anchors_and_ears; exit $? ;;
   --ears)      ears;    exit $? ;;
+  --retired)   retired; exit $? ;;
   --trace)     trace;   exit $? ;;
   --block)     BLOCK=1; drift ;;
   '')          drift ;;
-  *) printf 'usage: %s [--anchors|--ears|--trace|--block|--self-test]\n' "$0" >&2; exit 2 ;;
+  *) printf 'usage: %s [--anchors|--ears|--retired|--trace|--block|--self-test]\n' "$0" >&2; exit 2 ;;
 esac

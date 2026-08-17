@@ -58,12 +58,28 @@ The last commit of a change does three things together, in one commit:
 1. the final code
 2. **the delta applied onto the capability spec** it targets, in
    `.agents/specs/<capability>/spec.md`
-3. **the change folder deleted** — proposal, delta and plan
+3. **the plan's durable decisions retired** into that spec's *Prior decisions*
+4. **the change folder deleted** — proposal, delta, plan and tasks
 
-All three or none. A delta applied without deleting the change leaves two documents
+All four or none. A delta applied without deleting the change leaves two documents
 describing the same capability, and the next reader has no way to tell which one is
 current. A change folder deleted without applying the delta loses the work
 outright.
+
+**Step 3 is the one that gets skipped, and it is gated.** The plan holds why the change
+was built the way it was — the approach, and the alternatives it beat — and step 4
+destroys that. It survives in git history, which is to say nobody reads it again.
+
+So before deleting: read the plan's *alternatives* and *prior decisions*, and move
+anything that will still constrain work after this lands. Not the whole plan — a
+decision about how *this* change was sequenced dies with it correctly. The one worth
+keeping is the one somebody would otherwise make again, differently.
+
+`spec-drift --retired`, inside `--anchors`, fails this commit when a `plan.md` is deleted
+and no capability spec's *Prior decisions* section moved with it. A plan that genuinely
+retires nothing says so on its own line — `Durable decisions: none` — written when the
+plan was written, per `skills/write-plan/`. **Adding that line here, to get past the
+gate, is the one thing this step is designed to stop.**
 
 Applying is not copying. The delta says what changes; the capability spec has to
 read afterwards as though the feature had always been there. Requirements merge into
