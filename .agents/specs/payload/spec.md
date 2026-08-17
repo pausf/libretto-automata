@@ -22,6 +22,16 @@ Installing this repository gives a working flow on a machine that has nothing el
   the branch, removes the `Queued:` line and enters the flow at phase 2, because phase
   1's artifact already exists
 - one skill per phase, each of which stops where its phase stops
+- **a plan whose boxes are cut to stand alone, not ordered layers.** Phase 5 required a plan
+  to be ordered and derived; it never required a box to be worth closing on its own, so the
+  plan inherited phase 2's cut along capabilities. `write-plan` now states that a box is one
+  end-to-end change — the code and the proof that closes it — and that two boxes where the
+  first only makes sense once the second lands are **one badly cut box**, to be merged rather
+  than ordered. A box that cannot be cut that way is a finding about the spec, routed back
+  through the existing derived-not-invented rule. **The capability spec is not part of a
+  box**: a delta still lands once, in the final commit. What it buys is `libretto loop`,
+  which runs one fresh session per open box and has no way to detect a tree left broken
+  between them
 - **the same flow with its three stops answered in advance** — `libretto-attacca`, the
   score's instruction to go on without pausing, running phases 1 to 8 and ending at a
   pushed branch with a request open on it. It writes everything the attended flow writes;
@@ -378,6 +388,17 @@ the copy stays comparable with upstream.
   else's project is a check that gets deleted.
 - Phase 2 may decide no spec is needed. Skipping the phase is a legitimate outcome of
   it, and the "no" collapses phase 7's gate with it.
+- **The vertical-slicing rule lands in `write-plan` alone**, though the horizontal cut
+  originates in phase 2's task breakdown. `write-plan` already owns the authority to reject a
+  task the spec cut wrong, so the rule lives where it is enforced rather than in two files
+  that then disagree — the failure `CLAUDE.md` opens by naming. If phase 5 starts sending work
+  back to phase 2 repeatedly, the answer is a sentence in `write-spec`'s task-breakdown pillar
+  and this rule stays as it is.
+- **Nothing checks a plan's content, and nothing can.** Whether a box genuinely merges alone
+  is judgment, and a check that exercises judgment drifts. The gate verifies the mandate is
+  present in `skills/write-plan/SKILL.md` and no more. A box cut horizontally under the
+  mandate surfaces at phase 6 or in the 6→7 review, never in a gate — the replacement, the
+  day that bites, is a reviewer finding and not a longer regex.
 - Phase 6 does not fan out. Parallel implementation needs isolation, a serial merge
   queue and a conflict protocol; without those three, concurrency manufactures races.
 - **The branch exists before the first write** — not before the first commit.
@@ -629,6 +650,23 @@ the copy stays comparable with upstream.
   `install --global`; a skill's tools resolve from its own base directory, which every
   invocation announces — `record-work` reaches `spec-drift` as its sibling, `write-spec`
   hops to `../record-work/`. Both layouts keep skills side by side.
+  Proof: scripts/check-payload
+- **`skills/write-plan/SKILL.md` carries the vertical-slicing mandate.** The gate searches the
+  file for the literal phrase `one badly cut box`. `check_wiring` is `rg -qN`, so the match is
+  **line-scoped and not newline-squashed** — unlike the marker check above it, and the phrase
+  therefore has to sit on one line. The criterion says so because its first draft claimed
+  squashing this gate does not do, and a criterion describing a stronger check than the one it
+  cites is how a promise goes green for the wrong reason.
+
+  **Watched red before green, and then again by the reviewer.** The gate went in first and
+  failed naming the absent phrase; the 6→7 reviewer independently broke the phrase to
+  `one badly-cut box` in a throwaway copy and got the same failure, which is the run that
+  proves the gate is sensitive to what it guards rather than merely present.
+  Proof: scripts/check-payload
+- **the mandate introduces no bare `Claude` addressee**, and **a host-neutral marker is still
+  present in `skills/write-plan/SKILL.md`** after the edit. Two criteria and not one joined by
+  `and`: separate checks, separate failure modes, and joined either could be half-met and read
+  as done.
   Proof: scripts/check-payload
 - glob matching, capability derivation and citation extraction behave
   Proof: skills/record-work/spec-drift --self-test
