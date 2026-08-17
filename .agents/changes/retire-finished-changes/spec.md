@@ -16,8 +16,19 @@ Phase 1 sees the state that produced this change, instead of walking past it.
 ## Scope boundaries
 
 **In:** `skills/find-work/SKILL.md`, `commands/libretto-status.md`, the two
-`check_wiring` rows that hold them up, `.agents/specs/payload/spec.md`, and the deletion
-of `.agents/changes/add-design-phase/` and `.agents/changes/retire-plan-decisions/`.
+`check_wiring` rows that hold them up, `.agents/specs/payload/spec.md`,
+`.agents/specs/cli/spec.md`, and the deletion of `.agents/changes/add-design-phase/` and
+`.agents/changes/retire-plan-decisions/`.
+
+**Six decisions are retired, not four.** Both this spec and the plan said four before the
+5→6 cutter counted them: three sit in each change's `spec.md` *Prior decisions*. Five are
+`payload`'s — `plan.md` reused rather than a new `design.md`, the cutter being a subagent
+rather than a phase, the section-not-the-file comparison, the declaration living in the
+plan rather than in a flag, and the check riding inside `--anchors` rather than becoming a
+seventh gate. **The sixth is `cli`'s**: the `metrics` fallback is a second `git log` and
+not a two-path pathspec, and it is about `cmd/libretto/**`, which `payload`'s `Governs:`
+does not claim. Filing it under `payload` would put a decision where the anchor that
+exists to find it cannot. Settled by the user, 2026-08-17.
 
 **Out — and each of these was considered:**
 
@@ -53,6 +64,14 @@ of `.agents/changes/add-design-phase/` and `.agents/changes/retire-plan-decision
 - **A report, never a gate.** `--retired` is blind to this state by construction — it
   fires on a deletion, and the failure here is that no deletion happened. Two mechanisms,
   two moments, and neither can cover the other's.
+- **The retirement reads the change's `spec.md` *Prior decisions*, never the plan's
+  `Durable decisions:` line.** The two disagree in the tree right now — one plan says
+  "the two" over a section holding three, and the other carries no line at all, having
+  been written before the line existed. They are not two enumerations of one thing: the
+  section is the list, and the line is a **claim about whether the list is empty**, which
+  is exactly what `--retired` reads it for. `write-plan` gains that sentence, because a
+  contract that permitted this reading permitted the contradiction. Found by the 5→6
+  cutter, which is what it is for.
 - **The proof is `check-payload`, and it proves the mandate is present.** Whether a
   session actually reports what the skill tells it to is behaviour, and behaviour is
   checked by running it. Named here rather than discovered by somebody trusting the

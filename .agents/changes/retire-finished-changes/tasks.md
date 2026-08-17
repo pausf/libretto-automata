@@ -67,8 +67,12 @@ comes from the fresh context, not from the label, and that part held.
   refusal. Only then write the migration. A gate whose first real encounter is a pass
   has proved nothing about itself, and this is that gate's first real exercise.
 
-  **BLOCKED — which decisions move is not settled by either document.** See the four
-  gaps below. Do not pick a set to get the box closed.
+  **Six decisions, not four**, and the sixth is not `payload`'s: five land on
+  `payload`'s *Prior decisions* and the `metrics`-fallback one lands on `cli`'s, because
+  `cmd/libretto/**` is what `cli` governs. The list is each change's `spec.md` *Prior
+  decisions* section — never the plan's `Durable decisions:` line, which is a claim about
+  whether the list is empty and not the list itself. All four gaps below are answered in
+  the spec's *Scope boundaries* and *Prior decisions*; this box is no longer blocked.
 
   Closes when: all six gates pass on the staged landing —
   `gofmt -l .` silent, `go vet ./...`, `go test ./... -count=1`,

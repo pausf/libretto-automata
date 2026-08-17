@@ -79,6 +79,21 @@ out.
 
 Two `check_wiring` rows, plus the six gates.
 
+**The two phrases, named here rather than chosen at build time.** The cutter's finding:
+the plan described the *property* the phrase needed — unique across the payload, sitting
+in the mandate and not in an example — without naming it, which leaves the gate's entire
+contract to be invented by whoever happens to be typing.
+
+```
+skills/find-work/SKILL.md       finished and not landed
+commands/libretto-status.md     finished and not landed
+```
+
+One phrase, both files, because both make the same claim and a row per wording is two
+things to keep in step. Confirmed absent from `skills/`, `commands/` and `agents/` before
+either row is wired — a row matching a phrase that also appears in an example is a row
+that proves nothing.
+
 **The one that will pass for the wrong reason is `check_wiring` itself.** It is a literal
 line-scoped match, so it goes green the moment the phrase exists anywhere in the file —
 including inside a table row that says the opposite, or a sentence explaining what not to
