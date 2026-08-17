@@ -1,7 +1,6 @@
 # add-payload-index
 
 Tracker: none
-Queued: 2026-08-14
 
 ## The ask, verbatim
 
