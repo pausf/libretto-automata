@@ -275,6 +275,57 @@ func TestThirdPartyLinksResolve(t *testing.T) {
 	}
 }
 
+// CONTRIBUTING.md is a door, not a copy. GitHub links it from the issue and PR forms, which
+// is the whole reason it beats a section in AGENTS.md — it arrives when the contributor needs
+// it. The risk is not the missing file, it is the duplicate: AGENTS.md already carries the
+// gates, the commit convention and the label rule, and two files kept in sync is two sources
+// of truth where the one that wins is the one nobody edited.
+//
+// So the guard holds both halves — what only the guide says, and what it must not repeat.
+// Absent means absent, with no "unless the line links to AGENTS.md" escape: the scan runs
+// over flat(), where there are no lines to reason about.
+func TestContributingIsADoorNotACopy(t *testing.T) {
+	guide := flat(repoFile(t, "CONTRIBUTING.md"))
+
+	// What lives nowhere else, and what an outside contributor cannot guess.
+	for _, must := range []string{
+		"release:patch", // the designed refusal that reads as a broken pipeline unpredicted
+		"scripts/check-payload",
+		".agents/specs/",
+		"1.0.0",
+	} {
+		if !strings.Contains(guide, must) {
+			t.Errorf("CONTRIBUTING.md never mentions %q — it is one of the few things only this file says", must)
+		}
+	}
+
+	// Rules AGENTS.md owns. Restating one here is the failure this file exists to prevent.
+	for _, owned := range []string{
+		"Co-Authored-By",
+		"type(scope): subject",
+		"72 chars",
+		"stdlib, then a native",
+	} {
+		if strings.Contains(guide, owned) {
+			t.Errorf("CONTRIBUTING.md restates %q, which AGENTS.md owns — link to it instead", owned)
+		}
+	}
+
+	links := readmeLink.FindAllStringSubmatch(guide, -1)
+	if len(links) == 0 {
+		t.Fatal("no links matched — a door made of no links is not a door")
+	}
+	for _, match := range links {
+		target := strings.TrimSpace(match[1])
+		if strings.HasPrefix(target, "http") || strings.HasPrefix(target, "mailto:") {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join("..", "..", target)); err != nil {
+			t.Errorf("CONTRIBUTING.md links to %s, which does not exist", target)
+		}
+	}
+}
+
 var mermaidFence = regexp.MustCompile("(?s)```mermaid(.*?)```")
 
 // Two diagrams live inside What you get — delivery and flow — because that section is
