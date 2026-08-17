@@ -180,6 +180,49 @@ func TestReadmeLinksResolve(t *testing.T) {
 	}
 }
 
+// badgeImage captures the image URL of every `[![alt](image)](link)` badge — the image
+// only, so a link target or alt text that happens to mention a build is not caught.
+var badgeImage = regexp.MustCompile(`!\[[^\]]*\]\((https://[^)\s]+)\)`)
+
+// A shields.io/badge/… URL is a literal: whatever it says, it says forever. That is fine
+// for a fact that does not change — a language version, a tool name, a licence — and a lie
+// for a run outcome. The tests badge was `tests-passing-brightgreen` linking to the
+// workflow *file*, so it claimed green whether or not anything had run, which is the exact
+// failure skills/evidence exists to refuse: nothing is true until it has been observed.
+//
+// Word-bounded, not substring. The command guard in this same file shipped as a substring
+// match and `libretto-stat` would have ridden on `/libretto-status`; here a substring would
+// refuse an honest badge for any tool whose name contains `pass` or `build`, and a guard
+// that false-positives on honest content is a guard somebody deletes.
+func TestNoBadgeAssertsAStatus(t *testing.T) {
+	readme := repoFile(t, "README.md")
+
+	claims := regexp.MustCompile(`(?i)\b(passing|failing|pass|fail|build|coverage)\b`)
+	badges := badgeImage.FindAllStringSubmatch(readme, -1)
+	if len(badges) == 0 {
+		t.Fatal("no badges matched — the pattern is broken, not the README")
+	}
+
+	for _, match := range badges {
+		image := match[1]
+		if !strings.Contains(image, "shields.io/badge/") {
+			continue // a live endpoint reports a real run; only literals can lie
+		}
+		if word := claims.FindString(image); word != "" {
+			t.Errorf("the badge %s hardcodes %q — a literal cannot report a run.\n"+
+				"Use the workflow's own badge endpoint, which turns red on its own.", image, word)
+		}
+	}
+
+	// The rule above is satisfied by a README with no tests badge at all, so the one badge
+	// that must exist is pinned separately. Broad rule plus one anchor; neither covers the
+	// other.
+	const endpoint = "actions/workflows/gates.yml/badge.svg"
+	if !strings.Contains(flat(readme), endpoint) {
+		t.Errorf("the README does not carry %s — the tests badge must report the real run", endpoint)
+	}
+}
+
 var mermaidFence = regexp.MustCompile("(?s)```mermaid(.*?)```")
 
 // Two diagrams live inside What you get — delivery and flow — because that section is
