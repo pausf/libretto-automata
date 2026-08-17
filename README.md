@@ -153,8 +153,9 @@ Nothing else to learn to start. The rest is knowing which door to use:
 
 **`/libretto-attacca` answers those stops in advance.** Same phases, same spec, same plan,
 same report — it just does not wait for you at any of them, and it ends with the branch
-pushed and the request open. It will not answer a *gate*, and it does not release: see
-[FLOW.md](docs/FLOW.md). `attacca` is what a score writes to mean *go on to the next
+pushed and the request open. It will not answer a *gate* — a failing check still stops it
+where it stands — and it never merges, tags or releases; [FLOW.md](docs/FLOW.md) says why
+that boundary is where it is. `attacca` is what a score writes to mean *go on to the next
 movement without pausing*.
 
 **The flow does not begin at a tracker.** Phase 1 asks three sources in order — a change
@@ -240,8 +241,9 @@ $ CLAUDE_CODE_USE_BEDROCK=1 libretto models
 ```
 
 An explicit `ANTHROPIC_DEFAULT_SONNET_MODEL` pin takes precedence over the provider
-default. How the resolution works, and what it deliberately never reads, is in
-[DESIGN.md](docs/DESIGN.md).
+default, and a provider this build cannot resolve is treated as capable rather than
+refused. Reading your environment is all it does — **no request, and never a variable
+holding a secret.** Why, in [DESIGN.md](docs/DESIGN.md).
 
 The panel has both behind its `models` row: mark agents with `space`, or all of them with
 `a`, then `m` for the model and `e` for the effort.
