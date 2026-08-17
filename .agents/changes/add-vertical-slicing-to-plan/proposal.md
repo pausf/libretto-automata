@@ -1,24 +1,26 @@
 # add-vertical-slicing-to-plan
 
 Tracker: none
-Queued: 2026-08-14
 
-## The ask, verbatim
+## The ask
 
-> codely dice En Codely explican que el enfoque RPI (Research, Plan, Implement) no debe
-> tomarse como un dogma inmutable, sino como una herramienta para reducir la frustración
-> y el coste de programar con agentes de IA.
+> El enfoque RPI (Research, Plan, Implement) no debe tomarse como un dogma inmutable, sino
+> como una herramienta para reducir la frustración y el coste de programar con agentes de IA.
 >
 > [...]
 >
-> La regla de oro de Codely: Rechazan por completo los planes que generan por defecto las
-> herramientas nativas (como VS Code, Cursor o Claude Code) porque tienden a planificar en
-> "capas horizontales" (primero backend, luego frontend, luego tests). Ellos exigen aplicar
-> Vertical Slicing (Particionado Vertical). El plan debe estructurarse para crear pequeños
-> flujos funcionales de extremo a extremo que puedan probarse y subirse a producción
-> inmediatamente, reduciendo el riesgo.
+> La regla de oro: rechazar por completo los planes que generan por defecto las herramientas
+> nativas, porque tienden a planificar en "capas horizontales" (primero backend, luego
+> frontend, luego tests). Exigen aplicar Vertical Slicing (Particionado Vertical). El plan
+> debe estructurarse para crear pequeños flujos funcionales de extremo a extremo que puedan
+> probarse y subirse a producción inmediatamente, reduciendo el riesgo.
 >
 > [...] que podria aportar en nuestro proyecto?
+
+**The attribution was in the original ask and has been removed at the user's explicit
+request** — the idea is recorded, the source is not named anywhere in this change. This
+note exists because the ask is normally kept verbatim, so a reader comparing this to the
+convention should know the edit was asked for rather than accidental.
 
 ## Reading
 
@@ -30,7 +32,7 @@ one hit, and it is about end-to-end tests, not about how a plan is cut.
 
 The gap is structural rather than an oversight. Phase 3 is "one spec per subtask" and
 specs are per capability, so the plan inherits a cut along components — which is exactly
-the horizontal layering Codely rejects. `write-plan` requires each task to trace to a spec
+the horizontal layering the ask rejects. `write-plan` requires each task to trace to a spec
 and to name the criterion that closes it, and never requires the task to be shippable on
 its own.
 

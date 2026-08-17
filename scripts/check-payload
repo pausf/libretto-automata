@@ -200,6 +200,10 @@ check_wiring skills/record-work/SKILL.md 'Never a bare .gh label list.' 'label d
 check_wiring skills/record-work/SKILL.md 'Never a prefix or a substring' 'labels are matched by whole name'
 check_wiring skills/record-work/SKILL.md 'this step is not optional' 'the chosen bump is written back into the description'
 check_wiring skills/record-work/SKILL.md 'label the user did not choose' 'the push consent does not extend to a label'
+# Line-scoped, like every row above: the phrase has to sit on one line in the skill. It
+# proves the mandate is present and nothing about whether a plan obeyed it — that is
+# judgment, and it belongs to phase 6 and the 6→7 reviewer.
+check_wiring skills/write-plan/SKILL.md 'one badly cut box' 'a box is cut to stand alone, and two dependent boxes are one'
 
 # The inverse. Two of this change's criteria are about what must NOT be in the command
 # that describes no phase, and a presence check cannot express either.
