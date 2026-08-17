@@ -417,8 +417,48 @@ breakdown transcribed straight into checkboxes is what made the plan a task list
 
 ### Verification criteria
 
-How each unit is proven — **each criterion naming the test that proves it**, by
-file and case.
+How each unit is proven — **each criterion written so it can be failed, and naming the
+test that proves it**, by file and case.
+
+#### Write them in EARS. This is checked.
+
+A criterion in free prose cannot be failed, only interpreted — and one nobody can fail
+is treated as satisfied by default. EARS (Mavin et al., RE'09) is the de facto syntax
+for fixing that, and its payoff is that a criterion maps almost 1:1 onto the test below
+it. Five patterns cover everything:
+
+| Pattern | Shape | When to reach for it |
+|---|---|---|
+| ubiquitous | The `<system>` **shall** `<response>` | always true, no trigger |
+| state-driven | **While** `<precondition>`, the `<system>` **shall** `<response>` | true for as long as a state holds |
+| event-driven | **When** `<trigger>`, the `<system>` **shall** `<response>` | a response to something happening |
+| unwanted | **If** `<condition>`, **then** the `<system>` **shall** `<response>` | errors, failures, refusals |
+| optional | **Where** `<feature>`, the `<system>` **shall** `<response>` | only when a feature is present |
+
+Before and after, from this repository's own history:
+
+```
+- loop reads a legacy plan.md when no tasks.md is present          ← cannot be failed
+- Where a change holds plan.md and no tasks.md, the runner shall
+  drive plan.md, and shall name it in the prompt it hands the
+  session.                                                          ← one test, no reading
+```
+
+The second one told the person writing the test what to assert. The first one did not,
+which is how a criterion ends up with a test that proves a neighbouring thing.
+
+**`shall` is the marker, and `spec-drift --ears` fails a delta without it** — inside
+`--anchors`, so it is one of the six gates rather than a seventh. The keyword is not
+checked, because ubiquitous requirements have none by design. Bold it or do not; the
+check strips emphasis.
+
+**Capability specs written before 2026-08-17 are warned about, never failed.** 545
+criteria predate this, and rewriting all of them in one unreviewable diff is 545 chances
+to change a promise that works today. A capability migrates when a delta lands on it.
+
+**When the shape genuinely does not fit, say so in the criterion rather than dropping
+`shall`.** A criterion that resists all five patterns is usually two criteria, or one
+that has not decided what it promises.
 
 The tests do not exist yet. Name them anyway. That citation is what makes them get
 written, and it is what makes this pillar falsifiable instead of decorative. A

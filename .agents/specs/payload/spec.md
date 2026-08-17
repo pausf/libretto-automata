@@ -37,6 +37,16 @@ Installing this repository gives a working flow on a machine that has nothing el
   session cannot read. The cutter returns the checklist **and what those two documents
   failed to answer**, and the second half is the only check this flow has that a plan says
   enough to be built from. It writes no file: one writer is still the orchestrator
+- **a criterion that can be failed, not merely read.** Verification criteria are written
+  in one of the five EARS patterns, and `spec-drift --ears` — inside `--anchors`, so the
+  gate count stays at six — fails a change delta whose criterion carries no `shall`. A
+  criterion in prose can only be interpreted, and one nobody can fail is treated as
+  satisfied by default: the same failure the `Proof:` anchor exists to prevent, arriving
+  one line higher up. **Hard on deltas, a warning on capability specs**, because 545
+  criteria predate the syntax and rewriting them in one unreviewable diff is 545 chances
+  to change a promise that works today. A capability migrates when a delta lands on it.
+  The gate checks the marker and never the sentence — *"the system shall behave
+  correctly"* passes it, and `review-spec` is what asks whether the response is concrete
 - **the stop moved rather than multiplied.** Splitting the plan from the checklist invited
   a third stop — one for the approach, one for the order — so phase 5 runs through and the
   5→6 seam stops for both at once, with the cutter's gaps on the table. The count stays at
@@ -628,6 +638,13 @@ finding, which is the sentence the `readme` capability was created to answer abo
 
 ## Verification criteria
 
+- **If** a verification criterion carries no EARS `shall`, **then** `spec-drift` **shall**
+  read it as unfailable — **where** emphasis or backticks wrap the keyword, it **shall**
+  still be read as present. **Ceiling named:** the self-test drives the marker through the
+  same `is_ears` the gate calls, so a matcher that breaks fails here. What it does not
+  cover is the hard-on-deltas, soft-on-capabilities asymmetry, which has no fixture and is
+  observed only by running the gate.
+  Proof: skills/record-work/spec-drift --self-test
 - frontmatter parses, and `name:` matches the directory or filename
   Proof: scripts/check-payload
 - no stray file sits where the linker would install it as an item

@@ -58,11 +58,18 @@ specs, the generated index).
 
 ## Verification criteria
 
-- `loop` drives a change whose checklist is `tasks.md`
+- **When** `loop` is given a change whose folder holds `tasks.md`, the runner **shall**
+  drive that file's boxes and stop when the last one closes.
   Proof: cmd/libretto/loop_test.go TestLoopStopsWhenEveryBoxIsClosed
-- `loop` reads a legacy `plan.md` when no `tasks.md` is present
+- **Where** a change holds `plan.md` and no `tasks.md`, the runner **shall** drive
+  `plan.md`, and **shall** name it in the prompt it hands the session.
   Proof: cmd/libretto/loop_test.go TestChecklistPathFallsBackToPlan
-- `metrics` reports churn for a change that only ever had `plan.md`
+- **If** neither file is present, **then** the runner **shall** refuse and name
+  `tasks.md`.
+  Proof: cmd/libretto/loop_test.go TestChecklistPathFallsBackToPlan
+- **When** `metrics` measures a change whose history holds only `plan.md`, the report
+  **shall** show that change's checkbox churn rather than a dash.
   Proof: cmd/libretto/metrics_test.go TestMetricsFallsBackToLegacyPlan
-- every skill, agent and command parses, resolves and is reachable
+- The payload gate **shall** parse every skill, agent and command, and **shall** fail on
+  one that is unreachable or whose frontmatter does not resolve.
   Proof: scripts/check-payload

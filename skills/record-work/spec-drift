@@ -277,6 +277,105 @@ anchors() {
   return 1
 }
 
+# ── EARS ─────────────────────────────────────────────────────────────────────
+#
+# The other half of the same question. A `Proof:` proves the test exists; it says
+# nothing about whether the criterion above it could ever *fail*. A criterion in
+# free prose cannot be failed, only interpreted — and a criterion nobody can fail is
+# treated as satisfied by default, which is the failure the anchor was written to
+# prevent, arriving one line higher up.
+#
+# EARS (Mavin et al., RE'09) is the de facto syntax for this. Five patterns, and the
+# marker every one of them shares is `shall`:
+#
+#   ubiquitous     The <system> shall <response>
+#   state-driven   While <precondition>, the <system> shall <response>
+#   event-driven   When <trigger>, the <system> shall <response>
+#   unwanted       If <condition>, then the <system> shall <response>
+#   optional       Where <feature>, the <system> shall <response>
+#
+# So the check is `shall`, not the keyword. Testing for When/While/If/Where would
+# fail every ubiquitous requirement, which is the pattern with no keyword by design.
+# It is deliberately one marker and not a grammar: a script that parsed EARS properly
+# would be a dependency added to check a document, which `payload` already refuses.
+# Whether the response is *the right* one is a reading, and `review-spec` asks it.
+#
+# **Hard on deltas, soft on capability specs, and that asymmetry is the migration.**
+# Measured 2026-08-17: 545 criteria across 14 capability specs, none of them EARS.
+# Failing all 545 on day one would mean rewriting the whole specification in one
+# unreviewable diff, where every rewrite is a chance to change a promise that works
+# today. So new work is born in EARS and a capability migrates when a delta lands on
+# it. The soft half follows the same reasoning `--trace` already gives for orphan
+# code: a report that fails a build on its first run is a report somebody deletes.
+
+# criteria_of <spec_file> — one line per criterion, continuations folded in, up to its
+# Proof:. Same bullet grammar as criteria_without_proof: a criterion is a column-0
+# `- ` and everything indented under it belongs to it.
+# is_ears <criterion text> — true when the criterion carries the EARS marker.
+#
+# Emphasis is formatting, never meaning. `**shall**` reads as `shall` to a human and as
+# `*shall*` to a substring match, so a criterion that bolds its own keyword — the house
+# style in every spec here — would fail a naive check. That shipped, and the gate caught
+# it on the first delta authored against it.
+#
+# One function, called by the gate and by the self-test both, because a self-test that
+# reimplements the matcher passes while the matcher is broken.
+is_ears() {
+  case "$(printf '%s' "$1" | tr -d '*_`')" in
+    *' shall '*) return 0 ;;
+  esac
+  return 1
+}
+
+criteria_of() {
+  defenced "$1" | awk '
+    /^##[[:space:]]/      { inbody = ($0 ~ /[Vv]erification criteria/); flush(); next }
+    !inbody               { next }
+    /^-[[:space:]]/       { flush(); pending = substr($0, 3); next }
+    /^[[:space:]]*Proof:/ { flush(); next }
+    pending != ""         { sub(/^[[:space:]]+/, ""); pending = pending " " $0; next }
+    END                   { flush() }
+    function flush() { if (pending != "") print pending; pending = "" }
+  '
+}
+
+ears() {
+  local hard soft f c bad=0 warned=0 total=0
+  hard=$(change_files)
+  soft=$(spec_files)
+
+  local scope
+  for scope in hard soft; do
+    eval "f_list=\$$scope"
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      while IFS= read -r c; do
+        [ -n "$c" ] || continue
+        total=$((total + 1))
+        is_ears "$c" && continue
+        if [ "$scope" = hard ]; then
+          printf '  NOT EARS  %s — %.70s…\n' "$f" "$c"
+          bad=$((bad + 1))
+        else
+          warned=$((warned + 1))
+        fi
+      done <<< "$(criteria_of "$f")"
+    done <<< "$f_list"
+  done
+
+  if [ "$total" -eq 0 ]; then
+    printf '  no verification criteria found\n'; return 0
+  fi
+  if [ "$warned" -gt 0 ]; then
+    printf '  %d criterion(a) in capability specs predate EARS — they migrate when a delta lands on them\n' "$warned"
+  fi
+  if [ "$bad" -eq 0 ]; then
+    printf 'spec-drift: every criterion in a change delta is falsifiable\n'; return 0
+  fi
+  printf '\nspec-drift: %d criterion(a) in a change delta cannot be failed — see the five patterns in write-spec\n' "$bad"
+  return 1
+}
+
 # ── --trace ──────────────────────────────────────────────────────────────────
 
 # Whole-tree traceability. Default mode asks its question only of *staged* files, so
@@ -397,6 +496,17 @@ self_test() {
   want 'second glob still counts'      yes "$(glob 'cmd/libretto/main.go' 'internal/**' 'cmd/**')"
   want 'empty glob list matches none'  no  "$(glob 'anything.go' '')"
 
+  # The EARS marker, driven through the real `is_ears` rather than a copy of it. The
+  # middle case is the failure that shipped: `**shall**` is the house style in every
+  # spec here, and a substring match for ` shall ` reads it as `*shall*` and fails a
+  # criterion that is correctly written.
+  earsy() { is_ears "$1" && echo yes || echo no; }
+  want 'plain shall is EARS'      yes "$(earsy 'The runner shall drive the boxes.')"
+  want 'bold shall is EARS'       yes "$(earsy 'the runner **shall** drive the boxes')"
+  want 'backticked shall is EARS' yes "$(earsy 'the runner `shall` drive the boxes')"
+  want 'prose is not EARS'        no  "$(earsy 'loop drives a change whose checklist is tasks.md')"
+  want 'shall inside a word is not' no "$(earsy 'the marshalling step runs first')"
+
   # A glob that matches real directories must still be treated as a pattern. Without
   # `set -f` the shell expands it first and the match silently fails.
   real=$(printf 'skills/** internal/**')
@@ -489,11 +599,25 @@ also none' "$(criteria_without_proof "$tmp")"
   printf 'spec-drift: %d check(s) failed\n' "$fails"; return 1
 }
 
+# `--anchors` runs both halves, and that is why no seventh gate was added. The gate
+# count is written in ten places across AGENTS.md, the CI spec, the contributing spec
+# and the workflow — the exact number-in-two-places drift this repository has already
+# paid for twice. Both halves ask whether a criterion is real, so they share a flag;
+# `--ears` exists to run the new half alone while writing one.
+anchors_and_ears() {
+  local rc=0
+  anchors || rc=1
+  printf '\n'
+  ears || rc=1
+  return $rc
+}
+
 case "${1:-}" in
   --self-test) self_test; exit $? ;;
-  --anchors)   anchors;   exit $? ;;
-  --trace)     trace;     exit $? ;;
+  --anchors)   anchors_and_ears; exit $? ;;
+  --ears)      ears;    exit $? ;;
+  --trace)     trace;   exit $? ;;
   --block)     BLOCK=1; drift ;;
   '')          drift ;;
-  *) printf 'usage: %s [--anchors|--trace|--block|--self-test]\n' "$0" >&2; exit 2 ;;
+  *) printf 'usage: %s [--anchors|--ears|--trace|--block|--self-test]\n' "$0" >&2; exit 2 ;;
 esac

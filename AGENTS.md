@@ -76,7 +76,7 @@ go vet ./...
 go test ./... -count=1
 scripts/check-payload                            # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test
-skills/record-work/spec-drift --anchors          # every Proof: citation must resolve
+skills/record-work/spec-drift --anchors          # every Proof: resolves, every delta criterion is EARS
 ```
 
 `spec-drift` with no flag warns about staged code whose spec did not move. It never
@@ -141,6 +141,15 @@ Each declares what it owns and cites the test behind each criterion:
 Governs: internal/link/plan.go internal/link/apply.go internal/link/plan_test.go
 Proof:   internal/link/apply_test.go TestApplyIsIdempotent
 ```
+
+**Criteria are written in EARS**, and `--anchors` fails a change delta whose criterion
+carries no `shall` — one of the five patterns in `skills/write-spec/`. A criterion in
+prose cannot be failed, only interpreted, and one nobody can fail is treated as satisfied
+by default. Capability specs written before 2026-08-17 are warned about and never failed:
+545 criteria predate the syntax, and rewriting them in one unreviewable diff is 545
+chances to change a promise that works today. A capability migrates when a delta lands on
+it. **This is inside `--anchors` and not a seventh gate**, because the count "six" is
+written in ten places here and a number kept in ten places is a number that drifts.
 
 A `Proof:` citation must name a **test that exists**. `--anchors` checks the test name,
 not just the file, because a file-level check passes an invented name — that happened

@@ -35,11 +35,21 @@ misses them. `record-work` ships the tool:
 
 ```
 <skill-base>/../record-work/spec-drift --trace
+<skill-base>/../record-work/spec-drift --ears
 ```
 
-It reports dead `Governs:` globs, criteria with no `Proof:` beneath them, and code no
-spec claims. Read its output before reading the spec — findings it already names do not
-need to be found again, and the ones it cannot name are the ones this skill is for.
+`--trace` reports dead `Governs:` globs, criteria with no `Proof:` beneath them, and code
+no spec claims. `--ears` reports criteria that cannot be failed because they were written
+in prose rather than in one of the five EARS patterns — hard on a change delta, a warning
+on a capability spec that predates the syntax.
+
+Read both before reading the spec — findings they already name do not need to be found
+again, and the ones they cannot name are the ones this skill is for.
+
+**`--ears` checks for `shall` and nothing else, which leaves this skill the whole
+question.** A criterion can carry the keyword and still be unfailable: *"When the user
+asks, the system shall behave correctly"* passes the gate and means nothing. The gate
+buys the shape; whether the response is concrete is the reading below.
 
 **Every finding below is a labelled judgment call.** A spec is a document a person wrote
 for other people; a rule enforced as law here produces a spec written to satisfy the
