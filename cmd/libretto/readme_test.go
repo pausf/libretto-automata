@@ -182,7 +182,13 @@ func TestReadmeLinksResolve(t *testing.T) {
 
 // badgeImage captures the image URL of every `[![alt](image)](link)` badge — the image
 // only, so a link target or alt text that happens to mention a build is not caught.
-var badgeImage = regexp.MustCompile(`!\[[^\]]*\]\((https://[^)\s]+)\)`)
+//
+// Run it over flat(), never the raw document: `[^)\s]+` cannot cross a newline, so a badge
+// whose markdown wraps between `![Build](` and its URL slipped past the scan entirely while
+// the six honest badges kept the count non-zero and the guard green. Found by the 6→7
+// reviewer with a probe badge, which is the second time this file has been bitten by a
+// guard that silently could not fire. `\s*` after the paren is what flat() leaves behind.
+var badgeImage = regexp.MustCompile(`!\[[^\]]*\]\(\s*(https://[^)\s]+)\)`)
 
 // A shields.io/badge/… URL is a literal: whatever it says, it says forever. That is fine
 // for a fact that does not change — a language version, a tool name, a licence — and a lie
@@ -198,7 +204,7 @@ func TestNoBadgeAssertsAStatus(t *testing.T) {
 	readme := repoFile(t, "README.md")
 
 	claims := regexp.MustCompile(`(?i)\b(passing|failing|pass|fail|build|coverage)\b`)
-	badges := badgeImage.FindAllStringSubmatch(readme, -1)
+	badges := badgeImage.FindAllStringSubmatch(flat(readme), -1)
 	if len(badges) == 0 {
 		t.Fatal("no badges matched — the pattern is broken, not the README")
 	}

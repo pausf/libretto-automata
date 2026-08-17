@@ -65,6 +65,22 @@ no spec governs is a path where drift is nobody's finding.
    stops (spec, plan, push) marked as decisions. No new section: both live inside
    section 2, so the reading order of outcome 1 is untouched.
 
+8. **No badge asserts a run outcome from a hardcoded literal.** A `shields.io/badge/…` image
+   is a literal: whatever it says, it says forever. That is fine for a fact that does not
+   change — a language version, a tool name, a licence — and a lie for a run. The tests badge
+   was `tests-passing-brightgreen` linking to the *workflow file*, so it claimed green whether
+   or not anything had run: the exact failure `skills/evidence/` refuses, sitting on line 13 of
+   the front door.
+
+   Two halves, because neither covers the other. **No literal badge carries a status word** —
+   `passing`, `failing`, `pass`, `fail`, `build`, `coverage`, word-bounded and
+   case-insensitive, in the image URL only — so the next hardcoded badge cannot ride in beside
+   this one. **And the tests badge's endpoint is pinned**, because the word rule alone is
+   satisfied by deleting the badge entirely.
+
+   **This capability had seven criteria and none touched a badge.** That is the hole the false
+   claim came through, and it is why the criterion exists rather than only the fix.
+
 ## Scope boundaries
 
 **In:** `README.md`'s structure, and the test that holds it.
@@ -203,3 +219,31 @@ Held by this capability going forward, not open work:
   judge the drawing — a diagram that loses a phase stays green, which the 6→7 reviewer
   demonstrated on this outcome's first run. The looking is the check, per
   build-and-check's render rule.
+
+- **Outcome 8** — no `shields.io/badge/` literal in `README.md` carries a status word, matched
+  word-bounded and case-insensitively in the image URL only; and the README carries
+  `actions/workflows/gates.yml/badge.svg`, so the rule cannot be satisfied by deleting the
+  badge.
+  Proof: cmd/libretto/readme_test.go TestNoBadgeAssertsAStatus
+
+  **Watched red before green, and corroborated.** The guard went in before the fix and failed
+  on both halves, naming `tests-passing-brightgreen` by URL. The 6→7 reviewer then replayed the
+  regexes against `git show <base>:README.md` rather than trusting the report, and got the same
+  two failures.
+
+  **The scan runs over `flat()`, and its first version did not.** The reviewer found the raw
+  document being scanned, where `[^)\s]+` cannot cross a newline: a literal status badge whose
+  markdown wrapped between `![Build](` and its URL slipped past while the six honest badges
+  kept the count non-zero and the guard green. **Second time this file has shipped a guard
+  that silently could not fire** — the prior decision about `flat()` records the first. A new
+  substring guard here starts from `flat()`, never from the raw document.
+
+  **Word-bounded, not substring**, for the reason outcome 6 already paid for: a substring match
+  would refuse an honest badge for any tool whose name contains `pass` or `build`, and a guard
+  that false-positives on honest content gets deleted.
+
+  **Two ceilings named.** The word list is a list, so a literal claiming `tests-green` passes
+  having claimed a run outcome with a word nobody listed — the replacement, that day, is a
+  criterion about what a badge may *link to*, not a longer list. And a URL broken *mid-URL*
+  across lines still escapes the scan; accepted, because a markdown link target cannot contain
+  unescaped whitespace, so such a badge is already visibly broken.
