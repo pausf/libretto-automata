@@ -211,3 +211,7 @@ Did: added the two per-section link assertions, re-ran the test, green. The know
 ## 2026-08-18 · add-wiki-html-output · 6→7
 Said: the filter JS matches capability names with sec.id.includes(q) — id not lowercased against a lowercased query, so a mixed-case capability never matches by name; the render-and-look used only lowercase names and could not catch it
 Did: sec.id.toLowerCase(), wiki tests re-run green. A reviewer reading the untested-by-decision zone is exactly why it gets declared
+
+## 2026-08-18 · add-wiki-open · 6→7
+Said: commit 1edd2db swept in .agents/specs/README.md, 692 lines of generated output no pillar mentions — likely the artifact of a stray plain run picked up by git add -A
+Did: removed it. The declared state stands: this repo's wiki is born at the first landing with a capable binary. git add -A after generating output near the tree is the actual lesson
