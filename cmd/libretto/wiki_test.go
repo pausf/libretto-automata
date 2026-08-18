@@ -486,15 +486,99 @@ func TestPanelOffersWikiOnlyInAProjectWithSpecs(t *testing.T) {
 	}
 }
 
-func TestDispatchRunsWiki(t *testing.T) {
+// recordOpener swaps the browser seam for a recorder; no test launches anything.
+func recordOpener(t *testing.T) *[]string {
+	t.Helper()
+	var calls []string
+	prev := openViewer
+	openViewer = func(path string) error { calls = append(calls, path); return nil }
+	t.Cleanup(func() { openViewer = prev })
+	return &calls
+}
+
+func TestPanelWikiRowOpensTheViewer(t *testing.T) {
 	f := newFixture(t)
 	f.skill(t, "alpha")
 	specs := writeSpecs(t, f.Project, ".agents/specs")
+	calls := recordOpener(t)
 
 	if _, err := runCaptured("wiki", f.Repo, f.Project, f.project(), false); err != nil {
 		t.Fatalf("dispatching wiki failed: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(specs, "README.md")); err != nil {
-		t.Fatal("dispatch reported no error and generated nothing")
+	if _, err := os.Stat(filepath.Join(specs, "wiki.html")); err != nil {
+		t.Fatal("dispatch reported no error and generated no viewer")
+	}
+	if len(*calls) != 1 || (*calls)[0] != filepath.Join(specs, "wiki.html") {
+		t.Fatalf("the row did not hand the viewer to the opener: %v", *calls)
+	}
+
+	menu, _, err := panelData(f.Repo, f.Project, target.ClaudeTool, target.ProjectScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range menu {
+		if item.Label == "wiki" && !strings.Contains(item.Desc, "open") {
+			t.Errorf("the row's description does not say the viewer opens: %q", item.Desc)
+		}
+	}
+}
+
+func TestWikiOpenGeneratesAndOpensTheViewer(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	calls := recordOpener(t)
+
+	out, err := runWiki(t, dir, "--open")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(specs, "wiki.html")
+	if _, err := os.Stat(want); err != nil {
+		t.Fatal("--open did not write the viewer")
+	}
+	if len(*calls) != 1 || (*calls)[0] != want {
+		t.Fatalf("opener got %v, want the written path", *calls)
+	}
+	if !strings.Contains(out, "opened") {
+		t.Errorf("the report does not say it opened: %q", out)
+	}
+
+	// The two spellings are one behaviour.
+	if _, err := runWiki(t, dir, "--html", "--open"); err != nil {
+		t.Fatalf("--html --open: %v", err)
+	}
+
+	// An opener error after a successful write surfaces non-zero, naming the path
+	// so the user can open it by hand — the file stays.
+	openViewer = func(string) error { return os.ErrPermission }
+	if _, err := runWiki(t, dir, "--open"); err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("opener failure not surfaced with the written path: %v", err)
+	}
+}
+
+func TestWikiOpenDoesNotOpenOnFailure(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	calls := recordOpener(t)
+	foreign := "<html>not ours</html>\n"
+	if err := os.WriteFile(filepath.Join(specs, "wiki.html"), []byte(foreign), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--open"); err == nil {
+		t.Fatal("a refused write still reported success")
+	}
+	if len(*calls) != 0 {
+		t.Fatalf("a refused write still opened a browser: %v", *calls)
+	}
+}
+
+func TestOpenerArgvPerPlatform(t *testing.T) {
+	if got := openerArgv("darwin", "/p/wiki.html"); len(got) != 2 || got[0] != "open" || got[1] != "/p/wiki.html" {
+		t.Fatalf("darwin argv: %v", got)
+	}
+	for _, goos := range []string{"linux", "freebsd", "windows"} {
+		if got := openerArgv(goos, "/p/wiki.html"); len(got) != 2 || got[0] != "xdg-open" {
+			t.Fatalf("%s argv: %v", goos, got)
+		}
 	}
 }

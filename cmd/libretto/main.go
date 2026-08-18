@@ -384,7 +384,9 @@ func dispatch(action, root, projectDir string, tg target.Target, confirm bool) e
 	case "install":
 		return install(root, tg)
 	case "wiki":
-		return wiki(os.Stdout, projectDir, nil)
+		// The row ends on screen — the one flag that makes a menu press finish
+		// in front of the user, by instruction.
+		return wiki(os.Stdout, projectDir, []string{"--open"})
 	case "update":
 		return update(root, tg)
 	case "status":
@@ -484,7 +486,7 @@ func panelData(root, projectDir string, tool target.Tool, scope target.Scope) ([
 		if specs, ok := findSpecsDir(projectDir); ok {
 			menu = append(menu, ui.MenuItem{
 				Label:   "wiki",
-				Desc:    "render this project's specs into " + shorten(specs),
+				Desc:    "render this project's specs and open the viewer, " + shorten(specs),
 				Enabled: true,
 			})
 		}
@@ -1345,6 +1347,7 @@ func usage() {
   %[2]s metrics <change>   just that one
   %[2]s wiki          render this project's specs into <specs-dir>/README.md
   %[2]s wiki --html   the same specs as a self-contained viewer, <specs-dir>/wiki.html
+  %[2]s wiki --open   write the viewer and open it in the default browser
 
   --claude              Claude Code (the default) · ~/.claude or <dir>/.claude
   --codex               Codex CLI, skills only · ~/.agents or <dir>/.agents

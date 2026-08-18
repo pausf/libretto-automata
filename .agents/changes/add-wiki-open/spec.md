@@ -79,8 +79,10 @@ Out, named:
 
 **This replaces a criterion the capability spec landed earlier the same day** —
 "the panel shall run the plain `wiki` command … leaving the generated
-`README.md`", proven by `TestDispatchRunsWiki`. That sentence is rewritten at
-landing, not left beside its replacement, and `TestDispatchRunsWiki` becomes the
-proof of the new behaviour under the new name above. No release ever carried the
+`README.md`", proven by `TestDispatchRunsWiki`. That sentence is rewritten in the
+same commit that renames its test — `--anchors` runs per commit and a capability
+citing a renamed test is red immediately, so this one piece of the delta cannot
+wait for the landing. `TestDispatchRunsWiki` becomes the proof of the new
+behaviour under the new name above. No release ever carried the
 old promise — both versions ride the same PR — so this is an amendment, not a
 shipped reversal.

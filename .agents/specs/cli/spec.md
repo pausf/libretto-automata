@@ -1286,9 +1286,9 @@ the panel cannot keep.
   Visibility shares the command's own discovery through `findSpecsDir` — never a
   second list.
   Proof: cmd/libretto/wiki_test.go TestPanelOffersWikiOnlyInAProjectWithSpecs
-- **When the `wiki` row is dispatched, the panel shall run the plain `wiki`
-  command against the project directory**, leaving the generated `README.md` in
-  the project's specs directory. The project directory reaches `dispatch` from
-  `run`'s single resolution — a second `os.Getwd` would be the two-answers bug
-  this spec already records.
-  Proof: cmd/libretto/wiki_test.go TestDispatchRunsWiki
+- **When the `wiki` row is dispatched, the panel shall run `wiki --open` against
+  the project directory** — the press ends with the viewer in the browser, by
+  instruction 2026-08-18. The project directory reaches `dispatch` from `run`'s
+  single resolution — a second `os.Getwd` would be the two-answers bug this spec
+  already records.
+  Proof: cmd/libretto/wiki_test.go TestPanelWikiRowOpensTheViewer
