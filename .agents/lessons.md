@@ -207,3 +207,27 @@ Did: corrected it. Same shape as the "ten over eleven directories" failure AGENT
 ## 2026-08-18 · add-specs-wiki · 6→7
 Said: TestWikiWritesIndexAndSections asserts the index-row links but not the per-section [full spec] link, so half of criterion 2 could regress with the proof still green
 Did: added the two per-section link assertions, re-ran the test, green. The known half-a-clause pattern, caught by a fresh reviewer
+
+## 2026-08-18 · add-wiki-html-output · 6→7
+Said: the filter JS matches capability names with sec.id.includes(q) — id not lowercased against a lowercased query, so a mixed-case capability never matches by name; the render-and-look used only lowercase names and could not catch it
+Did: sec.id.toLowerCase(), wiki tests re-run green. A reviewer reading the untested-by-decision zone is exactly why it gets declared
+
+## 2026-08-18 · add-wiki-open · 6→7
+Said: commit 1edd2db swept in .agents/specs/README.md, 692 lines of generated output no pillar mentions — likely the artifact of a stray plain run picked up by git add -A
+Did: removed it. The declared state stands: this repo's wiki is born at the first landing with a capable binary. git add -A after generating output near the tree is the actual lesson
+
+## 2026-08-18 · modernize-wiki-design · 6→7
+Said: criterion 3 demanded a prefers-color-scheme dark block while the code and every other pillar ship dark on bare :root — the literal clause would land unfailable-yet-failing
+Did: swapped the labels in the delta before landing. A criterion can contradict its own spec one sentence over; the reviewer reads the sentence, not the intent
+
+## 2026-08-18 · modernize-wiki-design · 6→7
+Said: label[:15] truncates bytes, so a multibyte rune straddling the cut emits invalid UTF-8 into the SVG
+Did: rune-slice truncation, chart test green
+
+## 2026-08-18 · modernize-wiki-design · 6→7
+Said: the token test compares counts, not names — a rename in one block passes while a var() resolves in one theme only
+Did: hardened to name-set comparison, green
+
+## 2026-08-18 · wiki-pages-redesign · 6→7
+Said: TestWikiHTMLIsHomeAndPages asserts home/cards/back but not the Governs/intro/criteria its own clause promises — covered only by a different criterion's proof
+Did: added the three article assertions so the citation covers its whole clause, green. The half-a-clause pattern, third catch this branch

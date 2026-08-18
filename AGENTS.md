@@ -63,7 +63,9 @@ libretto metrics        # what every change cost — commits, span, boxes closed
                         # reopened — derived from git, instrumented nowhere. Read-only.
 libretto metrics <change>
 libretto wiki           # render this project's specs into <specs-dir>/README.md,
-                        # behind a marker; refuses a README it did not generate
+                        # behind a marker; refuses a README it did not generate.
+                        # Also refreshes a wiki.html it generated, when one exists.
+libretto wiki --html    # the same specs as one self-contained viewer, <specs-dir>/wiki.html
 
 libretto update         # install the newest version and relink; pulls in a checkout
 libretto install --project   # <cwd>/.claude instead of ~/.claude

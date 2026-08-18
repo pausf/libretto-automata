@@ -42,7 +42,7 @@ func TestPanelRunsInstallAndReportsInPlace(t *testing.T) {
 			return menu, targets, string(cur), nil
 		}).
 		WithRunner(func(action string, dest int, _ bool) ([]string, error) {
-			return runCaptured(action, f.Repo, target.Resolve(toolOrder[dest], cur, f.Project), false)
+			return runCaptured(action, f.Repo, f.Project, target.Resolve(toolOrder[dest], cur, f.Project), false)
 		})
 
 	// s → project scope, enter → install (row 0), q → leave.
@@ -82,7 +82,7 @@ func TestRunCapturedReturnsLinesAndRestoresStdout(t *testing.T) {
 	f.skill(t, "alpha")
 	before := os.Stdout
 
-	lines, err := runCaptured("install", f.Repo, f.global(), false)
+	lines, err := runCaptured("install", f.Repo, f.Project, f.global(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,7 +109,7 @@ func TestRunCapturedKeepsOutputOnFailure(t *testing.T) {
 	f.skill(t, "alpha")
 	f.putReal(t, "skills", "alpha", "somebody else's file")
 
-	lines, err := runCaptured("install", f.Repo, f.global(), false)
+	lines, err := runCaptured("install", f.Repo, f.Project, f.global(), false)
 	if err == nil {
 		t.Fatal("a conflict returned no error")
 	}
@@ -137,7 +137,7 @@ func TestPanelPruneConfirmsInPlace(t *testing.T) {
 			return panelData(f.Repo, f.Project, toolOrder[i], target.ProjectScope)
 		}).
 		WithRunner(func(action string, dest int, confirm bool) ([]string, error) {
-			return runCaptured(action, f.Repo, target.Resolve(toolOrder[dest], target.ProjectScope, f.Project), confirm)
+			return runCaptured(action, f.Repo, f.Project, target.Resolve(toolOrder[dest], target.ProjectScope, f.Project), confirm)
 		}).
 		SetSelectedForTest(rowOf(t, menu, "prune"))
 
@@ -178,7 +178,7 @@ func TestPanelPruneOnOnePressRemovesNothing(t *testing.T) {
 	}
 	model := ui.NewModel("v0", menu, targets, false).
 		WithRunner(func(action string, dest int, confirm bool) ([]string, error) {
-			return runCaptured(action, f.Repo, target.Resolve(toolOrder[dest], target.ProjectScope, f.Project), confirm)
+			return runCaptured(action, f.Repo, f.Project, target.Resolve(toolOrder[dest], target.ProjectScope, f.Project), confirm)
 		}).
 		SetSelectedForTest(rowOf(t, menu, "prune"))
 

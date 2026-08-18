@@ -195,7 +195,7 @@ func TestPanelUninstallNeedsTwoPresses(t *testing.T) {
 	}
 
 	// One press: the panel runs it dry.
-	if _, err := runCaptured("uninstall", f.Repo, f.global(), false); err != nil {
+	if _, err := runCaptured("uninstall", f.Repo, f.Project, f.global(), false); err != nil {
 		t.Fatal(err)
 	}
 	if !isSymlinkTo(t, f.dest("skills", "alpha"), item) {
@@ -203,7 +203,7 @@ func TestPanelUninstallNeedsTwoPresses(t *testing.T) {
 	}
 
 	// Confirmed: gone.
-	if _, err := runCaptured("uninstall", f.Repo, f.global(), true); err != nil {
+	if _, err := runCaptured("uninstall", f.Repo, f.Project, f.global(), true); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(f.dest("skills", "alpha")); !os.IsNotExist(err) {

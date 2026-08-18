@@ -272,7 +272,7 @@ func TestDispatchRunsTheAction(t *testing.T) {
 	item := f.skill(t, "alpha")
 
 	if _, _, err := capture(t, func() error {
-		return dispatch("install", f.Repo, f.project(), false)
+		return dispatch("install", f.Repo, f.Project, f.project(), false)
 	}); err != nil {
 		t.Fatalf("dispatch install failed: %v", err)
 	}
@@ -297,7 +297,7 @@ func TestEveryMenuLabelDispatches(t *testing.T) {
 		if !item.Enabled {
 			continue
 		}
-		_, _, err := capture(t, func() error { return dispatch(item.Label, f.Repo, f.global(), false) })
+		_, _, err := capture(t, func() error { return dispatch(item.Label, f.Repo, f.Project, f.global(), false) })
 		if err != nil && strings.Contains(err.Error(), "unknown action") {
 			t.Errorf("menu offers %q and dispatch has no case for it", item.Label)
 		}
@@ -310,7 +310,7 @@ func TestDispatchedPruneIsDry(t *testing.T) {
 	f.skill(t, "alpha")
 	f.link(t, f.Repo+"/skills/gone", f.dest("skills", "gone"))
 
-	out, _, err := capture(t, func() error { return dispatch("prune", f.Repo, f.global(), false) })
+	out, _, err := capture(t, func() error { return dispatch("prune", f.Repo, f.Project, f.global(), false) })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -340,7 +340,7 @@ func TestStripAndRunnerAgreeOnTheProjectRoot(t *testing.T) {
 	}
 
 	// Install through the same door the panel uses, then the strip must notice.
-	if _, err := runCaptured("install", f.Repo, target.Resolve(target.ClaudeTool, target.ProjectScope, f.Project), false); err != nil {
+	if _, err := runCaptured("install", f.Repo, f.Project, target.Resolve(target.ClaudeTool, target.ProjectScope, f.Project), false); err != nil {
 		t.Fatal(err)
 	}
 	_, rows, err = panelData(f.Repo, f.Project, target.ClaudeTool, target.ProjectScope)
@@ -365,7 +365,7 @@ func TestPanelPruneActsOnTheActiveDestinationOnly(t *testing.T) {
 	f.link(t, gone, f.projectDest("skills", "gone"))
 
 	// The panel's prune is dry, so it must remove nothing anywhere.
-	if _, err := runCaptured("prune", f.Repo, target.Resolve(target.ClaudeTool, target.ProjectScope, f.Project), false); err != nil {
+	if _, err := runCaptured("prune", f.Repo, f.Project, target.Resolve(target.ClaudeTool, target.ProjectScope, f.Project), false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(f.projectDest("skills", "gone")); err != nil {
