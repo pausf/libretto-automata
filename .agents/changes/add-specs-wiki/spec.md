@@ -103,8 +103,11 @@ Out, named:
 - If the target `README.md` exists and does not carry the marker, then `wiki`
   shall refuse, report the conflict, exit non-zero, and leave the file untouched.
   Proof: cmd/libretto/wiki_test.go TestWikiNeverOverwritesAHandWrittenReadme
-- If no specs directory is found, then `wiki` shall report that in one line and
-  exit non-zero.
+- If no specs directory is found, or the directory found holds no `*/spec.md`,
+  then `wiki` shall report which of the two it is in one line, exit non-zero, and
+  write nothing — an empty specification has nothing to index, and a marker-only
+  README would be noise pretending to be a wiki. (Settled 2026-08-18 from the
+  cutter's finding; the builder does not decide this silently.)
   Proof: cmd/libretto/wiki_test.go TestWikiReportsNoSpecsAndExitsNonZero
 - The `wiki` subcommand shall produce byte-identical output for unchanged input.
   Proof: cmd/libretto/wiki_test.go TestWikiOutputIsDeterministic
