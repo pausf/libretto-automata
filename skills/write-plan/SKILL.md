@@ -140,6 +140,14 @@ Durable decisions: the two in Prior decisions below
 Durable decisions: none
 ```
 
+**The line is a claim about whether the list is empty. It is never the list.** What gets
+retired is read off the change's `spec.md` *Prior decisions* — the line says only whether
+there is anything there, which is all `--retired` greps it for. Written because the two
+readings both looked right and produced a contradiction on the first landing: one plan
+declared "the two" over a section holding three, and the other carried no line at all,
+having been written before the line existed. Found by a 5→6 cutter reading both documents
+cold, which is what that seam is for.
+
 **`none` is legitimate and it is a claim.** A rename, a typo fix that grew a plan, a
 change whose only alternative was doing nothing — those genuinely retire nothing. What
 the gate cannot stop is `none` becoming a reflex, and no mechanism can: a plan with a

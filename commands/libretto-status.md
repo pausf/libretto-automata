@@ -33,6 +33,14 @@ Per change in flight:
 - boxes open out of total
 - **what can start now**, from the plan's own dependency notes
 
+And any change the skill reports as **finished and not landed** — every box closed, its
+folder still on disk. That is not work in flight and there is nothing to continue; it says
+`record-work`'s landing did not finish. Report it in its own line, by name, separately from
+the open changes.
+
+The skill's scan decides which changes those are. This command does not re-derive it, for
+the reason already given above: two answers to "what work exists" is one too many.
+
 Then one line for the whole picture: how many changes are open, how many boxes between
 them.
 

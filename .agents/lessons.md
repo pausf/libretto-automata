@@ -191,3 +191,15 @@ Did: removed the count. Writing the failure and then committing it two lines bel
 ## 2026-08-17 · add-payload-index · CI
 Said: gates failed on CI with `CONTRIBUTING.md links to .agents/changes/, which does not exist` — red on the branch, green on this machine
 Did: de-linked the path; it is named in prose now. **The mechanism is the lesson.** Git does not track empty directories, so once the last change folder landed, `.agents/changes/` was absent from a fresh checkout. It passed locally because `main` still had six queued proposals on disk, and it passed on the two branches before it because each still had folders left — so the guard was green three times for a reason that had nothing to do with correctness. Link resolution reads the working tree, so a link to a directory that exists only while work is unfinished passes while work is unfinished. Reproduced with `git archive`, which drops empty directories exactly as a checkout does — that is the way to see what CI sees without waiting for CI
+
+## 2026-08-18 · retire-finished-changes · 6→7
+Said: write-plan is modified but not in the delta's In: list, and it is the one added mandate here with no criterion and no check_wiring row — the other two each got one
+Did: added it to scope, gave it a criterion and a row matching `never the list`, and forced that row red before believing it. The unwired mandate was the one added late, as a fix to something the cutter found; the two planned ones were wired without being asked
+
+## 2026-08-18 · retire-finished-changes · 6→7
+Said: Targets: payload omits cli while the delta lands on .agents/specs/cli/spec.md, and no gate catches it — targets_of feeds only the non-blocking drift warning
+Did: Targets: payload cli. Left unfixed, a later staged edit under cmd/libretto/** would not have been credited to this delta
+
+## 2026-08-18 · retire-finished-changes · 6→7
+Said: Task breakdown still says four decisions, contradicted by Scope boundaries and by the landing commit, which retires six
+Did: corrected it. Same shape as the "ten over eleven directories" failure AGENTS.md already records — a number stated in two places, fixed in one
