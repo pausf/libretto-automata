@@ -80,6 +80,29 @@ saw only the new name would report the work in flight as nothing in flight — w
 precisely the failure this source exists to prevent, arriving through the fix for a
 different one.
 
+### Read both scans, not just the first one
+
+`rg -c` prints a line only for a file that matched, and stays silent for the rest. That
+asymmetry is not a quirk of the output — **it is the second question this source answers**,
+and until 2026-08-18 nothing said so, which is how two changes shipped with their landing
+half-done and phase 1 walked past them twice.
+
+| In the open scan | In the closed scan | What it is |
+|---|---|---|
+| yes | either | **work in flight** — the report below |
+| **no** | **yes** | **finished and not landed** — every box closed and the folder still here |
+| no | no | no checklist yet: a captured idea, or a change not cut. Say nothing |
+
+**The middle row is reported by name, and it is not work in flight.** There is nothing to
+continue — the boxes are all closed. What it means is that `record-work`'s landing did not
+finish: the delta may have been applied, and the change folder was never deleted. Say the
+change is **finished and not landed**, and leave what to do about it to the user.
+
+Do not go and check whether the delta was actually applied. That means reading a capability
+spec and deciding whether a delta is *present* in it, which is a reading — and a wrong one
+either accuses a correct landing or clears a broken one. Zero open boxes is the signal; the
+user interprets it.
+
 A change with open boxes is work waiting. For each one, report:
 
 - its name, and what its `proposal.md` says it is for in one line

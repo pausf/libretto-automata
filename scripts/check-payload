@@ -306,6 +306,13 @@ check_wiring skills/write-tasks/SKILL.md 'one badly cut box' 'a box is cut to st
 check_wiring skills/write-plan/SKILL.md 'No checkboxes.' 'the plan holds the approach and never the state'
 check_wiring skills/write-plan/SKILL.md 'Why it lost' 'the plan records the alternatives the approach beat'
 check_wiring skills/write-tasks/SKILL.md 'task-cutter' 'the checklist is cut by a subagent that never saw the design'
+# Phase 1 ran over this exact state and said nothing: two changes with every box closed,
+# their folders still present, their landing unfinished. The signal was already in the two
+# rg scans it runs — rg -c is silent for a file that did not match — and no sentence said
+# what the difference between them meant. One phrase, both files, because a row per wording
+# is two things to keep in step.
+check_wiring skills/find-work/SKILL.md 'finished and not landed' 'phase 1 names a change whose boxes are all closed and whose folder is still there'
+check_wiring commands/libretto-status.md 'finished and not landed' 'status reports a finished change that never landed, separately from work in flight'
 
 # The inverse. Two of this change's criteria are about what must NOT be in the command
 # that describes no phase, and a presence check cannot express either.

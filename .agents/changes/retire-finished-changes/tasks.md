@@ -13,7 +13,7 @@ comes from the fresh context, not from the label, and that part held.
 
 ---
 
-- [ ] **Phase 1 names the finished-and-not-landed case**
+- [x] **Phase 1 names the finished-and-not-landed case**
 
   `skills/find-work/SKILL.md`, source 1. The two `rg -c` scans already there stay
   exactly as they are; what is added is what their *difference* means, written as the
@@ -38,7 +38,7 @@ comes from the fresh context, not from the label, and that part held.
 
   Waits on: nothing. Can start now.
 
-- [ ] **`/libretto-status` carries the same report**
+- [x] **`/libretto-status` carries the same report**
 
   `commands/libretto-status.md` gains the same line, as a delegation to the scan the
   skill owns — not a second description of it. The command already says that a status
