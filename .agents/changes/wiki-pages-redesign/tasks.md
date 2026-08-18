@@ -3,7 +3,7 @@
 Execution: `build-and-check` (phase 6). One writer owns this file; builders report,
 the orchestrator marks.
 
-- [ ] **Home-and-pages redesign, one commit** — restructure `renderWikiHTML` in
+- [x] **Home-and-pages redesign, one commit** — restructure `renderWikiHTML` in
   `cmd/libretto/wiki.go` into home-then-articles: the `wikiGitDate` seam
   (`var wikiGitDate = func(projectDir, specPath string) string`, `git -C <dir>
   log -1 --format=%as -- <spec>`, any failure → `""`), `changed` threaded through
@@ -28,7 +28,11 @@ the orchestrator marks.
     the real seam against this repo — real dates on real cards, opened in the
     browser, observed; all six gates green on the commit.
   - Waits on: nothing. Can start now.
-  - Evidence: —
+  - Evidence: six gates green on commit "feat(cli): the wiki becomes home and
+    pages"; degrade arm forced red by making an absent date fatal, observed
+    failing, restored; rendered via a throwaway git worktree so the real seam
+    saw real history — 14 cards with genuine dates (2026-08-10…), 14 articles,
+    opened in the browser and republished to the artifact; worktree removed.
 
 The remainder of the capability-spec delta lands at the landing commit as always;
 it is not a box.
