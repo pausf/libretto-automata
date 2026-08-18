@@ -5,7 +5,7 @@ Branch: `feat/add-wiki-html-output`. Every box lands code and proof in one
 commit, tree green, all six gates. The capability spec delta lands separately
 in the final commit, as always.
 
-- [ ] 1. Rewrite the wiki template — palette, hero bento, SVG chart, motion,
+- [x] 1. Rewrite the wiki template — palette, hero bento, SVG chart, motion,
       scroll-spy — and land the four structure tests with it
   - Traces: spec delta *Task breakdown* item 1 and all five verification
     criteria; plan *The approach* steps 1–5.
@@ -44,4 +44,9 @@ in the final commit, as always.
     the check; all six gates pass, including `spec-drift --anchors` resolving
     the new citations.
   - Waits on: nothing. Can start now.
-  - Evidence: —
+  - Evidence: nineteen wiki tests green on commit "feat(cli): the wiki viewer's
+    modern face"; TestWikiHTMLThemesAreTokenComplete forced red with a stray
+    #ff0000 in a component rule, observed failing with its own message,
+    restored; regenerated against this repo's 14 capabilities, opened in the
+    browser and looked at (14 bars, motion present), artifact republished for
+    the user; palette ratios measured in the plan, all ≥ 4.5:1.
