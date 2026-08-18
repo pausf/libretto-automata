@@ -540,6 +540,15 @@ equivalent. It goes when `libretto install` has been verified against a real
   panel branch checks `isatty` and so cannot be entered from a test; a decision left
   inline there is a decision no criterion can reach. They exist to be callable, not to
   abstract anything, and a second caller is not expected.
+- **The wiki viewer is home-and-pages: single file, pages by hash.** Asked
+  2026-08-18; multi-file lost on N+1 generated files to own, mark and clean, and
+  stays the recorded return path if hashes ever fall short (crawlers, per-page
+  HTTP). Key info on a card is the last-changed date (git, `%as`, via an
+  injectable seam — mtime lost because it does not survive a clone) and the
+  criteria count with a mini-bar; commit-count was offered and not chosen.
+  Governs lives on the page, not the card. This superseded the bento hero chart
+  and the scroll-spy the same day they landed, unreleased — the cards absorbed
+  the chart's information and the home absorbed the spy's job.
 - **The wiki viewer is bento-and-data, dark-first, its palette measured.** Chosen
   2026-08-18 after web research, over editorial-minimal and glass-total; glass
   confined to the sidebar, which is what the 2026 retrospectives themselves
