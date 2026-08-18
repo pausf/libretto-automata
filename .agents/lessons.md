@@ -207,3 +207,7 @@ Did: corrected it. Same shape as the "ten over eleven directories" failure AGENT
 ## 2026-08-18 · add-specs-wiki · 6→7
 Said: TestWikiWritesIndexAndSections asserts the index-row links but not the per-section [full spec] link, so half of criterion 2 could regress with the proof still green
 Did: added the two per-section link assertions, re-ran the test, green. The known half-a-clause pattern, caught by a fresh reviewer
+
+## 2026-08-18 · add-wiki-html-output · 6→7
+Said: the filter JS matches capability names with sec.id.includes(q) — id not lowercased against a lowercased query, so a mixed-case capability never matches by name; the render-and-look used only lowercase names and could not catch it
+Did: sec.id.toLowerCase(), wiki tests re-run green. A reviewer reading the untested-by-decision zone is exactly why it gets declared

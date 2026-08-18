@@ -359,7 +359,7 @@ input.addEventListener('input',()=>{
       const hit=!q||li.textContent.toLowerCase().includes(q);
       li.classList.toggle('hidden',!hit); if(hit&&q) any=true;
     });
-    sec.classList.toggle('hidden',!!q&&!any&&!sec.id.includes(q));
+    sec.classList.toggle('hidden',!!q&&!any&&!sec.id.toLowerCase().includes(q));
   });
 });
 `
