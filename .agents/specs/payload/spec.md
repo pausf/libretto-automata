@@ -465,6 +465,11 @@ finding, which is the sentence the `readme` capability was created to answer abo
 - **The task cut is a subagent, not a numbered phase.** Independence comes from the fresh
   context; renumbering everything that says eight buys nothing, which is the answer the
   6→7 review seam already gave for itself.
+- **The specs wiki regenerates at the landing step, not on a schedule and not by a
+  daemon.** The landing is the moment the specification moves, so the refreshed index
+  rides the same commit as the delta that changed it; a generated view left behind by a
+  landing is drift wearing a marker comment. Assumed 2026-08-18 rather than asked — if
+  manual-only regeneration is wanted, this instruction is the part to drop.
 - **The retirement gate compares the *section*, never the file.** Requiring any edit to a
   capability spec passes on the delta application alone — that happens in the landing
   commit by definition — so the gate would be green on every landing and measure nothing.
@@ -716,6 +721,13 @@ finding, which is the sentence the `readme` capability was created to answer abo
   cover is the hard-on-deltas, soft-on-capabilities asymmetry, which has no fixture and is
   observed only by running the gate.
   Proof: skills/record-work/spec-drift --self-test
+- **Where** `libretto` is on PATH and the project holds a consolidated specs directory,
+  the `record-work` skill **shall** instruct the landing step to run `libretto wiki` and
+  include the refreshed index in the landing commit; **where** the binary is absent, it
+  **shall** say the wiki may be stale and move on rather than block the landing.
+  **Ceiling named:** the anchor keeps the instruction findable in its file, never proves
+  a session obeyed prose — the same limit every skill criterion here lives with.
+  Proof: skills/record-work/SKILL.md
 - frontmatter parses, and `name:` matches the directory or filename
   Proof: scripts/check-payload
 - no stray file sits where the linker would install it as an item
