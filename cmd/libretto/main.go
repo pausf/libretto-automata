@@ -214,6 +214,8 @@ func run(args []string) error {
 		return loop(projectDir, args[1:])
 	case "metrics":
 		return metrics(os.Stdout, args[1:], execGit(projectDir), transcriptProjects())
+	case "wiki":
+		return wiki(os.Stdout, projectDir)
 	default:
 		usage()
 		return fmt.Errorf("unknown command %q", args[0])
@@ -1327,6 +1329,7 @@ func usage() {
   %[2]s loop <change> --max 3 --dry-run   raise the cap; print the prompt, run nothing
   %[2]s metrics        what every change cost, derived from git, read-only
   %[2]s metrics <change>   just that one
+  %[2]s wiki          render this project's specs into <specs-dir>/README.md
 
   --claude              Claude Code (the default) · ~/.claude or <dir>/.claude
   --codex               Codex CLI, skills only · ~/.agents or <dir>/.agents

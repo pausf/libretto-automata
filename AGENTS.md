@@ -62,6 +62,8 @@ libretto loop <change> --dry-run --max 3
 libretto metrics        # what every change cost — commits, span, boxes closed and
                         # reopened — derived from git, instrumented nowhere. Read-only.
 libretto metrics <change>
+libretto wiki           # render this project's specs into <specs-dir>/README.md,
+                        # behind a marker; refuses a README it did not generate
 
 libretto update         # install the newest version and relink; pulls in a checkout
 libretto install --project   # <cwd>/.claude instead of ~/.claude
