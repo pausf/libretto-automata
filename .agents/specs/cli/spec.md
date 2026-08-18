@@ -558,6 +558,12 @@ equivalent. It goes when `libretto install` has been verified against a real
   a link, and `file://` reaches it; `--serve` comes back only if someone needs a URL
   other people open. Its template ships inside the binary as a const — a template
   file would be payload the linker has to place, for exactly one consumer.
+- **The panel's wiki row is project scope only, by instruction.** The user drew the
+  line 2026-08-18: under global it never appears — `~/.claude` has no
+  specification. And no specs, no row (the `models` precedent), rather than a
+  disabled row with an explanation; that alternative comes back if absence
+  confuses. The row runs the plain command, because the panel's contract is
+  label = subcommand and the plain run refreshes every marked view anyway.
 - **One plain `wiki` run refreshes every marked view present.** The alternative was
   teaching `record-work` to name `--html` at landings — a second payload sentence
   that drifts from the set of outputs. The binary refreshing what it owns keeps that
@@ -590,6 +596,7 @@ equivalent. It goes when `libretto install` has been verified against a real
       `~/.claude` with a throwaway item
 - [x] `wiki` — the project's specs rendered into one marked README
 - [x] `wiki --html` — the same specs as one self-contained, marker-owned viewer
+- [x] the `wiki` panel row — project scope only, absent without specs
 
 ## Verification criteria
 
@@ -1267,3 +1274,21 @@ everything else.
 **Untested by decision, declared:** the filter's behaviour and the theming run in a
 browser Go tests cannot drive; the builder renders and looks, and the evidence names
 what was looked at. The inline conversion is not on that list — it is proven above.
+
+The panel offers the same command as a row, and only where pressing it can
+succeed. Project scope is the user's line, drawn explicitly; the missing-specs
+arm is the `models` precedent — an entry that opens an empty screen is a promise
+the panel cannot keep.
+
+- **Where the panel scope is project and the project holds a consolidated specs
+  directory, `panelData` shall include an enabled `wiki` row; where the scope is
+  global, or the project holds no specs directory, it shall not include one.**
+  Visibility shares the command's own discovery through `findSpecsDir` — never a
+  second list.
+  Proof: cmd/libretto/wiki_test.go TestPanelOffersWikiOnlyInAProjectWithSpecs
+- **When the `wiki` row is dispatched, the panel shall run the plain `wiki`
+  command against the project directory**, leaving the generated `README.md` in
+  the project's specs directory. The project directory reaches `dispatch` from
+  `run`'s single resolution — a second `os.Getwd` would be the two-answers bug
+  this spec already records.
+  Proof: cmd/libretto/wiki_test.go TestDispatchRunsWiki
