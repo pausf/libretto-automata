@@ -651,9 +651,19 @@ func TestWikiHTMLThemesAreTokenComplete(t *testing.T) {
 	// text on the other theme's ground.
 	tokenRe := regexp.MustCompile(`--[a-z-]+:`)
 	darkTokens := tokenRe.FindAllString(dark, -1)
-	lightTokens := tokenRe.FindAllString(light, -1)
-	if len(darkTokens) == 0 || len(darkTokens) != len(lightTokens) {
-		t.Fatalf("token sets differ: dark %d, light %d", len(darkTokens), len(lightTokens))
+	if len(darkTokens) == 0 {
+		t.Fatal("no tokens on the bare :root")
+	}
+	// Names, not counts: a token renamed in one block would leave a var()
+	// resolving in only one theme while the tallies still match.
+	lightSet := map[string]bool{}
+	for _, tok := range tokenRe.FindAllString(light, -1) {
+		lightSet[tok] = true
+	}
+	for _, tok := range darkTokens {
+		if !lightSet[tok] {
+			t.Errorf("token %q defined in dark, missing from the light block", tok)
+		}
 	}
 
 	// No hex literal outside the two token blocks: components take colour

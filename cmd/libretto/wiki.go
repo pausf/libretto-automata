@@ -359,8 +359,8 @@ func renderChart(caps []wikiCapability) string {
 	for i, c := range caps {
 		y := i * rowH
 		label := c.name
-		if len(label) > 16 {
-			label = label[:15] + "…"
+		if r := []rune(label); len(r) > 16 {
+			label = string(r[:15]) + "…"
 		}
 		w := len(c.criteria) * 100 / max
 		fmt.Fprintf(&b, "<g><title>%s: %d criteria</title>", html.EscapeString(c.name), len(c.criteria))

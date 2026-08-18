@@ -215,3 +215,15 @@ Did: sec.id.toLowerCase(), wiki tests re-run green. A reviewer reading the untes
 ## 2026-08-18 · add-wiki-open · 6→7
 Said: commit 1edd2db swept in .agents/specs/README.md, 692 lines of generated output no pillar mentions — likely the artifact of a stray plain run picked up by git add -A
 Did: removed it. The declared state stands: this repo's wiki is born at the first landing with a capable binary. git add -A after generating output near the tree is the actual lesson
+
+## 2026-08-18 · modernize-wiki-design · 6→7
+Said: criterion 3 demanded a prefers-color-scheme dark block while the code and every other pillar ship dark on bare :root — the literal clause would land unfailable-yet-failing
+Did: swapped the labels in the delta before landing. A criterion can contradict its own spec one sentence over; the reviewer reads the sentence, not the intent
+
+## 2026-08-18 · modernize-wiki-design · 6→7
+Said: label[:15] truncates bytes, so a multibyte rune straddling the cut emits invalid UTF-8 into the SVG
+Did: rune-slice truncation, chart test green
+
+## 2026-08-18 · modernize-wiki-design · 6→7
+Said: the token test compares counts, not names — a rename in one block passes while a var() resolves in one theme only
+Did: hardened to name-set comparison, green

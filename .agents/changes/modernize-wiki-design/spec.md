@@ -80,10 +80,13 @@ Out, named:
   `prefers-reduced-motion: no-preference`, and shall reference
   `animation-timeline` rather than scroll listeners for both.
   Proof: cmd/libretto/wiki_test.go TestWikiHTMLMotionRespectsReducedMotion
-- The stylesheet shall define the complete palette — glass surfaces included —
-  as tokens on `:root` with a full dark redefinition in a
-  `prefers-color-scheme: dark` block, and no hex colour literal outside the two
-  token blocks; components take colour only through `var()`.
+- The stylesheet shall define the complete dark palette — glass surfaces
+  included — as tokens on the bare `:root` (dark-first), with a full light
+  redefinition in a `prefers-color-scheme: light` block carrying the same token
+  names, and no hex colour literal outside the two token blocks; components
+  take colour only through `var()`. (The reviewer caught this sentence with its
+  labels swapped against the code and every other pillar; corrected before
+  landing.)
   Proof: cmd/libretto/wiki_test.go TestWikiHTMLThemesAreTokenComplete
 - The sidebar's entries shall remain plain `#`-anchor links — navigation with JS
   off — and the scroll-spy shall ship as an inline script referencing
