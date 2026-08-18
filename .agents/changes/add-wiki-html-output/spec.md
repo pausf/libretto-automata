@@ -49,6 +49,12 @@ Out, named:
 - **configurable styling or templates.** One embedded template; a knob nobody
   asked for is a knob to maintain.
 
+Untested by decision, and named as such (the cutter asked): the inline filter's
+behaviour and the light/dark theming run in a browser Go tests cannot drive. The
+builder opens the generated page and looks, per build-and-check's render-and-look
+rule, and the evidence names what was looked at. The bold/backtick conversion is
+*not* on that list — it is provable in Go and criterion 1's proof asserts it.
+
 ## Constraints
 
 - Stdlib only, again: `html` for escaping, the template as an embedded string. No
@@ -91,7 +97,8 @@ Out, named:
   the discovered specs directory — a single self-contained page carrying a
   navigation entry and a section per capability, each section with the
   capability's intro, its `Governs:` line and its criteria — and shall not write
-  or modify `README.md` in that run.
+  or modify `README.md` in that run. A `**bold**` and a backticked span in a
+  fixture criterion shall arrive as `<strong>` and `<code>` markup.
   Proof: cmd/libretto/wiki_test.go TestWikiHTMLWritesTheViewer
 - The generated `wiki.html` shall open with a first-line HTML comment marker
   naming `libretto wiki` as its generator and the command that refreshes it.
@@ -121,3 +128,6 @@ Out, named:
   Proof: cmd/libretto/wiki_test.go TestPlainWikiRefreshesAMarkedHTMLView
 - The `wiki --html` run shall write nothing but the one `wiki.html`.
   Proof: cmd/libretto/wiki_test.go TestWikiHTMLWritesNothingButTheOneFile
+- If `wiki` is given an argument other than `--html`, then it shall report the
+  unknown argument and exit non-zero, writing nothing.
+  Proof: cmd/libretto/wiki_test.go TestWikiRejectsAnUnknownFlag
