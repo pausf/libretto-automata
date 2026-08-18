@@ -582,3 +582,106 @@ func TestOpenerArgvPerPlatform(t *testing.T) {
 		}
 	}
 }
+
+func TestWikiHTMLCarriesTheBentoHeroAndChart(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	for _, want := range []string{
+		`class="hero"`, `class="stat"`, // the bento and its cards
+		`<svg`, `role="img"`, // the chart is markup, visible with JS off
+		`>pricing</text>`, `>checkout</text>`, // one labelled bar per capability
+		`width="100"`, // pricing: 2 criteria of max 2
+		`width="0"`,   // checkout: zero criteria, drawn, never omitted
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("hero/chart missing %q", want)
+		}
+	}
+}
+
+func TestWikiHTMLMotionRespectsReducedMotion(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if strings.Contains(got, "addEventListener('scroll'") || strings.Contains(got, `addEventListener("scroll"`) {
+		t.Fatal("scroll listeners present; motion must be CSS scroll-driven")
+	}
+	motionStart := strings.Index(got, "@media (prefers-reduced-motion: no-preference)")
+	motionEnd := strings.Index(got, "/*end-motion*/")
+	if motionStart < 0 || motionEnd < motionStart {
+		t.Fatal("the delimited reduced-motion block is missing")
+	}
+	inside := got[motionStart:motionEnd]
+	if !strings.Contains(inside, "animation-timeline") {
+		t.Fatal("no scroll-driven animation inside the motion block")
+	}
+	outside := got[:motionStart] + got[motionEnd:]
+	if strings.Contains(outside, "animation-timeline") || strings.Contains(outside, "@keyframes") {
+		t.Fatal("motion declared outside the reduced-motion guard")
+	}
+}
+
+func TestWikiHTMLThemesAreTokenComplete(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+
+	block := func(start string) string {
+		i := strings.Index(got, start)
+		if i < 0 {
+			t.Fatalf("token block %q missing", start)
+		}
+		j := strings.Index(got[i:], "}")
+		return got[i : i+j]
+	}
+	dark := block(":root{")
+	light := block("@media (prefers-color-scheme: light){:root{")
+
+	// The same token set in both — a token defined once renders one theme's
+	// text on the other theme's ground.
+	tokenRe := regexp.MustCompile(`--[a-z-]+:`)
+	darkTokens := tokenRe.FindAllString(dark, -1)
+	lightTokens := tokenRe.FindAllString(light, -1)
+	if len(darkTokens) == 0 || len(darkTokens) != len(lightTokens) {
+		t.Fatalf("token sets differ: dark %d, light %d", len(darkTokens), len(lightTokens))
+	}
+
+	// No hex literal outside the two token blocks: components take colour
+	// only through var().
+	styleStart := strings.Index(got, "<style>")
+	styleEnd := strings.Index(got, "</style>")
+	css := got[styleStart:styleEnd]
+	for _, m := range regexp.MustCompile(`#[0-9A-Fa-f]{3,8}\b`).FindAllStringIndex(css, -1) {
+		hex := css[m[0]:m[1]]
+		if !strings.Contains(dark, hex) && !strings.Contains(light, hex) {
+			t.Errorf("hex literal %q outside the token blocks", hex)
+		}
+	}
+}
+
+func TestWikiHTMLScrollSpyIsAnEnhancement(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `class="nav-item" href="#pricing"`) {
+		t.Fatal("nav entries are no longer plain anchors — navigation must survive JS off")
+	}
+	for _, want := range []string{"IntersectionObserver", "aria-current"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("scroll-spy script missing %q", want)
+		}
+	}
+}
