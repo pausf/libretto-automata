@@ -9,7 +9,7 @@ branch, and `spec-drift --anchors` requires each cited test to exist in
 `cmd/libretto/wiki_test.go`. No commit passes the six gates until all nine tests
 exist and pass — so the feature and its proofs are one box, not three layers.
 
-- [ ] 1. `wiki --html` end to end: the seam, the renderer, the refresh rule, all
+- [x] 1. `wiki --html` end to end: the seam, the renderer, the refresh rule, all
       nine tests, one commit.
       Refactor `wiki(w, projectDir, args)` to parse `--html` (any other arg is an
       error) and extract a shared `writeMarked(path, marker, render)` ownership
@@ -34,9 +34,13 @@ exist and pass — so the feature and its proofs are one box, not three layers.
       `spec-drift --anchors` resolves every citation for the first time on this
       branch.
       Waits on: nothing.
-      Evidence: —
+      Evidence: all six gates green on commit "feat(cli): wiki --html";
+      TestWikiHTMLEscapesSpecContent forced red with escaping disabled, observed,
+      restored. Render-and-look: generated against this repo's 14 capabilities via
+      a throwaway dump test (deleted), inspected (14 sections, 14 nav entries,
+      escaped content, no external scripts) and published for the user to look at.
 
-- [ ] 2. Documentation surface and the payload nothing.
+- [x] 2. Documentation surface and the payload nothing.
       Add the one AGENTS.md line covering `wiki --html` beside the existing wiki
       command documentation, and verify by reading — not by editing — that
       record-work's landing-regeneration instruction already covers both views
@@ -47,7 +51,9 @@ exist and pass — so the feature and its proofs are one box, not three layers.
       Closes when: the AGENTS.md line is committed, all six gates green, and this
       box carries a one-line note confirming record-work needed no change.
       Waits on: box 1.
-      Evidence: —
+      Evidence: AGENTS.md lines committed with this mark; record-work verified by
+      reading — its landing instruction is the plain `libretto wiki` run, which
+      now refreshes both marked views, so no skill change was needed.
 
 The capability spec delta is not a box. It lands once, in the final commit, when
 the change folder is deleted — same commit as the last code, per the landing rule.
