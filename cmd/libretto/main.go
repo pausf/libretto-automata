@@ -215,7 +215,7 @@ func run(args []string) error {
 	case "metrics":
 		return metrics(os.Stdout, args[1:], execGit(projectDir), transcriptProjects())
 	case "wiki":
-		return wiki(os.Stdout, projectDir)
+		return wiki(os.Stdout, projectDir, args[1:])
 	default:
 		usage()
 		return fmt.Errorf("unknown command %q", args[0])
@@ -1330,6 +1330,7 @@ func usage() {
   %[2]s metrics        what every change cost, derived from git, read-only
   %[2]s metrics <change>   just that one
   %[2]s wiki          render this project's specs into <specs-dir>/README.md
+  %[2]s wiki --html   the same specs as a self-contained viewer, <specs-dir>/wiki.html
 
   --claude              Claude Code (the default) · ~/.claude or <dir>/.claude
   --codex               Codex CLI, skills only · ~/.agents or <dir>/.agents

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -22,7 +23,7 @@ Second sentence nobody quotes.
 
 - When a bundle holds two items, the system shall apply the relative discount.
   Proof: src/pricing/bundle_test.go TestRelativeDiscount
-- If the total goes negative, then the system shall clamp it to zero.
+- If the total goes negative, then the system shall **clamp** it to ` + "`zero`" + `.
   Proof: src/pricing/bundle_test.go TestClampAtZero
 `
 
@@ -49,11 +50,20 @@ func writeSpecs(t *testing.T, root, dir string) string {
 	return specs
 }
 
-func runWiki(t *testing.T, dir string) (string, error) {
+func runWiki(t *testing.T, dir string, args ...string) (string, error) {
 	t.Helper()
 	var out bytes.Buffer
-	err := wiki(&out, dir)
+	err := wiki(&out, dir, args)
 	return out.String(), err
+}
+
+func wikiHTML(t *testing.T, specs string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(specs, "wiki.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }
 
 func readme(t *testing.T, specs string) string {
@@ -108,7 +118,7 @@ func TestWikiWritesIndexAndSections(t *testing.T) {
 		"`src/pricing/** src/cart/total.go`",
 		"Relative discounts across bundles, and the rounding they promise.",
 		"shall apply the relative discount",
-		"shall clamp it to zero",
+		"shall **clamp** it to `zero`", // README keeps the raw inline markdown
 		"## checkout",
 		"`src/checkout/**`",
 		"[full spec](pricing/spec.md)",
@@ -241,4 +251,189 @@ func treeSnapshot(t *testing.T, root string) map[string]string {
 		t.Fatal(err)
 	}
 	return snap
+}
+
+func TestWikiHTMLWritesTheViewer(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	out, err := runWiki(t, dir, "--html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "wiki.html") {
+		t.Fatalf("report line missing the file: %q", out)
+	}
+	got := wikiHTML(t, specs)
+	for _, want := range []string{
+		`href="#pricing"`, // nav entry
+		`href="#checkout"`,
+		`id="pricing"`, // section
+		"Relative discounts across bundles",
+		"src/pricing/** src/cart/total.go",
+		"shall apply the relative discount",
+		"<strong>clamp</strong>", // bold conversion, after escaping
+		"<code>zero</code>",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("viewer missing %q", want)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(specs, "README.md")); err == nil {
+		t.Error("--html run wrote README.md too")
+	}
+}
+
+func TestWikiHTMLCarriesTheMarker(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, "specs")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	first, _, _ := strings.Cut(wikiHTML(t, specs), "\n")
+	if first != wikiHTMLMarker {
+		t.Fatalf("first line is %q, not the HTML marker", first)
+	}
+	if !strings.Contains(wikiHTMLMarker, "libretto wiki --html") {
+		t.Error("the marker does not name the refresh command")
+	}
+}
+
+func TestWikiHTMLNeverOverwritesAForeignFile(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	hand := "<html>somebody's page</html>\n"
+	if err := os.WriteFile(filepath.Join(specs, "wiki.html"), []byte(hand), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--html"); err == nil {
+		t.Fatal("expected a refusal, got success")
+	}
+	if got := wikiHTML(t, specs); got != hand {
+		t.Fatalf("the foreign wiki.html was modified:\n%s", got)
+	}
+	if err := os.WriteFile(filepath.Join(specs, "wiki.html"), []byte(wikiHTMLMarker+"\nstale\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatalf("refused to refresh a file it generated: %v", err)
+	}
+}
+
+func TestWikiHTMLEscapesSpecContent(t *testing.T) {
+	dir := t.TempDir()
+	specs := filepath.Join(dir, ".agents/specs", "sneaky")
+	if err := os.MkdirAll(specs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	spec := "# Sneaky\n\nGoverns: src/**\n\nIntro with <script>alert(1)</script> inside.\n\n" +
+		"## Verification criteria\n\n- When poked, the system shall <script>alert(2)</script> not run it.\n  Proof: a_test.go TestX\n"
+	if err := os.WriteFile(filepath.Join(specs, "spec.md"), []byte(spec), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, filepath.Join(dir, ".agents/specs"))
+	if strings.Contains(got, "<script>alert(") {
+		t.Fatal("spec content reached markup position unescaped")
+	}
+	if !strings.Contains(got, "&lt;script&gt;alert(1)&lt;/script&gt;") {
+		t.Error("escaped intro text missing from the page")
+	}
+}
+
+func TestWikiHTMLIsSelfContained(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	for _, m := range regexp.MustCompile(`(?:src|href)="(https?://[^"]+)"`).FindAllStringSubmatch(got, -1) {
+		u := m[1]
+		if !strings.HasPrefix(u, "https://fonts.googleapis.com") && !strings.HasPrefix(u, "https://fonts.gstatic.com") {
+			t.Errorf("external reference beyond the font hosts: %s", u)
+		}
+	}
+	if strings.Contains(got, "<script src=") {
+		t.Error("external script referenced; the filter must be inline")
+	}
+}
+
+func TestWikiHTMLIsDeterministic(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	first := wikiHTML(t, specs)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if second := wikiHTML(t, specs); second != first {
+		t.Fatal("two --html runs over unchanged input produced different bytes")
+	}
+}
+
+func TestPlainWikiRefreshesAMarkedHTMLView(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if err := os.WriteFile(filepath.Join(specs, "wiki.html"), []byte(wikiHTMLMarker+"\nstale\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir); err != nil {
+		t.Fatal(err)
+	}
+	if got := wikiHTML(t, specs); strings.Contains(got, "stale") {
+		t.Fatal("plain run left the marked wiki.html stale")
+	}
+	// A foreign wiki.html is left alone and the plain run still succeeds —
+	// erroring here would block every landing regeneration in the project.
+	foreign := "<html>not ours</html>\n"
+	if err := os.WriteFile(filepath.Join(specs, "wiki.html"), []byte(foreign), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir); err != nil {
+		t.Fatalf("plain run failed on a foreign wiki.html: %v", err)
+	}
+	if got := wikiHTML(t, specs); got != foreign {
+		t.Fatal("plain run touched a foreign wiki.html")
+	}
+}
+
+func TestWikiHTMLWritesNothingButTheOneFile(t *testing.T) {
+	dir := t.TempDir()
+	writeSpecs(t, dir, ".agents/specs")
+	before := treeSnapshot(t, dir)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	after := treeSnapshot(t, dir)
+	var extra []string
+	for p := range after {
+		if _, ok := before[p]; !ok {
+			extra = append(extra, p)
+		}
+	}
+	if len(extra) != 1 || !strings.HasSuffix(extra[0], filepath.Join(".agents", "specs", "wiki.html")) {
+		t.Fatalf("expected exactly the one wiki.html, new files: %v", extra)
+	}
+	for p, was := range before {
+		if after[p] != was {
+			t.Errorf("pre-existing file changed: %s", p)
+		}
+	}
+}
+
+func TestWikiRejectsAnUnknownFlag(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir, "--bogus"); err == nil || !strings.Contains(err.Error(), "--bogus") {
+		t.Fatalf("want the unknown argument named in an error, got %v", err)
+	}
+	for _, f := range []string{"README.md", "wiki.html"} {
+		if _, err := os.Stat(filepath.Join(specs, f)); err == nil {
+			t.Errorf("a rejected invocation still wrote %s", f)
+		}
+	}
 }
