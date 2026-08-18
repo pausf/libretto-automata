@@ -14,8 +14,10 @@ same commit.
   `libretto wiki` and include the refreshed index in the landing commit; where the
   binary is absent, it shall say the wiki may be stale and move on rather than
   block the landing.
-  Proof: rg -q 'libretto wiki' skills/record-work/SKILL.md
+  Proof: skills/record-work/SKILL.md
 
-The proof anchors only the instruction's presence — a command citation cannot test
-that a session obeys prose. That limit is the same one every skill criterion in the
-payload spec already lives with.
+The proof anchors only the file the instruction lives in — `spec-drift` reads a
+citation's first token as a path, so a `rg` one-liner does not resolve, and no
+citation can test that a session obeys prose. That limit is the same one every
+skill criterion in the payload spec already lives with; the reviewer reads the
+instruction, the anchor only keeps it findable.
