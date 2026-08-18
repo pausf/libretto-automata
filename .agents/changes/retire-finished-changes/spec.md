@@ -1,6 +1,6 @@
 # Delta — a finished change that never landed is reported, not omitted
 
-Targets: payload
+Targets: payload cli
 
 ## Outcomes
 
@@ -10,13 +10,14 @@ Phase 1 sees the state that produced this change, instead of walking past it.
   and not landed.** Not as work in flight — there is nothing to continue — and not as
   silence, which is what it got.
 - The two changes already in that state are landed properly: their durable decisions
-  retired into `payload`'s *Prior decisions*, their folders deleted.
+  retired into the *Prior decisions* of the capability that governs each — five to
+  `payload`, one to `cli` — and their folders deleted.
 - `/libretto-status` says the same thing, because it delegates to the same scan.
 
 ## Scope boundaries
 
-**In:** `skills/find-work/SKILL.md`, `commands/libretto-status.md`, the two
-`check_wiring` rows that hold them up, `.agents/specs/payload/spec.md`,
+**In:** `skills/find-work/SKILL.md`, `commands/libretto-status.md`,
+`skills/write-plan/SKILL.md`, the three `check_wiring` rows that hold them up, `.agents/specs/payload/spec.md`,
 `.agents/specs/cli/spec.md`, and the deletion of `.agents/changes/add-design-phase/` and
 `.agents/changes/retire-plan-decisions/`.
 
@@ -79,8 +80,10 @@ exists to find it cannot. Settled by the user, 2026-08-17.
 
 ## Task breakdown
 
-The scan and its wording in the two payload files; the wiring rows that hold them; the
-retirement of four decisions into `payload`; the deletion of both folders.
+The scan and its wording in the two payload files; the sentence in `write-plan` that
+settles which document the retirement reads; the three wiring rows that hold all of them;
+the retirement of six decisions — five into `payload`, one into `cli`; the deletion of
+both folders.
 
 ## Verification criteria
 
@@ -94,8 +97,13 @@ retirement of four decisions into `payload`; the deletion of both folders.
 - The status command **shall** carry the same report, because it delegates to the same
   scan rather than describing its own.
   Proof: scripts/check-payload
+- The plan skill **shall** state that a plan's `Durable decisions:` line is a claim about
+  whether the list is empty and never the list itself, which is the change's `spec.md`
+  *Prior decisions*. Added because both readings looked right and the tree already held
+  the contradiction; it is a mandate like the other two and gets a row like the other two.
+  Proof: scripts/check-payload
 
-**Ceiling named, and it covers both criteria above.** `check-payload` proves the mandate
+**Ceiling named, and it covers all three criteria above.** `check-payload` proves the mandate
 is present in the file. It cannot prove a session obeyed it — that is behaviour, and
 behaviour is checked by running it. A phase that reads the rule and reports nothing
 anyway surfaces in the 6→7 review or not at all, and citing this gate as though it

@@ -313,6 +313,10 @@ check_wiring skills/write-tasks/SKILL.md 'task-cutter' 'the checklist is cut by 
 # is two things to keep in step.
 check_wiring skills/find-work/SKILL.md 'finished and not landed' 'phase 1 names a change whose boxes are all closed and whose folder is still there'
 check_wiring commands/libretto-status.md 'finished and not landed' 'status reports a finished change that never landed, separately from work in flight'
+# The 6→7 reviewer found this one missing: the change added three mandates and wired two.
+# The unwired one settled which document a retirement reads, after the tree was already
+# holding the contradiction it exists to prevent.
+check_wiring skills/write-plan/SKILL.md 'never the list' 'the Durable decisions line is a claim about whether the list is empty, not the list'
 
 # The inverse. Two of this change's criteria are about what must NOT be in the command
 # that describes no phase, and a presence check cannot express either.
