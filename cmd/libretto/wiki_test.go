@@ -111,6 +111,8 @@ func TestWikiWritesIndexAndSections(t *testing.T) {
 		"shall clamp it to zero",
 		"## checkout",
 		"`src/checkout/**`",
+		"[full spec](pricing/spec.md)",
+		"[full spec](checkout/spec.md)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("wiki missing %q", want)

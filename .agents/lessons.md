@@ -203,3 +203,7 @@ Did: Targets: payload cli. Left unfixed, a later staged edit under cmd/libretto/
 ## 2026-08-18 · retire-finished-changes · 6→7
 Said: Task breakdown still says four decisions, contradicted by Scope boundaries and by the landing commit, which retires six
 Did: corrected it. Same shape as the "ten over eleven directories" failure AGENTS.md already records — a number stated in two places, fixed in one
+
+## 2026-08-18 · add-specs-wiki · 6→7
+Said: TestWikiWritesIndexAndSections asserts the index-row links but not the per-section [full spec] link, so half of criterion 2 could regress with the proof still green
+Did: added the two per-section link assertions, re-ran the test, green. The known half-a-clause pattern, caught by a fresh reviewer
