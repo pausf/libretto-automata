@@ -675,6 +675,11 @@ func TestWikiHTMLIsHomeAndPages(t *testing.T) {
 		`<article class="cap" id="pricing"`,
 		`<article class="cap" id="checkout"`, // and a page like every other
 		`href="#home"`,                       // the way back
+		// The page carries the contract: Governs, intro, criteria — asserted
+		// here so this criterion's own citation covers its whole clause.
+		`<code>src/pricing/** src/cart/total.go</code>`,
+		"Relative discounts across bundles",
+		"shall apply the relative discount",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("home/pages missing %q", want)

@@ -227,3 +227,7 @@ Did: rune-slice truncation, chart test green
 ## 2026-08-18 · modernize-wiki-design · 6→7
 Said: the token test compares counts, not names — a rename in one block passes while a var() resolves in one theme only
 Did: hardened to name-set comparison, green
+
+## 2026-08-18 · wiki-pages-redesign · 6→7
+Said: TestWikiHTMLIsHomeAndPages asserts home/cards/back but not the Governs/intro/criteria its own clause promises — covered only by a different criterion's proof
+Did: added the three article assertions so the citation covers its whole clause, green. The half-a-clause pattern, third catch this branch
