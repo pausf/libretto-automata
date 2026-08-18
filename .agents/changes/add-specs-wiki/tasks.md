@@ -4,7 +4,7 @@ Executing phase: `build-and-check` (phase 6). One fresh session per open box; ea
 leaves the tree green, all six gates passing, and mergeable on its own. The capability
 spec delta is not a box — it lands once, in the final landing commit.
 
-- [ ] 1. `libretto wiki`, end to end: `cmd/libretto/wiki.go` (discovery in the fixed
+- [x] 1. `libretto wiki`, end to end: `cmd/libretto/wiki.go` (discovery in the fixed
   order `.agents/specs`, `specs`, `openspec`, `docs/specs`, `spec`; line-oriented
   extraction of capability name, `Governs:`, intro paragraph, `Proof:`-backed
   criterion bullets; deterministic render — marker first, index table, one section
@@ -23,7 +23,9 @@ spec delta is not a box — it lands once, in the final landing commit.
   `TestWikiOutputIsDeterministic`, `TestWikiWritesNothingButTheReadme` — and
   `spec-drift --anchors` flips from seven red citations to green.
   Waits on: nothing. Independent.
-  Evidence: —
+  Evidence: all six gates green on commit "feat(cli): libretto wiki";
+  TestWikiNeverOverwritesAHandWrittenReadme forced red with the guard disabled,
+  observed failing, guard restored.
 
 - [ ] 2. The regeneration paragraph in `skills/record-work/SKILL.md`'s landing step:
   where `libretto` is on PATH and a consolidated specs dir exists, run `libretto wiki`
