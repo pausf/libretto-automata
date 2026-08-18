@@ -6,7 +6,7 @@ merges alone — code and proof in the same commit, tree green, all six gates.
 The capability spec delta is not a box: it lands on `.agents/specs/cli/spec.md` in
 the final commit, when the change folder is deleted.
 
-- [ ] **1. `--open` end to end: flag, seam, argv function, panel row — with all four proofs**
+- [x] **1. `--open` end to end: flag, seam, argv function, panel row — with all four proofs**
   - Traces: spec.md, all four verification criteria; plan.md "The approach" 1–4.
   - What: in `cmd/libretto/wiki.go`, accept `--open` (implies the HTML view; `--open`
     and `--html --open` identical), add `openerArgv(goos, path) []string` (darwin →
@@ -31,4 +31,8 @@ the final commit, when the change folder is deleted.
     `cmd/libretto/wiki_test.go`); and the one hand check named by the plan is done —
     the builder runs `libretto wiki --open` once for real and reports what appeared.
   - Waits on: nothing.
-  - Evidence: —
+  - Evidence: six gates green on commit "feat(cli): wiki --open"; the ordering
+    guard forced red by moving the open above the write guard, observed failing,
+    restored (a first sd-based break did not apply and was caught by rg before
+    being believed); hand check ran the real opener against the scratchpad copy —
+    "wrote … opened …" and the browser tab appeared.
