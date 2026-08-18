@@ -267,7 +267,7 @@ func panelUI(root, projectDir string, tool target.Tool, scope target.Scope) erro
 		if dest < 0 || dest >= len(toolOrder) {
 			return nil, fmt.Errorf("no destination %d", dest)
 		}
-		return runCaptured(action, root, target.Resolve(toolOrder[dest], cur, projectDir), confirm)
+		return runCaptured(action, root, projectDir, target.Resolve(toolOrder[dest], cur, projectDir), confirm)
 	})
 
 	// The selector's two callbacks. The destination comes in as an argument, never
@@ -344,7 +344,7 @@ func panelRefresh(root, projectDir string, cur *target.Scope) func(int) ([]ui.Me
 // would land on top of the panel, so it is redirected for the duration and handed
 // back as lines instead. That also means the panel shows the command's own words
 // rather than a second rendering of the same facts, which could disagree with it.
-func runCaptured(action, root string, tg target.Target, confirm bool) ([]string, error) {
+func runCaptured(action, root, projectDir string, tg target.Target, confirm bool) ([]string, error) {
 	prev := os.Stdout
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -361,7 +361,7 @@ func runCaptured(action, root string, tg target.Target, confirm bool) ([]string,
 		out <- buf.String()
 	}()
 
-	runErr := dispatch(action, root, tg, confirm)
+	runErr := dispatch(action, root, projectDir, tg, confirm)
 
 	_ = w.Close()
 	os.Stdout = prev
@@ -379,10 +379,12 @@ func runCaptured(action, root string, tg target.Target, confirm bool) ([]string,
 
 // dispatch runs one menu action. The panel's labels are the subcommand names, so
 // there is one list of actions and not two to keep in agreement.
-func dispatch(action, root string, tg target.Target, confirm bool) error {
+func dispatch(action, root, projectDir string, tg target.Target, confirm bool) error {
 	switch action {
 	case "install":
 		return install(root, tg)
+	case "wiki":
+		return wiki(os.Stdout, projectDir, nil)
 	case "update":
 		return update(root, tg)
 	case "status":
@@ -474,6 +476,18 @@ func panelData(root, projectDir string, tool target.Tool, scope target.Scope) ([
 		// existed.
 		{Label: "update", Desc: "bring this installation up to date", Enabled: true},
 		{Label: "status", Desc: summarise(overall), Enabled: true},
+	}
+
+	// Project scope only, by instruction — the wiki reads the working directory's
+	// specs, and ~/.claude has none. No specs, no row: the models precedent.
+	if scope == target.ProjectScope {
+		if specs, ok := findSpecsDir(projectDir); ok {
+			menu = append(menu, ui.MenuItem{
+				Label:   "wiki",
+				Desc:    "render this project's specs into " + shorten(specs),
+				Enabled: true,
+			})
+		}
 	}
 
 	// Next to status, and reporting like it. "choose agent models" would be the one

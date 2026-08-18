@@ -7,6 +7,9 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/pausf/libretto-automata/internal/target"
+	"github.com/pausf/libretto-automata/internal/ui"
 )
 
 // A full-shaped capability and a legacy one. The legacy fixture is the point:
@@ -435,5 +438,63 @@ func TestWikiRejectsAnUnknownFlag(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(specs, f)); err == nil {
 			t.Errorf("a rejected invocation still wrote %s", f)
 		}
+	}
+}
+
+func TestPanelOffersWikiOnlyInAProjectWithSpecs(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	writeSpecs(t, f.Project, ".agents/specs")
+
+	wikiRow := func(scope target.Scope) *ui.MenuItem {
+		menu, _, err := panelData(f.Repo, f.Project, target.ClaudeTool, scope)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := range menu {
+			if menu[i].Label == "wiki" {
+				return &menu[i]
+			}
+		}
+		return nil
+	}
+
+	row := wikiRow(target.ProjectScope)
+	if row == nil {
+		t.Fatal("project scope with specs: the menu does not offer wiki")
+	}
+	if !row.Enabled {
+		t.Error("the wiki row is offered but disabled")
+	}
+	if row.Destructive {
+		t.Error("rendering a wiki is not destructive")
+	}
+	if wikiRow(target.GlobalScope) != nil {
+		t.Fatal("global scope offers wiki — the user drew that line explicitly")
+	}
+
+	bare := newFixture(t)
+	bare.skill(t, "alpha")
+	menu, _, err := panelData(bare.Repo, bare.Project, target.ClaudeTool, target.ProjectScope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range menu {
+		if item.Label == "wiki" {
+			t.Fatal("a project with no specs directory still offers wiki")
+		}
+	}
+}
+
+func TestDispatchRunsWiki(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	specs := writeSpecs(t, f.Project, ".agents/specs")
+
+	if _, err := runCaptured("wiki", f.Repo, f.Project, f.project(), false); err != nil {
+		t.Fatalf("dispatching wiki failed: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(specs, "README.md")); err != nil {
+		t.Fatal("dispatch reported no error and generated nothing")
 	}
 }

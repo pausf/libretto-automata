@@ -49,14 +49,8 @@ func wiki(w io.Writer, projectDir string, args []string) error {
 		return fmt.Errorf("unknown argument %q — wiki takes only --html", a)
 	}
 
-	specsDir := ""
-	for _, candidate := range wikiDirOrder {
-		if info, err := os.Stat(filepath.Join(projectDir, candidate)); err == nil && info.IsDir() {
-			specsDir = filepath.Join(projectDir, candidate)
-			break
-		}
-	}
-	if specsDir == "" {
+	specsDir, found := findSpecsDir(projectDir)
+	if !found {
 		return fmt.Errorf("no specs directory found (looked for %s)", strings.Join(wikiDirOrder, ", "))
 	}
 
@@ -108,6 +102,17 @@ func wiki(w io.Writer, projectDir string, args []string) error {
 		fmt.Fprintf(w, "refreshed %s\n", htmlPath)
 	}
 	return nil
+}
+
+// findSpecsDir is the one discovery both the command and the panel's row share —
+// a second list would disagree with this one exactly when it matters.
+func findSpecsDir(projectDir string) (string, bool) {
+	for _, candidate := range wikiDirOrder {
+		if info, err := os.Stat(filepath.Join(projectDir, candidate)); err == nil && info.IsDir() {
+			return filepath.Join(projectDir, candidate), true
+		}
+	}
+	return "", false
 }
 
 // ownsFile reports whether path exists and opens with marker.
