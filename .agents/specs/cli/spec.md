@@ -554,6 +554,16 @@ equivalent. It goes when `libretto install` has been verified against a real
   second *hand-maintained* copy; the wiki is a marked, regenerated view of the specs
   themselves — a cache, not a source. The drift risk is why regeneration rides
   `record-work`'s landing step (see `payload`).
+- **The HTML viewer is a static file, never a server.** The ask was a page reached by
+  a link, and `file://` reaches it; `--serve` comes back only if someone needs a URL
+  other people open. Its template ships inside the binary as a const — a template
+  file would be payload the linker has to place, for exactly one consumer.
+- **One plain `wiki` run refreshes every marked view present.** The alternative was
+  teaching `record-work` to name `--html` at landings — a second payload sentence
+  that drifts from the set of outputs. The binary refreshing what it owns keeps that
+  instruction closed under new views, and it is why a foreign `wiki.html` is skipped
+  silently on a plain run: erroring there would block every landing regeneration.
+  2026-08-18.
 
 ## Task breakdown
 
@@ -579,6 +589,7 @@ equivalent. It goes when `libretto install` has been verified against a real
 - [ ] 7.3 delete `install.sh`, once `libretto install` is verified against a real
       `~/.claude` with a throwaway item
 - [x] `wiki` — the project's specs rendered into one marked README
+- [x] `wiki --html` — the same specs as one self-contained, marker-owned viewer
 
 ## Verification criteria
 
@@ -1209,3 +1220,50 @@ symlinked, and it regenerates wherever the specs move.
   Proof: cmd/libretto/wiki_test.go TestWikiOutputIsDeterministic
 - **the `wiki` subcommand shall write nothing but the one `README.md`.**
   Proof: cmd/libretto/wiki_test.go TestWikiWritesNothingButTheReadme
+
+The same specification renders as a second view: `wiki --html` writes one
+self-contained page — sidebar index with criteria counts, a section per
+capability, an inline criteria filter, light and dark via `prefers-color-scheme` —
+that a browser opens from `file://` with no server and no build step. Both views
+are generated output behind markers; the tool refreshes its own and refuses
+everything else.
+
+- **when invoked with `--html`, the `wiki` subcommand shall write `wiki.html` into
+  the discovered specs directory** — a single self-contained page carrying a
+  navigation entry and a section per capability, each section with the capability's
+  intro, its `Governs:` line and its criteria — and shall not write or modify
+  `README.md` in that run. A `**bold**` and a backticked span in spec prose arrive
+  as `<strong>` and `<code>` markup.
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLWritesTheViewer
+- **the generated `wiki.html` shall open with a first-line HTML-comment marker**
+  naming `libretto wiki` as its generator and the command that refreshes it.
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLCarriesTheMarker
+- **if the target `wiki.html` exists and does not carry the marker, then `wiki
+  --html` shall refuse**, report the conflict, exit non-zero, and leave the file
+  untouched.
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLNeverOverwritesAForeignFile
+- **the `--html` output shall carry every spec-sourced string HTML-escaped**, so
+  markup or script inside a spec renders as text and never executes. Escaping runs
+  before the inline conversions, always — that order is the criterion.
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLEscapesSpecContent
+- **the `--html` output shall reference no external resource beyond font
+  stylesheets from `fonts.googleapis.com`** (and the `fonts.gstatic.com` files they
+  pull) — no external scripts, no other stylesheets, no remote images — so the page
+  works offline, fonts degrading to their declared fallback stacks.
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLIsSelfContained
+- **the `--html` run shall produce byte-identical output for unchanged input.**
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLIsDeterministic
+- **when run without `--html` and the specs directory holds a `wiki.html` carrying
+  the marker, the subcommand shall refresh that file in the same run**; where the
+  `wiki.html` present carries no marker, the plain run shall leave it alone and not
+  fail — refusal belongs only to `--html` targeting it explicitly.
+  Proof: cmd/libretto/wiki_test.go TestPlainWikiRefreshesAMarkedHTMLView
+- **the `--html` run shall write nothing but the one `wiki.html`.**
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLWritesNothingButTheOneFile
+- **if `wiki` is given an argument other than `--html`, then it shall report the
+  unknown argument and exit non-zero, writing nothing.**
+  Proof: cmd/libretto/wiki_test.go TestWikiRejectsAnUnknownFlag
+
+**Untested by decision, declared:** the filter's behaviour and the theming run in a
+browser Go tests cannot drive; the builder renders and looks, and the evidence names
+what was looked at. The inline conversion is not on that list — it is proven above.
