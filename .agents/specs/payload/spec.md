@@ -435,6 +435,25 @@ finding, which is the sentence the `readme` capability was created to answer abo
 
 ## Prior decisions
 
+- **`plan.md` was reused for the technical approach rather than adding a `design.md`.**
+  The complaint was that the file named `plan` is not a plan; a `design.md` beside an
+  unchanged `plan.md` leaves that exact file unchanged and the complaint standing.
+  Answered by the user, 2026-08-17.
+- **The task cut is a subagent, not a numbered phase.** Independence comes from the fresh
+  context; renumbering everything that says eight buys nothing, which is the answer the
+  6→7 review seam already gave for itself.
+- **The retirement gate compares the *section*, never the file.** Requiring any edit to a
+  capability spec passes on the delta application alone — that happens in the landing
+  commit by definition — so the gate would be green on every landing and measure nothing.
+  It is the version that looks like a gate and is not one.
+- **Its escape is a declaration in the plan, not a flag.** A flag is typed by whoever
+  wants the commit through, at the moment they want it to stop complaining; a line in the
+  plan is written while the plan is, by the person who knew. No mechanism can stop that
+  line becoming a reflex — `review-work` reads the plan and the diff together.
+- **New checks ride inside `--anchors` rather than becoming new gates.** The count "six
+  gates" is written in ten places across `AGENTS.md`, the CI spec, the contributing spec
+  and the workflow, and a number kept in ten places is a number that drifts. Both the
+  EARS half and the retirement half were added this way.
 - The tracker is read through its CLI, never MCP, never the REST API.
 - The API token lives in the OS keyring, put there by `jira init`, run by the user in
   their own shell. It never enters a conversation.

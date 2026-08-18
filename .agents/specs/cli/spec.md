@@ -497,6 +497,14 @@ equivalent. It goes when `libretto install` has been verified against a real
 
 ## Prior decisions
 
+- **`metrics` reads churn with two `git log` calls, not one pathspec covering both
+  names.** The checklist was renamed from `plan.md` to `tasks.md` on 2026-08-17, and this
+  report is retroactive over changes whose folders are already deleted — so the legacy
+  path can never go. One pathspec naming both files is shorter and wrong: `plan.md` is
+  the technical approach now, a prose document allowed to show a checkbox in an example,
+  and counting its diffs would inflate the churn of every change from here on. Retired
+  out of `add-design-phase`'s plan, which `payload` could not hold: `cmd/libretto/**` is
+  governed here.
 - The command is `libretto`; `libretto-automata` is linked too. `lib` was rejected: it
   reads as a system directory.
 - `make link` symlinks rather than copies, so `make build` updates the installed

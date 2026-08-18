@@ -55,7 +55,7 @@ comes from the fresh context, not from the label, and that part held.
   Waits on: box 1 — the command delegates to the skill's scan, so the wording it points
   at has to exist before it can point at it.
 
-- [ ] **Land the two changes that were finished and never landed**
+- [x] **Land the two changes that were finished and never landed**
 
   The decisions in `.agents/changes/add-design-phase/` and
   `.agents/changes/retire-plan-decisions/` retired into `.agents/specs/payload/spec.md`
