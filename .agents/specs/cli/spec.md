@@ -562,8 +562,15 @@ equivalent. It goes when `libretto install` has been verified against a real
   line 2026-08-18: under global it never appears — `~/.claude` has no
   specification. And no specs, no row (the `models` precedent), rather than a
   disabled row with an explanation; that alternative comes back if absence
-  confuses. The row runs the plain command, because the panel's contract is
-  label = subcommand and the plain run refreshes every marked view anyway.
+  confuses. The row runs `wiki --open` — asked for 2026-08-18: a menu press ends
+  with the viewer on screen. It still dispatches the same subcommand; the plain
+  run stays what landings use.
+- **The viewer opens via `file://`, never a localhost server.** The page is
+  self-contained by contract, so the browser tab is identical and there is no
+  daemon lifetime to manage inside a panel action. Bring-back condition for
+  `--serve`: a URL someone else must reach, or a browser policy blocking
+  `file://`. The opener is the platform's own, detached with `Start` so a hung
+  handler cannot block the panel. 2026-08-18.
 - **One plain `wiki` run refreshes every marked view present.** The alternative was
   teaching `record-work` to name `--html` at landings — a second payload sentence
   that drifts from the set of outputs. The binary refreshing what it owns keeps that
@@ -1292,3 +1299,17 @@ the panel cannot keep.
   single resolution — a second `os.Getwd` would be the two-answers bug this spec
   already records.
   Proof: cmd/libretto/wiki_test.go TestPanelWikiRowOpensTheViewer
+
+- **When invoked with `--open`, the `wiki` subcommand shall write the HTML view
+  exactly as `--html` does and then invoke the opener seam with the written
+  file's path, after the write succeeds**; if the opener errors, the run shall
+  surface that error naming the written path, non-zero — the file stays, and the
+  message hands the user what to open by hand.
+  Proof: cmd/libretto/wiki_test.go TestWikiOpenGeneratesAndOpensTheViewer
+- **If generation refuses or fails, then the `--open` run shall not invoke the
+  opener.**
+  Proof: cmd/libretto/wiki_test.go TestWikiOpenDoesNotOpenOnFailure
+- **The opener argv shall name `open` on darwin and `xdg-open` on every other
+  platform**, with the file's path as the argument — a pure function, so the
+  mapping is testable without executing it.
+  Proof: cmd/libretto/wiki_test.go TestOpenerArgvPerPlatform
