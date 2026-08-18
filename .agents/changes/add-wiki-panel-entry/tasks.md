@@ -2,7 +2,7 @@
 
 Execution: build-and-check (phase 6), one fresh session per open box.
 
-- [ ] **1. The wiki row, wired end to end, with its proof** — one commit.
+- [x] **1. The wiki row, wired end to end, with its proof** — one commit.
   - Extract `findSpecsDir(projectDir) (string, bool)` from `wiki` in
     `cmd/libretto/wiki.go`, so visibility and the command share one discovery.
   - Add `projectDir` as one parameter to `dispatch` and `runCaptured` in
@@ -27,6 +27,8 @@ Execution: build-and-check (phase 6), one fresh session per open box.
     commit — including `spec-drift --anchors`, which resolves both `Proof:`
     citations only once the tests exist.
   - Waits on: nothing.
-  - Evidence: —
+  - Evidence: all six gates green on commit "feat(cli): the wiki row in the
+    panel"; the global-scope arm forced red with the condition broken, observed
+    failing with its own message, restored.
 
 The capability spec delta lands separately in the final commit; it is not a box.
