@@ -27,7 +27,7 @@ spec delta is not a box — it lands once, in the final landing commit.
   TestWikiNeverOverwritesAHandWrittenReadme forced red with the guard disabled,
   observed failing, guard restored.
 
-- [ ] 2. The regeneration paragraph in `skills/record-work/SKILL.md`'s landing step:
+- [x] 2. The regeneration paragraph in `skills/record-work/SKILL.md`'s landing step:
   where `libretto` is on PATH and a consolidated specs dir exists, run `libretto wiki`
   before the landing commit so the refreshed index rides it; where the binary is
   absent, say the wiki may be stale and continue. Bump the skill's frontmatter
@@ -37,4 +37,5 @@ spec delta is not a box — it lands once, in the final landing commit.
   `skills/record-work/SKILL.md` anchor resolves under `spec-drift --anchors`.
   Waits on: box 1 — a skill instructing sessions to run a subcommand that does not
   exist yet is an instruction that fails everywhere it is read.
-  Evidence: —
+  Evidence: all six gates green on commit "feat(payload): record-work regenerates
+  the wiki at landing".
