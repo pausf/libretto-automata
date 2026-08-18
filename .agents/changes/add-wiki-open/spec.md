@@ -36,6 +36,10 @@ Out, named:
   opens.
 - Failure ordering: generation errors surface exactly as today, and the opener is
   only reached after a successful write.
+- If the opener fails after a successful write, then the run shall report the
+  written path together with the opener's error and exit non-zero — the file
+  stays, and the message hands the user what to open by hand. (Settled
+  2026-08-18 from the cutter's finding; the builder does not decide it silently.)
 
 ## Prior decisions
 
@@ -60,7 +64,8 @@ Out, named:
 
 - When invoked with `--open`, the `wiki` subcommand shall write the HTML view
   exactly as `--html` does and then invoke the opener seam with the generated
-  file's path, after the write succeeds.
+  file's path, after the write succeeds; if the opener errors, the run shall
+  surface that error naming the written path, non-zero.
   Proof: cmd/libretto/wiki_test.go TestWikiOpenGeneratesAndOpensTheViewer
 - If generation refuses or fails, then the `--open` run shall not invoke the
   opener.
