@@ -1322,17 +1322,23 @@ the panel cannot keep.
   mapping is testable without executing it.
   Proof: cmd/libretto/wiki_test.go TestOpenerArgvPerPlatform
 
-The viewer's face is 2026's: a bento hero carrying the specification's numbers
-and an inline SVG bar chart of criteria per capability, a glass sidebar with an
-enhancement-only scroll-spy, and CSS scroll-driven motion — all behind
-`prefers-reduced-motion`, all self-contained.
+The viewer is a home of capability cards and one page per capability — not one
+infinite scroll. Minimalist and visual at once: the cards carry the numbers, a
+mini-bar and the last-changed date from git; CSS scroll-driven motion stays
+behind `prefers-reduced-motion`, all self-contained.
 
-- **The generated page shall carry a hero with the capability count and the
-  criteria total, and an inline `<svg>` bar chart with one labelled bar per
-  capability** whose width is proportional to its criteria count — zero-criteria
-  capabilities drawn at zero width, never omitted; labels truncated by rune,
-  never by byte.
-  Proof: cmd/libretto/wiki_test.go TestWikiHTMLCarriesTheBentoHeroAndChart
+- **The generated page shall carry a home section with one card per
+  capability** — each card a plain `#`-anchor showing the capability's name,
+  its criteria count, and a mini-bar whose width is proportional to the
+  project's maximum count — followed by one article per capability carrying a
+  home link, its `Governs:` line, intro and criteria; zero-criteria
+  capabilities get a card and a page like every other.
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLIsHomeAndPages
+- **Where the git seam yields a last-changed date for a spec, the card and its
+  article shall both carry it; where it yields nothing, neither shall render a
+  date and the run shall succeed unchanged** — no git, no repository, no
+  history is absence, never an error.
+  Proof: cmd/libretto/wiki_test.go TestWikiDatesComeFromGitAndDegrade
 - **The page shall declare its reading-progress and reveal animations only
   inside `prefers-reduced-motion: no-preference`**, referencing
   `animation-timeline` rather than scroll listeners for both.
@@ -1343,9 +1349,14 @@ enhancement-only scroll-spy, and CSS scroll-driven motion — all behind
   hex colour literal outside the two token blocks — components take colour only
   through `var()`.
   Proof: cmd/libretto/wiki_test.go TestWikiHTMLThemesAreTokenComplete
-- **The sidebar's entries shall remain plain `#`-anchor links, and the
-  scroll-spy shall ship as an inline script referencing `IntersectionObserver`
-  and `aria-current`, enhancement only.** Its runtime behaviour is browser-land,
-  untested by decision beside the filter and the theming; the structure is what
+- **The routing shall ship as an inline `hashchange` script toggling visibility
+  classes only — document order home-first, every article present in the
+  markup, every navigation a plain anchor** — so a JS-less render shows the
+  whole wiki and every link still lands. Its runtime behaviour is browser-land,
+  untested by decision beside the search and the theming; the structure is what
   Go pins.
-  Proof: cmd/libretto/wiki_test.go TestWikiHTMLScrollSpyIsAnEnhancement
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLRouterIsAnEnhancement
+- **The home search shall filter cards client-side by capability name and
+  criteria text**, inline and offline, over escaped render-time `data-crit`
+  attributes.
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLHomeSearchIsInline

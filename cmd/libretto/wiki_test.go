@@ -583,26 +583,6 @@ func TestOpenerArgvPerPlatform(t *testing.T) {
 	}
 }
 
-func TestWikiHTMLCarriesTheBentoHeroAndChart(t *testing.T) {
-	dir := t.TempDir()
-	specs := writeSpecs(t, dir, ".agents/specs")
-	if _, err := runWiki(t, dir, "--html"); err != nil {
-		t.Fatal(err)
-	}
-	got := wikiHTML(t, specs)
-	for _, want := range []string{
-		`class="hero"`, `class="stat"`, // the bento and its cards
-		`<svg`, `role="img"`, // the chart is markup, visible with JS off
-		`>pricing</text>`, `>checkout</text>`, // one labelled bar per capability
-		`width="100"`, // pricing: 2 criteria of max 2
-		`width="0"`,   // checkout: zero criteria, drawn, never omitted
-	} {
-		if !strings.Contains(got, want) {
-			t.Errorf("hero/chart missing %q", want)
-		}
-	}
-}
-
 func TestWikiHTMLMotionRespectsReducedMotion(t *testing.T) {
 	dir := t.TempDir()
 	specs := writeSpecs(t, dir, ".agents/specs")
@@ -679,19 +659,105 @@ func TestWikiHTMLThemesAreTokenComplete(t *testing.T) {
 	}
 }
 
-func TestWikiHTMLScrollSpyIsAnEnhancement(t *testing.T) {
+func TestWikiHTMLIsHomeAndPages(t *testing.T) {
 	dir := t.TempDir()
 	specs := writeSpecs(t, dir, ".agents/specs")
 	if _, err := runWiki(t, dir, "--html"); err != nil {
 		t.Fatal(err)
 	}
 	got := wikiHTML(t, specs)
-	if !strings.Contains(got, `class="nav-item" href="#pricing"`) {
-		t.Fatal("nav entries are no longer plain anchors — navigation must survive JS off")
-	}
-	for _, want := range []string{"IntersectionObserver", "aria-current"} {
+	for _, want := range []string{
+		`<section id="home"`,
+		`class="card" href="#pricing"`,
+		`class="card" href="#checkout"`, // zero criteria still gets a card
+		`style="width:100%"`,            // pricing: 2 of max 2
+		`style="width:0%"`,              // checkout: zero, drawn at zero
+		`<article class="cap" id="pricing"`,
+		`<article class="cap" id="checkout"`, // and a page like every other
+		`href="#home"`,                       // the way back
+	} {
 		if !strings.Contains(got, want) {
-			t.Errorf("scroll-spy script missing %q", want)
+			t.Errorf("home/pages missing %q", want)
 		}
+	}
+	if strings.Index(got, `id="home"`) > strings.Index(got, `<article`) {
+		t.Error("home is not first in document order — a JS-less render opens mid-wiki")
+	}
+}
+
+func TestWikiDatesComeFromGitAndDegrade(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	prev := wikiGitDate
+	t.Cleanup(func() { wikiGitDate = prev })
+	wikiGitDate = func(_, specPath string) string {
+		if strings.Contains(specPath, "pricing") {
+			return "2026-08-18"
+		}
+		return "" // checkout: no history — absent, never an error
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if n := strings.Count(got, "2026-08-18"); n < 2 {
+		t.Fatalf("the date should reach the card and the page, found %d occurrence(s)", n)
+	}
+	first := got
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if second := wikiHTML(t, specs); second != first {
+		t.Fatal("injected dates made two runs differ — determinism lost")
+	}
+	// Full degrade: the seam yields nothing anywhere and the run still succeeds.
+	wikiGitDate = func(_, _ string) string { return "" }
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatalf("a dateless project failed the run: %v", err)
+	}
+	if strings.Contains(wikiHTML(t, specs), "2026-08-18") {
+		t.Fatal("a stale date survived the dateless rerun")
+	}
+}
+
+func TestWikiHTMLRouterIsAnEnhancement(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	for _, want := range []string{"hashchange", "paged"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("router missing %q", want)
+		}
+	}
+	if strings.Contains(got, "<script src=") {
+		t.Fatal("router must be inline")
+	}
+	// Visibility is class-toggled only: no display juggling from JS.
+	if strings.Contains(got, ".style.display") {
+		t.Fatal("router sets styles directly instead of toggling classes")
+	}
+}
+
+func TestWikiHTMLHomeSearchIsInline(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `id="filter"`) {
+		t.Fatal("the home search input is missing")
+	}
+	if !strings.Contains(got, `data-crit="`) {
+		t.Fatal("cards carry no data-crit — the search has nothing to match criteria against")
+	}
+	if !strings.Contains(got, "shall apply the relative discount") {
+		t.Fatal("criteria text missing from the page")
+	}
+	if !strings.Contains(got, "data-crit") || !strings.Contains(got, "dataset.crit") && !strings.Contains(got, "getAttribute('data-crit')") {
+		t.Error("the search script does not read data-crit")
 	}
 }
