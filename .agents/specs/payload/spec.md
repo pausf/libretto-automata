@@ -37,6 +37,16 @@ Installing this repository gives a working flow on a machine that has nothing el
   session cannot read. The cutter returns the checklist **and what those two documents
   failed to answer**, and the second half is the only check this flow has that a plan says
   enough to be built from. It writes no file: one writer is still the orchestrator
+- **a finished change that never landed is reported, not walked past.** Phase 1 runs two
+  `rg -c` scans over every change's checklist and `rg -c` is silent for a file that did
+  not match, so a change present in the closed scan and absent from the open one has every
+  box closed and its folder still on disk — its landing did not finish. That signal sat in
+  the output unnamed while two changes shipped half-landed and phase 1 walked over the
+  state twice. It is written as a table of three outcomes rather than a paragraph, so the
+  empty open scan is a case with a name instead of an absence somebody has to notice, and
+  `/libretto-status` delegates to the same scan rather than re-deriving it. **A report,
+  never a gate**: `--retired` fires on a deletion, and the failure here is that no deletion
+  happened — there is no commit to refuse
 - **a plan cannot be deleted taking its reasoning with it.** The landing commit removes
   the change folder, and with it the alternatives table whose whole argument is that a
   diff shows what was built and nothing shows what was not built and why. `spec-drift
@@ -435,6 +445,19 @@ finding, which is the sentence the `readme` capability was created to answer abo
 
 ## Prior decisions
 
+- **The finished-and-not-landed signal is the difference between the two scans phase 1
+  already runs, never a third command.** A third scan is a third thing to keep in step
+  with the other two, and the first time they disagree the report is wrong in a way
+  nobody can see.
+- **The report stops at the signal and never checks whether the delta was applied.** That
+  means reading a capability spec and deciding whether a delta is *present* in it, which
+  is a reading — wrong in one direction it accuses a correct landing, wrong in the other
+  it clears a broken one. Zero open boxes is the signal; the user interprets it.
+- **A plan's `Durable decisions:` line is a claim about whether the list is empty, never
+  the list.** The list is the change's `spec.md` *Prior decisions*. Both readings looked
+  right and the tree held the contradiction to prove it: one plan declared "the two" over
+  a section of three, another carried no line at all. Found by a 5→6 cutter reading both
+  documents cold.
 - **`plan.md` was reused for the technical approach rather than adding a `design.md`.**
   The complaint was that the file named `plan` is not a plan; a `design.md` beside an
   unchanged `plan.md` leaves that exact file unchanged and the complaint standing.
@@ -668,6 +691,16 @@ finding, which is the sentence the `readme` capability was created to answer abo
 
 ## Verification criteria
 
+- **When** a change folder holds `tasks.md` or `plan.md` with at least one box in it and
+  none of those boxes open, phase 1 **shall** report that change as finished and not
+  landed, naming it — and the status command **shall** carry the same report by delegating
+  to that scan. **Where** the folder holds neither file, it **shall not** be reported that
+  way: a captured idea is not an unlanded change. The plan skill **shall** state that a
+  `Durable decisions:` line is a claim about whether the list is empty and not the list
+  itself. **Ceiling named:** the gate proves each mandate is *present* in its file, never
+  that a session obeyed it — that is behaviour, checked by running it, and it surfaces in
+  the 6→7 review or not at all.
+  Proof: scripts/check-payload
 - **If** a staged commit deletes a change's `plan.md` and no capability spec's *Prior
   decisions* section differs between `HEAD` and the index, **then** `spec-drift` **shall**
   fail and name the change being landed — **where** the deleted plan declared `Durable
