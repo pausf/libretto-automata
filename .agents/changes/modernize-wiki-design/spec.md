@@ -85,5 +85,11 @@ Out, named:
   `prefers-color-scheme: dark` block, and no hex colour literal outside the two
   token blocks; components take colour only through `var()`.
   Proof: cmd/libretto/wiki_test.go TestWikiHTMLThemesAreTokenComplete
+- The sidebar's entries shall remain plain `#`-anchor links — navigation with JS
+  off — and the scroll-spy shall ship as an inline script referencing
+  `IntersectionObserver` and `aria-current`, enhancement only. (Its runtime
+  behaviour is browser-land, declared untested-by-decision with the filter and
+  the theming; the structure is what Go pins.)
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLScrollSpyIsAnEnhancement
 - The redesign shall keep every existing `wiki.html` proof green, unchanged.
   Proof: cmd/libretto/wiki_test.go TestWikiHTMLWritesTheViewer
