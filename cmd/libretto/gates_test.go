@@ -207,3 +207,28 @@ func releaseRecipe(t *testing.T) string {
 	}
 	return strings.Join(body, "\n")
 }
+
+// The promise this replaces was prose: "on every push and every pull request", written
+// in the spec and asserted by nothing. It was reversed without a gate going red, and
+// the cost was three runs sitting on one apt step for over an hour each while the
+// pull_request run of the same commit went green in 1m17s.
+//
+// What the repository actually needs is coverage without duplication: every commit
+// reaches the gates exactly once. `pull_request` already fires on each push to a branch
+// with an open request, so `push` narrows to main rather than doubling every branch.
+func TestWorkflowCoversEveryCommitExactlyOnce(t *testing.T) {
+	workflow := repoFile(t, ".github/workflows/gates.yml")
+
+	if !strings.Contains(workflow, "pull_request:") {
+		t.Error("the workflow does not run on pull_request — a branch would reach the gates only after merge")
+	}
+	if !strings.Contains(workflow, "branches: [main]") {
+		t.Error("push is not narrowed to main — every commit on a branch with an open request runs the six gates twice")
+	}
+	if !strings.Contains(workflow, "cancel-in-progress: true") {
+		t.Error("no cancel-in-progress — pushing again queues a second run behind one whose result nobody wants")
+	}
+	if !strings.Contains(workflow, "timeout-minutes:") {
+		t.Error("no timeout — GitHub's default is six hours, and a hung step spends all of it unobserved")
+	}
+}

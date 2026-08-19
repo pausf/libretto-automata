@@ -6,9 +6,9 @@ The six gates, run by a machine that is not the author's, before a request can m
 
 ## Outcomes
 
-One workflow, `.github/workflows/gates.yml`, on every push and every pull request. It
-runs **the same six gates `AGENTS.md` names**, in the same order, with the same
-commands:
+One workflow, `.github/workflows/gates.yml`, reaching every commit exactly once: on
+pull requests, and on pushes to `main`. It runs **the same six gates `AGENTS.md`
+names**, in the same order, with the same commands:
 
 ```
 gofmt -l .                          must print nothing
@@ -202,6 +202,25 @@ before it can merge**.
 
 ## Prior decisions
 
+- **`push` narrowed to `main`, rather than firing on every branch.** The original read
+  "on every push and every pull request", which sounds like more safety and bought none:
+  `pull_request` already fires on each commit pushed to a branch with an open request, so
+  the two triggers ran the same six gates twice over the same tree. The duplicate was not
+  free — three push runs sat on the apt step for over an hour each while the pull_request
+  run of the same commit went green in 1m17s. A commit on a branch with no request is
+  still unchecked by this workflow, and that is the accepted cost: it reaches the gates
+  the moment a request exists, which is the moment before it can merge.
+
+- **The promise was prose, and prose is what let it reverse quietly.** "On every push and
+  every pull request" was written in this document and asserted by no test, so narrowing
+  it went green. The replacement criterion is falsifiable, and it was watched fail before
+  it was trusted to pass.
+
+- **Ceilings over a diagnosis.** The apt step's hang was never observed — GitHub serves no
+  log for a job still running, so the mirror is a suspect and nothing more. `timeout-minutes`
+  and `cancel-in-progress` bound the cost of a hang without claiming to know its cause. If
+  it recurs inside those bounds, the next move is the musl release tarball instead of apt.
+
 - **GitHub Actions, not `.gitlab-ci.yml`.** From the proposal: the remote is GitHub, so
   a GitLab file would sit in the tree looking like a gate while every request merged
   unchecked. Both files was rejected too — two definitions of one set of gates diverge,
@@ -262,6 +281,10 @@ request that is a claim rather than a fact. What can be checked here is checked 
   Proof: cmd/libretto/gates_test.go TestWorkflowRunsEveryGateAgentsNames
 - the gates workflow asks for read-only permissions
   Proof: cmd/libretto/gates_test.go TestWorkflowIsReadOnly
+- **when a commit is pushed to a branch with an open request, the gates shall run once
+  and not twice**, and a run left hanging shall be cancelled or timed out rather than
+  spending GitHub's six-hour default unobserved
+  Proof: cmd/libretto/gates_test.go TestWorkflowCoversEveryCommitExactlyOnce
 - `make gates` runs the same six commands as the workflow
   Proof: cmd/libretto/gates_test.go TestMakeGatesMatchesTheWorkflow
 - the release target runs the gates before it publishes anything
