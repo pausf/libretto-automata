@@ -45,6 +45,10 @@ the home card filter (it stays — different gesture, different scope).
   for is a knob to maintain.
 - **The index rides as JSON, not as data-attributes.** Three groups with owner
   fields outgrow attribute encoding; one parsed block is one contract.
+- **The look's definition is the builder's judgment under the existing
+  tokens.** Assumed 2026-08-19 (the cutter asked): the design canvas is a
+  conversation artifact, not a repository one, so the render-and-look closes on
+  observation against the shipped theme.
 - **The home card filter stays.** Two gestures, two scopes: the filter narrows
   cards in view, the palette searches text across pages.
 
