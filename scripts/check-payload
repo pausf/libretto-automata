@@ -287,6 +287,13 @@ check_wiring skills/write-plan/SKILL.md  'two or three approaches'      'phase 5
 check_wiring skills/write-plan/SKILL.md  'decisions\.md'                'the fork logs chosen and rejected, with why, verbatim'
 check_wiring skills/write-plan/SKILL.md  'launch one .plan-writer.'     'the plan is drafted fresh and the orchestrator writes the file'
 check_wiring commands/libretto-attacca.md 'decisions\.md'               'attacca logs every assumed answer where the writers read'
+# The three stops, as the payload spec's own ceiling names the check: the string search
+# across stop-owning skills. Presence of each stop's native question is checkable; that
+# no fourth stop exists is not — a script cannot tell a prompt from a paragraph.
+check_wiring skills/write-spec/SKILL.md   'AskUserQuestion'             'stop 1 — the contract — is asked natively'
+check_wiring skills/write-tasks/SKILL.md  'AskUserQuestion'             'stop 2 — the order, at the 5→6 seam — is asked natively'
+check_wiring skills/record-work/SKILL.md  'AskUserQuestion'             'stop 3 — the push — is asked natively'
+check_wiring agents/plan-writer.md        'tools: Read, Grep, Glob, Skill' 'plan-writer stays read-only — no Write, no Bash'
 check_wiring skills/evidence/SKILL.md    'lessons\.md'                  'evidence captures corrections into the ledger'
 check_wiring skills/evidence/SKILL.md    'Said:'                        'the capture keeps the user words, not a paraphrase'
 check_wiring skills/retro/SKILL.md       'Resolved:'                    'retro spends entries by marking, never editing'

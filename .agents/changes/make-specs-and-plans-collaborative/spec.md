@@ -116,9 +116,12 @@ corrected here, since this change rewrites those rows anyway.
    question rules, `docs/FLOW.md` the same, `commands/libretto-attacca.md` the assumed
    entries. The stop-owner drift fixed in the same pass.
 9. The `scripts/check-payload` wiring rows behind every `Proof:` above — one row per
-   criterion, named in the plan, written before the criteria can claim them. And the
-   landing note: the three-stops promise already lives in the payload spec, so applying
-   this delta merges that criterion rather than adding a second copy.
+   criterion, named in the plan, written before the criteria can claim them. And two
+   landing instructions, for the commit that applies this delta: the three-stops
+   promise already lives in the payload spec, so the criterion **merges** rather than
+   adding a second copy; and the payload spec's stop table still carries the drifted
+   row `| 5 · write-plan | yes | …` — the landing commit **rewrites it** to name the
+   5→6 seam, matching the row `docs/FLOW.md` already fixed.
 
 ## Verification criteria
 

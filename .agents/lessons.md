@@ -259,3 +259,23 @@ Did: nothing was lost — everything was committed; checked the branch back out 
 ## 2026-08-19 · wiki-flow-board · 6→7
 Said: two clauses had no test behind them — the queue block absent on a ledger-only project, and a ledger empty of valid entries yielding no article
 Did: both assertions added where their criteria live, green. Coverage gaps the builder cannot see are why the seam exists
+
+## 2026-08-19 · make-specs-and-plans-collaborative · 6→7
+
+The three-stops criterion cited scripts/check-payload while the script carried no check
+touching any stop: the citation resolved, the gate went green, and the clause was tested
+by nothing — after a plan that promised one row per criterion. Fixed in this pass: the
+string search the payload spec's own ceiling names, one row per stop-owning skill.
+
+## 2026-08-19 · make-specs-and-plans-collaborative · 6→7
+
+Criterion 6's tools clause ("Read, Grep, Glob, Skill and nothing else") had no check
+behind its citation — the gate validates agent name:/description: and never reads
+tools:. Fixed in this pass: a wiring row pins plan-writer's frontmatter tool list.
+
+## 2026-08-19 · make-specs-and-plans-collaborative · 6→7
+
+The payload spec's drifted stop-table row was carried only by a sentence in the delta's
+scope boundaries, so whether landing fixed it depended on the landing author reading
+that sentence. Fixed in this pass: task 9 now instructs the landing commit explicitly —
+merge the three-stops criterion, rewrite the drifted row.
