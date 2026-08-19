@@ -53,7 +53,7 @@ the plan mandates this per row.
   all six gates green.
   Waits on: 1 (the fork writes to the log).
 
-- [ ] **5. `agents/plan-writer.md`, and `write-plan` delegates to it.**
+- [x] **5. `agents/plan-writer.md`, and `write-plan` delegates to it.**
   One box: the new agent (tools `Read, Grep, Glob, Skill` and nothing else, cloned
   from `task-cutter`'s you-know-nothing posture; inputs by path — delta spec,
   capability spec, `proposal.md`, `decisions.md`; invokes `write-plan` for the

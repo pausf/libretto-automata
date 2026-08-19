@@ -45,6 +45,7 @@ specification is [SPEC.md](SPEC.md). This page is only what ships.
 
 | | |
 |---|---|
+| `plan-writer` | Drafts one change's plan from its spec, its proposal and its decision log. Phase 5 of the Libretto flow — launched fresh, once, with none of the conversation that produced the decisions. Returns the plan markdown and what the inputs failed to answer. |
 | `review-lens-design` | The design lens of review-project. Reads one frozen diff for over-engineering, YAGNI and KISS violations, SOLID breaches and the wrong abstraction — every finding a labelled judgment call. |
 | `review-lens-intent` | The intent lens of review-project. Reads one frozen diff against the PR/MR's own stated intent and asks whether the change does what it says. The only lens that runs commands, and the only one whose brief carries forge payload. |
 | `review-lens-reliability` | The reliability lens of review-project. Reads one frozen diff for what breaks at runtime — logic errors, edge cases, races, unbounded work, error paths that lose data. |

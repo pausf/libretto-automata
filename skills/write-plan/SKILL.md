@@ -58,6 +58,25 @@ made for survives, the silence did not.
 taken and logged in `decisions.md` with the `(assumed)` suffix, naming what changes if
 it is wrong — the same rule as every question attacca answers in advance.
 
+## The drafting runs in a fresh subagent
+
+The fork above and this launch are **the orchestrator's conduct** — a `plan-writer`
+invoking this skill for the document's shape starts at *What goes in it* and follows
+nothing above that heading.
+
+With the approach chosen and logged, **launch one `plan-writer`**: the change's spec
+delta, the capability spec it targets, `proposal.md` and `decisions.md`, each by path,
+plus the standing rules restated verbatim — no commit, no push, no file written, its
+questions in its return value. It drafts the plan the same way `task-cutter` cuts the
+checklist one seam later, and for the same reason: the session that argued its way to
+an approach cannot tell what it wrote down from what it merely decided, and it drafts
+against the argument. The writer can only draft what the log actually carries — which
+is the first check the fork's record gets.
+
+**Read what it failed to answer before writing anything.** A gap goes back to the fork
+or to the contract; it never gets drafted over. Then the orchestrator writes `plan.md`
+from the returned markdown — one writer, the same rule as `tasks.md`.
+
 ## What goes in it
 
 Six things. The fourth and the sixth are the ones that get skipped, and they are the two
