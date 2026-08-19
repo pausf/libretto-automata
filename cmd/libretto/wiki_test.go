@@ -995,3 +995,141 @@ func TestWikiFooterMeasuresGovernedTree(t *testing.T) {
 		t.Fatal("a gitless project still renders the footer")
 	}
 }
+
+func TestWikiPageCarriesTheActivitySparkline(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	pd, pdd := wikiGitDates, wikiGitDate
+	t.Cleanup(func() { wikiGitDates, wikiGitDate = pd, pdd })
+	wikiGitDates = func(_, p string) []string {
+		if strings.Contains(p, "pricing") {
+			return []string{"2026-08-18", "2026-08-02", "2026-06-11", "2026-01-01"}
+		}
+		return nil
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `class="spark"`) {
+		t.Fatal("sparkline missing")
+	}
+	// Window is the 8 months ending 2026-08: aug has 2 commits (max → 18), jun 1 (9);
+	// 2026-01 falls outside and must not widen anything.
+	if !strings.Contains(got, `height="18"`) || !strings.Contains(got, `height="9"`) {
+		t.Fatal("bar heights are not proportional to monthly counts")
+	}
+	if n := strings.Count(got, `class="spark"`); n != 1 {
+		t.Fatalf("dateless capabilities grew sparklines: %d", n)
+	}
+}
+
+func TestWikiCriteriaCarryProofChips(t *testing.T) {
+	dir := t.TempDir()
+	specs := healthFixture(t, dir)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `class="chip ok"`) {
+		t.Error("no green chip for a resolving EARS criterion")
+	}
+	if !strings.Contains(got, "pkg/solid_test.go · TestHold") {
+		t.Error("the chip does not name file and test")
+	}
+	if !strings.Contains(got, `class="chip warn"`) {
+		t.Error("no amber chip for the pre-EARS / unresolving criteria")
+	}
+	// A command citation names the file alone — no separator dangling.
+	if strings.Contains(got, "scripts/check ·") {
+		t.Error("a testless citation grew a dangling separator")
+	}
+}
+
+func TestWikiPageSurfacesPriorDecisions(t *testing.T) {
+	dir := t.TempDir()
+	specs := filepath.Join(dir, ".agents", "specs", "seasoned")
+	if err := os.MkdirAll(specs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	spec := "# Seasoned\n\nIntro line.\n\n## Prior decisions\n\n" +
+		"- **The clone is resolved in four rungs.** Long story.\n" +
+		"- Second decision.\n- Third decision.\n- Fourth decision.\n\n" +
+		"## Verification criteria\n\n- The system shall s.\n  Proof: scripts/check\n"
+	if err := os.WriteFile(filepath.Join(specs, "spec.md"), []byte(spec), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "scripts", "check"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, filepath.Join(dir, ".agents", "specs"))
+	for _, want := range []string{`class="decisions"`, "The clone is resolved in four rungs.", "· 4"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("decisions block missing %q", want)
+		}
+	}
+	if strings.Contains(got, "Fourth decision") {
+		t.Error("more than three decision bullets rendered")
+	}
+	if strings.Index(got, `class="decisions"`) > strings.Index(got, `class="crit"`) {
+		t.Error("decisions are not above the criteria")
+	}
+	// A spec with no such section grows no block.
+	dir2 := t.TempDir()
+	specs2 := writeSpecs(t, dir2, ".agents/specs")
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs2), `class="decisions"`) {
+		t.Fatal("a spec without the section still grew a decisions block")
+	}
+}
+
+func TestWikiPageLinksRelatedCapabilities(t *testing.T) {
+	dir := t.TempDir()
+	specs := filepath.Join(dir, ".agents", "specs")
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Join(specs, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(specs, name, "spec.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("alpha", "# Alpha\n\nAlpha leans on Beta twice: beta owns the writes. Betamax is a word.\nAlpha names alpha itself.\n")
+	write("beta", "# Beta\n\nStands alone here.\n")
+	write("gamma", "# Gamma\n\nMentions nobody.\n")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	alpha := got[strings.Index(got, `<article class="cap" id="alpha"`):strings.Index(got, `<article class="cap" id="beta"`)]
+	if !strings.Contains(alpha, `class="related"`) || strings.Count(alpha, `href="#beta"`) != 1 {
+		t.Fatalf("alpha should link beta exactly once:\n%s", alpha)
+	}
+	if strings.Contains(alpha, `href="#alpha"`) {
+		t.Error("a page linked itself")
+	}
+	gamma := got[strings.Index(got, `<article class="cap" id="gamma"`):]
+	if strings.Contains(gamma, `class="related"`) {
+		t.Error("a mentionless page grew a related row")
+	}
+	// "Betamax" must not have been what linked beta — remove the real mentions
+	// and the row must vanish despite the substring.
+	write("alpha", "# Alpha\n\nBetamax is a word. Nothing else.\n")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got2 := wikiHTML(t, specs)
+	alpha2 := got2[strings.Index(got2, `<article class="cap" id="alpha"`):strings.Index(got2, `<article class="cap" id="beta"`)]
+	if strings.Contains(alpha2, `class="related"`) {
+		t.Fatal("a substring match linked a capability — the boundary is not held")
+	}
+}
