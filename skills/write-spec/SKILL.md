@@ -342,11 +342,12 @@ Every spec has all six, explicitly, with headings. A pillar left vague is not
 brevity — it is a gap that gets filled later by whoever is typing, from
 association rather than intent.
 
-**Draft them, then hold the file until step 4 has its answers.** Drafting is what
-surfaces the questions worth asking — a boundary the request left open, two precedents
-with nothing choosing between them — and an answer that arrives after the file exists
-gets bolted onto a contract instead of shaping it. The steps are numbered 3 then 4
-because the *thinking* runs in that order; the writing happens once, after both.
+**Think them, then hold the file until step 4's interview has its answers.** Thinking
+the pillars through is what surfaces the questions worth asking — a boundary the request
+left open, two precedents with nothing choosing between them — and an answer that
+arrives after the file exists gets bolted onto a contract instead of shaping it. The
+steps are numbered 3 then 4 because the *thinking* runs in that order; the writing
+happens once, after both.
 
 ### Outcomes
 
@@ -536,11 +537,20 @@ Some things are genuinely not yours to decide: a product tradeoff, a convention
 with two live precedents in the codebase, anything where guessing wrong quietly
 breaks working behaviour.
 
-**Ask them in one `AskUserQuestion` call — one conversational message where the
-native prompt does not exist — before the file is written.** Each with
-the option you recommend, the real alternatives, and room to answer differently.
+**Ask them as an interview: one question per `AskUserQuestion` call — one
+conversational message where the native prompt does not exist — before the file is
+written.** Each question carries the option you recommend *with the reason it is
+recommended*, the real alternatives, room to answer differently — and **"no more
+questions" as an option, always**, so the user ends the interview whenever the
+remaining ones are not worth their time.
 
-Drafting the six pillars is what surfaces them — a boundary the request left open, a
+One at a time is the point, not an inefficiency: each answer can redirect the next
+question, which is the difference between an interview and a form. A batched call asks
+everything the first draft thought of; an interview asks what the last answer made
+worth asking. Log each answer — verbatim, into `decisions.md` — before the next
+question goes out.
+
+Thinking the six pillars is what surfaces them — a boundary the request left open, a
 scope decision that changes what gets built, two precedents with nothing choosing
 between them. So the questions come after step 3's thinking and before step 3's
 file. **The answers belong inside the contract, not bolted onto it afterwards.**
@@ -552,10 +562,13 @@ nobody reviews. When in doubt about whether a question is worth it, ask it: a
 question is cheaper than a contract that is confidently wrong, and better asked out
 of caution than swallowed out of fear.
 
-**The bound is judgment, and it cuts both ways.** Every question must be one a
-wrong guess would make expensive — never a form-length interrogation of things the
-code already answers. A dozen questions is not thoroughness, it is the phase
-handing its own job back; three sharp ones beat ten a reader skims.
+**The bound is judgment around five, and it cuts both ways.** Five is a soft target,
+not a quota and not a ceiling: stop earlier when the answers have settled everything,
+run past it when a wrong guess would cost more than the question does. Every question
+must be one a wrong guess would make expensive — never a form-length interrogation of
+things the code already answers. A dozen questions is not thoroughness, it is the phase
+handing its own job back; three sharp ones beat ten a reader skims — and now each one
+costs a round trip, which is one more reason to make it sharp.
 
 **Zero is a legitimate answer, and it is reported in one line.** When the code and
 the proposal already settle everything, say so and write the spec. A quota
@@ -563,12 +576,16 @@ manufactures questions the code answers, which `AGENTS.md` forbids in as many wo
 and a question whose only available answer is "yes, carry on" is a round trip charged
 for a rubber stamp.
 
-**One call, never a string of turns.** Serial round trips to build one contract is
-the ceremony this flow spends its length arguing against.
+This used to be one batched call, and the sequence is deliberate. The batch was cheap
+but it interviewed nobody: all its questions came from the same draft, none could build
+on an answer, and the user met them as a form. The soft bound and the standing "no
+more" option are what keep the sequence from becoming the serial ceremony this flow
+spends its length arguing against — the user can always collapse it to zero.
 
-**The answers go into the spec**, under prior decisions, next to what each one
-settled, attributed and dated. An answer that lives only in the conversation gets
-asked again next session, and the second answer will not always match the first.
+**The answers go to `decisions.md` verbatim as they arrive, and into the spec** under
+prior decisions, next to what each one settled, attributed and dated. An answer that
+lives only in the conversation gets asked again next session, and the second answer
+will not always match the first.
 
 **Phase 2 is the only phase that asks this way.** The 5→6 seam stops for the approach and the order, and
 what waits on what; it does not open a second tranche of questions. The contract is
@@ -581,8 +598,9 @@ The trivial lane asks nothing: step 0 answered *no spec needed*, so there is no
 contract to disagree about and nothing to ask about it.
 
 **Under `/libretto-attacca` the questions are not asked either — they are answered and
-marked.** For each one, take the option you would have recommended, write it under prior
-decisions **marked as assumed**, name what changes if it is wrong, and carry on. Never a
+marked.** For each one, take the option you would have recommended, log it in
+`decisions.md` with the `(assumed)` suffix, write it under prior decisions **marked as
+assumed**, name what changes if it is wrong, and carry on. Never a
 default left silent, and never a guess written as though it were settled. The questions
 that would have been asked are the ones that must be findable afterwards, because nobody was
 there to answer them. The command carries why, and what it costs.

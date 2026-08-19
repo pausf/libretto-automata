@@ -15,7 +15,7 @@ the plan mandates this per row.
   `skills/write-spec/SKILL.md · decisions.md`, forced red once; all six gates green.
   Waits on: nothing.
 
-- [ ] **2. The phase 2 interview in `write-spec`.**
+- [x] **2. The phase 2 interview in `write-spec`.**
   Step 4 rewritten from one batched call to one question per `AskUserQuestion` call,
   recommendation with its reason first, "no more questions" always an option, soft
   bound around five with judgment both ways, each answer logged before the next
