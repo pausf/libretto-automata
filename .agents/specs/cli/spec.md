@@ -540,6 +540,11 @@ equivalent. It goes when `libretto install` has been verified against a real
   panel branch checks `isatty` and so cannot be entered from a test; a decision left
   inline there is a decision no criterion can reach. They exist to be callable, not to
   abstract anything, and a second caller is not expected.
+- **The palette is substring search over one JSON block; the card filter keeps
+  its own gesture.** Assumed 2026-08-19 under attacca: no fuzzy ranking until
+  substring demonstrably fails a real search, and the palette opens by shortcut
+  or its own button — the reviewer caught a click wiring that collapsed the two
+  gestures, and the separate button is the recorded repair.
 - **Sparkline buckets anchor to the last commit's month, never to today.**
   A now-anchored histogram changes bytes at each month boundary with unchanged
   history. 2026-08-19.
@@ -1437,3 +1442,20 @@ sources, absent when the data is.
   shall be absent. (The match rule is assumed 2026-08-19 under attacca; smarter
   linking waits for a real false positive.)
   Proof: cmd/libretto/wiki_test.go TestWikiPageLinksRelatedCapabilities
+
+The palette searches the whole contract, offline, from one block.
+
+- **The generated page shall carry one `application/json` index block that
+  parses as JSON and holds three groups — criteria, decisions, capabilities —
+  each entry naming its owning capability and its text**, built from the same
+  extraction the pages render.
+  Proof: cmd/libretto/wiki_test.go TestWikiCarriesTheSearchIndex
+- **The page shall carry the palette overlay hidden by default and an inline
+  script that reads the index block, listens on `keydown`, and navigates by
+  setting the location hash** — no external script, classes over style
+  juggling; opened by shortcut or by its own button, never by a click on the
+  card filter, which keeps its own gesture.
+  Proof: cmd/libretto/wiki_test.go TestWikiPaletteIsInlineAndDormant
+- **Spec content in the index shall arrive JSON-encoded such that a criterion
+  containing a closing script tag cannot terminate the block or execute.**
+  Proof: cmd/libretto/wiki_test.go TestWikiSearchIndexEscapesContent
