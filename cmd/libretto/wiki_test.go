@@ -923,6 +923,34 @@ func TestWikiHomeMeasuresContractHealth(t *testing.T) {
 			t.Errorf("health bar missing %q", want)
 		}
 	}
+
+	// A total that does not divide evenly distinguishes the remainder rule from
+	// independent rounding: 2 of 3 is 66 green and 34 amber, never 33.
+	dir2 := t.TempDir()
+	specs2 := filepath.Join(dir2, ".agents", "specs", "trio")
+	if err := os.MkdirAll(specs2, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	trio := "# Trio\n\n## Verification criteria\n\n" +
+		"- The system shall a.\n  Proof: scripts/check\n" +
+		"- The system shall b.\n  Proof: scripts/check\n" +
+		"- plain prose c\n  Proof: scripts/check\n"
+	if err := os.WriteFile(filepath.Join(specs2, "spec.md"), []byte(trio), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir2, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir2, "scripts", "check"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got2 := wikiHTML(t, filepath.Join(dir2, ".agents", "specs"))
+	if !strings.Contains(got2, "width:66%") || !strings.Contains(got2, "width:34%") {
+		t.Fatal("the amber width is not the remainder — the bar does not close at 100")
+	}
 }
 
 func TestWikiCardsCarryTheHealthDot(t *testing.T) {

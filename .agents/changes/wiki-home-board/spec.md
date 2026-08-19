@@ -77,9 +77,10 @@ absolute dates only); any new dependency; blocking on any advisory number.
   closed/total box count, and the count of queued proposals (a `proposal.md` carrying a `Queued:` line); where there are
   none, the strip shall be absent.
   Proof: cmd/libretto/wiki_test.go TestWikiHomeCarriesTheInFlightStrip
-- The home shall carry a segmented health bar whose green and amber widths are
-  the integer percentages of criteria with and without `shall` (emphasis
-  stripped), and the count of criteria whose cited proof does not resolve — a
+- The home shall carry a segmented health bar whose green width is the integer
+  division of `shall`-carrying criteria (emphasis stripped) over the total, and
+  whose amber width is the remainder to 100 — the bar always closes — and the
+  count of criteria whose cited proof does not resolve — a
   proof resolving meaning the cited file exists and, when a test is named, the
   file declares it.
   Proof: cmd/libretto/wiki_test.go TestWikiHomeMeasuresContractHealth

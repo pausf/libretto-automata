@@ -231,3 +231,7 @@ Did: hardened to name-set comparison, green
 ## 2026-08-18 · wiki-pages-redesign · 6→7
 Said: TestWikiHTMLIsHomeAndPages asserts home/cards/back but not the Governs/intro/criteria its own clause promises — covered only by a different criterion's proof
 Did: added the three article assertions so the citation covers its whole clause, green. The half-a-clause pattern, third catch this branch
+
+## 2026-08-19 · wiki-home-board · 6→7
+Said: criterion 3 reads as two independent integer percentages while the code and the recorded decision use amber-as-remainder — and the 75/25 fixture cannot tell the readings apart
+Did: criterion rewritten to carry the remainder rule; a 2-of-3 subcase (66/34) added so the proof distinguishes it. A decision and its criterion can disagree inside one delta
