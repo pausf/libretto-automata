@@ -207,3 +207,67 @@ func releaseRecipe(t *testing.T) string {
 	}
 	return strings.Join(body, "\n")
 }
+
+// The promise this replaces was prose: "on every push and every pull request", written
+// in the spec and asserted by nothing. It was reversed without a gate going red, and
+// the cost was three runs sitting on one apt step for over an hour each while the
+// pull_request run of the same commit went green in 1m17s.
+//
+// What the repository actually needs is coverage without duplication: every commit
+// reaches the gates exactly once. `pull_request` already fires on each push to a branch
+// with an open request, so `push` narrows to main rather than doubling every branch.
+func TestWorkflowCoversEveryCommitExactlyOnce(t *testing.T) {
+	workflow := repoFile(t, ".github/workflows/gates.yml")
+
+	if !strings.Contains(workflow, "pull_request:") {
+		t.Error("the workflow does not run on pull_request — a branch would reach the gates only after merge")
+	}
+	if !strings.Contains(workflow, "branches: [main]") {
+		t.Error("push is not narrowed to main — every commit on a branch with an open request runs the six gates twice")
+	}
+	if !strings.Contains(workflow, "cancel-in-progress: true") {
+		t.Error("no cancel-in-progress — pushing again queues a second run behind one whose result nobody wants")
+	}
+	if !strings.Contains(workflow, "timeout-minutes:") {
+		t.Error("no timeout — GitHub's default is six hours, and a hung step spends all of it unobserved")
+	}
+}
+
+// `apt-get install ripgrep` is what the workflows used to run, and the runner's default
+// mirror — azure.archive.ubuntu.com — stopped answering. apt retries an unreachable
+// mirror rather than failing, so the step hung: over an hour before a timeout existed,
+// and a 3-minute red with a log full of `Ign:` once one did. Observed on run
+// 32233763307, which is what turned the mirror from a suspect into the cause.
+//
+// The upstream musl binary needs no mirror and no package index. Asserted because a
+// future edit reaching for apt is the natural thing to do and reintroduces the hang.
+func TestWorkflowsInstallRipgrepWithoutApt(t *testing.T) {
+	for _, name := range []string{".github/workflows/gates.yml", ".github/workflows/release.yml"} {
+		workflow := repoFile(t, name)
+		// The comment above the step names `apt-get` to say why it is not used. A
+		// substring test that reads comments reports the explanation as the offence.
+		commands := uncommented(workflow)
+
+		if strings.Contains(commands, "apt-get") {
+			t.Errorf("%s installs through apt — the runner's default mirror hangs rather than failing", name)
+		}
+		if !strings.Contains(commands, "releases/download/${RG_VERSION}") {
+			t.Errorf("%s does not fetch the pinned ripgrep release binary", name)
+		}
+		if strings.Contains(commands, "releases/latest") {
+			t.Errorf("%s tracks the latest ripgrep release — an unpinned third party choosing what runs in CI", name)
+		}
+	}
+}
+
+// uncommented drops YAML comment lines, so a test asserting on what a workflow RUNS is
+// not answered by what it EXPLAINS.
+func uncommented(workflow string) string {
+	var kept []string
+	for _, line := range strings.Split(workflow, "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "#") {
+			kept = append(kept, line)
+		}
+	}
+	return strings.Join(kept, "\n")
+}

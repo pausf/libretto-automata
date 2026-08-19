@@ -6,9 +6,9 @@ The six gates, run by a machine that is not the author's, before a request can m
 
 ## Outcomes
 
-One workflow, `.github/workflows/gates.yml`, on every push and every pull request. It
-runs **the same six gates `AGENTS.md` names**, in the same order, with the same
-commands:
+One workflow, `.github/workflows/gates.yml`, reaching every commit exactly once: on
+pull requests, and on pushes to `main`. It runs **the same six gates `AGENTS.md`
+names**, in the same order, with the same commands:
 
 ```
 gofmt -l .                          must print nothing
@@ -202,6 +202,41 @@ before it can merge**.
 
 ## Prior decisions
 
+- **`push` narrowed to `main`, rather than firing on every branch.** The original read
+  "on every push and every pull request", which sounds like more safety and bought none:
+  `pull_request` already fires on each commit pushed to a branch with an open request, so
+  the two triggers ran the same six gates twice over the same tree. The duplicate was not
+  free — three push runs sat on the apt step for over an hour each while the pull_request
+  run of the same commit went green in 1m17s. A commit on a branch with no request is
+  still unchecked by this workflow, and that is the accepted cost: it reaches the gates
+  the moment a request exists, which is the moment before it can merge.
+
+- **The promise was prose, and prose is what let it reverse quietly.** "On every push and
+  every pull request" was written in this document and asserted by no test, so narrowing
+  it went green. The replacement criterion is falsifiable, and it was watched fail before
+  it was trusted to pass.
+
+- **A reversed promise here was labelled `release:patch`, deliberately.** The bump table
+  reads "a promise removed or reversed" as a minor, and this reversed one. The call was
+  that the table means the tool's contract — `install`, `prune`, a skill's guarantee —
+  and this document describes how the repository checks itself, which no user of the CLI
+  depends on. Recorded because the table read mechanically says minor, so the next person
+  to hit this will otherwise re-derive the argument from scratch.
+
+- **The ceiling is what produced the diagnosis.** The hang was invisible for as long as it
+  was unbounded: GitHub serves no log for a job still running, so an hour of hanging was an
+  hour of no evidence. The first run with `timeout-minutes` failed in three minutes and
+  handed over the log — `azure.archive.ubuntu.com` answering nothing, apt retrying it rather
+  than failing, every line an `Ign:` (run 32233763307). A ceiling is not a workaround here;
+  it is what turned a suspect into a cause.
+
+- **ripgrep comes from its own release, not from apt.** apt treats an unreachable mirror as
+  something to retry, which is correct for a desktop and wrong for CI, where a step that
+  cannot finish should end rather than wait. The upstream musl binary needs no mirror, no
+  package index and no dpkg lock, and it is fetched from the host the job is already talking
+  to. The version is pinned: `releases/latest` hands a third party the choice of what runs in
+  every gate, and `--retry 3` covers the transient case without covering an outage.
+
 - **GitHub Actions, not `.gitlab-ci.yml`.** From the proposal: the remote is GitHub, so
   a GitLab file would sit in the tree looking like a gate while every request merged
   unchecked. Both files was rejected too — two definitions of one set of gates diverge,
@@ -262,6 +297,13 @@ request that is a claim rather than a fact. What can be checked here is checked 
   Proof: cmd/libretto/gates_test.go TestWorkflowRunsEveryGateAgentsNames
 - the gates workflow asks for read-only permissions
   Proof: cmd/libretto/gates_test.go TestWorkflowIsReadOnly
+- **when a workflow needs `rg`, it shall fetch a pinned release binary and shall not reach
+  for apt**, whose response to an unreachable mirror is to retry it until the step is killed
+  Proof: cmd/libretto/gates_test.go TestWorkflowsInstallRipgrepWithoutApt
+- **when a commit is pushed to a branch with an open request, the gates shall run once
+  and not twice**, and a run left hanging shall be cancelled or timed out rather than
+  spending GitHub's six-hour default unobserved
+  Proof: cmd/libretto/gates_test.go TestWorkflowCoversEveryCommitExactlyOnce
 - `make gates` runs the same six commands as the workflow
   Proof: cmd/libretto/gates_test.go TestMakeGatesMatchesTheWorkflow
 - the release target runs the gates before it publishes anything

@@ -8,9 +8,19 @@ name: gates
 # Read-only. Nothing here pushes, comments, formats or commits — a workflow that can
 # write is a workflow that can be made to write.
 
+# A branch with an open PR is pushed to and reviewed on the same commits. Firing on
+# both events runs every gate twice for nothing, and the duplicate is what starves the
+# runner: three push runs sat on `install ripgrep` for over an hour while the
+# pull_request run of the same commit went green in 1m17s.
 on:
   push:
+    branches: [main]
   pull_request:
+
+# Push again mid-run and the older run is dead work. Kill it rather than queue it.
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -18,6 +28,9 @@ permissions:
 jobs:
   gates:
     runs-on: ubuntu-latest
+    # These gates take under two minutes. Anything past ten is a hung step, and a hung
+    # step with no ceiling burns the six-hour default before anybody reads it.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -29,8 +42,24 @@ jobs:
 
       # check-payload and spec-drift are bash and both shell out to rg. Without it
       # they fail for a reason that has nothing to do with the code under test.
+      # Not `apt-get install ripgrep`. The runner's default mirror is
+      # `azure.archive.ubuntu.com`, and when it stops answering apt retries it rather
+      # than failing — observed on run 32233763307, every line an `Ign:`, until the step
+      # timed out. Before the timeout existed the same hang spent over an hour.
+      #
+      # The upstream musl binary needs no mirror, no apt lock and no package index, and
+      # it comes from the host this job is already talking to. Pinned: an unpinned
+      # `latest` is a third party choosing what runs in CI.
       - name: install ripgrep
-        run: sudo apt-get update && sudo apt-get install -y ripgrep
+        timeout-minutes: 2
+        env:
+          RG_VERSION: "15.2.0"
+        run: |
+          set -euo pipefail
+          url="https://github.com/BurntSushi/ripgrep/releases/download/${RG_VERSION}/ripgrep-${RG_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 "$url" \
+            | sudo tar -xz --strip-components=1 -C /usr/local/bin --wildcards '*/rg'
+          rg --version
 
       # `gofmt -l` prints the unformatted files and exits ZERO. A step written as
       # `run: gofmt -l .` is green on a repository nobody has formatted: the gate is
