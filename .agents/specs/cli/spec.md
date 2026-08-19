@@ -540,6 +540,9 @@ equivalent. It goes when `libretto install` has been verified against a real
   panel branch checks `isatty` and so cannot be entered from a test; a decision left
   inline there is a decision no criterion can reach. They exist to be callable, not to
   abstract anything, and a second caller is not expected.
+- **Sparkline buckets anchor to the last commit's month, never to today.**
+  A now-anchored histogram changes bytes at each month boundary with unchanged
+  history. 2026-08-19.
 - **The wiki's numbers are advisory mirrors; spec-drift and the loop stay the
   authorities.** Assumed 2026-08-19 under attacca: the Go checks reimplement the
   minimal definitions the wiki displays (criterion = bullet with `Proof:`
@@ -1410,3 +1413,27 @@ never a second authority and never a gate.
   bash-case semantics — `*` crosses directory separators — because two matching
   authorities would disagree exactly when it matters.
   Proof: cmd/libretto/wiki_test.go TestWikiFooterMeasuresGovernedTree
+
+The capability page carries its own history and its proof, from the same
+sources, absent when the data is.
+
+- **Where the dates seam yields commit dates for a spec, the page shall carry a
+  sparkline of monthly commit counts** — eight buckets ending at the most recent
+  commit's month, never the clock's, bar heights proportional — and shall omit
+  it when the seam yields nothing.
+  Proof: cmd/libretto/wiki_test.go TestWikiPageCarriesTheActivitySparkline
+- **Each criterion on a page shall carry a chip naming its cited proof file
+  and, when one is named, its test** — green where the criterion carries
+  `shall` and its proof resolves, amber otherwise, one definition of resolving
+  shared with the home board.
+  Proof: cmd/libretto/wiki_test.go TestWikiCriteriaCarryProofChips
+- **Where a spec holds a `Prior decisions` section, the page shall render up to
+  its first three bullets with the section's total count, above the criteria**;
+  where it holds none, the block shall be absent.
+  Proof: cmd/libretto/wiki_test.go TestWikiPageSurfacesPriorDecisions
+- **Where a spec file's raw text mentions another capability's name on a
+  case-insensitive word boundary, the page shall carry a Related row linking
+  each mentioned capability once, never itself**; with no mentions the row
+  shall be absent. (The match rule is assumed 2026-08-19 under attacca; smarter
+  linking waits for a real false positive.)
+  Proof: cmd/libretto/wiki_test.go TestWikiPageLinksRelatedCapabilities
