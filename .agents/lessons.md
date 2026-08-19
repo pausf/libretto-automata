@@ -243,3 +243,15 @@ Did: guarded the anchor like the loop, one line. The reviewer question that cost
 ## 2026-08-19 · wiki-command-palette · 6→7
 Said: the look opened the page from a throwaway worktree that was removed seconds later — the user clicked into ERR_FILE_NOT_FOUND
 Did: reopened from the surviving scratchpad copy; from now on the look copies OUT of the worktree first and opens the copy
+
+## 2026-08-19 · wiki-command-palette · 6→7
+Said: click on the one search input opened the palette, so a mouse user could never type into the card filter — the recorded two-gestures decision collapsed into one
+Did: the click moved to its own visible palette button beside the filter, which is what the plan step 4 described; palette and filter tests re-run green
+
+## 2026-08-19 · wiki-command-palette · 6→7
+Said: the keep-green constraint did not hold literally — one existing assertion was narrowed to its criterion scope because the index now legitimately carries every decision
+Did: nothing further; the deviation was disclosed in the box evidence when it happened and the narrowed assertion still tests the original promise. Recorded so the count is honest
+
+## 2026-08-19 · wiki-command-palette · 6→7
+Said: the fresh reviewer left the shared checkout on main; the seam fix then edited a file that did not exist there
+Did: nothing was lost — everything was committed; checked the branch back out and redid the edit. Reviewer prompts now must say: do not switch branches in the shared checkout

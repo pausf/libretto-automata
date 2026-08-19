@@ -406,7 +406,8 @@ func renderWikiHTML(projectDir string, caps []wikiCapability) []byte {
 		}
 		b.WriteString("</div>\n")
 	}
-	b.WriteString("<input id=\"filter\" type=\"search\" placeholder=\"Filter capabilities and criteria…\" aria-label=\"Filter capabilities and criteria\">\n")
+	b.WriteString("<div class=\"searchrow\"><input id=\"filter\" type=\"search\" placeholder=\"Filter capabilities and criteria…\" aria-label=\"Filter capabilities and criteria\">" +
+		"<button id=\"palette-open\" type=\"button\" aria-label=\"Search everything\">⌘K</button></div>\n")
 	b.WriteString("<div class=\"cards\">\n")
 	for _, c := range caps {
 		texts := make([]string, 0, len(c.criteria))
@@ -521,6 +522,10 @@ font-size:clamp(2rem,5vw,2.8rem);margin:0 0 .3rem;text-wrap:balance}
 border:1px solid var(--line);border-radius:10px;background:var(--panel);
 color:var(--ink);font:inherit;font-size:.92rem}
 #filter:focus{outline:2px solid var(--accent);outline-offset:1px}
+.searchrow{display:flex;gap:.5rem;align-items:center;margin:0 0 1.6rem;max-width:26rem}
+.searchrow #filter{margin:0;flex-grow:1}
+#palette-open{font:500 .78rem "IBM Plex Mono",monospace;color:var(--ink-soft);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.5rem .7rem;cursor:pointer}
+#palette-open:hover,#palette-open:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.8rem}
 .card{display:flex;flex-direction:column;gap:.55rem;padding:1rem 1.1rem;
 background:var(--panel);border:1px solid var(--line);border-radius:14px;
@@ -670,7 +675,8 @@ addEventListener('keydown',e=>{
 pin&&pin.addEventListener('input',()=>prender(pin.value));
 pal&&pal.addEventListener('click',e=>{if(e.target===pal)pclose()});
 const input=document.getElementById('filter');
-input.addEventListener('click',popen);
+const pbtn=document.getElementById('palette-open');
+pbtn&&pbtn.addEventListener('click',popen);
 input.addEventListener('input',()=>{
   const q=input.value.trim().toLowerCase();
   document.querySelectorAll('.card').forEach(card=>{
