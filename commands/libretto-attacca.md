@@ -22,7 +22,7 @@ gate is not unattended, it is unverified.
 | At | Under this command |
 |---|---|
 | 2–3 · the contract stop | **answered** — the spec is written, committed and reported, and the flow carries on |
-| 5 · the order stop | **answered** — same |
+| 5→6 · the order stop | **answered** — same |
 | 8 · push and open the request | **answered yes**, both halves |
 | a failing gate, twice on one task | **stops** — and two stopped tasks stops the session, unchanged |
 | a missing or unauthenticated `jira`, `gh`, `glab` | **stops** — the input never arrived; there is nothing to assume |
@@ -39,14 +39,18 @@ that is the difference this command is entirely built out of.
 
 ## A question it cannot derive becomes an assumption, never a prompt
 
-When a phase hits something no reading of the code settles — a product tradeoff, two live
-precedents, anything phase 4 would have asked — it takes the option it would have
-recommended and writes it down in three places:
+When a phase hits something no reading of the code settles — phase 2's interview, a
+`[NEEDS CLARIFICATION]` marker a writer returned, phase 5's fork, anything phase 4 would
+have asked — it takes the option it would have recommended and writes it down in four
+places:
 
-1. the spec, under prior decisions, **marked as assumed** and naming what changes if it is
-   wrong
-2. the phase 7 report
-3. the request's description
+1. the change's `decisions.md`, as a `- Q: … → A: …` entry carrying the `(assumed)`
+   suffix — the log the writer subagents read, so an assumed answer reaches them the
+   same way a given one does
+2. the spec, under prior decisions, **marked as assumed** and naming what changes if it
+   is wrong
+3. the phase 7 report
+4. the request's description
 
 Never a default left silent, and never a guess dressed as a decision. The flow already
 does this after the plan, where an unsettled question becomes a finding; this moves the
@@ -78,7 +82,9 @@ Skill(skill="review-spec")        3→5 · reads the contract, only when one was
                                       the only thing between an unfailable criterion and
                                       a plan built on it. It still only reports — see
                                       below for who acts on it
-Skill(skill="write-plan")         5 · the approach. It never stopped anyway
+Skill(skill="write-plan")         5 · the fork takes the recommended approach, logged
+                                      (assumed); the drafting stays with plan-writer.
+                                      The phase never stopped anyway
 Skill(skill="write-tasks")        5→6 · one fresh cutter, then carry on. **What the
                                       cutter says the spec and the plan failed to
                                       answer is the one thing here nobody else will

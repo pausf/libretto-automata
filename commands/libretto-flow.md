@@ -157,8 +157,10 @@ so the findings have to be on the table while the agreement is still being made.
 Skill(skill="write-plan")
 ```
 
-Writes the **how**: technical context, the approach and the alternatives it beat, risks,
-validation, rollback. No boxes — this file holds no state.
+Asks its one question — the approach, chosen by the user from two or three with named
+tradeoffs — then a fresh `plan-writer` drafts the **how**: technical context, the
+approach and the alternatives it beat, risks, validation, rollback. No boxes — this
+file holds no state.
 
 **Do not wait here.** Splitting the plan from the checklist invited a third stop, and the
 flow spends its length arguing against exactly that. The stop moves one seam later
@@ -255,13 +257,16 @@ precedents in the codebase, anything where guessing quietly breaks working behav
 ask with `AskUserQuestion`: the option you recommend, the real alternatives, and room to
 answer differently. One question, then stop and wait.
 
-**Phase 2 is the exception, and it asks as many as a wrong guess would cost, in one
-call, before it writes the spec** — the contract gets built by two people rather than
-handed over finished, and the bias when in doubt is to ask. No hard cap, but judgment
-both ways: never a form-length interrogation of things the code already answers. Zero
-is legitimate and is said in one line; a quota manufactures questions the code already
-answers. The 5→6 seam stops for the approach and the order, and opens no second tranche, and no stop is
-added: the questions ride the one phase 2 already has.
+**Phases 2 and 5 are the exceptions, each with its own shape.** Phase 2 interviews:
+one question at a time, as many as a wrong guess would cost, before the spec is
+written — the contract gets built by two people rather than handed over finished, and
+the bias when in doubt is to ask. No hard cap, but judgment both ways around a soft
+five: never a form-length interrogation of things the code already answers. Zero is
+legitimate and is said in one line; a quota manufactures questions the code already
+answers. Phase 5 asks exactly one: the approach, chosen from two or three with named
+tradeoffs. Every answer lands verbatim in the change's `decisions.md`. The 5→6 seam
+stops for the approach and the order, and opens no second tranche, and no stop is
+added: the questions ride the phases that already have them.
 
 **Ask it before the plan is agreed.** Phases 1, 2 and 5 are where a question is cheap,
 because nothing has been built on the answer yet. That is not a coincidence — the two

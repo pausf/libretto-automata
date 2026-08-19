@@ -69,7 +69,7 @@ the plan mandates this per row.
   existing agents section), forced red once; all six gates green.
   Waits on: 4 (same file; the fork precedes the delegation in the skill's own order).
 
-- [ ] **6. Routing, narrative, and the stop-owner drift.**
+- [x] **6. Routing, narrative, and the stop-owner drift.**
   `commands/libretto-flow.md` §4: "Phase 2 is the exception" becomes phases 2 and 5,
   each described. `docs/FLOW.md`: the same story, plus its stop-table row corrected —
   the 5→6 seam owns the second stop, not phase 5. `commands/libretto-attacca.md`:
