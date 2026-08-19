@@ -26,7 +26,7 @@ the plan mandates this per row.
   once; all six gates green.
   Waits on: 1 (answers land in the log the contract defines).
 
-- [ ] **3. `spec-writer` generalized, and the marker loop in `write-spec`.**
+- [x] **3. `spec-writer` generalized, and the marker loop in `write-spec`.**
   One box, both sides of the seam: `spec-writer`'s launch contract gains the
   single-spec case (brief always, same five headings, shorter), `decisions.md` as a
   named input beside the brief, the tier picked before launch as in the fan-out, and

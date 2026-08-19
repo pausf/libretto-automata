@@ -118,8 +118,11 @@ So read the code first. Specifically:
 - what will break if this change is naive
 - whether a decision recorded elsewhere already settles part of this
 
-With one spec, read the code inline. A sub-agent for a change you can hold in your
-head is a round trip for nothing.
+With one spec, read the code inline — a research sub-agent for a change you can hold
+in your head is a round trip for nothing. **The writing is a different matter**: the
+spec file itself is authored by `spec-writer` in every case, single or fan-out. The
+reading informs the brief and the questions; the drafting leaves this session — see
+step 4b for why.
 
 ### The specification is selected, never the corpus
 
@@ -174,13 +177,21 @@ above is written to work under all three, which is why it leads with `Targets:` 
 doing the consolidation. A staging area nobody empties is just a second source of
 truth.
 
-## Step 2b — Several specs: the shared brief, then fan out
+## Step 2b — The brief, and the fan-out when there are several
+
+**Every spec gets a brief, whatever the count.** The single-spec brief is shorter —
+often a screen — but it has the same five headings, so `spec-writer`'s contract does
+not change with the count, and what the writer was told is on disk either way. For a
+single spec it is written after step 4's interview, when the decisions it must carry
+exist; for a fan-out it is written here, because the interview's answers are shared
+ground too.
 
 Ten subtasks researched in this thread will exhaust the context, which is the exact
-problem fanning out exists to solve. So sub-agents write their own spec files.
+problem fanning out exists to solve. So sub-agents write their own spec files —
+several in parallel when the change is several specs.
 
-**The context is the only reason.** Fanning out because the answer is not yet
-obvious turns a reflex into a research project — if two readings of the code
+**The context is the only reason to fan out.** Fanning out because the answer is not
+yet obvious turns a reflex into a research project — if two readings of the code
 already settle it, settle it and move on. Ten agents dispatched to confirm
 something visible from one file is the expensive kind of thoroughness.
 
@@ -265,6 +276,8 @@ this seat, and a generic sub-agent would start without it. In its prompt:
   out is worse than a brief read whole
 - **the path, never the text.** Sections are named, not excerpted: excerpting is what
   puts N copies in N contexts, which is the cost the brief exists to remove
+- **the path to `decisions.md`**, when it exists — the user's answers, verbatim, which
+  the writer carries into its *Prior decisions* pillar as they stand
 - its own subtask — key, summary, description
 - the boundary between its spec and its siblings', stated explicitly
 - the one path it may write, and nothing else
@@ -604,6 +617,40 @@ assumed**, name what changes if it is wrong, and carry on. Never a
 default left silent, and never a guess written as though it were settled. The questions
 that would have been asked are the ones that must be findable afterwards, because nobody was
 there to answer them. The command carries why, and what it costs.
+
+## Step 4b — Hand the contract to its writer
+
+The interview is done and the brief carries its answers. **Launch one `spec-writer`** —
+the same agent the fan-out uses, with the same prompt contract: the brief's path, the
+log's path, the one spec path it may write, and the standing rules restated verbatim,
+because a sub-agent starts with none of them. Pick the model tier before the launch,
+exactly as the fan-out rule above demands — a single writer is a fan-out of one.
+
+The session that argued the contract into shape cannot tell what it wrote down from
+what it merely decided — the same reason the 5→6 seam cuts tasks fresh. A writer that
+never had the conversation can only write what the brief and the log actually say, and
+what it cannot write it marks.
+
+### Resolving the markers
+
+Read the returned spec. Where the writer left `[NEEDS CLARIFICATION: question]`, the
+inputs did not say enough, and the resolution is the interview's tail:
+
+1. Ask each marker's question — same shape as step 4, one at a time, a reasoned
+   recommendation first.
+2. Log the answer in `decisions.md`, verbatim, like every other answer.
+3. **Replace the bracket expression — the brackets and everything inside them, nothing
+   outside them — with the logged answer.** That is the one declared exception to
+   one-author-per-file, and it is scoped to exactly that expression: an answer that
+   changes anything beyond it is a relaunch of the writer with the updated log, not a
+   patch.
+
+**Under `/libretto-attacca` a marker takes the recommended answer**, logged with the
+`(assumed)` suffix and naming what changes if it is wrong — the same rule as the
+questions that were never asked.
+
+A returned spec with no markers and no findings is still read before it is accepted.
+Silence is not success, and the writer's return says explicitly when it found nothing.
 
 ## Step 5 — Check it before handing it over
 
