@@ -395,14 +395,14 @@ func renderWikiHTML(projectDir string, caps []wikiCapability) []byte {
 		}
 		b.WriteString("</div>\n")
 	}
-	flights, queued := readInFlight(projectDir)
+	flights, queue := readInFlight(projectDir)
 	if len(flights) > 0 {
 		b.WriteString("<div class=\"inflight\"><span class=\"pulse\"></span><span class=\"inflight-label\">in flight</span>\n")
 		for _, f := range flights {
 			fmt.Fprintf(&b, "<span class=\"flight\">%s <b>%d/%d</b></span>\n", html.EscapeString(f.name), f.closed, f.closed+f.open)
 		}
-		if queued > 0 {
-			fmt.Fprintf(&b, "<span class=\"queued\">%d queued</span>\n", queued)
+		if len(queue) > 0 {
+			fmt.Fprintf(&b, "<span class=\"queued\">%d queued</span>\n", len(queue))
 		}
 		b.WriteString("</div>\n")
 	}
@@ -429,6 +429,9 @@ func renderWikiHTML(projectDir string, caps []wikiCapability) []byte {
 		fmt.Fprintf(&b, "<span class=\"bar\"><i style=\"width:%d%%\"></i></span>\n</a>\n", len(c.criteria)*100/maxCrit)
 	}
 	b.WriteString("</div>\n")
+	if ph := readLessons(projectDir); len(ph) > 0 || func() bool { _, q := readInFlight(projectDir); return len(q) > 0 }() {
+		b.WriteString("<p class=\"flowlink\"><a href=\"#flow\">the flow, measured →</a></p>\n")
+	}
 	if tracked := wikiGitTracked(projectDir); len(tracked) > 0 {
 		var globs []string
 		for _, c := range caps {
@@ -492,6 +495,35 @@ func renderWikiHTML(projectDir string, caps []wikiCapability) []byte {
 				fmt.Fprintf(&b, " <a href=\"#%s\">%s</a>", html.EscapeString(r), html.EscapeString(r))
 			}
 			b.WriteString("</p>\n")
+		}
+		b.WriteString("</article>\n")
+	}
+	phases := readLessons(projectDir)
+	_, flowQueue := readInFlight(projectDir)
+	if len(phases) > 0 || len(flowQueue) > 0 {
+		b.WriteString("<article class=\"cap\" id=\"flow\">\n<a class=\"back\" href=\"#home\">← home</a>\n<h2>The flow, measured</h2>\n")
+		b.WriteString("<p class=\"intro\">Derived from the ledgers — instrumented nowhere.</p>\n")
+		if len(phases) > 0 {
+			maxN := 1
+			for _, p := range phases {
+				if p.n > maxN {
+					maxN = p.n
+				}
+			}
+			b.WriteString("<div class=\"phases\"><p class=\"lbl\">Where corrections surface</p>\n")
+			for _, p := range phases {
+				fmt.Fprintf(&b, "<div class=\"phase\"><span class=\"phase-name\">%s</span><span class=\"bar\"><i style=\"width:%d%%\"></i></span><span class=\"phase-n\">%d</span></div>\n",
+					html.EscapeString(p.phase), p.n*100/maxN, p.n)
+			}
+			b.WriteString("</div>\n")
+		}
+		if len(flowQueue) > 0 {
+			b.WriteString("<div class=\"queue\"><p class=\"lbl\">Queued ideas</p>\n")
+			for _, q := range flowQueue {
+				fmt.Fprintf(&b, "<p class=\"qrow\"><span>%s</span><span class=\"date\">%s</span></p>\n",
+					html.EscapeString(q.name), html.EscapeString(q.date))
+			}
+			b.WriteString("</div>\n")
 		}
 		b.WriteString("</article>\n")
 	}
@@ -599,6 +631,14 @@ padding:.1em .35em;border-radius:5px}
 .prow[aria-selected="true"],.prow:hover{background:var(--accent-soft)}
 .prow .owner{margin-left:auto;font:500 .72rem "IBM Plex Mono",monospace;color:var(--ink-soft);flex-shrink:0}
 .palette-help{display:flex;gap:1rem;margin:0;padding:.55rem 1.1rem;border-top:1px solid var(--line);font-size:.72rem;color:var(--ink-soft)}
+.flowlink{margin:1.4rem 0 0;font-size:.9rem}
+.phases,.queue{margin:.6rem 0 1rem;padding:.9rem 1rem;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.phases .lbl,.queue .lbl{margin:0 0 .6rem;font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--ink-soft)}
+.phase{display:flex;align-items:center;gap:.7rem;margin:.35rem 0;font-size:.88rem}
+.phase-name{width:6.5rem;color:var(--ink-soft);flex-shrink:0}
+.phase .bar{flex-grow:1}
+.phase-n{font-variant-numeric:tabular-nums;width:2rem;text-align:right}
+.qrow{display:flex;justify-content:space-between;gap:1rem;margin:.3rem 0;font:400 .85rem "IBM Plex Mono",monospace}
 body.paged #home{display:none}
 body.paged article.cap{display:none}
 body.paged article.cap.open{display:block;border-top:none;margin-top:0}
@@ -785,14 +825,19 @@ type wikiFlight struct {
 	closed, open int
 }
 
+// wikiQueued is one captured idea, for the flow board's queue block.
+type wikiQueued struct {
+	name, date string
+}
+
 // readInFlight walks the changes directory with the loop's own box definition:
 // tasks.md, falling back to the legacy plan.md. Zero open boxes is landed-shape
 // and never shows; queued proposals are counted, never listed here.
-func readInFlight(projectDir string) (flights []wikiFlight, queued int) {
+func readInFlight(projectDir string) (flights []wikiFlight, queue []wikiQueued) {
 	changes := filepath.Join(projectDir, ".agents", "changes")
 	entries, err := os.ReadDir(changes)
 	if err != nil {
-		return nil, 0
+		return nil, nil
 	}
 	for _, e := range entries {
 		if !e.IsDir() {
@@ -802,7 +847,7 @@ func readInFlight(projectDir string) (flights []wikiFlight, queued int) {
 		if b, err := os.ReadFile(filepath.Join(dir, "proposal.md")); err == nil {
 			for _, line := range strings.Split(string(b), "\n") {
 				if strings.HasPrefix(line, "Queued:") {
-					queued++
+					queue = append(queue, wikiQueued{name: e.Name(), date: strings.TrimSpace(strings.TrimPrefix(line, "Queued:"))})
 					break
 				}
 			}
@@ -827,7 +872,13 @@ func readInFlight(projectDir string) (flights []wikiFlight, queued int) {
 			flights = append(flights, f)
 		}
 	}
-	return flights, queued
+	sort.SliceStable(queue, func(i, j int) bool {
+		if queue[i].date != queue[j].date {
+			return queue[i].date < queue[j].date
+		}
+		return queue[i].name < queue[j].name
+	})
+	return flights, queue
 }
 
 // wikiGitDates: every commit date touching the spec, newest first — the
@@ -964,3 +1015,42 @@ const wikiPaletteHTML = `<div id="palette" hidden>
 </div>
 </div>
 `
+
+// wikiPhase is one row of the flow board: a phase and how often corrections
+// surfaced there, in first-appearance order.
+type wikiPhase struct {
+	phase string
+	n     int
+}
+
+// readLessons counts the ledger's entry headers by their phase field — the
+// LAST ` · ` field, split from the right, because a change name may itself
+// carry the separator.
+func readLessons(projectDir string) []wikiPhase {
+	b, err := os.ReadFile(filepath.Join(projectDir, ".agents", "lessons.md"))
+	if err != nil {
+		return nil
+	}
+	var phases []wikiPhase
+	idx := map[string]int{}
+	for _, line := range strings.Split(string(b), "\n") {
+		if !strings.HasPrefix(line, "## ") {
+			continue
+		}
+		parts := strings.Split(line[3:], " · ")
+		if len(parts) < 3 {
+			continue
+		}
+		phase := strings.TrimSpace(parts[len(parts)-1])
+		if phase == "" {
+			continue
+		}
+		if i, ok := idx[phase]; ok {
+			phases[i].n++
+		} else {
+			idx[phase] = len(phases)
+			phases = append(phases, wikiPhase{phase: phase, n: 1})
+		}
+	}
+	return phases
+}

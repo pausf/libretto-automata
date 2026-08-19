@@ -1243,3 +1243,98 @@ func TestWikiSearchIndexEscapesContent(t *testing.T) {
 }
 
 func jsonUnmarshal(s string, v interface{}) error { return json.Unmarshal([]byte(s), v) }
+
+func lessonsFixture(t *testing.T, dir string) {
+	t.Helper()
+	ledger := "# Lessons\n\n" +
+		"## 2026-08-18 · add-specs-wiki · 6→7\nSaid: a\nDid: b\n\n" +
+		"## 2026-08-19 · wiki · dotted · name · 6→7\nSaid: c\nDid: d\n\n" +
+		"## 2026-08-19 · plain-change · user\nSaid: e\nDid: f\n"
+	if err := os.MkdirAll(filepath.Join(dir, ".agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".agents", "lessons.md"), []byte(ledger), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWikiFlowBoardCountsCorrections(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	lessonsFixture(t, dir)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `<article class="cap" id="flow"`) {
+		t.Fatal("the flow article is missing")
+	}
+	// The dotted change name must not shear the phase: 6→7 counts 2, user 1.
+	flow := got[strings.Index(got, `id="flow"`):]
+	if !strings.Contains(flow, "6→7") || !strings.Contains(flow, "user") {
+		t.Fatal("phase labels missing")
+	}
+	if !strings.Contains(flow, `width:100%`) || !strings.Contains(flow, `width:50%`) {
+		t.Fatal("bar widths are not proportional to phase counts")
+	}
+	// No ledger and no queue → no article, no link.
+	dir2 := t.TempDir()
+	specs2 := writeSpecs(t, dir2, ".agents/specs")
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs2), `id="flow"`) {
+		t.Fatal("a ledgerless, queueless project still grew a flow article")
+	}
+}
+
+func TestWikiFlowBoardListsTheQueue(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	for name, date := range map[string]string{"older-idea": "2026-08-10", "newer-idea": "2026-08-15"} {
+		p := filepath.Join(dir, ".agents", "changes", name)
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(p, "proposal.md"), []byte("# x\n\nQueued: "+date+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `id="flow"`) {
+		t.Fatal("a queue alone must summon the flow article")
+	}
+	if !strings.Contains(got, "older-idea") || !strings.Contains(got, "2026-08-10") {
+		t.Fatal("queue rows missing")
+	}
+	if strings.Index(got, "older-idea") > strings.Index(got, "newer-idea") {
+		t.Fatal("the queue is not oldest first")
+	}
+}
+
+func TestWikiHomeLinksTheFlowBoard(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	lessonsFixture(t, dir)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	home := got[strings.Index(got, `<section id="home"`):strings.Index(got, "</section>")]
+	if !strings.Contains(home, `href="#flow"`) {
+		t.Fatal("the home does not link the flow board")
+	}
+	dir2 := t.TempDir()
+	specs2 := writeSpecs(t, dir2, ".agents/specs")
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got2 := wikiHTML(t, specs2)
+	home2 := got2[strings.Index(got2, `<section id="home"`):strings.Index(got2, "</section>")]
+	if strings.Contains(home2, `href="#flow"`) {
+		t.Fatal("a boardless home still links #flow")
+	}
+}
