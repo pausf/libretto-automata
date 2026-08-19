@@ -56,8 +56,24 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # Not `apt-get install ripgrep`. The runner's default mirror is
+      # `azure.archive.ubuntu.com`, and when it stops answering apt retries it rather
+      # than failing — observed on run 32233763307, every line an `Ign:`, until the step
+      # timed out. Before the timeout existed the same hang spent over an hour.
+      #
+      # The upstream musl binary needs no mirror, no apt lock and no package index, and
+      # it comes from the host this job is already talking to. Pinned: an unpinned
+      # `latest` is a third party choosing what runs in CI.
       - name: install ripgrep
-        run: sudo apt-get update && sudo apt-get install -y ripgrep
+        timeout-minutes: 2
+        env:
+          RG_VERSION: "15.2.0"
+        run: |
+          set -euo pipefail
+          url="https://github.com/BurntSushi/ripgrep/releases/download/${RG_VERSION}/ripgrep-${RG_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          curl --fail --silent --show-error --location --retry 3 "$url" \
+            | sudo tar -xz --strip-components=1 -C /usr/local/bin --wildcards '*/rg'
+          rg --version
 
       # `.agents/specs/ci/spec.md`: a release is the one moment where "the gates were
       # green earlier" is not good enough. The merge commit is a tree no gate has seen.

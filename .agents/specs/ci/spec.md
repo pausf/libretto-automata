@@ -223,10 +223,19 @@ before it can merge**.
   depends on. Recorded because the table read mechanically says minor, so the next person
   to hit this will otherwise re-derive the argument from scratch.
 
-- **Ceilings over a diagnosis.** The apt step's hang was never observed — GitHub serves no
-  log for a job still running, so the mirror is a suspect and nothing more. `timeout-minutes`
-  and `cancel-in-progress` bound the cost of a hang without claiming to know its cause. If
-  it recurs inside those bounds, the next move is the musl release tarball instead of apt.
+- **The ceiling is what produced the diagnosis.** The hang was invisible for as long as it
+  was unbounded: GitHub serves no log for a job still running, so an hour of hanging was an
+  hour of no evidence. The first run with `timeout-minutes` failed in three minutes and
+  handed over the log — `azure.archive.ubuntu.com` answering nothing, apt retrying it rather
+  than failing, every line an `Ign:` (run 32233763307). A ceiling is not a workaround here;
+  it is what turned a suspect into a cause.
+
+- **ripgrep comes from its own release, not from apt.** apt treats an unreachable mirror as
+  something to retry, which is correct for a desktop and wrong for CI, where a step that
+  cannot finish should end rather than wait. The upstream musl binary needs no mirror, no
+  package index and no dpkg lock, and it is fetched from the host the job is already talking
+  to. The version is pinned: `releases/latest` hands a third party the choice of what runs in
+  every gate, and `--retry 3` covers the transient case without covering an outage.
 
 - **GitHub Actions, not `.gitlab-ci.yml`.** From the proposal: the remote is GitHub, so
   a GitLab file would sit in the tree looking like a gate while every request merged
@@ -288,6 +297,9 @@ request that is a claim rather than a fact. What can be checked here is checked 
   Proof: cmd/libretto/gates_test.go TestWorkflowRunsEveryGateAgentsNames
 - the gates workflow asks for read-only permissions
   Proof: cmd/libretto/gates_test.go TestWorkflowIsReadOnly
+- **when a workflow needs `rg`, it shall fetch a pinned release binary and shall not reach
+  for apt**, whose response to an unreachable mirror is to retry it until the step is killed
+  Proof: cmd/libretto/gates_test.go TestWorkflowsInstallRipgrepWithoutApt
 - **when a commit is pushed to a branch with an open request, the gates shall run once
   and not twice**, and a run left hanging shall be cancelled or timed out rather than
   spending GitHub's six-hour default unobserved
