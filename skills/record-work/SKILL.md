@@ -4,7 +4,7 @@ description: "Trigger: a task is finished and needs committing; writing a commit
 license: MIT
 metadata:
   author: pausf
-  version: "1.2"
+  version: "1.3"
 ---
 
 ## What this does
@@ -100,6 +100,12 @@ common way this goes wrong.
 
 If a change spans several capabilities, every delta is applied in that same commit.
 Half-consolidated is the one state with no honest description.
+
+**Where `libretto` is on PATH and the project holds a consolidated specs directory,
+run `libretto wiki` before the landing commit**, so the refreshed index rides the
+same commit as the delta that changed it — a generated view left behind by a landing
+is drift wearing a marker comment. Where the binary is absent, say the wiki may be
+stale and continue; a missing convenience never blocks a landing.
 
 **`spec-drift` asks it for you**, mechanically, in three directions. It ships beside
 this file — `<skill-base>/spec-drift`, whatever directory this skill was installed
