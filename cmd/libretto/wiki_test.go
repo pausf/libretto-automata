@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -764,5 +765,596 @@ func TestWikiHTMLHomeSearchIsInline(t *testing.T) {
 	}
 	if !strings.Contains(got, "data-crit") || !strings.Contains(got, "dataset.crit") && !strings.Contains(got, "getAttribute('data-crit')") {
 		t.Error("the search script does not read data-crit")
+	}
+}
+
+// injectWikiGit swaps all three git seams; tests never touch real git state.
+func injectWikiGit(t *testing.T, date func(string, string) string, subject func(string, string) string, tracked func(string) []string) {
+	t.Helper()
+	pd, ps, pt := wikiGitDate, wikiGitSubject, wikiGitTracked
+	t.Cleanup(func() { wikiGitDate, wikiGitSubject, wikiGitTracked = pd, ps, pt })
+	if date != nil {
+		wikiGitDate = date
+	}
+	if subject != nil {
+		wikiGitSubject = subject
+	}
+	if tracked != nil {
+		wikiGitTracked = tracked
+	}
+}
+
+// healthFixture: "solid" is fully EARS with resolving proofs; "wobbly" carries one
+// prose criterion and one EARS criterion citing a file that does not exist.
+func healthFixture(t *testing.T, dir string) string {
+	t.Helper()
+	specs := filepath.Join(dir, ".agents", "specs")
+	solid := "# Solid\n\nGoverns: src/**\n\nHolds the line.\n\n## Verification criteria\n\n" +
+		"- The system shall hold.\n  Proof: pkg/solid_test.go TestHold\n" +
+		"- When poked, the system shall answer.\n  Proof: scripts/check\n"
+	wobbly := "# Wobbly\n\nGoverns: tools/one.go\n\n## Verification criteria\n\n" +
+		"- the panel opens where it was left\n  Proof: scripts/check\n" +
+		"- The system shall wobble.\n  Proof: pkg/gone_test.go TestGone\n"
+	for name, body := range map[string]string{"solid": solid, "wobbly": wobbly} {
+		if err := os.MkdirAll(filepath.Join(specs, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(specs, name, "spec.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "pkg", "solid_test.go"), []byte("package pkg\n\nfunc TestHold(t *testing.T) {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "scripts", "check"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return specs
+}
+
+func TestWikiHomeCarriesTheRecentRail(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	injectWikiGit(t,
+		func(_, p string) string {
+			if strings.Contains(p, "pricing") {
+				return "2026-08-18"
+			}
+			return "2026-08-10"
+		},
+		func(_, p string) string {
+			if strings.Contains(p, "pricing") {
+				return "land the discounts <finally>"
+			}
+			return "first cut"
+		}, nil)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	for _, want := range []string{`class="recent"`, "land the discounts &lt;finally&gt;", "2026-08-18", "first cut"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("rail missing %q", want)
+		}
+	}
+	if strings.Index(got, "land the discounts") > strings.Index(got, "first cut") {
+		t.Error("the rail is not most-recent first")
+	}
+	// No dates anywhere → no rail at all.
+	dir2 := t.TempDir()
+	specs2 := writeSpecs(t, dir2, ".agents/specs")
+	injectWikiGit(t, func(_, _ string) string { return "" }, func(_, _ string) string { return "" }, nil)
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs2), `class="recent"`) {
+		t.Fatal("a dateless project still renders the rail")
+	}
+}
+
+func TestWikiHomeCarriesTheInFlightStrip(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	ch := filepath.Join(dir, ".agents", "changes")
+	if err := os.MkdirAll(filepath.Join(ch, "add-discounts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ch, "add-discounts", "tasks.md"),
+		[]byte("# Tasks\n\n- [x] one\n- [x] two\n- [ ] three\n- [ ] four\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A landed-shape change (all closed) never shows, and a legacy plan.md counts.
+	if err := os.MkdirAll(filepath.Join(ch, "old-style"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ch, "old-style", "plan.md"),
+		[]byte("- [ ] only\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(ch, "an-idea"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ch, "an-idea", "proposal.md"),
+		[]byte("# an-idea\n\nQueued: 2026-08-14\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	for _, want := range []string{`class="inflight"`, "add-discounts", "2/4", "old-style", "0/1", "1 queued"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("strip missing %q", want)
+		}
+	}
+	// Queue alone does not summon the strip — the recorded assumption.
+	dir2 := t.TempDir()
+	specs2 := writeSpecs(t, dir2, ".agents/specs")
+	if err := os.MkdirAll(filepath.Join(dir2, ".agents", "changes", "an-idea"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir2, ".agents", "changes", "an-idea", "proposal.md"),
+		[]byte("Queued: 2026-08-14\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs2), `class="inflight"`) {
+		t.Fatal("a queue alone summoned the strip")
+	}
+}
+
+func TestWikiHomeMeasuresContractHealth(t *testing.T) {
+	dir := t.TempDir()
+	specs := healthFixture(t, dir)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	// 3 of 4 criteria carry shall: green 75, amber the remainder.
+	for _, want := range []string{`class="health"`, "width:75%", "width:25%", "1 unproven"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("health bar missing %q", want)
+		}
+	}
+
+	// A total that does not divide evenly distinguishes the remainder rule from
+	// independent rounding: 2 of 3 is 66 green and 34 amber, never 33.
+	dir2 := t.TempDir()
+	specs2 := filepath.Join(dir2, ".agents", "specs", "trio")
+	if err := os.MkdirAll(specs2, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	trio := "# Trio\n\n## Verification criteria\n\n" +
+		"- The system shall a.\n  Proof: scripts/check\n" +
+		"- The system shall b.\n  Proof: scripts/check\n" +
+		"- plain prose c\n  Proof: scripts/check\n"
+	if err := os.WriteFile(filepath.Join(specs2, "spec.md"), []byte(trio), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir2, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir2, "scripts", "check"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got2 := wikiHTML(t, filepath.Join(dir2, ".agents", "specs"))
+	if !strings.Contains(got2, "width:66%") || !strings.Contains(got2, "width:34%") {
+		t.Fatal("the amber width is not the remainder — the bar does not close at 100")
+	}
+}
+
+func TestWikiCardsCarryTheHealthDot(t *testing.T) {
+	dir := t.TempDir()
+	specs := healthFixture(t, dir)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !regexp.MustCompile(`href="#solid"[^>]*data-health="ok"`).MatchString(got) {
+		t.Error("solid's card is not marked healthy")
+	}
+	if !regexp.MustCompile(`href="#wobbly"[^>]*data-health="warn"`).MatchString(got) {
+		t.Error("wobbly's card is not marked amber")
+	}
+}
+
+func TestWikiFooterMeasuresGovernedTree(t *testing.T) {
+	dir := t.TempDir()
+	specs := healthFixture(t, dir)
+	injectWikiGit(t, nil, nil, func(string) []string {
+		return []string{"src/a/b.go", "src/c.go", "tools/one.go", "README.md", "x/y.go"}
+	})
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	// src/** must cross a directory boundary — the ** arm the force-red breaks.
+	for _, want := range []string{`class="governed"`, "3 governed", "2 orphan"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("footer missing %q", want)
+		}
+	}
+	// Git unavailable → no footer.
+	dir2 := t.TempDir()
+	specs2 := healthFixture(t, dir2)
+	injectWikiGit(t, nil, nil, func(string) []string { return nil })
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs2), `class="governed"`) {
+		t.Fatal("a gitless project still renders the footer")
+	}
+}
+
+func TestWikiPageCarriesTheActivitySparkline(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	pd, pdd := wikiGitDates, wikiGitDate
+	t.Cleanup(func() { wikiGitDates, wikiGitDate = pd, pdd })
+	wikiGitDates = func(_, p string) []string {
+		if strings.Contains(p, "pricing") {
+			return []string{"2026-08-18", "2026-08-02", "2026-06-11", "2026-01-01"}
+		}
+		return nil
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `class="spark"`) {
+		t.Fatal("sparkline missing")
+	}
+	// Window is the 8 months ending 2026-08: aug has 2 commits (max → 18), jun 1 (9);
+	// 2026-01 falls outside and must not widen anything.
+	if !strings.Contains(got, `height="18"`) || !strings.Contains(got, `height="9"`) {
+		t.Fatal("bar heights are not proportional to monthly counts")
+	}
+	if n := strings.Count(got, `class="spark"`); n != 1 {
+		t.Fatalf("dateless capabilities grew sparklines: %d", n)
+	}
+}
+
+func TestWikiCriteriaCarryProofChips(t *testing.T) {
+	dir := t.TempDir()
+	specs := healthFixture(t, dir)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `class="chip ok"`) {
+		t.Error("no green chip for a resolving EARS criterion")
+	}
+	if !strings.Contains(got, "pkg/solid_test.go · TestHold") {
+		t.Error("the chip does not name file and test")
+	}
+	if !strings.Contains(got, `class="chip warn"`) {
+		t.Error("no amber chip for the pre-EARS / unresolving criteria")
+	}
+	// A command citation names the file alone — no separator dangling.
+	if strings.Contains(got, "scripts/check ·") {
+		t.Error("a testless citation grew a dangling separator")
+	}
+}
+
+func TestWikiPageSurfacesPriorDecisions(t *testing.T) {
+	dir := t.TempDir()
+	specs := filepath.Join(dir, ".agents", "specs", "seasoned")
+	if err := os.MkdirAll(specs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	spec := "# Seasoned\n\nIntro line.\n\n## Prior decisions\n\n" +
+		"- **The clone is resolved in four rungs.** Long story.\n" +
+		"- Second decision.\n- Third decision.\n- Fourth decision.\n\n" +
+		"## Verification criteria\n\n- The system shall s.\n  Proof: scripts/check\n"
+	if err := os.WriteFile(filepath.Join(specs, "spec.md"), []byte(spec), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "scripts", "check"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, filepath.Join(dir, ".agents", "specs"))
+	for _, want := range []string{`class="decisions"`, "The clone is resolved in four rungs.", "· 4"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("decisions block missing %q", want)
+		}
+	}
+	block := got[strings.Index(got, `class="decisions"`):]
+	block = block[:strings.Index(block, "</div>")]
+	if strings.Contains(block, "Fourth decision") {
+		t.Error("more than three decision bullets rendered in the block")
+	}
+	if strings.Index(got, `class="decisions"`) > strings.Index(got, `class="crit"`) {
+		t.Error("decisions are not above the criteria")
+	}
+	// A spec with no such section grows no block.
+	dir2 := t.TempDir()
+	specs2 := writeSpecs(t, dir2, ".agents/specs")
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs2), `class="decisions"`) {
+		t.Fatal("a spec without the section still grew a decisions block")
+	}
+}
+
+func TestWikiPageLinksRelatedCapabilities(t *testing.T) {
+	dir := t.TempDir()
+	specs := filepath.Join(dir, ".agents", "specs")
+	write := func(name, body string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Join(specs, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(specs, name, "spec.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("alpha", "# Alpha\n\nAlpha leans on Beta twice: beta owns the writes. Betamax is a word.\nAlpha names alpha itself.\n")
+	write("beta", "# Beta\n\nStands alone here.\n")
+	write("gamma", "# Gamma\n\nMentions nobody.\n")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	alpha := got[strings.Index(got, `<article class="cap" id="alpha"`):strings.Index(got, `<article class="cap" id="beta"`)]
+	if !strings.Contains(alpha, `class="related"`) || strings.Count(alpha, `href="#beta"`) != 1 {
+		t.Fatalf("alpha should link beta exactly once:\n%s", alpha)
+	}
+	if strings.Contains(alpha, `href="#alpha"`) {
+		t.Error("a page linked itself")
+	}
+	gamma := got[strings.Index(got, `<article class="cap" id="gamma"`):]
+	if strings.Contains(gamma, `class="related"`) {
+		t.Error("a mentionless page grew a related row")
+	}
+	// "Betamax" must not have been what linked beta — remove the real mentions
+	// and the row must vanish despite the substring.
+	write("alpha", "# Alpha\n\nBetamax is a word. Nothing else.\n")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got2 := wikiHTML(t, specs)
+	alpha2 := got2[strings.Index(got2, `<article class="cap" id="alpha"`):strings.Index(got2, `<article class="cap" id="beta"`)]
+	if strings.Contains(alpha2, `class="related"`) {
+		t.Fatal("a substring match linked a capability — the boundary is not held")
+	}
+}
+
+// indexBlock pulls the JSON search index out of the generated page.
+func indexBlock(t *testing.T, got string) string {
+	t.Helper()
+	open := `<script type="application/json" id="index">`
+	i := strings.Index(got, open)
+	if i < 0 {
+		t.Fatal("the search index block is missing")
+	}
+	rest := got[i+len(open):]
+	j := strings.Index(rest, "</script>")
+	if j < 0 {
+		t.Fatal("the index block never closes")
+	}
+	return rest[:j]
+}
+
+func TestWikiCarriesTheSearchIndex(t *testing.T) {
+	dir := t.TempDir()
+	specs := filepath.Join(dir, ".agents", "specs")
+	spec := "# Indexed\n\nIntro.\n\n## Prior decisions\n\n- One decision kept.\n\n" +
+		"## Verification criteria\n\n- The system shall index.\n  Proof: scripts/check\n"
+	if err := os.MkdirAll(filepath.Join(specs, "indexed"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specs, "indexed", "spec.md"), []byte(spec), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "scripts", "check"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	var idx struct {
+		Criteria     []struct{ Cap, Text string }
+		Decisions    []struct{ Cap, Text string }
+		Capabilities []struct{ Cap, Text string }
+	}
+	if err := jsonUnmarshal(indexBlock(t, got), &idx); err != nil {
+		t.Fatalf("the index does not parse as JSON: %v", err)
+	}
+	if len(idx.Criteria) != 1 || idx.Criteria[0].Cap != "indexed" || !strings.Contains(idx.Criteria[0].Text, "shall index") {
+		t.Fatalf("criteria group wrong: %+v", idx.Criteria)
+	}
+	if len(idx.Decisions) != 1 || !strings.Contains(idx.Decisions[0].Text, "One decision kept") {
+		t.Fatalf("decisions group wrong: %+v", idx.Decisions)
+	}
+	if len(idx.Capabilities) != 1 || idx.Capabilities[0].Cap != "indexed" {
+		t.Fatalf("capabilities group wrong: %+v", idx.Capabilities)
+	}
+}
+
+func TestWikiPaletteIsInlineAndDormant(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `id="palette" hidden`) {
+		t.Fatal("the palette is not dormant markup")
+	}
+	for _, want := range []string{"keydown", "location.hash", `getElementById('index')`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("palette script missing %q", want)
+		}
+	}
+	if strings.Contains(got, "<script src=") || strings.Contains(got, ".style.display") {
+		t.Fatal("palette must be inline and class-toggled")
+	}
+}
+
+func TestWikiSearchIndexEscapesContent(t *testing.T) {
+	dir := t.TempDir()
+	specs := filepath.Join(dir, ".agents", "specs", "sneaky")
+	if err := os.MkdirAll(specs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	spec := "# Sneaky\n\n## Verification criteria\n\n" +
+		"- The system shall survive </script><script>alert(3)</script> in a criterion.\n  Proof: scripts/check\n"
+	if err := os.WriteFile(filepath.Join(specs, "spec.md"), []byte(spec), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "scripts", "check"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, filepath.Join(dir, ".agents", "specs"))
+	if strings.Contains(got, "</script><script>alert(3)") {
+		t.Fatal("a criterion terminated the index block")
+	}
+	if !strings.Contains(indexBlock(t, got), `\u003c/script\u003e`) {
+		t.Fatal("the closing tag is not JSON-escaped inside the block")
+	}
+}
+
+func jsonUnmarshal(s string, v interface{}) error { return json.Unmarshal([]byte(s), v) }
+
+func lessonsFixture(t *testing.T, dir string) {
+	t.Helper()
+	ledger := "# Lessons\n\n" +
+		"## 2026-08-18 · add-specs-wiki · 6→7\nSaid: a\nDid: b\n\n" +
+		"## 2026-08-19 · wiki · dotted · name · 6→7\nSaid: c\nDid: d\n\n" +
+		"## 2026-08-19 · plain-change · user\nSaid: e\nDid: f\n"
+	if err := os.MkdirAll(filepath.Join(dir, ".agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".agents", "lessons.md"), []byte(ledger), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWikiFlowBoardCountsCorrections(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	lessonsFixture(t, dir)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `<article class="cap" id="flow"`) {
+		t.Fatal("the flow article is missing")
+	}
+	// The dotted change name must not shear the phase: 6→7 counts 2, user 1.
+	flow := got[strings.Index(got, `id="flow"`):]
+	if !strings.Contains(flow, "6→7") || !strings.Contains(flow, "user") {
+		t.Fatal("phase labels missing")
+	}
+	if !strings.Contains(flow, `width:100%`) || !strings.Contains(flow, `width:50%`) {
+		t.Fatal("bar widths are not proportional to phase counts")
+	}
+	// Ledger-only: the queue block must be absent, not empty.
+	if strings.Contains(flow, `class="queue"`) {
+		t.Fatal("a queueless project still grew the queue block")
+	}
+	// A ledger that exists but holds no valid entry headers is empty of
+	// entries — the other half of the absence clause.
+	dir3 := t.TempDir()
+	specs3 := writeSpecs(t, dir3, ".agents/specs")
+	if err := os.MkdirAll(filepath.Join(dir3, ".agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir3, ".agents", "lessons.md"), []byte("# Lessons\n\nprose only\n## short · header\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir3, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs3), `id="flow"`) {
+		t.Fatal("a ledger empty of valid entries still grew the article")
+	}
+	// No ledger and no queue → no article, no link.
+	dir2 := t.TempDir()
+	specs2 := writeSpecs(t, dir2, ".agents/specs")
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs2), `id="flow"`) {
+		t.Fatal("a ledgerless, queueless project still grew a flow article")
+	}
+}
+
+func TestWikiFlowBoardListsTheQueue(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	for name, date := range map[string]string{"older-idea": "2026-08-10", "newer-idea": "2026-08-15"} {
+		p := filepath.Join(dir, ".agents", "changes", name)
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(p, "proposal.md"), []byte("# x\n\nQueued: "+date+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `id="flow"`) {
+		t.Fatal("a queue alone must summon the flow article")
+	}
+	if !strings.Contains(got, "older-idea") || !strings.Contains(got, "2026-08-10") {
+		t.Fatal("queue rows missing")
+	}
+	if strings.Index(got, "older-idea") > strings.Index(got, "newer-idea") {
+		t.Fatal("the queue is not oldest first")
+	}
+}
+
+func TestWikiHomeLinksTheFlowBoard(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	lessonsFixture(t, dir)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	home := got[strings.Index(got, `<section id="home"`):strings.Index(got, "</section>")]
+	if !strings.Contains(home, `href="#flow"`) {
+		t.Fatal("the home does not link the flow board")
+	}
+	dir2 := t.TempDir()
+	specs2 := writeSpecs(t, dir2, ".agents/specs")
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got2 := wikiHTML(t, specs2)
+	home2 := got2[strings.Index(got2, `<section id="home"`):strings.Index(got2, "</section>")]
+	if strings.Contains(home2, `href="#flow"`) {
+		t.Fatal("a boardless home still links #flow")
 	}
 }

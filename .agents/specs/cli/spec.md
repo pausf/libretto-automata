@@ -540,6 +540,27 @@ equivalent. It goes when `libretto install` has been verified against a real
   panel branch checks `isatty` and so cannot be entered from a test; a decision left
   inline there is a decision no criterion can reach. They exist to be callable, not to
   abstract anything, and a second caller is not expected.
+- **The flow board's cost table is deliberately not rendered.** Assumed
+  2026-08-19 under attacca: `libretto metrics` answers it at the CLI, and the
+  wiki version means reusing that git walker — it returns as its own change
+  when somebody wants the numbers on the page. Ponytail-debt counts share the
+  condition.
+- **The palette is substring search over one JSON block; the card filter keeps
+  its own gesture.** Assumed 2026-08-19 under attacca: no fuzzy ranking until
+  substring demonstrably fails a real search, and the palette opens by shortcut
+  or its own button — the reviewer caught a click wiring that collapsed the two
+  gestures, and the separate button is the recorded repair.
+- **Sparkline buckets anchor to the last commit's month, never to today.**
+  A now-anchored histogram changes bytes at each month boundary with unchanged
+  history. 2026-08-19.
+- **The wiki's numbers are advisory mirrors; spec-drift and the loop stay the
+  authorities.** Assumed 2026-08-19 under attacca: the Go checks reimplement the
+  minimal definitions the wiki displays (criterion = bullet with `Proof:`
+  beneath; EARS = `shall` with emphasis stripped; proof resolves = file exists +
+  Go test declared), and a divergence from the script is a wiki bug, never a
+  second truth. Absolute dates everywhere — a relative date is a function of the
+  clock and byte-determinism forbids one. Extraction lands with its consumer
+  (vertical cut, four changes not five).
 - **The wiki viewer is home-and-pages: single file, pages by hash.** Asked
   2026-08-18; multi-file lost on N+1 generated files to own, mark and clean, and
   stays the recorded return path if hashes ever fall short (crawlers, per-page
@@ -1369,3 +1390,95 @@ behind `prefers-reduced-motion`, all self-contained.
   criteria text**, inline and offline, over escaped render-time `data-crit`
   attributes.
   Proof: cmd/libretto/wiki_test.go TestWikiHTMLHomeSearchIsInline
+
+The home is the project board: what moved, what is being built, how healthy the
+contract is — advisory mirrors of what spec-drift and the loop already define,
+never a second authority and never a gate.
+
+- **The home shall carry a recently-changed rail of up to three of the most
+  recently changed capabilities** — most recent first, each with its date and
+  the last commit subject from the git seam — omitting the rail entirely when no
+  capability has a date.
+  Proof: cmd/libretto/wiki_test.go TestWikiHomeCarriesTheRecentRail
+- **Where the changes directory holds a checklist (`tasks.md`, or the legacy
+  `plan.md` the loop also reads) with open boxes, the home shall carry an
+  in-flight strip** naming each such change with its closed/total box count and
+  the count of `Queued:` proposals; where there are none it shall be absent — a
+  queue alone does not summon the strip (assumed 2026-08-19 under attacca; if
+  wrong, the fix is rendering the count solo).
+  Proof: cmd/libretto/wiki_test.go TestWikiHomeCarriesTheInFlightStrip
+- **The home shall carry a segmented health bar whose green width is the integer
+  division of `shall`-carrying criteria over the total and whose amber width is
+  the remainder to 100** — the bar always closes — with the count of criteria
+  whose cited proof does not resolve (file exists; a Go citation also declares
+  the named test).
+  Proof: cmd/libretto/wiki_test.go TestWikiHomeMeasuresContractHealth
+- **Each capability card shall carry a two-state health marker**: green where
+  every criterion carries `shall` and every cited proof resolves, amber
+  otherwise. No red — the wiki reports, gates block.
+  Proof: cmd/libretto/wiki_test.go TestWikiCardsCarryTheHealthDot
+- **The home footer shall state how many tracked files some `Governs:` glob
+  claims and how many none does**, over `git ls-files` behind a seam; where git
+  is unavailable the footer shall be absent. Glob matching mirrors spec-drift's
+  bash-case semantics — `*` crosses directory separators — because two matching
+  authorities would disagree exactly when it matters.
+  Proof: cmd/libretto/wiki_test.go TestWikiFooterMeasuresGovernedTree
+
+The capability page carries its own history and its proof, from the same
+sources, absent when the data is.
+
+- **Where the dates seam yields commit dates for a spec, the page shall carry a
+  sparkline of monthly commit counts** — eight buckets ending at the most recent
+  commit's month, never the clock's, bar heights proportional — and shall omit
+  it when the seam yields nothing.
+  Proof: cmd/libretto/wiki_test.go TestWikiPageCarriesTheActivitySparkline
+- **Each criterion on a page shall carry a chip naming its cited proof file
+  and, when one is named, its test** — green where the criterion carries
+  `shall` and its proof resolves, amber otherwise, one definition of resolving
+  shared with the home board.
+  Proof: cmd/libretto/wiki_test.go TestWikiCriteriaCarryProofChips
+- **Where a spec holds a `Prior decisions` section, the page shall render up to
+  its first three bullets with the section's total count, above the criteria**;
+  where it holds none, the block shall be absent.
+  Proof: cmd/libretto/wiki_test.go TestWikiPageSurfacesPriorDecisions
+- **Where a spec file's raw text mentions another capability's name on a
+  case-insensitive word boundary, the page shall carry a Related row linking
+  each mentioned capability once, never itself**; with no mentions the row
+  shall be absent. (The match rule is assumed 2026-08-19 under attacca; smarter
+  linking waits for a real false positive.)
+  Proof: cmd/libretto/wiki_test.go TestWikiPageLinksRelatedCapabilities
+
+The palette searches the whole contract, offline, from one block.
+
+- **The generated page shall carry one `application/json` index block that
+  parses as JSON and holds three groups — criteria, decisions, capabilities —
+  each entry naming its owning capability and its text**, built from the same
+  extraction the pages render.
+  Proof: cmd/libretto/wiki_test.go TestWikiCarriesTheSearchIndex
+- **The page shall carry the palette overlay hidden by default and an inline
+  script that reads the index block, listens on `keydown`, and navigates by
+  setting the location hash** — no external script, classes over style
+  juggling; opened by shortcut or by its own button, never by a click on the
+  card filter, which keeps its own gesture.
+  Proof: cmd/libretto/wiki_test.go TestWikiPaletteIsInlineAndDormant
+- **Spec content in the index shall arrive JSON-encoded such that a criterion
+  containing a closing script tag cannot terminate the block or execute.**
+  Proof: cmd/libretto/wiki_test.go TestWikiSearchIndexEscapesContent
+
+The flow itself gets a page, from the ledgers, absent when they are.
+
+- **Where the project holds a lessons ledger with `## <date> · <change> ·
+  <phase>` entry headers, the page shall carry a flow article at `#flow`** with
+  one labeled bar per phase, widths proportional to the counts — the phase read
+  from the last ` · ` field, because a change name may carry the separator;
+  where the ledger is absent or empty of valid entries, the article shall be
+  absent.
+  Proof: cmd/libretto/wiki_test.go TestWikiFlowBoardCountsCorrections
+- **Where queued proposals exist, the flow article shall list each with its
+  `Queued:` date, oldest first**; with none the queue block shall be absent —
+  and a queue alone shall still summon the article, which is where the queue
+  lives on its own.
+  Proof: cmd/libretto/wiki_test.go TestWikiFlowBoardListsTheQueue
+- **Where the flow article exists, the home shall link `#flow`; where it does
+  not, no such link.**
+  Proof: cmd/libretto/wiki_test.go TestWikiHomeLinksTheFlowBoard

@@ -231,3 +231,31 @@ Did: hardened to name-set comparison, green
 ## 2026-08-18 · wiki-pages-redesign · 6→7
 Said: TestWikiHTMLIsHomeAndPages asserts home/cards/back but not the Governs/intro/criteria its own clause promises — covered only by a different criterion's proof
 Did: added the three article assertions so the citation covers its whole clause, green. The half-a-clause pattern, third catch this branch
+
+## 2026-08-19 · wiki-home-board · 6→7
+Said: criterion 3 reads as two independent integer percentages while the code and the recorded decision use amber-as-remainder — and the 75/25 fixture cannot tell the readings apart
+Did: criterion rewritten to carry the remainder rule; a 2-of-3 subcase (66/34) added so the proof distinguishes it. A decision and its criterion can disagree inside one delta
+
+## 2026-08-19 · wiki-spec-page-board · 6→7
+Said: monthBuckets slices dates[0][:7] unguarded while its own loop guards short lines — unreachable through the real seam, open through any looser future one
+Did: guarded the anchor like the loop, one line. The reviewer question that costs a line gets the line
+
+## 2026-08-19 · wiki-command-palette · 6→7
+Said: the look opened the page from a throwaway worktree that was removed seconds later — the user clicked into ERR_FILE_NOT_FOUND
+Did: reopened from the surviving scratchpad copy; from now on the look copies OUT of the worktree first and opens the copy
+
+## 2026-08-19 · wiki-command-palette · 6→7
+Said: click on the one search input opened the palette, so a mouse user could never type into the card filter — the recorded two-gestures decision collapsed into one
+Did: the click moved to its own visible palette button beside the filter, which is what the plan step 4 described; palette and filter tests re-run green
+
+## 2026-08-19 · wiki-command-palette · 6→7
+Said: the keep-green constraint did not hold literally — one existing assertion was narrowed to its criterion scope because the index now legitimately carries every decision
+Did: nothing further; the deviation was disclosed in the box evidence when it happened and the narrowed assertion still tests the original promise. Recorded so the count is honest
+
+## 2026-08-19 · wiki-command-palette · 6→7
+Said: the fresh reviewer left the shared checkout on main; the seam fix then edited a file that did not exist there
+Did: nothing was lost — everything was committed; checked the branch back out and redid the edit. Reviewer prompts now must say: do not switch branches in the shared checkout
+
+## 2026-08-19 · wiki-flow-board · 6→7
+Said: two clauses had no test behind them — the queue block absent on a ledger-only project, and a ledger empty of valid entries yielding no article
+Did: both assertions added where their criteria live, green. Coverage gaps the builder cannot see are why the seam exists
