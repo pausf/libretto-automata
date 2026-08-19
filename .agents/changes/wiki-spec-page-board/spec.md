@@ -43,7 +43,8 @@ under attacca; if it over-links, the fix is scoping the scan to prose).
 
 - **Buckets anchor to the last commit, not to today.** A "now"-anchored histogram
   changes bytes at every month boundary with unchanged history.
-- **A mention is a word-boundary name match.** Assumed 2026-08-19; smarter
+- **A mention is a case-insensitive word-boundary name match.** Assumed
+  2026-08-19 (the cutter asked; the plan's own risk row only holds this way); smarter
   linking waits for a real false-positive complaint.
 - **Chips reuse wiki-home-board's proof machinery** — one definition of
   "resolves", not two.
