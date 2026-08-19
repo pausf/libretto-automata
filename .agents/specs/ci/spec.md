@@ -216,6 +216,13 @@ before it can merge**.
   it went green. The replacement criterion is falsifiable, and it was watched fail before
   it was trusted to pass.
 
+- **A reversed promise here was labelled `release:patch`, deliberately.** The bump table
+  reads "a promise removed or reversed" as a minor, and this reversed one. The call was
+  that the table means the tool's contract — `install`, `prune`, a skill's guarantee —
+  and this document describes how the repository checks itself, which no user of the CLI
+  depends on. Recorded because the table read mechanically says minor, so the next person
+  to hit this will otherwise re-derive the argument from scratch.
+
 - **Ceilings over a diagnosis.** The apt step's hang was never observed — GitHub serves no
   log for a job still running, so the mirror is a suspect and nothing more. `timeout-minutes`
   and `cancel-in-progress` bound the cost of a hang without claiming to know its cause. If
