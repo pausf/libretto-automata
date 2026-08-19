@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -1074,8 +1075,10 @@ func TestWikiPageSurfacesPriorDecisions(t *testing.T) {
 			t.Errorf("decisions block missing %q", want)
 		}
 	}
-	if strings.Contains(got, "Fourth decision") {
-		t.Error("more than three decision bullets rendered")
+	block := got[strings.Index(got, `class="decisions"`):]
+	block = block[:strings.Index(block, "</div>")]
+	if strings.Contains(block, "Fourth decision") {
+		t.Error("more than three decision bullets rendered in the block")
 	}
 	if strings.Index(got, `class="decisions"`) > strings.Index(got, `class="crit"`) {
 		t.Error("decisions are not above the criteria")
@@ -1133,3 +1136,110 @@ func TestWikiPageLinksRelatedCapabilities(t *testing.T) {
 		t.Fatal("a substring match linked a capability — the boundary is not held")
 	}
 }
+
+// indexBlock pulls the JSON search index out of the generated page.
+func indexBlock(t *testing.T, got string) string {
+	t.Helper()
+	open := `<script type="application/json" id="index">`
+	i := strings.Index(got, open)
+	if i < 0 {
+		t.Fatal("the search index block is missing")
+	}
+	rest := got[i+len(open):]
+	j := strings.Index(rest, "</script>")
+	if j < 0 {
+		t.Fatal("the index block never closes")
+	}
+	return rest[:j]
+}
+
+func TestWikiCarriesTheSearchIndex(t *testing.T) {
+	dir := t.TempDir()
+	specs := filepath.Join(dir, ".agents", "specs")
+	spec := "# Indexed\n\nIntro.\n\n## Prior decisions\n\n- One decision kept.\n\n" +
+		"## Verification criteria\n\n- The system shall index.\n  Proof: scripts/check\n"
+	if err := os.MkdirAll(filepath.Join(specs, "indexed"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(specs, "indexed", "spec.md"), []byte(spec), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "scripts", "check"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	var idx struct {
+		Criteria     []struct{ Cap, Text string }
+		Decisions    []struct{ Cap, Text string }
+		Capabilities []struct{ Cap, Text string }
+	}
+	if err := jsonUnmarshal(indexBlock(t, got), &idx); err != nil {
+		t.Fatalf("the index does not parse as JSON: %v", err)
+	}
+	if len(idx.Criteria) != 1 || idx.Criteria[0].Cap != "indexed" || !strings.Contains(idx.Criteria[0].Text, "shall index") {
+		t.Fatalf("criteria group wrong: %+v", idx.Criteria)
+	}
+	if len(idx.Decisions) != 1 || !strings.Contains(idx.Decisions[0].Text, "One decision kept") {
+		t.Fatalf("decisions group wrong: %+v", idx.Decisions)
+	}
+	if len(idx.Capabilities) != 1 || idx.Capabilities[0].Cap != "indexed" {
+		t.Fatalf("capabilities group wrong: %+v", idx.Capabilities)
+	}
+}
+
+func TestWikiPaletteIsInlineAndDormant(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, `id="palette" hidden`) {
+		t.Fatal("the palette is not dormant markup")
+	}
+	for _, want := range []string{"keydown", "location.hash", `getElementById('index')`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("palette script missing %q", want)
+		}
+	}
+	if strings.Contains(got, "<script src=") || strings.Contains(got, ".style.display") {
+		t.Fatal("palette must be inline and class-toggled")
+	}
+}
+
+func TestWikiSearchIndexEscapesContent(t *testing.T) {
+	dir := t.TempDir()
+	specs := filepath.Join(dir, ".agents", "specs", "sneaky")
+	if err := os.MkdirAll(specs, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	spec := "# Sneaky\n\n## Verification criteria\n\n" +
+		"- The system shall survive </script><script>alert(3)</script> in a criterion.\n  Proof: scripts/check\n"
+	if err := os.WriteFile(filepath.Join(specs, "spec.md"), []byte(spec), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "scripts", "check"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, filepath.Join(dir, ".agents", "specs"))
+	if strings.Contains(got, "</script><script>alert(3)") {
+		t.Fatal("a criterion terminated the index block")
+	}
+	if !strings.Contains(indexBlock(t, got), `\u003c/script\u003e`) {
+		t.Fatal("the closing tag is not JSON-escaped inside the block")
+	}
+}
+
+func jsonUnmarshal(s string, v interface{}) error { return json.Unmarshal([]byte(s), v) }
