@@ -30,6 +30,14 @@ Installing this repository gives a working flow on a machine that has nothing el
   `plan.md` is now the approach and holds no state; `tasks.md` is the checklist and holds
   nothing else. **The alternatives table is the pillar that pays**: a diff shows what was
   built, and nothing in a repository shows what was not built and why
+- **the contract and the plan are co-authored with the user and drafted by agents that
+  never saw the conversation.** Phase 2 interviews one question at a time and phase 5
+  forks on the approach; every answer lands verbatim in the change's `decisions.md`, and
+  the documents are then drafted from that log — the spec by `spec-writer` (single case
+  included, `[NEEDS CLARIFICATION]` markers where the inputs run out), the plan by
+  `plan-writer` (read-only, gaps in its return). The user's words reach the artifacts
+  unparaphrased, and the drafting session cannot write down what was merely decided —
+  the same property the task cut already had, arriving two phases earlier
 - **the checklist is cut by an agent that never saw the design.** One fresh `task-cutter`,
   given the spec and the plan by path and nothing else, in the seam between phases 5 and 6.
   The session that argued its way to an approach cannot distinguish what it wrote down
@@ -224,7 +232,7 @@ That is the whole test, and it is what the count is derived from.
 |---|---|---|
 | 1 · find-work | no | — the reading is stated, and the spec is where it gets corrected |
 | 2–3 · write-spec | **yes** | the contract |
-| 5 · write-plan | **yes** | the order, and what waits on what |
+| 5→6 · write-tasks | **yes** | the approach, the order, and what waits on what |
 | 6 · build-and-check | no | — |
 | 6→7 · review-work | no | — the seam fixes what it finds |
 | 7 · present-work | no | — |
@@ -290,15 +298,19 @@ stops sit exactly there. **After the plan, an unsettled question becomes a findi
 reaches the phase 7 report with what was assumed in the meantime and what changes if the
 assumption is wrong, and the user meets it at phase 8 with everything else.
 
-**Phase 2 asks up to three, in one call, before it writes the spec** — so the contract is
-built by two people rather than handed over finished, and the answers sit inside it rather
-than bolted on. Three is where the questions worth a round trip run out. **Zero is a
-legitimate answer, reported in one line:** a quota manufactures questions the code already
+**Phase 2 interviews before it writes the spec** — one question per native-prompt call,
+the recommendation carrying its reason, "no more questions" always an option, a soft
+bound around five that judgment crosses in either direction — so the contract is built
+by two people rather than handed over finished, and each answer can redirect the next
+question, which a batched call never could. **Phase 5 asks exactly one: the approach**,
+chosen from two or three with named tradeoffs. Every answer lands verbatim in the
+change's `decisions.md`, the log the writer subagents read. **Zero is a legitimate
+answer, reported in one line:** a quota manufactures questions the code already
 answers, which is the rubber-stamp round trip removed from three other phases arriving
 back through the door marked collaboration. The 5→6 seam stops for the approach and the
-order and opens no second tranche, and **the stop count does not move** — the questions ride the stop phase 2
-already has. The trivial lane asks nothing, because *no spec needed* means there is no
-contract to disagree about.
+order and opens no second tranche, and **the stop count does not move** — the questions
+ride the phases that already have them. The trivial lane asks nothing, because *no spec
+needed* means there is no contract to disagree about.
 
 This reverses an earlier promise that asking held at every phase, as often as needed. That
 was reasonable in every individual case and that is precisely the problem — it returns the
@@ -465,6 +477,22 @@ finding, which is the sentence the `readme` capability was created to answer abo
 - **The task cut is a subagent, not a numbered phase.** Independence comes from the fresh
   context; renumbering everything that says eight buys nothing, which is the answer the
   6→7 review seam already gave for itself.
+- **Phase 5 asks, since 2026-08-19 — retiring the 2026-08-12 decision that it asked
+  nothing.** The user reversed it for the fork alone: the approach is the one phase-5
+  decision that is genuinely the user's, and a finished decision can only be
+  rubber-stamped while a fork with named costs must be decided. The no-third-stop
+  argument the original decision was made for survives: the fork rides inside the phase.
+- **Four answers from the user, 2026-08-19, verbatim options:** the interview bound is
+  *"Blando ~5, con juicio"* — never a hard cap; the single-spec case gets a brief always
+  (*"Brief siempre"*) so `spec-writer` keeps one prompt contract; markers are patched by
+  the orchestrator inline (*"Orquestador parchea inline"*), scoped to the bracket
+  expression, the one declared exception to one-author-per-file; attacca's assumptions
+  land in `decisions.md` marked `(assumed)` (*"Sí, marcadas 'assumed'"*), one home for
+  decisions in both modes.
+- **Deliberately not built, with the conditions that bring them back:**
+  section-by-section plan validation, when plans outgrow one read; markers in plans —
+  `plan-writer` returns gaps in its reply, like the cutter; a hard cap of five, if the
+  soft bound degenerates into interrogation.
 - **The specs wiki regenerates at the landing step, not on a schedule and not by a
   daemon.** The landing is the moment the specification moves, so the refreshed index
   rides the same commit as the delta that changed it; a generated view left behind by a
@@ -1042,13 +1070,47 @@ finding, which is the sentence the `readme` capability was created to answer abo
   user-corrections column. The write is the seam's; the reviewer subagent still writes
   nothing. **Proved as wiring only.**
   Proof: scripts/check-payload
-- **phase 2's questions are judgment with a one-call bound, biased to ask.** The hard cap
-  of three was lifted by the user on 2026-08-14 — better asked out of caution than
-  swallowed out of fear — and both edges stay named: every question one a wrong guess
+- **phase 2's questions are an interview: judgment around a soft five, biased to ask.**
+  The hard cap of three was lifted by the user on 2026-08-14 — better asked out of
+  caution than swallowed out of fear — and the one-call bound was retired by the user on
+  2026-08-19: one question per call, each answer able to redirect the next, "no more
+  questions" always offered. Both edges stay named: every question one a wrong guess
   would make expensive, never a form-length interrogation of things the code already
   answers, zero still legitimate and said in one line. The promise lives in three homes —
   `write-spec`, `docs/FLOW.md`, `commands/libretto-flow.md` — and moves in step or not at
-  all. **Proved as wiring only**, two rows: the judgment rule and its upper edge.
+  all. **Proved as wiring only**, three rows: the interview shape, the judgment rule and
+  its upper edge.
+  Proof: scripts/check-payload
+- **Where** a change reaches phase 2 and a spec is written, `write-spec` **shall** direct
+  the session to create `decisions.md` in the change folder — first write creates it —
+  and record each answer verbatim, dated, `(assumed)` when nobody gave it, before the
+  spec file is written. One writer, the orchestrator; the durable copy is the delta's
+  *Prior decisions*, made per answer. **Proved as wiring only.**
+  Proof: scripts/check-payload
+- **the spec's author is `spec-writer`, single case included** — a single writer is a
+  fan-out of one, launched with `brief.md` and `decisions.md` by path. **Where** the
+  inputs do not settle a decision, the writer **shall** leave `[NEEDS CLARIFICATION:
+  question]` and never guess; the orchestrator **shall** resolve each marker by asking,
+  logging, and replacing the bracket expression only — the one declared exception to
+  one-author-per-file, anything beyond it a relaunch. **Proved as wiring only**, three
+  rows across the skill and the agent.
+  Proof: scripts/check-payload
+- **When** phase 5 runs on a change with a contract, `write-plan` **shall** present two
+  or three approaches with tradeoffs as one native question, recommended first with its
+  reason, and **shall** record chosen and rejected with why in `decisions.md`. `plan.md`
+  **shall** be drafted by `plan-writer` — tools `Read, Grep, Glob, Skill` and nothing
+  else, pinned by its own wiring row — returning markdown the orchestrator writes.
+  **Proved as wiring only**, three rows: the fork, the log, the launch.
+  Proof: scripts/check-payload
+- **While** a run is `/libretto-attacca`, the interview, the fork and every marker
+  **shall** become `(assumed)` entries in `decisions.md`, each naming what changes if
+  wrong — logged where the writers read, so an assumed answer reaches them the same way
+  a given one does. **Proved as wiring only.**
+  Proof: scripts/check-payload
+- **the three stops are each asked natively, and the check is the string search across
+  stop-owning skills** — one row per stop: `write-spec`, `write-tasks`, `record-work`.
+  That a fourth stop does not exist stays uncheckable, the same ceiling the stop table
+  above has always named — a script cannot tell a prompt from a paragraph.
   Proof: scripts/check-payload
 
 The bump question's rows, one per condition. **Each was written before the prose it
