@@ -540,6 +540,11 @@ equivalent. It goes when `libretto install` has been verified against a real
   panel branch checks `isatty` and so cannot be entered from a test; a decision left
   inline there is a decision no criterion can reach. They exist to be callable, not to
   abstract anything, and a second caller is not expected.
+- **The flow board's cost table is deliberately not rendered.** Assumed
+  2026-08-19 under attacca: `libretto metrics` answers it at the CLI, and the
+  wiki version means reusing that git walker — it returns as its own change
+  when somebody wants the numbers on the page. Ponytail-debt counts share the
+  condition.
 - **The palette is substring search over one JSON block; the card filter keeps
   its own gesture.** Assumed 2026-08-19 under attacca: no fuzzy ranking until
   substring demonstrably fails a real search, and the palette opens by shortcut
@@ -1459,3 +1464,21 @@ The palette searches the whole contract, offline, from one block.
 - **Spec content in the index shall arrive JSON-encoded such that a criterion
   containing a closing script tag cannot terminate the block or execute.**
   Proof: cmd/libretto/wiki_test.go TestWikiSearchIndexEscapesContent
+
+The flow itself gets a page, from the ledgers, absent when they are.
+
+- **Where the project holds a lessons ledger with `## <date> · <change> ·
+  <phase>` entry headers, the page shall carry a flow article at `#flow`** with
+  one labeled bar per phase, widths proportional to the counts — the phase read
+  from the last ` · ` field, because a change name may carry the separator;
+  where the ledger is absent or empty of valid entries, the article shall be
+  absent.
+  Proof: cmd/libretto/wiki_test.go TestWikiFlowBoardCountsCorrections
+- **Where queued proposals exist, the flow article shall list each with its
+  `Queued:` date, oldest first**; with none the queue block shall be absent —
+  and a queue alone shall still summon the article, which is where the queue
+  lives on its own.
+  Proof: cmd/libretto/wiki_test.go TestWikiFlowBoardListsTheQueue
+- **Where the flow article exists, the home shall link `#flow`; where it does
+  not, no such link.**
+  Proof: cmd/libretto/wiki_test.go TestWikiHomeLinksTheFlowBoard
