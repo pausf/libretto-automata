@@ -51,6 +51,13 @@ absolute dates only); any new dependency; blocking on any advisory number.
   data layer with no surface is the horizontal box that cannot merge alone.
 - **Absolute dates, no clock.** Assumed: the canvas showed "hace 1 día"; a
   relative date is a function of now and breaks byte-determinism.
+- **Bar arithmetic: green is integer division, amber is the remainder.** Assumed
+  2026-08-19 from the cutter's finding — the two widths always sum to 100, so the
+  bar closes; if the rounding should bias the other way, it is one line.
+- **A queue alone does not summon the strip.** Assumed from the cutter's finding:
+  with queued proposals but zero open changes the strip is absent, queue count and
+  all — the strip reports work in flight, and the flow board (sibling change) is
+  where the queue lives on its own. If wrong, the fix is rendering the count solo.
 - **The health dot is two states, green and amber.** No red: the wiki reports,
   gates block; a red dot would read as a gate.
 
