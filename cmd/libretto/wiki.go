@@ -789,7 +789,7 @@ var wikiGitDates = func(projectDir, specPath string) []string {
 // walks back eight months. A function of history alone, so bytes hold still.
 func monthBuckets(dates []string) [8]int {
 	var buckets [8]int
-	if len(dates) == 0 {
+	if len(dates) == 0 || len(dates[0]) < 7 {
 		return buckets
 	}
 	anchor := dates[0][:7] // newest first

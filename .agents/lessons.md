@@ -235,3 +235,7 @@ Did: added the three article assertions so the citation covers its whole clause,
 ## 2026-08-19 · wiki-home-board · 6→7
 Said: criterion 3 reads as two independent integer percentages while the code and the recorded decision use amber-as-remainder — and the 75/25 fixture cannot tell the readings apart
 Did: criterion rewritten to carry the remainder rule; a 2-of-3 subcase (66/34) added so the proof distinguishes it. A decision and its criterion can disagree inside one delta
+
+## 2026-08-19 · wiki-spec-page-board · 6→7
+Said: monthBuckets slices dates[0][:7] unguarded while its own loop guards short lines — unreachable through the real seam, open through any looser future one
+Did: guarded the anchor like the loop, one line. The reviewer question that costs a line gets the line
