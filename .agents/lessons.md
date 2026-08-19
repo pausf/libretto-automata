@@ -255,3 +255,7 @@ Did: nothing further; the deviation was disclosed in the box evidence when it ha
 ## 2026-08-19 · wiki-command-palette · 6→7
 Said: the fresh reviewer left the shared checkout on main; the seam fix then edited a file that did not exist there
 Did: nothing was lost — everything was committed; checked the branch back out and redid the edit. Reviewer prompts now must say: do not switch branches in the shared checkout
+
+## 2026-08-19 · wiki-flow-board · 6→7
+Said: two clauses had no test behind them — the queue block absent on a ledger-only project, and a ledger empty of valid entries yielding no article
+Did: both assertions added where their criteria live, green. Coverage gaps the builder cannot see are why the seam exists

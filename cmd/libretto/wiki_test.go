@@ -1277,6 +1277,26 @@ func TestWikiFlowBoardCountsCorrections(t *testing.T) {
 	if !strings.Contains(flow, `width:100%`) || !strings.Contains(flow, `width:50%`) {
 		t.Fatal("bar widths are not proportional to phase counts")
 	}
+	// Ledger-only: the queue block must be absent, not empty.
+	if strings.Contains(flow, `class="queue"`) {
+		t.Fatal("a queueless project still grew the queue block")
+	}
+	// A ledger that exists but holds no valid entry headers is empty of
+	// entries — the other half of the absence clause.
+	dir3 := t.TempDir()
+	specs3 := writeSpecs(t, dir3, ".agents/specs")
+	if err := os.MkdirAll(filepath.Join(dir3, ".agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir3, ".agents", "lessons.md"), []byte("# Lessons\n\nprose only\n## short · header\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir3, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs3), `id="flow"`) {
+		t.Fatal("a ledger empty of valid entries still grew the article")
+	}
 	// No ledger and no queue → no article, no link.
 	dir2 := t.TempDir()
 	specs2 := writeSpecs(t, dir2, ".agents/specs")
