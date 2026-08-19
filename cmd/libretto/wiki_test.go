@@ -766,3 +766,204 @@ func TestWikiHTMLHomeSearchIsInline(t *testing.T) {
 		t.Error("the search script does not read data-crit")
 	}
 }
+
+// injectWikiGit swaps all three git seams; tests never touch real git state.
+func injectWikiGit(t *testing.T, date func(string, string) string, subject func(string, string) string, tracked func(string) []string) {
+	t.Helper()
+	pd, ps, pt := wikiGitDate, wikiGitSubject, wikiGitTracked
+	t.Cleanup(func() { wikiGitDate, wikiGitSubject, wikiGitTracked = pd, ps, pt })
+	if date != nil {
+		wikiGitDate = date
+	}
+	if subject != nil {
+		wikiGitSubject = subject
+	}
+	if tracked != nil {
+		wikiGitTracked = tracked
+	}
+}
+
+// healthFixture: "solid" is fully EARS with resolving proofs; "wobbly" carries one
+// prose criterion and one EARS criterion citing a file that does not exist.
+func healthFixture(t *testing.T, dir string) string {
+	t.Helper()
+	specs := filepath.Join(dir, ".agents", "specs")
+	solid := "# Solid\n\nGoverns: src/**\n\nHolds the line.\n\n## Verification criteria\n\n" +
+		"- The system shall hold.\n  Proof: pkg/solid_test.go TestHold\n" +
+		"- When poked, the system shall answer.\n  Proof: scripts/check\n"
+	wobbly := "# Wobbly\n\nGoverns: tools/one.go\n\n## Verification criteria\n\n" +
+		"- the panel opens where it was left\n  Proof: scripts/check\n" +
+		"- The system shall wobble.\n  Proof: pkg/gone_test.go TestGone\n"
+	for name, body := range map[string]string{"solid": solid, "wobbly": wobbly} {
+		if err := os.MkdirAll(filepath.Join(specs, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(specs, name, "spec.md"), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "pkg", "solid_test.go"), []byte("package pkg\n\nfunc TestHold(t *testing.T) {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "scripts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "scripts", "check"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return specs
+}
+
+func TestWikiHomeCarriesTheRecentRail(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	injectWikiGit(t,
+		func(_, p string) string {
+			if strings.Contains(p, "pricing") {
+				return "2026-08-18"
+			}
+			return "2026-08-10"
+		},
+		func(_, p string) string {
+			if strings.Contains(p, "pricing") {
+				return "land the discounts <finally>"
+			}
+			return "first cut"
+		}, nil)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	for _, want := range []string{`class="recent"`, "land the discounts &lt;finally&gt;", "2026-08-18", "first cut"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("rail missing %q", want)
+		}
+	}
+	if strings.Index(got, "land the discounts") > strings.Index(got, "first cut") {
+		t.Error("the rail is not most-recent first")
+	}
+	// No dates anywhere → no rail at all.
+	dir2 := t.TempDir()
+	specs2 := writeSpecs(t, dir2, ".agents/specs")
+	injectWikiGit(t, func(_, _ string) string { return "" }, func(_, _ string) string { return "" }, nil)
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs2), `class="recent"`) {
+		t.Fatal("a dateless project still renders the rail")
+	}
+}
+
+func TestWikiHomeCarriesTheInFlightStrip(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	ch := filepath.Join(dir, ".agents", "changes")
+	if err := os.MkdirAll(filepath.Join(ch, "add-discounts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ch, "add-discounts", "tasks.md"),
+		[]byte("# Tasks\n\n- [x] one\n- [x] two\n- [ ] three\n- [ ] four\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A landed-shape change (all closed) never shows, and a legacy plan.md counts.
+	if err := os.MkdirAll(filepath.Join(ch, "old-style"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ch, "old-style", "plan.md"),
+		[]byte("- [ ] only\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(ch, "an-idea"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(ch, "an-idea", "proposal.md"),
+		[]byte("# an-idea\n\nQueued: 2026-08-14\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	for _, want := range []string{`class="inflight"`, "add-discounts", "2/4", "old-style", "0/1", "1 queued"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("strip missing %q", want)
+		}
+	}
+	// Queue alone does not summon the strip — the recorded assumption.
+	dir2 := t.TempDir()
+	specs2 := writeSpecs(t, dir2, ".agents/specs")
+	if err := os.MkdirAll(filepath.Join(dir2, ".agents", "changes", "an-idea"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir2, ".agents", "changes", "an-idea", "proposal.md"),
+		[]byte("Queued: 2026-08-14\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs2), `class="inflight"`) {
+		t.Fatal("a queue alone summoned the strip")
+	}
+}
+
+func TestWikiHomeMeasuresContractHealth(t *testing.T) {
+	dir := t.TempDir()
+	specs := healthFixture(t, dir)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	// 3 of 4 criteria carry shall: green 75, amber the remainder.
+	for _, want := range []string{`class="health"`, "width:75%", "width:25%", "1 unproven"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("health bar missing %q", want)
+		}
+	}
+}
+
+func TestWikiCardsCarryTheHealthDot(t *testing.T) {
+	dir := t.TempDir()
+	specs := healthFixture(t, dir)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !regexp.MustCompile(`href="#solid"[^>]*data-health="ok"`).MatchString(got) {
+		t.Error("solid's card is not marked healthy")
+	}
+	if !regexp.MustCompile(`href="#wobbly"[^>]*data-health="warn"`).MatchString(got) {
+		t.Error("wobbly's card is not marked amber")
+	}
+}
+
+func TestWikiFooterMeasuresGovernedTree(t *testing.T) {
+	dir := t.TempDir()
+	specs := healthFixture(t, dir)
+	injectWikiGit(t, nil, nil, func(string) []string {
+		return []string{"src/a/b.go", "src/c.go", "tools/one.go", "README.md", "x/y.go"}
+	})
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	// src/** must cross a directory boundary — the ** arm the force-red breaks.
+	for _, want := range []string{`class="governed"`, "3 governed", "2 orphan"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("footer missing %q", want)
+		}
+	}
+	// Git unavailable → no footer.
+	dir2 := t.TempDir()
+	specs2 := healthFixture(t, dir2)
+	injectWikiGit(t, nil, nil, func(string) []string { return nil })
+	if _, err := runWiki(t, dir2, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(wikiHTML(t, specs2), `class="governed"`) {
+		t.Fatal("a gitless project still renders the footer")
+	}
+}
