@@ -8,9 +8,19 @@ name: gates
 # Read-only. Nothing here pushes, comments, formats or commits — a workflow that can
 # write is a workflow that can be made to write.
 
+# A branch with an open PR is pushed to and reviewed on the same commits. Firing on
+# both events runs every gate twice for nothing, and the duplicate is what starves the
+# runner: three push runs sat on `install ripgrep` for over an hour while the
+# pull_request run of the same commit went green in 1m17s.
 on:
   push:
+    branches: [main]
   pull_request:
+
+# Push again mid-run and the older run is dead work. Kill it rather than queue it.
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -18,6 +28,9 @@ permissions:
 jobs:
   gates:
     runs-on: ubuntu-latest
+    # These gates take under two minutes. Anything past ten is a hung step, and a hung
+    # step with no ceiling burns the six-hour default before anybody reads it.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -30,6 +43,7 @@ jobs:
       # check-payload and spec-drift are bash and both shell out to rg. Without it
       # they fail for a reason that has nothing to do with the code under test.
       - name: install ripgrep
+        timeout-minutes: 3
         run: sudo apt-get update && sudo apt-get install -y ripgrep
 
       # `gofmt -l` prints the unformatted files and exits ZERO. A step written as
