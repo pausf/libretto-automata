@@ -44,7 +44,7 @@ the plan mandates this per row.
   gates green.
   Waits on: 1 (the log is a named input), 2 (same file, the handoff it rewrites).
 
-- [ ] **4. The fork in `write-plan`.**
+- [x] **4. The fork in `write-plan`.**
   Before any document: two or three approaches with tradeoffs, recommended first, one
   `AskUserQuestion`; chosen and rejected with why → `decisions.md`. Phase 5 still does
   not stop.

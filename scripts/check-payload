@@ -283,6 +283,8 @@ check_wiring skills/write-spec/SKILL.md  'one question per .AskUserQuestion. cal
 check_wiring skills/write-spec/SKILL.md  'a single writer is a fan-out of one' 'the single-spec case is authored by spec-writer too'
 check_wiring skills/write-spec/SKILL.md  'NEEDS CLARIFICATION'          'the orchestrator resolves markers: ask, log, patch the bracket expression only'
 check_wiring agents/spec-writer.md       'NEEDS CLARIFICATION'          'the writer marks what its inputs left open, never guesses past it'
+check_wiring skills/write-plan/SKILL.md  'two or three approaches'      'phase 5 forks: the user chooses the approach from named tradeoffs'
+check_wiring skills/write-plan/SKILL.md  'decisions\.md'                'the fork logs chosen and rejected, with why, verbatim'
 check_wiring skills/evidence/SKILL.md    'lessons\.md'                  'evidence captures corrections into the ledger'
 check_wiring skills/evidence/SKILL.md    'Said:'                        'the capture keeps the user words, not a paraphrase'
 check_wiring skills/retro/SKILL.md       'Resolved:'                    'retro spends entries by marking, never editing'
