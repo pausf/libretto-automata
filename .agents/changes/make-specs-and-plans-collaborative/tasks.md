@@ -5,7 +5,7 @@ and its `check_wiring` row(s) in the same commit, and every new row is forced re
 once (pattern edited to nonsense, FAIL observed, reverted) before it is believed —
 the plan mandates this per row.
 
-- [ ] **1. The `decisions.md` contract in `write-spec`.**
+- [x] **1. The `decisions.md` contract in `write-spec`.**
   A new section: the first write creates it — normally phase 2's first answer, and a
   phase 5 opening on a change without one creates it the same way; format
   `### Session YYYY-MM-DD` then `- Q: … → A: …` verbatim, `(assumed)` suffix under

@@ -495,6 +495,41 @@ A path no spec claims is reported separately and more softly — not everything 
 a contract, and treating every unanchored file as an error trains people to ignore
 the warning.
 
+## The decision log — `decisions.md`
+
+Beside the proposal: `.agents/changes/<change>/decisions.md`. It records what the user
+settled, in the user's words, and it is a file the writer subagents are given by path
+when a document gets drafted — a decision that lives only in the conversation cannot
+reach an agent that never had the conversation.
+
+**The first write creates it.** Normally that is step 4's first answer; a phase 5 that
+opens on a change without one — resumed from before the log existed, or a phase 2 that
+had nothing to ask — creates it the same way. No empty file up front: a log with no
+entries would be a claim that there were no decisions, made before anyone knew.
+
+The format, whole:
+
+```
+### Session 2026-08-19
+- Q: discount on the base price, or on the already-discounted one? → A: base, never compounded
+- Q: new table, or a column on orders? → A: column — we do not want another migration (assumed)
+```
+
+Dated sessions, one `- Q: … → A: …` line per decision, **the answer verbatim**. A
+paraphrase loses the part that was not understood yet — the same reason the proposal
+records the ask in the words it was asked in. `(assumed)` marks an answer nobody gave:
+attacca's, and any default taken because the user was not there. An assumed entry names
+what changes if it is wrong.
+
+**One writer, the orchestrator** — the same rule as `tasks.md`, for the same reason.
+Subagents read it by path and never append; their questions come back in their return
+value and are logged here by the session that asks them.
+
+**The log dies with the change.** At landing the folder goes, and the log goes with it.
+What survives is the copy the spec's author already made: each entry is written into the
+delta's *Prior decisions* as it is answered, attributed and dated, so landing needs no
+new mechanism and the capability spec carries the decisions forward.
+
 ## Step 4 — Ask what cannot be settled here. As many as a wrong guess would cost.
 
 Some things are genuinely not yours to decide: a product tradeoff, a convention
