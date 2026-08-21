@@ -6,7 +6,10 @@ alone, tree green, code and proof in the same commit. The capability spec applic
 lands with the final commit per the landing contract, and `Durable decisions` are
 carried in the plan.
 
-- [ ] **1. The `land` verifier, end to end** — `cmd/libretto/land.go` +
+- [x] **1. The `land` verifier, end to end** — done 2026-08-21, commit 4b2b6c2;
+  evidence: 18 named tests + parser table green (`go test ./... -count=1`, 55s),
+  forced-red observed on `TestLandFailsAPartialFolderDeletion` and
+  `TestLandChangesNothing`, gofmt/vet clean. — `cmd/libretto/land.go` +
   `cmd/libretto/land_test.go`, plus wiring in the same commit: `case "land":` in `run`
   (`cmd/libretto/main.go`), the `usage()` line, `land` in `root.go`'s `needsPayload`
   exemption, `TestHelpNamesLand` in `cmd/libretto/main_test.go`. Inside the one file:
