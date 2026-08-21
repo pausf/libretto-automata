@@ -37,7 +37,9 @@ carried in the plan.
   Repo-building tests gated behind `testing.Short()`; `make test-short` stays green.
   Waits on: nothing.
 
-- [ ] **2. The stale-wiki warning** — in `land.go`, reusing `ownsFile` and both markers
+- [x] **2. The stale-wiki warning** — done 2026-08-21, commit e759ae1; evidence: both
+  wiki tests green, forced-red observed (warning made to flip the exit code, test
+  caught it), gofmt/vet/test/-short all green. — in `land.go`, reusing `ownsFile` and both markers
   from `wiki.go`: marked view exists on disk, a `<specsDir>/*/spec.md` is in `touched`,
   the view is not → one line to stderr; exit code untouched on every path; unmarked
   (foreign) view ignored silently; silence when no marked view exists or the view rides
@@ -46,7 +48,9 @@ carried in the plan.
   `TestLandStaysSilentWhenTheWikiIsCurrentOrForeign`.
   Waits on: box 1.
 
-- [ ] **3. The record-work clause** — one paragraph in the "Landing a change
+- [x] **3. The record-work clause** — done 2026-08-21; evidence: clause beside the
+  wiki clause with the too-old-binary case on the absent side, version 1.3 → 1.4,
+  `scripts/check-payload` exit 0 read to completion. — one paragraph in the "Landing a change
   consolidates it" section of `skills/record-work/SKILL.md`, beside and in the grammar
   of the wiki clause: bold guarded instruction ("**Where `libretto` is on PATH, run
   `libretto land` before the landing commit**"), fix-and-re-run on non-zero and never
