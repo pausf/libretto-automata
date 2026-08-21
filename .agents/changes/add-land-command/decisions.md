@@ -41,6 +41,11 @@
 - Q: distinct exit codes for "nothing is landing" vs "parts missing"? → A: no —
   the spec distinguishes only zero from non-zero and main exits 1 on any error;
   distinct codes wait for a caller that needs them. (assumed)
+- Q: (cutter finding) a `libretto` on PATH too old to know `land` exits non-zero
+  with *unknown command*, naming no part — does that wedge the landing? → A: no —
+  it falls on the absent side: a binary that does not know the command IS absent
+  for this purpose; say the landing is unverified and continue. If wrong: one
+  sentence in the clause and one clause in the criterion move. (assumed)
 - Q: does the payload learn about the command? → A: yes, minimally — a second delta on
   the payload capability: record-work gains "where `libretto` is on PATH, run
   `libretto land` before the landing commit", same shape as the existing wiki clause,

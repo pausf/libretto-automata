@@ -93,10 +93,13 @@ Small by design. No second task exists; the sibling delta owns the command.
 
 - **Where** `libretto` is on PATH, the `record-work` skill **shall** instruct
   the landing step to run `libretto land` before the landing commit; **if**
-  the command exits non-zero, **then** the skill **shall** instruct fixing the
-  missing part it names and re-running, never committing past it; **where**
-  the binary is absent, it **shall** say the landing is unverified and
-  continue rather than block. **Ceiling named:** the anchor keeps the
+  the command exits non-zero naming a missing part, **then** the skill
+  **shall** instruct fixing that part and re-running, never committing past
+  it; **where** the binary is absent — or too old to know `land`, failing
+  with *unknown command* and naming no part — it **shall** say the landing
+  is unverified and continue rather than block. (Assumed 2026-08-21, from a
+  cutter finding: an old binary must not wedge a landing; if wrong, this
+  clause is one sentence to tighten.) **Ceiling named:** the anchor keeps the
   instruction findable in its file, never proves a session obeyed prose — the
   same limit the wiki-clause criterion beside it lives with.
   Proof: skills/record-work/SKILL.md
