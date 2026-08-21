@@ -36,6 +36,11 @@
   refuse? → A: refusal wins, derived from the foreign-layout decision's own
   two-sources-of-truth rationale; the report names both findings. If wrong: one
   branch reorders. (assumed)
+- Q: (cutter finding) the cli delta's task breakdown said "run the built binary" for
+  the dogfood while the plan says never build — which wins? → A: the plan; the delta
+  is amended to by-hand creation. Never-build-after-changes is a standing session
+  rule, and the suite proves the command. If wrong: the dogfood is one command to
+  re-run. (assumed)
 - Q: what happens to the payload non-goal ("no creating a changes/ directory in a
   project that has none")? → A: it is rewritten, not deleted: implicit creation by
   skills stays forbidden; `libretto init` becomes the named, explicit, user-invoked

@@ -155,8 +155,11 @@ Each unit independently assignable; 1 before 2; 4 any time after 1.
 3. **Tests** — `cmd/libretto/init_test.go` (fake `gitRunner` + `t.TempDir()`;
    real-git cases behind `testing.Short()`), plus the help line in
    `cmd/libretto/main_test.go`.
-4. **Dogfood** — run the built binary in this repository; commit the resulting
-   `.agents/changes/.gitkeep` with this change.
+4. **Dogfood** — create `.agents/changes/.gitkeep` by hand, in exactly the shape
+   `init` would write it, and commit it with this change. Never a fresh build — the
+   session rule stands, and the suite is what proves the command. (Amended 2026-08-21
+   after a cutter finding: this line originally said "run the built binary", which
+   the plan countermands.)
 
 ## Verification criteria
 
