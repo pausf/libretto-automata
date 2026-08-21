@@ -4,7 +4,7 @@ description: "Trigger: a task has been read and needs a specification; writing o
 license: MIT
 metadata:
   author: pausf
-  version: "2.0"
+  version: "2.1"
 ---
 
 ## What this does
@@ -181,7 +181,9 @@ above is written to work under all three, which is why it leads with `Targets:` 
 
 **Never create a `changes/` directory in a project that has none** without also
 doing the consolidation. A staging area nobody empties is just a second source of
-truth.
+truth. Where `libretto` is on PATH, the sanctioned bootstrap is `libretto init`,
+run by the user on purpose; where the binary is absent, this refusal stands
+unchanged.
 
 ## Step 2b — The fan-out, only when context requires it
 

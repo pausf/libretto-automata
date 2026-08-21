@@ -71,4 +71,6 @@ and point at `/libretto-next`.
 
 `.agents/changes/` existing means this project already consolidates its changes. If it
 does not exist, say so and stop rather than inventing a staging area nobody empties —
-the same rule `write-spec` holds.
+the same rule `write-spec` holds. Where `libretto` is on PATH, the sanctioned
+bootstrap is `libretto init`, run by the user on purpose; where the binary is absent,
+this refusal stands unchanged.
