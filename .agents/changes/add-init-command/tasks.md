@@ -27,7 +27,9 @@ in the same commit as the work that closed them.
   cited name.
   Waits on: nothing.
 
-- [ ] **2. The two guarded payload pointers** — one sentence appended to
+- [x] **2. The two guarded payload pointers** — done 2026-08-21; evidence: both
+  sentences in place in the record-work grammar, write-spec 1.2→1.3,
+  `scripts/check-payload` exit 0 read to completion. — one sentence appended to
   `skills/write-spec/SKILL.md`'s "Never create a `changes/` directory" paragraph
   (~line 176) and one to `commands/libretto-queue.md`'s refusal section (~line 70),
   both in the record-work guarded grammar (`skills/record-work/SKILL.md:104-108`):
@@ -40,7 +42,9 @@ in the same commit as the work that closed them.
   parses, `name:` matches the directory).
   Waits on: nothing. Independent of box 1.
 
-- [ ] **3. Dogfood the fix in this repository** — create
+- [x] **3. Dogfood the fix in this repository** — done 2026-08-21; evidence:
+  `.agents/changes/.gitkeep` exists empty at the root and is tracked from this
+  commit on. — create
   `.agents/changes/.gitkeep` by hand (empty file at the repository root), exactly the
   shape `init` would write, and commit it with this change. Do **not** build and run
   the binary — never-build stands; the command's behaviour is box 1's test suite's to
