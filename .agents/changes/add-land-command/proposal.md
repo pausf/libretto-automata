@@ -1,7 +1,6 @@
 # add-land-command
 
 Tracker: none
-Queued: 2026-08-21
 
 ## The ask, verbatim
 
