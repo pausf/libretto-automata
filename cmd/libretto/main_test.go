@@ -253,6 +253,16 @@ func TestOutputNamesTheInvokedCommand(t *testing.T) {
 	}
 }
 
+func TestHelpNamesLand(t *testing.T) {
+	_, stderr, err := capture(t, func() error { usage(); return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stderr, " land ") {
+		t.Errorf("help does not name land:\n%s", stderr)
+	}
+}
+
 // ── prerequisites are informational ──────────────────────────────────────────
 
 // rg and jq are what the payload's own gates run on — spec-drift asks every
