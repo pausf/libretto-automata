@@ -30,6 +30,53 @@ like this?" got an answer reconstructed from the diff.
 **A decision nobody wrote down gets made again**, and the second time it is made by
 somebody with less context, under more pressure, in the middle of phase 6.
 
+## The fork — the user chooses the approach
+
+Before any document exists, phase 5 asks its one question: **two or three approaches
+with tradeoffs, in one `AskUserQuestion` call — the host's native prompt, or in
+conversation where one does not exist** — the recommended one first *with the reason
+it is recommended*, the real alternatives with what each would cost, and room to answer
+differently. Never a fait accompli: a finished decision can only be rubber-stamped,
+while a fork with named costs must be decided, and deciding it is the user's.
+
+Two or three means real ones. An approach nobody could have chosen is a strawman
+propping up the recommendation, and a change with genuinely one way to build it says so
+in one line and asks nothing — zero is as legitimate here as it is in phase 2.
+
+**The chosen and the rejected go to `decisions.md`** — the choice verbatim, each
+rejected approach with why it lost. That is what makes the alternatives table below
+reconstructible outside this conversation, which is the whole reason the table used to
+be the pillar that died with the session.
+
+**This does not add a stop.** The fork rides inside phase 5 the way the interview rides
+inside phase 2; the flow still stops in three places, and the approach is still agreed
+at the 5→6 seam with the boxes it produced. Until 2026-08-19 this phase asked nothing —
+a decision made deliberately and retired deliberately: the no-third-stop reason it was
+made for survives, the silence did not.
+
+**Under `/libretto-attacca` the fork is pre-answered**: the recommended approach is
+taken and logged in `decisions.md` with the `(assumed)` suffix, naming what changes if
+it is wrong — the same rule as every question attacca answers in advance.
+
+## The drafting runs in a fresh subagent
+
+The fork above and this launch are **the orchestrator's conduct** — a `plan-writer`
+invoking this skill for the document's shape starts at *What goes in it* and follows
+nothing above that heading.
+
+With the approach chosen and logged, **launch one `plan-writer`**: the change's spec
+delta, the capability spec it targets, `proposal.md` and `decisions.md`, each by path,
+plus the standing rules restated verbatim — no commit, no push, no file written, its
+questions in its return value. It drafts the plan the same way `task-cutter` cuts the
+checklist one seam later, and for the same reason: the session that argued its way to
+an approach cannot tell what it wrote down from what it merely decided, and it drafts
+against the argument. The writer can only draft what the log actually carries — which
+is the first check the fork's record gets.
+
+**Read what it failed to answer before writing anything.** A gap goes back to the fork
+or to the contract; it never gets drafted over. Then the orchestrator writes `plan.md`
+from the returned markdown — one writer, the same rule as `tasks.md`.
+
 ## What goes in it
 
 Six things. The fourth and the sixth are the ones that get skipped, and they are the two
@@ -67,6 +114,10 @@ that was genuinely considered, by somebody who could have chosen it.
 
 | Considered | Why it lost |
 |---|---|
+
+The fork's rejected approaches are rows here by definition — they are in
+`decisions.md` with why they lost, in the user's words, and the table carries them
+forward. Alternatives that surfaced later, while the plan was being drafted, join them.
 
 A diff can show what was built. Nothing in a repository can show what was *not* built
 and why, so if it is not here it is gone. And the alternative that lost for a reason

@@ -146,27 +146,35 @@ que el plan se cree entre los 2 y no solo tú"*. A phase that hands over a finis
 decided alone everything it did not ask about, and the decisions it made quietly are
 exactly the ones nobody reviews.
 
-So phase 2 asks before it writes the file — **one call, never a string of turns.** Serial
-round trips to build one contract is the ceremony this flow spends its length arguing
-against, and the answers have to be *in* the contract rather than bolted on afterwards.
+So phase 2 asks before it writes the file — **as an interview, one question per call,
+each answer able to redirect the next.** It was one batched call until 2026-08-19: the
+batch was cheap but it interviewed nobody — all its questions came from the same draft,
+and the user met them as a form. What keeps the sequence from becoming the serial
+ceremony this flow argues against is the soft bound around five and a standing "no more
+questions" option, and the answers still have to be *in* the contract rather than bolted
+on afterwards — they land verbatim in the change's `decisions.md` as they arrive.
 
 The count was capped at three until 2026-08-14, when the user lifted it: better asked out
 of caution than swallowed out of fear. What replaced the cap is judgment with both edges
 named — every question one a wrong guess would make expensive, and never a form-length
 interrogation of things the code already answers. The bias, when in doubt, is to ask.
 
-**Phase 2 alone, not phase 5**, which was offered and declined. The contract is where an
-answer changes the most and costs the least to change; the 5→6 seam already stops for the
-approach, the order and what waits on what. Asking twice before the first line of code is how a three-stop flow
-grows back into a nine-stop one, one defensible exception at a time.
+**Phase 5 asks too, since 2026-08-19, and it asks exactly one thing: the approach.** Two
+or three real ones with named tradeoffs, the recommendation first with its reason, the
+user choosing — chosen and rejected logged with why, which is what makes the plan's
+alternatives table reconstructible outside the session that argued it. "Phase 2 alone,
+not phase 5" was the rule from 2026-08-12, declined on the no-third-stop argument; the
+user retired it, and the argument survives the retirement — the fork rides inside phase
+5, and asking N questions before the first line of code is still how a three-stop flow
+grows back into a nine-stop one when the questions stop being cheap.
 
 **Zero is legitimate, and it is said in one line.** The alternative — always three, stretched
 if necessary — was offered and declined for the reason `AGENTS.md` already gives: do not ask
 what the code can tell you. A quota manufactures the rubber-stamp question this flow removed
 from three other phases.
 
-Note what does *not* change: the stop count. The questions ride the stop phase 2 already
-has.
+Note what does *not* change: the stop count. The questions ride the phases that already
+have them.
 
 ## 5 · The plan
 
@@ -190,6 +198,12 @@ anywhere at all.
 A diff shows what was built. Nothing in a repository shows what was **not** built and
 why — so if it is not here it is gone, and the decision gets made again by somebody with
 less context in the middle of phase 6.
+
+Who writes it changed on 2026-08-19, and it changed to the same shape the two seams
+already have: the user chooses the approach at the fork, the choice and the losers land
+in `decisions.md`, and **one fresh `plan-writer` drafts the document from the spec, the
+proposal and that log** — none of the conversation, so it can only draft what the fork
+actually recorded. Gaps come back in its return; the orchestrator writes the file.
 
 No checkboxes. No state. That is the next seam.
 
@@ -389,7 +403,7 @@ Three stops. Two inside the work, one at the door.
 |---|---|---|
 | 1 · read the task | no | — the reading is stated, and the spec is where it gets corrected |
 | 2 · the spec | **yes** | the contract |
-| 5 · the plan | **yes** | the order, and what waits on what |
+| 5→6 · the tasks are cut | **yes** | the approach, the order, and what waits on what |
 | 6 · build | no | — |
 | 6→7 · review | no | — the seam fixes what it finds |
 | 7 · present | no | — |

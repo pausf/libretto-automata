@@ -118,8 +118,11 @@ So read the code first. Specifically:
 - what will break if this change is naive
 - whether a decision recorded elsewhere already settles part of this
 
-With one spec, read the code inline. A sub-agent for a change you can hold in your
-head is a round trip for nothing.
+With one spec, read the code inline — a research sub-agent for a change you can hold
+in your head is a round trip for nothing. **The writing is a different matter**: the
+spec file itself is authored by `spec-writer` in every case, single or fan-out. The
+reading informs the brief and the questions; the drafting leaves this session — see
+step 4b for why.
 
 ### The specification is selected, never the corpus
 
@@ -174,13 +177,21 @@ above is written to work under all three, which is why it leads with `Targets:` 
 doing the consolidation. A staging area nobody empties is just a second source of
 truth.
 
-## Step 2b — Several specs: the shared brief, then fan out
+## Step 2b — The brief, and the fan-out when there are several
+
+**Every spec gets a brief, whatever the count.** The single-spec brief is shorter —
+often a screen — but it has the same five headings, so `spec-writer`'s contract does
+not change with the count, and what the writer was told is on disk either way. For a
+single spec it is written after step 4's interview, when the decisions it must carry
+exist; for a fan-out it is written here, because the interview's answers are shared
+ground too.
 
 Ten subtasks researched in this thread will exhaust the context, which is the exact
-problem fanning out exists to solve. So sub-agents write their own spec files.
+problem fanning out exists to solve. So sub-agents write their own spec files —
+several in parallel when the change is several specs.
 
-**The context is the only reason.** Fanning out because the answer is not yet
-obvious turns a reflex into a research project — if two readings of the code
+**The context is the only reason to fan out.** Fanning out because the answer is not
+yet obvious turns a reflex into a research project — if two readings of the code
 already settle it, settle it and move on. Ten agents dispatched to confirm
 something visible from one file is the expensive kind of thoroughness.
 
@@ -265,6 +276,8 @@ this seat, and a generic sub-agent would start without it. In its prompt:
   out is worse than a brief read whole
 - **the path, never the text.** Sections are named, not excerpted: excerpting is what
   puts N copies in N contexts, which is the cost the brief exists to remove
+- **the path to `decisions.md`**, when it exists — the user's answers, verbatim, which
+  the writer carries into its *Prior decisions* pillar as they stand
 - its own subtask — key, summary, description
 - the boundary between its spec and its siblings', stated explicitly
 - the one path it may write, and nothing else
@@ -342,11 +355,12 @@ Every spec has all six, explicitly, with headings. A pillar left vague is not
 brevity — it is a gap that gets filled later by whoever is typing, from
 association rather than intent.
 
-**Draft them, then hold the file until step 4 has its answers.** Drafting is what
-surfaces the questions worth asking — a boundary the request left open, two precedents
-with nothing choosing between them — and an answer that arrives after the file exists
-gets bolted onto a contract instead of shaping it. The steps are numbered 3 then 4
-because the *thinking* runs in that order; the writing happens once, after both.
+**Think them, then hold the file until step 4's interview has its answers.** Thinking
+the pillars through is what surfaces the questions worth asking — a boundary the request
+left open, two precedents with nothing choosing between them — and an answer that
+arrives after the file exists gets bolted onto a contract instead of shaping it. The
+steps are numbered 3 then 4 because the *thinking* runs in that order; the writing
+happens once, after both.
 
 ### Outcomes
 
@@ -495,17 +509,61 @@ A path no spec claims is reported separately and more softly — not everything 
 a contract, and treating every unanchored file as an error trains people to ignore
 the warning.
 
+## The decision log — `decisions.md`
+
+Beside the proposal: `.agents/changes/<change>/decisions.md`. It records what the user
+settled, in the user's words, and it is a file the writer subagents are given by path
+when a document gets drafted — a decision that lives only in the conversation cannot
+reach an agent that never had the conversation.
+
+**The first write creates it.** Normally that is step 4's first answer; a phase 5 that
+opens on a change without one — resumed from before the log existed, or a phase 2 that
+had nothing to ask — creates it the same way. No empty file up front: a log with no
+entries would be a claim that there were no decisions, made before anyone knew.
+
+The format, whole:
+
+```
+### Session 2026-08-19
+- Q: discount on the base price, or on the already-discounted one? → A: base, never compounded
+- Q: new table, or a column on orders? → A: column — we do not want another migration (assumed)
+```
+
+Dated sessions, one `- Q: … → A: …` line per decision, **the answer verbatim**. A
+paraphrase loses the part that was not understood yet — the same reason the proposal
+records the ask in the words it was asked in. `(assumed)` marks an answer nobody gave:
+attacca's, and any default taken because the user was not there. An assumed entry names
+what changes if it is wrong.
+
+**One writer, the orchestrator** — the same rule as `tasks.md`, for the same reason.
+Subagents read it by path and never append; their questions come back in their return
+value and are logged here by the session that asks them.
+
+**The log dies with the change.** At landing the folder goes, and the log goes with it.
+What survives is the copy the spec's author already made: each entry is written into the
+delta's *Prior decisions* as it is answered, attributed and dated, so landing needs no
+new mechanism and the capability spec carries the decisions forward.
+
 ## Step 4 — Ask what cannot be settled here. As many as a wrong guess would cost.
 
 Some things are genuinely not yours to decide: a product tradeoff, a convention
 with two live precedents in the codebase, anything where guessing wrong quietly
 breaks working behaviour.
 
-**Ask them in one `AskUserQuestion` call — one conversational message where the
-native prompt does not exist — before the file is written.** Each with
-the option you recommend, the real alternatives, and room to answer differently.
+**Ask them as an interview: one question per `AskUserQuestion` call — one
+conversational message where the native prompt does not exist — before the file is
+written.** Each question carries the option you recommend *with the reason it is
+recommended*, the real alternatives, room to answer differently — and **"no more
+questions" as an option, always**, so the user ends the interview whenever the
+remaining ones are not worth their time.
 
-Drafting the six pillars is what surfaces them — a boundary the request left open, a
+One at a time is the point, not an inefficiency: each answer can redirect the next
+question, which is the difference between an interview and a form. A batched call asks
+everything the first draft thought of; an interview asks what the last answer made
+worth asking. Log each answer — verbatim, into `decisions.md` — before the next
+question goes out.
+
+Thinking the six pillars is what surfaces them — a boundary the request left open, a
 scope decision that changes what gets built, two precedents with nothing choosing
 between them. So the questions come after step 3's thinking and before step 3's
 file. **The answers belong inside the contract, not bolted onto it afterwards.**
@@ -517,10 +575,13 @@ nobody reviews. When in doubt about whether a question is worth it, ask it: a
 question is cheaper than a contract that is confidently wrong, and better asked out
 of caution than swallowed out of fear.
 
-**The bound is judgment, and it cuts both ways.** Every question must be one a
-wrong guess would make expensive — never a form-length interrogation of things the
-code already answers. A dozen questions is not thoroughness, it is the phase
-handing its own job back; three sharp ones beat ten a reader skims.
+**The bound is judgment around five, and it cuts both ways.** Five is a soft target,
+not a quota and not a ceiling: stop earlier when the answers have settled everything,
+run past it when a wrong guess would cost more than the question does. Every question
+must be one a wrong guess would make expensive — never a form-length interrogation of
+things the code already answers. A dozen questions is not thoroughness, it is the phase
+handing its own job back; three sharp ones beat ten a reader skims — and now each one
+costs a round trip, which is one more reason to make it sharp.
 
 **Zero is a legitimate answer, and it is reported in one line.** When the code and
 the proposal already settle everything, say so and write the spec. A quota
@@ -528,12 +589,16 @@ manufactures questions the code answers, which `AGENTS.md` forbids in as many wo
 and a question whose only available answer is "yes, carry on" is a round trip charged
 for a rubber stamp.
 
-**One call, never a string of turns.** Serial round trips to build one contract is
-the ceremony this flow spends its length arguing against.
+This used to be one batched call, and the sequence is deliberate. The batch was cheap
+but it interviewed nobody: all its questions came from the same draft, none could build
+on an answer, and the user met them as a form. The soft bound and the standing "no
+more" option are what keep the sequence from becoming the serial ceremony this flow
+spends its length arguing against — the user can always collapse it to zero.
 
-**The answers go into the spec**, under prior decisions, next to what each one
-settled, attributed and dated. An answer that lives only in the conversation gets
-asked again next session, and the second answer will not always match the first.
+**The answers go to `decisions.md` verbatim as they arrive, and into the spec** under
+prior decisions, next to what each one settled, attributed and dated. An answer that
+lives only in the conversation gets asked again next session, and the second answer
+will not always match the first.
 
 **Phase 2 is the only phase that asks this way.** The 5→6 seam stops for the approach and the order, and
 what waits on what; it does not open a second tranche of questions. The contract is
@@ -546,11 +611,46 @@ The trivial lane asks nothing: step 0 answered *no spec needed*, so there is no
 contract to disagree about and nothing to ask about it.
 
 **Under `/libretto-attacca` the questions are not asked either — they are answered and
-marked.** For each one, take the option you would have recommended, write it under prior
-decisions **marked as assumed**, name what changes if it is wrong, and carry on. Never a
+marked.** For each one, take the option you would have recommended, log it in
+`decisions.md` with the `(assumed)` suffix, write it under prior decisions **marked as
+assumed**, name what changes if it is wrong, and carry on. Never a
 default left silent, and never a guess written as though it were settled. The questions
 that would have been asked are the ones that must be findable afterwards, because nobody was
 there to answer them. The command carries why, and what it costs.
+
+## Step 4b — Hand the contract to its writer
+
+The interview is done and the brief carries its answers. **Launch one `spec-writer`** —
+the same agent the fan-out uses, with the same prompt contract: the brief's path, the
+log's path, the one spec path it may write, and the standing rules restated verbatim,
+because a sub-agent starts with none of them. Pick the model tier before the launch,
+exactly as the fan-out rule above demands — a single writer is a fan-out of one.
+
+The session that argued the contract into shape cannot tell what it wrote down from
+what it merely decided — the same reason the 5→6 seam cuts tasks fresh. A writer that
+never had the conversation can only write what the brief and the log actually say, and
+what it cannot write it marks.
+
+### Resolving the markers
+
+Read the returned spec. Where the writer left `[NEEDS CLARIFICATION: question]`, the
+inputs did not say enough, and the resolution is the interview's tail:
+
+1. Ask each marker's question — same shape as step 4, one at a time, a reasoned
+   recommendation first.
+2. Log the answer in `decisions.md`, verbatim, like every other answer.
+3. **Replace the bracket expression — the brackets and everything inside them, nothing
+   outside them — with the logged answer.** That is the one declared exception to
+   one-author-per-file, and it is scoped to exactly that expression: an answer that
+   changes anything beyond it is a relaunch of the writer with the updated log, not a
+   patch.
+
+**Under `/libretto-attacca` a marker takes the recommended answer**, logged with the
+`(assumed)` suffix and naming what changes if it is wrong — the same rule as the
+questions that were never asked.
+
+A returned spec with no markers and no findings is still read before it is accepted.
+Silence is not success, and the writer's return says explicitly when it found nothing.
 
 ## Step 5 — Check it before handing it over
 
