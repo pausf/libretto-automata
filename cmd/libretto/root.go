@@ -123,7 +123,7 @@ func needsPayload(args []string) bool {
 		return true // the panel shows the tree's state
 	}
 	switch args[0] {
-	case "models", "update", "loop", "metrics":
+	case "models", "update", "loop", "metrics", "land":
 		// `update` is what fixes a missing payload on an installed copy, so it cannot be
 		// gated on having one. In a checkout the payload is the tree and is always there.
 		//
@@ -131,6 +131,10 @@ func needsPayload(args []string) bool {
 		// session that resolves its own skills. Gating it on this repository's payload tree
 		// would refuse the loop on every machine that installed the binary and nothing else
 		// — which is the machine the loop is for.
+		//
+		// `land` reads the project being landed, never ~/.claude or the payload tree —
+		// the machine record-work invokes it on is exactly one that installed the binary
+		// and nothing else.
 		return false
 	default:
 		return true
