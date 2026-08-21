@@ -90,9 +90,15 @@ func stageLanding(t *testing.T, dir string) {
 
 func runLand(t *testing.T, dir string, args ...string) (string, error) {
 	t.Helper()
+	out, _, err := runLandFull(t, dir, args...)
+	return out, err
+}
+
+func runLandFull(t *testing.T, dir string, args ...string) (string, string, error) {
+	t.Helper()
 	var out, errw strings.Builder
 	err := land(&out, &errw, args, execGit(dir))
-	return out.String(), err
+	return out.String(), errw.String(), err
 }
 
 func TestLandPassesACompleteLanding(t *testing.T) {
@@ -348,6 +354,60 @@ func TestLandLeavesPartThreeToSpecDrift(t *testing.T) {
 	}
 	if !strings.Contains(out, "spec-drift --anchors") {
 		t.Errorf("a failing run carries the same attribution:\n%s", out)
+	}
+}
+
+func TestLandWarnsOnAStaleWikiWithoutBlocking(t *testing.T) {
+	// record-work's clause read mechanically: the refreshed view rides the same
+	// commit as the delta that changed it. A capability spec is staged, the marked
+	// views are not — one line to stderr per view, and the exit code untouched.
+	dir := landFixture(t)
+	writeLand(t, dir, ".agents/specs/README.md", wikiMarker+"\n\n# Specs\n")
+	writeLand(t, dir, ".agents/specs/wiki.html", wikiHTMLMarker+"\n<!doctype html>\n")
+	commitLand(t, dir)
+	stageLanding(t, dir)
+
+	out, errw, err := runLandFull(t, dir)
+	if err != nil {
+		t.Fatalf("a stale wiki must never block the landing: %v\n%s", err, out)
+	}
+	for _, view := range []string{"README.md", "wiki.html"} {
+		if !strings.Contains(errw, view) {
+			t.Errorf("the stale %s must be warned about on stderr:\n%s", view, errw)
+		}
+	}
+	if strings.Contains(out, "README.md") || strings.Contains(out, "wiki.html") {
+		t.Errorf("the warning belongs on stderr, not in the report:\n%s", out)
+	}
+}
+
+func TestLandStaysSilentWhenTheWikiIsCurrentOrForeign(t *testing.T) {
+	// Current: the marked view rides the same staged diff as the spec.
+	dir := landFixture(t)
+	writeLand(t, dir, ".agents/specs/README.md", wikiMarker+"\n\n# Specs\n")
+	commitLand(t, dir)
+	stageLanding(t, dir)
+	appendLand(t, dir, ".agents/specs/README.md", "refreshed\n")
+	gitLand(t, dir, "add", ".agents/specs/README.md")
+	if _, errw, err := runLandFull(t, dir); err != nil || errw != "" {
+		t.Errorf("a view riding the same diff is current, not stale: err=%v stderr=%q", err, errw)
+	}
+
+	// Foreign: a README without the marker is somebody's, ignored silently —
+	// wiki's own precedent.
+	dir = landFixture(t)
+	writeLand(t, dir, ".agents/specs/README.md", "# hand-written index\n")
+	commitLand(t, dir)
+	stageLanding(t, dir)
+	if _, errw, err := runLandFull(t, dir); err != nil || errw != "" {
+		t.Errorf("an unmarked view must be ignored silently: err=%v stderr=%q", err, errw)
+	}
+
+	// No view at all: nothing to say.
+	dir = landFixture(t)
+	stageLanding(t, dir)
+	if _, errw, err := runLandFull(t, dir); err != nil || errw != "" {
+		t.Errorf("no marked view means silence: err=%v stderr=%q", err, errw)
 	}
 }
 

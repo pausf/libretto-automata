@@ -92,7 +92,7 @@ func parseCachedDiff(out string) (removed, touched map[string]bool, err error) {
 	return removed, touched, nil
 }
 
-func land(w, _ io.Writer, args []string, git gitRunner) error {
+func land(w, ew io.Writer, args []string, git gitRunner) error {
 	var name string
 	for _, a := range args {
 		if strings.HasPrefix(a, "-") {
@@ -204,6 +204,8 @@ func land(w, _ io.Writer, args []string, git gitRunner) error {
 	// Said on every run, pass or fail: a green land must never read as the whole
 	// landing contract passing.
 	fmt.Fprintf(w, "part 3 (decisions retired) is owned by spec-drift --anchors — not checked here\n")
+
+	warnStaleWiki(ew, root, specsRel, touched)
 
 	if missing > 0 {
 		return fmt.Errorf("%d part(s) of the landing contract are missing — fix them, then run `%s land` again",
@@ -323,6 +325,45 @@ func headTargets(git gitRunner, tracked []string) ([]string, error) {
 	}
 	sort.Strings(caps)
 	return caps, nil
+}
+
+// warnStaleWiki is record-work's own clause read mechanically: the refreshed view
+// rides the same commit as the delta that changed it. Stale means a marked view
+// exists, a capability spec is in the staged diff, and the view is not — one line to
+// stderr per view, and the exit code untouched on every path. A view without its
+// marker is somebody's and is ignored silently, wiki's own precedent.
+func warnStaleWiki(ew io.Writer, root, specsRel string, touched map[string]bool) {
+	if specsRel == "" {
+		return
+	}
+	specStaged := false
+	for p := range touched {
+		rest, ok := strings.CutPrefix(p, specsRel+"/")
+		if !ok {
+			continue
+		}
+		if parts := strings.Split(rest, "/"); len(parts) == 2 && parts[1] == "spec.md" {
+			specStaged = true
+			break
+		}
+	}
+	if !specStaged {
+		return
+	}
+	for _, v := range []struct{ name, marker string }{
+		{"README.md", wikiMarker},
+		{"wiki.html", wikiHTMLMarker},
+	} {
+		rel := specsRel + "/" + v.name
+		if !ownsFile(filepath.Join(root, filepath.FromSlash(rel)), v.marker) {
+			continue
+		}
+		if touched[rel] {
+			continue
+		}
+		fmt.Fprintf(ew, "warning: %s is stale — a capability spec is staged and the view is not; run `%s wiki` and stage it\n",
+			rel, invokedAs())
+	}
 }
 
 func nulSplit(out string) []string {
