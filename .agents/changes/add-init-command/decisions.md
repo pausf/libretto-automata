@@ -2,6 +2,13 @@
 
 ### Session 2026-08-21
 
+- Q: approach — self-contained init.go, an internal/bootstrap package, or init with
+  guided onboarding content? → A: self-contained `cmd/libretto/init.go`, one
+  `rev-parse` through the existing gitRunner seam, stdlib only — the mould every
+  command follows. internal/ package lost (one consumer); onboarding content lost
+  (ponytail — the list grows one file at a time when someone asks). If wrong: the
+  logic lifts the day a second consumer exists. (assumed)
+
 - Q: what exactly does `init` create? → A: the `.agents/` layout only, minimally:
   `.agents/specs/.gitkeep`, `.agents/changes/.gitkeep`, and `.agents/lessons.md` with
   the standard append-only header. No sample spec, no `docs/SPEC.md`, no CLAUDE.md
