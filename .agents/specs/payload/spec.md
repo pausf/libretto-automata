@@ -125,6 +125,16 @@ Installing this repository gives a working flow on a machine that has nothing el
   much gets said" work on a machine that installed nothing else. Only what the flow
   calls by name: the rest of both plugins stays upstream.
 - drift detection that ships with the skill that uses it
+- **the landing verified before the commit that performs it.** `record-work`'s landing
+  step, where `libretto` is on PATH, runs `libretto land` once the landing commit is
+  staged — after the delta application, the retirement and the folder deletion are in
+  the index, and after `libretto wiki` so the refreshed index rides the same diff. A
+  non-zero exit names the missing part; the fix is made and the command re-run, never
+  committed past. Where the binary is absent — or too old to know `land`, failing with
+  *unknown command* and naming no part — the landing is said to be unverified and the
+  step continues: a missing convenience never blocks a landing. The clause names the
+  command and reads its exit status; what `land` checks — flags, parts, discovery,
+  output — is the `cli` capability's contract, not this one's
 - **the flow learns from its own corrections.** `evidence` captures every user correction
   into `.agents/lessons.md` while the flow runs — a correction is work already done being
   wrong; a changed ask is new work, not a lesson — as append-only entries under the
@@ -517,8 +527,18 @@ finding, which is the sentence the `readme` capability was created to answer abo
   stays true, a ticket spec is dead the day the ticket closes.
 - Deltas live in `.agents/changes/<change>/` and are applied onto the capability spec in
   the commit that lands the change, which then deletes the change folder.
-- Drift detection **warns and never blocks**. A check that stops a commit in someone
-  else's project is a check that gets deleted.
+- Drift and landing checks in this flow **warn or stop the author, never block someone
+  else's commit** unless they opted in. A check that stops a commit in someone else's
+  project is a check that gets deleted; a clause that stops the author mid-flow —
+  `libretto land`'s fix-and-re-run — instructs the agent running the flow and installs
+  no hook.
+- **The payload learns about `libretto land`, minimally — one guarded clause in
+  `record-work`, the wiki clause's shape.** Assumed 2026-08-21 under attacca: a
+  verifier nothing invokes verifies nothing, so the landing step gains "where
+  `libretto` is on PATH, run `libretto land` before the landing commit", absent-binary
+  path unchanged. The guard is what keeps the skill self-sufficient once installed —
+  `libretto` stays delivery, never a dependency. If wrong: the clause is one sentence
+  to remove.
 - Phase 2 may decide no spec is needed. Skipping the phase is a legitimate outcome of
   it, and the "no" collapses phase 7's gate with it.
 - **The vertical-slicing rule lands in `write-plan` alone**, though the horizontal cut
@@ -756,6 +776,23 @@ finding, which is the sentence the `readme` capability was created to answer abo
   **Ceiling named:** the anchor keeps the instruction findable in its file, never proves
   a session obeyed prose — the same limit every skill criterion here lives with.
   Proof: skills/record-work/SKILL.md
+- **Where** `libretto` is on PATH, the `record-work` skill **shall** instruct
+  the landing step to run `libretto land` before the landing commit; **if**
+  the command exits non-zero naming a missing part, **then** the skill
+  **shall** instruct fixing that part and re-running, never committing past
+  it; **where** the binary is absent — or too old to know `land`, failing
+  with *unknown command* and naming no part — it **shall** say the landing
+  is unverified and continue rather than block. (Assumed 2026-08-21, from a
+  cutter finding: an old binary must not wedge a landing; if wrong, this
+  clause is one sentence to tighten.) **Ceiling named:** the anchor keeps the
+  instruction findable in its file, never proves a session obeyed prose — the
+  same limit the wiki-clause criterion beside it lives with.
+  Proof: skills/record-work/SKILL.md
+- **When** the `libretto land` clause lands, `scripts/check-payload` **shall** pass: the
+  reference is to a binary on PATH, not an uninstalled repository path, and
+  the guard is what makes that true. This proves the reference is legal, not
+  that the clause is followed.
+  Proof: scripts/check-payload
 - frontmatter parses, and `name:` matches the directory or filename
   Proof: scripts/check-payload
 - no stray file sits where the linker would install it as an item
