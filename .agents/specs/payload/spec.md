@@ -223,8 +223,11 @@ third-party items and their attribution.
   The vendored skills activate when the flow invokes them and when their
   descriptions trigger. The upstream plugin remains the path to always-on, and the
   two copies coexist by namespace.
-- creating a `changes/` directory in a project that has none. A staging area nobody
-  empties is a second source of truth.
+- **implicit creation of a `changes/` directory in a project that has none.** A
+  staging area nobody empties is a second source of truth. Bootstrap has exactly
+  one owner — explicit, user-invoked `libretto init` — and a skill or command that
+  finds the directory missing still refuses, pointing at the owner where `libretto`
+  is on PATH and refusing identically where it is absent.
 - accepting a secret. No skill asks for a token, and any skill that is handed one says
   it is now exposed and continues without it.
 - pushing, or committing from a sub-agent.
@@ -854,6 +857,15 @@ finding, which is the sentence the `readme` capability was created to answer abo
     the change document against the rules it already held; the phase numbers stay
   - the acronym rule's scope is `skills/`, `agents/` and `commands/`, the files that
     install; specs quoting a decision verbatim may contain it
+- **The bootstrap non-goal was given an owner, not deleted.** Retired from
+  `add-init-command`, assumed 2026-08-21: implicit creation of `changes/` by a skill stays
+  forbidden, and explicit, user-invoked `libretto init` (the `cli` capability) is the one
+  sanctioned bootstrap. *Deleting the non-goal* lost — it would have let any skill invent
+  a staging area nobody empties. The two refusal sites, `write-spec` and `libretto-queue`,
+  each gained one guarded sentence in record-work's grammar — where `libretto` is on PATH,
+  name it; where it is absent, refuse unchanged — and neither restates the rule nor runs
+  the command. No third site gains a pointer: no other payload document creates or
+  declines to create `.agents/changes/`. If wrong: each pointer is one sentence to remove.
 
 ## Task breakdown
 
@@ -891,6 +903,8 @@ finding, which is the sentence the `readme` capability was created to answer abo
 - [x] the capture rule in `evidence`, with the entry format stated once
 - [x] `retro` — read, classify, record or propose, mark resolved
 - [x] `libretto-retro` — route to the skill, describe nothing
+- [x] the bootstrap non-goal given its owner — `libretto init` named, guarded, at both
+      refusal sites
 - [x] the retro wiring guarded in `check-payload`, observed failing on a hand-broken
       copy before landing
 
@@ -1400,6 +1414,26 @@ finding, which is the sentence the `readme` capability was created to answer abo
   the 2026-10-21 naming answer as a case-sensitive whole word, or the method's spelled-out
   name in any case, **then** `check-payload` **shall** fail naming the file. Observed red on
   a hand-broken copy before it was trusted, since the tree it shipped against held neither.
+  Proof: scripts/check-payload
+- **When** `write-spec` or `libretto-queue` finds no `.agents/changes/` in the
+  project, it **shall** still refuse to create the directory; the payload spec
+  **shall** name explicit, user-invoked `libretto init` as the sole owner of
+  bootstrap and **shall** keep implicit creation by skills a non-goal.
+  **Ceiling named:** the anchor keeps the sentences findable in their files, never
+  proves a session obeyed prose — the same limit every skill criterion here lives with.
+  Proof: .agents/specs/payload/spec.md
+- **Where** `libretto` is on PATH, `skills/write-spec/SKILL.md`'s refusal paragraph
+  **shall** point at `libretto init` as the sanctioned bootstrap; **where** the binary
+  is absent, the paragraph **shall** leave the refusal unchanged — the pointer only
+  says where bootstrap lives.
+  Proof: skills/write-spec/SKILL.md
+- **Where** `libretto` is on PATH, `commands/libretto-queue.md`'s refusal section
+  **shall** point at `libretto init` with the same guarded grammar; **where** the
+  binary is absent, it **shall** say so and stop, exactly as it does today.
+  Proof: commands/libretto-queue.md
+- **When** the bootstrap pointer lands in `skills/write-spec/SKILL.md`, its frontmatter
+  **shall** carry `version: "2.1"`, and its frontmatter **shall** still parse with
+  `name:` matching the directory.
   Proof: scripts/check-payload
 
 The bump question's rows, one per condition. **Each was written before the prose it

@@ -380,7 +380,7 @@ so help that hardcodes one lies to everyone using another.
 
 **In:** argument parsing, dispatch, output formatting, exit codes, environment
 variables, clone discovery and bootstrap, the rebuild destination, the release line, the
-prerequisite report.
+prerequisite report, and `init`'s bootstrap of a project's `.agents/` layout.
 
 **Out:**
 
@@ -411,6 +411,19 @@ prerequisite report.
   `--anchors`' to fail.
 - **a `--commit <sha>` mode for `land`.** The staged index is the default, and the
   decision log records that a commit mode can be added later without moving it.
+- **`init` writing anything beyond its three artifacts** — no sample spec, no
+  `docs/SPEC.md`, no `CLAUDE.md` or `AGENTS.md`, and never `.agents/specs/README.md`,
+  which is `wiki`'s by marker. The list grows one file at a time, if ever.
+- **`init` adopting or migrating a foreign layout**, and any `--layout` flag to do so.
+  Refusal is the whole answer; a flag is a later change if somebody asks for one.
+- **`init` writing to git.** No commit, no staging: one `rev-parse --show-toplevel` is
+  the only git it runs. Committing the user's repository is the user's act.
+- **`--force` for `init`.** There is no overwrite path to force.
+- **a panel row for `init`.** It is a once-per-project command typed on purpose; a row
+  earns its place when somebody misses it.
+- **the payload half of bootstrap.** The non-goal that keeps skills from creating
+  `changes/` implicitly, and the pointers to `init` at its two refusal sites, are
+  `payload`'s.
 - **configuration files. There are none, deliberately** — nothing on disk changes what a
   command does, and the environment-variable table below is the whole of what is
   configurable.
@@ -507,6 +520,20 @@ a machine that installed the binary and nothing else is exactly the machine reco
 invokes it on. Outside a git repository it refuses with the same shape as `metrics`: an
 error, not an empty report. Warnings go to stderr and the report to stdout; the exit
 code means the contract and nothing else, and the wiki warning never changes it.
+
+**`init` never overwrites anything, at all.** The repository rule is "never overwrite what
+the tool did not create"; for `init` it tightens to never overwriting anything, because
+`init` cannot tell its own `.gitkeep` from anyone else's and does not need to — present is
+present, and a path that is a symlink, dangling or not, is present and never written
+through. Stdlib only. The repository root comes from one `git rev-parse --show-toplevel`
+through the `gitRunner` seam `metrics` defined, injected so tests drive it with fixed
+output, and a failure refuses with `metrics`' wording — not a git repository, or git is
+unavailable — on stderr with exit 1. The foreign-root lists it probes mirror `SPEC_ROOTS`
+and `CHANGE_ROOTS` in `spec-drift`, minus the `.agents/` pair it bootstraps; the script is
+the authority and a divergence is a bug in the Go copy. It needs no payload and joins the
+`needsPayload` exemptions beside `land` — a machine with nothing installed is exactly the
+machine a fresh project is bootstrapped on. Scope flags are stripped by `scopeFlags` before
+dispatch and mean nothing to it, the same as `metrics` and `loop`.
 
 **Nothing in the test suite writes to a real payload home, and nothing runs a real `go install`.**
 `LIBRETTO_ROOT` is the second half of what `CLAUDE_HOME` does for targets, and `resolveRoot` takes
@@ -711,6 +738,40 @@ equivalent. It goes when `libretto install` has been verified against a real
   empty. The diff base is ordinary `HEAD`; in-progress merges are out of scope. One
   exit code covers every failure kind — distinct codes wait for a caller that needs
   them. All three assumed 2026-08-21, attacca run.
+- **`init` creates the `.agents/` layout and nothing else: two keep-files and the lessons
+  ledger.** Retired from `add-init-command`, assumed 2026-08-21. Guided onboarding content —
+  a sample spec, `docs/SPEC.md`, `CLAUDE.md` — lost to ponytail: three artifacts are the
+  whole contract, and the list grows one file at a time when someone asks.
+- **A `.gitkeep`, never a placeholder `README.md`, carries `changes/` through git.** Retired
+  from `add-init-command`'s plan, 2026-08-21. A README must say something, be maintained,
+  and invites into `changes/` the marker-ownership ambiguity `wiki` resolves for
+  `.agents/specs/README.md`; a zero-byte keep-file is universally read as "carry this
+  directory" and can never drift. The hole it closes is real: git drops an empty
+  `changes/` on every fresh checkout, which is how a queued idea was lost. This repository
+  carries its own `.agents/changes/.gitkeep` for the same reason — deleting it reopens the
+  hole.
+- **A foreign consolidation root refuses, and the refusal wins over a partial `.agents/`.**
+  Assumed 2026-08-21, `add-init-command`: a project already consolidating under `specs/`,
+  `openspec/`, `docs/specs/`, `spec/`, `changes/` or `openspec/changes/` has a convention,
+  and inventing a second one is two sources of truth — which is also why filling a partial
+  `.agents/` beside a foreign root is refused rather than done. With no foreign root, a
+  partial `.agents/` gets its missing pieces. The probe runs before any stat-and-create, so
+  the precedence is ordering, not a flag. If wrong: a flag to adopt another layout is a
+  later change.
+- **`init` is idempotent and refuses outside a git repository.** Assumed 2026-08-21,
+  `add-init-command`: a second run creates nothing and exits zero, and a directory nothing
+  tracks has nothing for a keep-file to survive. If wrong: a warn-and-continue mode is one
+  branch.
+- **`init` is one self-contained file, `cmd/libretto/init.go`.** Retired from
+  `add-init-command`, 2026-08-21: an `internal/bootstrap` package lost on one consumer, the
+  `land` precedent; it lifts the day a second consumer exists.
+- **`init`'s foreign-root lists duplicate spec-drift's, and the script is the authority.**
+  Retired from `add-init-command`'s plan, 2026-08-21: two short lists that change roughly
+  never, against a shared source that would mean the binary parsing the script. The same
+  ceiling as `landChangeRoots`: unify, or add a cross-checking test, the day they diverge.
+- **A symlink at an artifact path is present, dangling or not.** Found by the 6→7 review,
+  2026-10-21: `os.Stat` followed a dangling link and the write landed outside `.agents/`.
+  The check is `Lstat`, and a link is never written through.
 
 ## Task breakdown
 
@@ -738,6 +799,7 @@ equivalent. It goes when `libretto install` has been verified against a real
 - [x] `wiki` — the project's specs rendered into one marked README
 - [x] `wiki --html` — the same specs as one self-contained, marker-owned viewer
 - [x] the `wiki` panel row — project scope only, absent without specs
+- [x] `init` — the `.agents/` layout bootstrapped at the repository root, never over anything
 
 ## Verification criteria
 
@@ -997,7 +1059,7 @@ A missing payload:
   zero open and zero done**, whatever boxes the file holds elsewhere.
   Proof: cmd/libretto/loop_test.go TestOnlyTheChecklistSectionCounts
 - **When `countBoxes` reads a `tasks.md` or `plan.md`, it shall not count a box inside a
-  ``` fence** — one box definition in every reader, `find-work` included.
+  fenced code block** — one box definition in every reader, `find-work` included.
   Proof: cmd/libretto/loop_test.go TestCountBoxesSkipsFences
 - **Where a change's `proposal.md` holds at least one box under `## Checklist`,
   `checklistPath` shall return that `proposal.md`**, whether or not `tasks.md` or `plan.md`
@@ -1793,3 +1855,83 @@ fact, and a faked one proves nothing about the command that reads the real thing
   Proof: cmd/libretto/land_test.go TestLandOutsideARepositoryFails
 - **`help` shall name `land`**, or the feature was not delivered.
   Proof: cmd/libretto/main_test.go TestHelpNamesLand
+
+### `init` — bootstrap the `.agents/` layout
+
+`init` is the explicit, user-invoked owner of bootstrap: the skills refuse to create a
+project's `changes/` directory implicitly, and point here instead (see `payload`). Without
+it the layout appears only as a side effect of the first change, and git drops the empty
+`changes/` on every fresh checkout — which is how a queued idea was lost.
+
+Run inside a git repository, it ends with three artifacts present at the **repository
+root** — never the cwd, the bug `metrics` records having had:
+
+| Artifact | Content |
+|---|---|
+| `.agents/specs/.gitkeep` | empty — a keep-file so git carries the directory |
+| `.agents/changes/.gitkeep` | empty — the same, and the fix for the vanishing queue |
+| `.agents/lessons.md` | the standard append-only header: a `# Lessons` heading and the paragraph saying entries are spent by `libretto-retro`, gain a `Resolved:` line there, and are never edited otherwise |
+
+Only what is missing is created; everything already present is left byte-identical. The
+report names the root it acted on, then one line per artifact saying `created` or
+`exists`, plain text with no escape codes. A second run reports all three as present and
+exits zero.
+
+**Two refusals**, each an error on stderr with exit 1 and nothing created:
+
+- **outside a git repository, or with git unavailable** — the `metrics` shape, an error
+  naming git. The keep-files exist to survive git; a directory nothing tracks has nothing
+  to survive.
+- **a foreign layout** — any other consolidation root spec-drift reads, present as a
+  directory: `specs`, `openspec`, `docs/specs`, `spec`, `changes`, `openspec/changes`. The
+  refusal names what it found, and it wins over a partial `.agents/`: filling one beside
+  another convention is the two sources of truth the refusal exists to prevent.
+
+`init` reads the project, never the payload and never an install target — no
+`CLAUDE_HOME`, no `~/.claude` — so it runs on a machine with nothing installed.
+
+- **When run in a git repository with no `.agents/` layout, `init` shall create
+  `.agents/specs/.gitkeep`, `.agents/changes/.gitkeep` and `.agents/lessons.md` at
+  the repository root, report each as created, and exit zero.**
+  Proof: cmd/libretto/init_test.go TestInitBootstrapsAFreshProject
+- **When run a second time over its own output, `init` shall create nothing, modify
+  nothing, report all three artifacts as already present, and exit zero.**
+  Proof: cmd/libretto/init_test.go TestInitIsIdempotent
+- **If a partial `.agents/` layout exists, then `init` shall create only the missing
+  artifacts and shall leave every existing file byte-identical** — an existing
+  `lessons.md` with entries in it is the case that matters.
+  Proof: cmd/libretto/init_test.go TestInitFillsAPartialLayoutWithoutTouchingWhatExists
+- **If a foreign consolidation root is present (`specs`, `openspec`, `docs/specs`,
+  `spec`, `changes`, or `openspec/changes` as a directory), then `init` shall refuse,
+  name what it found, create nothing, and exit non-zero.**
+  Proof: cmd/libretto/init_test.go TestInitRefusesAForeignLayoutAndNamesIt
+- **If a foreign root and a partial `.agents/` are both present, then `init` shall
+  still refuse and create nothing** — the refusal wins over the fill.
+  Proof: cmd/libretto/init_test.go TestInitRefusalWinsOverAPartialLayout
+- **If the directory is not inside a git repository or git is unavailable, then
+  `init` shall refuse with an error naming git and shall create nothing.**
+  Proof: cmd/libretto/init_test.go TestInitRefusesOutsideAGitRepository
+- **When run from a subdirectory of a repository, `init` shall act on the repository
+  root, never the cwd.**
+  Proof: cmd/libretto/init_test.go TestInitActsOnTheRepositoryRootNotTheCwd
+- **`init` shall run exactly one git invocation, `rev-parse --show-toplevel`, and
+  shall never commit** — asserted through the fake `gitRunner`'s call log.
+  Proof: cmd/libretto/init_test.go TestInitNeverCommitsAndRunsOnlyRevParse
+- **A created `lessons.md` shall carry the standard append-only header** — the
+  `# Lessons` heading and the append-only paragraph naming `libretto-retro` and
+  `Resolved:`.
+  Proof: cmd/libretto/init_test.go TestInitLessonsHeaderIsTheStandardOne
+- **`init` shall write nothing under `.agents/specs/` beyond the keep-file** — in
+  particular no `README.md`, which `libretto wiki` owns by marker.
+  Proof: cmd/libretto/init_test.go TestInitWritesNoReadmeIntoSpecs
+- **`init` shall work with no payload installed** — the `needsPayload` exemption,
+  proven the way `models` proves its own.
+  Proof: cmd/libretto/init_test.go TestInitWorksWithNoPayload
+- **The report shall name the repository root it acted on before the per-artifact
+  lines, and shall carry no escape codes when piped.**
+  Proof: cmd/libretto/init_test.go TestInitNamesTheRootAndCarriesNoEscapeCodes
+- **If an artifact path is a symlink, dangling or not, then `init` shall report it as
+  present and shall write nothing through it.**
+  Proof: cmd/libretto/init_test.go TestInitNeverWritesThroughASymlink
+- **`help` shall list `init` with a line saying what it bootstraps.**
+  Proof: cmd/libretto/main_test.go TestHelpNamesInit
