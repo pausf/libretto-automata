@@ -10,7 +10,7 @@ A skill whose instructions change bumps its own `metadata.version`.
 
 ## Layer 1 — readers learn both layouts
 
-- [ ] **1. `spec-drift` reads the change document** — payload unit 1.
+- [x] **1. `spec-drift` reads the change document** — payload unit 1.
   `--retired` also covers a deleted `proposal.md` whose `HEAD` copy carries `Targets:` outside
   fences; a change deleting both it and `plan.md` is reported once. Default mode ignores a staged
   `proposal.md` whose only difference is inside `## Checklist`. `criteria_of` skips `## Checklist`
@@ -19,6 +19,7 @@ A skill whose instructions change bumps its own `metadata.version`.
   Closes: the six spec-payload `--self-test` criteria; each new case observed red first; removing
   `Targets:` from the contract fixture turns exit 1 into 0; the three existing `land` cases unedited.
   Waits on: nothing.
+  Evidence: `spec-drift --self-test` 0, nine new cases (three red before the fix, the rest force-red), land cases unedited.
 
 - [ ] **2. Section counter and `loop` read the change document** — cli units 1-2.
   Section-scoped counter beside `countBoxes`, `planLine` the only box definition. `checklistPath`:

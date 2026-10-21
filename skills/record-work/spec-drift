@@ -7,12 +7,18 @@
 #   ├── specs/                        the living, consolidated specification
 #   │   └── bundle-products/
 #   │       └── spec.md               Governs: src/bundles/** …
-#   └── changes/                      proposals in flight
-#       └── add-relative-discounts/
+#   └── changes/                      proposals in flight, in either layout
+#       ├── add-relative-discounts/   one document
+#       │   ├── proposal.md           Targets: bundle-products · the approach · ## Checklist
+#       │   └── spec-pricing.md       Targets: pricing — one per extra capability
+#       └── add-bundle-limits/        the older layout, still read
 #           ├── proposal.md           why, scope, non-goals
 #           ├── spec.md               Targets: bundle-products
 #           ├── plan.md               the approach
 #           └── tasks.md              the checklist
+#
+# A proposal.md with no Targets: outside fences is a queued or trivial capture, not a
+# contract: --retired never fires on it.
 #
 # One spec per capability, not per ticket. A capability spec accumulates and stays
 # true; a ticket spec is dead the day the ticket closes.
@@ -37,7 +43,7 @@
 #   --anchors  three questions about whether a criterion is real, and one gate:
 #                · every Proof: citation still resolves, test name included
 #                · --ears     every criterion in a change delta carries EARS `shall`
-#                · --retired  no plan is deleted taking its decisions with it
+#                · --retired  no plan or contract proposal.md is deleted taking its decisions with it
 #              Each runs alone under its own flag; --anchors is what CI gates on, so
 #              the count "six gates" — written in ten places here — does not move.
 #   --trace    the whole tree: orphan code, dead ownership, unproven criteria
@@ -146,6 +152,16 @@ matches_any() {
 
 has_line() { printf '%s\n' "$1" | rg -qxF "$2"; }
 
+# without_checklist — a markdown document on stdin, minus its `## Checklist` section: from
+# that heading to the next level-2 heading outside a fence.
+without_checklist() {
+  awk '
+    /^[[:space:]]*```/       { f = !f }
+    !f && /^##[[:space:]]/   { skip = ($0 ~ /^##[[:space:]]+[Cc]hecklist[[:space:]]*$/) }
+    !skip                    { print }
+  '
+}
+
 # ── default mode ─────────────────────────────────────────────────────────────
 
 drift() {
@@ -165,6 +181,12 @@ drift() {
   while IFS= read -r c; do
     [ -n "$c" ] || continue
     has_line "$staged" "$c" || continue
+    # The change document carries Targets: and its own checklist, so ticking a box would
+    # read as the contract moving and silence the warning about the code staged beside it.
+    case "$c" in
+      (*/proposal.md)
+        [ "$(staged_or_empty HEAD "$c" | without_checklist)" = "$(staged_or_empty '' "$c" | without_checklist)" ] && continue ;;
+    esac
     for t in $(targets_of "$c"); do amended="$amended$t"$'\n'; done
   done <<< "$changes"
 
@@ -362,9 +384,17 @@ retired() {
   # ponytail: two `git show` calls per staged spec rather than parsing `diff -U0` hunks
   # and deciding which fall inside a section. The hunk version gets the boundary wrong at
   # a heading; this one is obvious and slower by an amount nobody will measure.
-  dying=$(git diff --cached --diff-filter=D --name-only 2>/dev/null | rg -N '^\.agents/changes/[^/]+/plan\.md$' || true)
+  local doc
+  dying=$(git diff --cached --diff-filter=D --name-only 2>/dev/null | rg -N '^\.agents/changes/[^/]+/(plan|proposal)\.md$' || true)
+  dying=$(while IFS= read -r doc; do
+    [ -n "$doc" ] || continue
+    case "$doc" in
+      (*/proposal.md) staged_or_empty HEAD "$doc" | defenced /dev/stdin | rg -qN '^[[:space:]]*Targets:' || continue ;;
+    esac
+    printf '%s\n' "$doc"
+  done <<< "$dying")
   if [ -z "$dying" ]; then
-    printf '  no plan is being retired in this commit\n'
+    printf '  no plan or change document is being retired in this commit\n'
     return 0
   fi
 
@@ -375,29 +405,35 @@ retired() {
     [ "$before" = "$after" ] || moved=1
   done <<< "$(git diff --cached --name-only 2>/dev/null | rg -N '^\.agents/specs/[^/]+/spec\.md$' || true)"
 
-  while IFS= read -r plan; do
-    [ -n "$plan" ] || continue
+  # One verdict per change: a landing that deletes both its plan.md and its contract
+  # proposal.md is one retirement, and either document may carry the declaration.
+  while IFS= read -r change; do
+    [ -n "$change" ] || continue
     landing=$((landing + 1))
-    change=${plan#.agents/changes/}; change=${change%/plan.md}
 
     if [ "$moved" -eq 1 ]; then
       printf '  ok      %s — a Prior decisions section moved with it\n' "$change"
       continue
     fi
-    if staged_or_empty HEAD "$plan" | rg -qN '^[[:space:]]*Durable decisions:[[:space:]]*none[[:space:]]*$'; then
-      printf '  ok      %s — its plan declared it had nothing to retire\n' "$change"
+    local declared=0
+    while IFS= read -r plan; do
+      case "$plan" in (".agents/changes/$change/"*) ;; (*) continue ;; esac
+      staged_or_empty HEAD "$plan" | rg -qN '^[[:space:]]*Durable decisions:[[:space:]]*none[[:space:]]*$' && declared=1
+    done <<< "$dying"
+    if [ "$declared" -eq 1 ]; then
+      printf '  ok      %s — it declared it had nothing to retire\n' "$change"
       continue
     fi
-    printf '  RETIRED %s — its plan is deleted and no capability spec'"'"'s Prior decisions moved.\n' "$change"
-    printf '          Move the decision that outlives this change, or write `Durable decisions: none` in the plan.\n'
+    printf '  RETIRED %s — its plan or change document is deleted and no capability spec'"'"'s Prior decisions moved.\n' "$change"
+    printf '          Move the decision that outlives this change, or write `Durable decisions: none` in the document being deleted.\n'
     bad=$((bad + 1))
-  done <<< "$dying"
+  done <<< "$(printf '%s\n' "$dying" | sed 's|^\.agents/changes/||; s|/[^/]*$||' | sort -u)"
 
   if [ "$bad" -eq 0 ]; then
-    printf 'spec-drift: %d plan(s) retired, every decision accounted for\n' "$landing"
+    printf 'spec-drift: %d change(s) retired, every decision accounted for\n' "$landing"
     return 0
   fi
-  printf '\nspec-drift: %d plan(s) deleted with their reasoning\n' "$bad"
+  printf '\nspec-drift: %d change(s) deleted with their reasoning\n' "$bad"
   return 1
 }
 
@@ -652,6 +688,91 @@ self_test() {
   # The asymmetry is the check. Both `yes` cases pass a gate that does nothing at all,
   # so only the middle one proves it fires — which is why it is the case to break first.
 
+  # The same gate over the new layout, where the change document is `proposal.md` and
+  # `Targets:` outside fences is what makes it a contract. Prints `<exit> <lines naming
+  # the change>`, so a change reported twice is visible.
+  retire() { # retire <targets: yes|fenced|no> <declare: yes|no> <migrate: yes|no> <plan: yes|no>
+    local d rc out
+    d=$(mktemp -d) || return 99
+    out=$(
+      cd "$d" || exit 99
+      export HOME="$d" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+      git init -q .
+      git config user.email t@t; git config user.name t
+
+      mkdir -p .agents/specs/thing .agents/changes/a-change
+      printf '# Thing\n\nGoverns: src/**\n\n## Prior decisions\n\n- the original one\n' \
+        > .agents/specs/thing/spec.md
+      {
+        printf '# Proposal\n\nTracker: none\n'
+        case "$1" in
+          (yes)    printf 'Targets: thing\n' ;;
+          (fenced) printf '\n\x60\x60\x60\nTargets: thing\n\x60\x60\x60\n' ;;
+          (no)     printf 'Queued: 2026-10-21\n' ;;
+        esac
+        [ "$2" = yes ] && printf 'Durable decisions: none\n'
+        printf '\n## Verification criteria\n\n- it shall work\n\n## Checklist\n\n- [x] the box\n'
+      } > .agents/changes/a-change/proposal.md
+      [ "$4" = yes ] && printf '# Plan\n\nDurable decisions: the one below\n' > .agents/changes/a-change/plan.md
+      git add -A && git commit -qm base
+
+      git rm -rq .agents/changes/a-change
+      if [ "$3" = yes ]; then
+        printf -- '- the one the change was holding\n' >> .agents/specs/thing/spec.md
+        git add .agents/specs/thing/spec.md
+      fi
+
+      "$SELF" --retired 2>&1
+    )
+    rc=$?
+    rm -rf "$d"
+    printf '%s %s\n' "$rc" "$(printf '%s\n' "$out" | rg -c ' a-change ' || echo 0)"
+  }
+
+  want 'a contract deleted with its reasoning fails'     '1 1' "$(retire yes no no no)"
+  want 'a contract retired with its decision passes'     '0 1' "$(retire yes no yes no)"
+  want 'a contract declaring it holds none passes'       '0 1' "$(retire yes yes no no)"
+  want 'a queued capture is no contract'                 '0 0' "$(retire no no no no)"
+  want 'a fenced Targets: is no contract'                '0 0' "$(retire fenced no no no)"
+  want 'a plan and its contract are reported once'       '1 1' "$(retire yes no no yes)"
+
+  # Marking a box is not the contract moving. Default mode, through --block so the
+  # verdict is an exit code: ticking a box beside staged code still reports the code,
+  # and an edit anywhere else in the change document counts as the capability moving.
+  tick() { # tick <checklist|outside>
+    local d rc
+    d=$(mktemp -d) || return 99
+    (
+      cd "$d" || exit 99
+      export HOME="$d" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+      git init -q .
+      git config user.email t@t; git config user.name t
+
+      mkdir -p .agents/specs/thing .agents/changes/a-change src
+      printf 'Governs: src/**\n' > .agents/specs/thing/spec.md
+      printf 'x\n' > src/a.txt
+      printf '# Proposal\n\nTargets: thing\n\n## Verification criteria\n\n- it shall work\n\n## Checklist\n\n- [ ] the box\n' \
+        > .agents/changes/a-change/proposal.md
+      git add -A && git commit -qm base
+
+      printf 'y\n' >> src/a.txt
+      if [ "$1" = checklist ]; then
+        printf '# Proposal\n\nTargets: thing\n\n## Verification criteria\n\n- it shall work\n\n## Checklist\n\n- [x] the box\n'
+      else
+        printf '# Proposal\n\nTargets: thing\n\n## Verification criteria\n\n- it shall work\n- it shall also work\n\n## Checklist\n\n- [ ] the box\n'
+      fi > .agents/changes/a-change/proposal.md
+      git add -A
+
+      "$SELF" --block >/dev/null 2>&1
+    )
+    rc=$?
+    rm -rf "$d"
+    printf '%s\n' "$rc"
+  }
+
+  want 'a ticked box is not the spec moving'       1 "$(tick checklist)"
+  want 'a contract edit is the spec moving'        0 "$(tick outside)"
+
   want 'capability from a directory'   bundle-products "$(capability_of '.agents/specs/bundle-products/spec.md')"
   want 'capability from a single file'  SPEC           "$(capability_of 'docs/SPEC.md')"
 
@@ -684,6 +805,13 @@ also none' "$(criteria_without_proof "$tmp")"
   want 'a proven criterion is quiet' ''  "$(criteria_without_proof "$tmp" | rg -xF 'has one' || true)"
   want 'outcomes are not criteria'   ''  "$(criteria_without_proof "$tmp" | rg -F 'not a criterion' || true)"
   want 'a later heading closes it'   ''  "$(criteria_without_proof "$tmp" | rg -xF 'outside again' || true)"
+  rm -f "$tmp"
+
+  # The change document: criteria, then the checklist. The boxes are not criteria, and
+  # --ears would fail every one of them for carrying no `shall`.
+  tmp=$(mktemp)
+  printf '## Verification criteria\n- it shall work\n  Proof: x.go TestX\n\n## Checklist\n\n- [ ] the box\n* [x] another box\n' > "$tmp"
+  want 'checklist boxes are not criteria' 'it shall work' "$(criteria_of "$tmp")"
   rm -f "$tmp"
 
   # Orphan and dead-claim detection. --trace on this repository reports 0 dead claims, so
