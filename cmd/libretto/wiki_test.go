@@ -911,6 +911,56 @@ func TestWikiHomeCarriesTheInFlightStrip(t *testing.T) {
 	}
 }
 
+func TestWikiInFlightReadsTheChangeDocument(t *testing.T) {
+	dir := t.TempDir()
+	ch := filepath.Join(dir, ".agents", "changes")
+	for name, files := range map[string]map[string]string{
+		// The section wins over a tasks.md with other counts, and over boxes in the ask.
+		"one-document": {
+			"proposal.md": "# one-document\n\n- [ ] quoted in the ask\n\n## Task breakdown\n\n- [ ] not a task\n\n" +
+				"## Checklist\n\n- [x] one\n- [ ] two\n- [ ] three\n\n## Notes\n\n- [ ] after the section\n",
+			"tasks.md": "- [x] a\n- [x] b\n- [ ] c\n",
+		},
+		// Queued, with a box outside the section: counted in the queue, never in flight.
+		"an-idea": {
+			"proposal.md": "# an-idea\n\nQueued: 2026-10-01\n\n- [ ] a box in the ask\n",
+		},
+	} {
+		if err := os.MkdirAll(filepath.Join(ch, name), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		for f, body := range files {
+			if err := os.WriteFile(filepath.Join(ch, name, f), []byte(body), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	flights, queue := readInFlight(dir)
+	want := wikiFlight{name: "one-document", closed: 1, open: 2}
+	if len(flights) != 1 || flights[0] != want {
+		t.Errorf("in flight = %+v, want %+v", flights, want)
+	}
+	if len(queue) != 1 || queue[0].name != "an-idea" {
+		t.Errorf("queue = %+v, want an-idea alone", queue)
+	}
+}
+
+func TestWikiInFlightCountsBoxesAsTheLoopDoes(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, ".agents", "changes", "star-bullets")
+	if err := os.MkdirAll(p, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(p, "tasks.md"), []byte("* [ ] open\n- [X] closed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	flights, _ := readInFlight(dir)
+	want := wikiFlight{name: "star-bullets", closed: 1, open: 1}
+	if len(flights) != 1 || flights[0] != want {
+		t.Errorf("in flight = %+v, want %+v", flights, want)
+	}
+}
+
 func TestWikiHomeMeasuresContractHealth(t *testing.T) {
 	dir := t.TempDir()
 	specs := healthFixture(t, dir)

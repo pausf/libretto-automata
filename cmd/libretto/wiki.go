@@ -830,9 +830,9 @@ type wikiQueued struct {
 	name, date string
 }
 
-// readInFlight walks the changes directory with the loop's own box definition:
-// tasks.md, falling back to the legacy plan.md. Zero open boxes is landed-shape
-// and never shows; queued proposals are counted, never listed here.
+// readInFlight walks the changes directory and reads each change's checklist exactly as
+// the loop does: the file checklistPath picks, counted by readPlan. Zero open boxes is
+// landed-shape and never shows; queued proposals are counted, never listed here.
 func readInFlight(projectDir string) (flights []wikiFlight, queue []wikiQueued) {
 	changes := filepath.Join(projectDir, ".agents", "changes")
 	entries, err := os.ReadDir(changes)
@@ -852,24 +852,8 @@ func readInFlight(projectDir string) (flights []wikiFlight, queue []wikiQueued) 
 				}
 			}
 		}
-		list, err := os.ReadFile(filepath.Join(dir, "tasks.md"))
-		if err != nil {
-			list, err = os.ReadFile(filepath.Join(dir, "plan.md"))
-		}
-		if err != nil {
-			continue
-		}
-		f := wikiFlight{name: e.Name()}
-		for _, line := range strings.Split(string(list), "\n") {
-			t := strings.TrimSpace(line)
-			if strings.HasPrefix(t, "- [ ]") {
-				f.open++
-			} else if strings.HasPrefix(t, "- [x]") {
-				f.closed++
-			}
-		}
-		if f.open > 0 {
-			flights = append(flights, f)
+		if c, err := readPlan(checklistPath(projectDir, e.Name())); err == nil && c.open > 0 {
+			flights = append(flights, wikiFlight{name: e.Name(), closed: c.done, open: c.open})
 		}
 	}
 	sort.SliceStable(queue, func(i, j int) bool {

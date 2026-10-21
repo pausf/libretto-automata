@@ -45,12 +45,13 @@ A skill whose instructions change bumps its own `metadata.version`.
   Waits on: nothing.
   Evidence: M1-M3 red first, M2 red under the naive order; real-history metrics identical but the legend line; anchors 11 → 8.
 
-- [ ] **4. `wiki` in-flight strip uses the same rule** — cli unit 4.
+- [x] **4. `wiki` in-flight strip uses the same rule** — cli unit 4.
   `readInFlight` through `checklistPath`, the section counter and `planLine`; `Queued:` untouched;
   comment at wiki.go:833-835.
   Closes: W1-W3 — `TestWikiInFlightReadsTheChangeDocument`,
   `TestWikiInFlightCountsBoxesAsTheLoopDoes` (W3 red first); the two existing wiki proofs unedited.
   Waits on: 2.
+  Evidence: W1-W3 red first; both existing wiki proofs unedited; anchors 8 → 5.
 
 - [ ] **5. `find-work` and `/libretto-status` read both layouts; the trivial lane deletes its
   capture** — payload unit 2.
