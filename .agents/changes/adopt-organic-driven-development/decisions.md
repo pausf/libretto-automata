@@ -14,3 +14,22 @@
 - Q: spec-writer survives for the fan-out (decision 11); does it keep its `libretto models` recommendation? → A: yes, sonnet/high as today; R1 forbids only plan-writer and task-cutter keys (derived, orchestrator, from review-spec finding 1)
 - Q: what makes a deleted proposal.md a contract, for both `--retired` and `land`? → A: a `Targets:` line outside fences, and nothing else; the `## Verification criteria` arm is dropped so the two landing tools cannot disagree (derived, orchestrator, from review-spec finding 2)
 - Q: does find-work count boxes the way the CLI does? → A: yes — planLine's box shape, fences excluded, `^##\s` section boundaries, in every reader (derived, orchestrator, from review-spec finding 3)
+
+### Session 2026-10-21 — phase 5 fork
+- Q: how is the change delivered? → A: Un PR, lectores antes que escritores (Recommended) — one branch, one commit per unit: spec-drift and the CLI readers accept both layouts first, then skills/agents/commands, then FLOW.md and README, then the landing; one merge, one tag
+  - rejected: chained PRs per capability — every merge tags a release, so main would publish readers for a layout no skill produces yet, or a README describing a flow that does not exist
+  - rejected: one PR, skills first — while the branch is open, --retired and loop misread the new-layout changes, this one included
+- Q: how do the gates run without add-init-command's dirty files? → A: build in a separate git worktree of this branch; the main checkout goes back to `main` with those files untouched, and ~/.claude keeps pointing at main's payload while the branch rewrites it (assumed — "todo recomendado"; if wrong, stash them instead)
+- Q: #71 is unmerged; how does this branch get onto it? → A: everything but cli unit 5 (land tests N1-N3) builds now; merging #71 is the user's (it tags a release); rebase and land tests follow that merge (assumed)
+- Q: which commits carry `!`? → A: the landing only, where the payload promise moves in the spec; the skill commits say it in their body (assumed)
+- Q: real-history `libretto metrics` check vs the "never build" rule? → A: not run; M1-M4 carry the proof, and the report says the real-history check was not observed (assumed)
+- Q: `.agents/specs/wiki.html` is untracked — whose? → A: not this change's; never staged; the worktree does not have it (assumed)
+- Q: spec-writer's recommendation reason → A: reworded to its fan-out role, model and effort unchanged (assumed)
+- Q: spec-reviewer is unlinked in ~/.claude until `libretto install` → A: reported as a manual step after merge, with `libretto prune` for the two retired agents (assumed)
+
+### Session 2026-10-21 — 5→6 seam, the cutter's gaps (all assumed under "todo recomendado")
+- Q: payload units 3, 4, 5, 8 and cli unit 6 are incoherent between commits (writers launched against inputs no longer written; agent names in files another unit owns) → A: one box, one commit — "the writers move" is a single behaviour switch; check-payload rows 281/287 and the retired-agent rows ride in it (assumed)
+- Q: how is "`spec-writer` named outside write-spec's fan-out section" checked when rows are line-scoped `rg -qN`? → A: one section-aware awk row in check-payload, built in that same box (assumed)
+- Q: if FLOW.md's rewrite drops the `more expensive than this one` anchor, how does that box stay green? → A: the box that rewrites FLOW.md re-chooses the anchor under readme's two anchor rules in the same commit; never deleted (assumed)
+- Q: do the writer boxes wait on the land tests (PR #71)? → A: no; the land tests prove an existing reader and block only the landing (assumed)
+- Q: the "never build" rule vs `libretto wiki` at landing and the real-history metrics check → A: both run via `go run ./cmd/libretto …`, which produces no binary; the rule is read as "no `make build` to verify a change". This supersedes the earlier "metrics check not run" assumption (assumed — if wrong, both are skipped and reported unobserved)
