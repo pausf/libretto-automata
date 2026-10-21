@@ -346,6 +346,20 @@ check_absent commands/libretto-attacca.md 'or put a .release:. label on the requ
 check_absent commands/libretto-attacca.md 'gh pr edit'               'the command does not restate phase 8'
 check_wiring commands/libretto-attacca.md 'a bump the user did not choose' 'labelling is forbidden only when unchosen'
 
+# Two layouts, one box rule. A bare `- [ ]` count over the whole file is not the CLI's
+# definition: it counts fenced boxes, and in proposal.md every box outside `## Checklist`.
+# The absent rows are the old scan and the old trivial-lane sentence, so neither comes back
+# beside its replacement.
+check_wiring skills/find-work/SKILL.md '\^\\s\*\[-\*\]\\s\+\\\[\( \|x\|X\)\\\]' 'phase 1 states the CLI box definition'
+check_wiring skills/find-work/SKILL.md 'is the checklist when its .## Checklist. holds a box' 'phase 1 picks proposal.md, then tasks.md, then plan.md'
+check_wiring skills/find-work/SKILL.md 'for f in proposal\.md tasks\.md plan\.md' 'both scans read the three files in that order'
+check_absent skills/find-work/SKILL.md "rg -c '\^\\\\s\*- " 'the bare whole-file box count is gone'
+check_absent skills/find-work/SKILL.md 'needed no spec never creates'  'phase 1 no longer claims the trivial lane leaves no change folder'
+check_wiring skills/write-spec/SKILL.md 'in the trivial lane.s own commit' 'the trivial lane deletes its phase-1 capture'
+check_absent skills/write-spec/SKILL.md 'Six pillars, a brief and a plan' 'step 0 names no brief or plan the flow no longer writes'
+check_wiring commands/libretto-status.md 'Skill\(skill="find-work"\)' 'status delegates the scan to find-work'
+check_wiring commands/libretto-status.md 'proposal\.md..s .## Checklist.' 'status names proposal.md among the files the scan reads'
+
 printf '\n── skills never point at an executable that is not installed ──\n'
 # `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
 # telling the user to run scripts/foo is broken for everyone who installed it:

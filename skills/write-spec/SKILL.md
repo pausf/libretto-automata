@@ -4,7 +4,7 @@ description: "Trigger: a task has been read and needs a specification; writing o
 license: MIT
 metadata:
   author: pausf
-  version: "1.2"
+  version: "1.3"
 ---
 
 ## What this does
@@ -26,13 +26,17 @@ are what the whole flow later gets measured against.
 Ask it before anything else, and be willing to hear no.
 
 A one-line change, a typo, a version bump, a rename with no behaviour behind it —
-none of these need a contract. Six pillars, a brief and a plan around a
-two-character fix is the exact over-engineering this project exists to prevent,
-applied to itself.
+none of these need a contract. Six pillars around a two-character fix is the exact
+over-engineering this project exists to prevent, applied to itself.
 
 When the task is that small, say so, hand back to the flow, and let it go straight
 to the change, its check and a commit. **Skipping this phase is a legitimate
 outcome of it.**
+
+**The capture goes with it.** Phase 1 writes `.agents/changes/<name>/proposal.md` for
+every request made in conversation, before this step can say no, so the trivial lane
+starts with a folder holding no contract. It is deleted in the trivial lane's own commit.
+Left behind, it is a change that will never be cut, and every later phase 1 walks past it.
 
 **And the "no" collapses the ceremony with it.** A change that needed no spec does not
 get phase 7's gate either: the report and the commit land in the same turn, and the

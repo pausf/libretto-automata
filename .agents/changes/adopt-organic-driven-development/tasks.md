@@ -53,13 +53,14 @@ A skill whose instructions change bumps its own `metadata.version`.
   Waits on: 2.
   Evidence: W1-W3 red first; both existing wiki proofs unedited; anchors 8 → 5.
 
-- [ ] **5. `find-work` and `/libretto-status` read both layouts; the trivial lane deletes its
+- [x] **5. `find-work` and `/libretto-status` read both layouts; the trivial lane deletes its
   capture** — payload unit 2.
   Both scans and the three-row table apply the Outcomes 7 rule with the CLI's box definition;
   find-work 16-32 vs 132-134 reconciled; `write-spec` step 0 deletes the capture in the trivial
   lane's own commit and drops "a brief and a plan"; `/libretto-status` names `proposal.md`.
   Closes: the three `check-payload` wiring criteria, each row red first.
   Waits on: 2, 3, 4.
+  Evidence: nine check-payload rows, eight red on today's prose, the delegation row forced red by hand; scan hand-tested on fences, nested and out-of-section boxes.
 
 - [ ] **6. `land` proves the new layout** — cli unit 5. Tests only.
   Closes: `TestLandReadsTargetsFromTheChangeDocument`,
