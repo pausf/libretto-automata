@@ -55,26 +55,34 @@ var (
 // a quoted ask, a breakdown written as boxes — is prose that happens to look like a task.
 func countChecklist(r io.Reader) planCount {
 	var c planCount
-	in, fenced := false, false
+	var scope checklistScope
 	s := bufio.NewScanner(r)
 	s.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for s.Scan() {
-		line := s.Text()
-		switch {
-		case fenceLine.MatchString(line):
-			fenced = !fenced
-			continue
-		case fenced:
-			continue
-		case sectionHeading.MatchString(line):
-			in = checklistHeading.MatchString(line)
-			continue
-		case !in:
-			continue
+		if line := s.Text(); scope.holds(line) {
+			c = c.add(line)
 		}
-		c = c.add(line)
 	}
 	return c
+}
+
+// checklistScope is that section rule fed one line at a time, so `metrics` can walk a
+// diff's pre-image and post-image with the same boundaries `loop` reads a file with.
+type checklistScope struct{ in, fenced bool }
+
+// holds advances past line and reports whether it lies inside the checklist. Headings
+// and fence markers are boundaries, never content.
+func (s *checklistScope) holds(line string) bool {
+	switch {
+	case fenceLine.MatchString(line):
+		s.fenced = !s.fenced
+	case s.fenced:
+	case sectionHeading.MatchString(line):
+		s.in = checklistHeading.MatchString(line)
+	default:
+		return s.in
+	}
+	return false
 }
 
 func (c planCount) add(line string) planCount {

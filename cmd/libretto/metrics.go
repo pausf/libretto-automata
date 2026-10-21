@@ -34,7 +34,7 @@ const flowLegend = `  Columns:
     corr     user corrections recorded in .agents/lessons.md — a dash when no ledger exists
     state    landed = the folder was deleted on landing · in flight = still on disk ·
              unreadable = git would not answer for it, so its row is all ?
-    —        the change has no plan.md in its history`
+    —        the change has no checklist in its history: proposal.md, tasks.md, plan.md`
 
 const flowCeiling = `  Not measured, and not derivable from git:
     · per-phase duration — phases 1 to 7 happen inside one session and leave one commit
@@ -161,20 +161,37 @@ func measure(git gitRunner, root, name string) (changeMetrics, error) {
 	// completely reopened and nothing reads as closed. Measured here on real history:
 	// 52 reopenings and 0 closes on a change that had neither.
 	//
-	// Two paths, tried in order, because the checklist was renamed and this reads history
-	// rather than disk: `tasks.md` is what the 5→6 seam cuts now, `plan.md` is what every
-	// change that landed before the rename carries — and their folders are gone, so they
-	// will never have the new name. One pathspec covering both was the shorter version and
-	// it is wrong: `plan.md` is now the technical approach, a prose document allowed to
-	// show a checkbox in an example, and counting its diffs would inflate the churn of
-	// every change from here on.
+	// Three paths, tried in order, because the checklist moved twice and this reads history
+	// rather than disk: `proposal.md`'s `## Checklist` is where it lives now, `tasks.md` is
+	// where it lived after the first rename, and `plan.md` is what every change that landed
+	// before that carries — and their folders are gone, so they will never move. One
+	// pathspec covering all three was the shorter version and it is wrong: the other two
+	// are prose documents allowed to show a checkbox, and counting their diffs would
+	// inflate the churn of every change.
 	//
-	// ponytail: the second call goes when no `.agents/changes/*/plan.md` anywhere holds a checkbox.
-	for _, name := range []string{"tasks.md", "plan.md"} {
-		diff, err := git("log", "--full-history", "--diff-filter=AM", "-p", "--format=%H", "--", path.Join(dir, name))
-		if err == nil && strings.TrimSpace(diff) != "" {
+	// A query is found only when it yields a box in scope, never merely a diff: every
+	// change's `proposal.md` has history, because the capture adds it, and a non-empty
+	// diff as the signal would blank the churn of every change that kept its boxes
+	// elsewhere. The change document is read with whole-file context, because a hunk does
+	// not carry its section heading.
+	//
+	// The `tasks.md` and `plan.md` queries are permanent: history is never rewritten, so
+	// the changes that carry them will always be there to measure.
+	for _, q := range []struct {
+		file      string
+		checklist bool
+	}{{"proposal.md", true}, {"tasks.md", false}, {"plan.md", false}} {
+		args := []string{"log", "--full-history", "--diff-filter=AM", "-p", "--format=%H"}
+		if q.checklist {
+			args = append(args, "--unified=1000000")
+		}
+		diff, err := git(append(args, "--", path.Join(dir, q.file))...)
+		if err != nil {
+			continue
+		}
+		if closed, reopened, boxes, seen := churnIn(diff, q.checklist); seen {
 			m.planSeen = true
-			m.checked, m.uncheck, m.boxes = churn(diff)
+			m.checked, m.uncheck, m.boxes = closed, reopened, boxes
 			break
 		}
 	}
@@ -198,6 +215,20 @@ func measure(git gitRunner, root, name string) (changeMetrics, error) {
 // lines minus removed ones, whatever their state. A reword nets zero here too, and a
 // deleted task shrinks the denominator along with whatever it did to the numerator.
 func churn(diff string) (closed, reopened, boxes int) {
+	closed, reopened, boxes, _ = churnIn(diff, false)
+	return closed, reopened, boxes
+}
+
+// churnIn is churn, optionally restricted to a change document's `## Checklist`, and it
+// also reports whether any box line was in scope — the only thing that makes a query
+// found.
+//
+// Restricted, the section is tracked twice per commit, because a diff is two files at
+// once: the post-image is the context and `+` lines, the pre-image the context and `-`
+// lines. A `+` box counts when the post-image is in the checklist, a `-` box when the
+// pre-image was. Named limit: a commit that renames a heading so untouched boxes move in
+// or out changes no box line, so it moves neither the churn nor the denominator.
+func churnIn(diff string, checklist bool) (closed, reopened, boxes int, seen bool) {
 	flush := func(net int) {
 		if net > 0 {
 			closed += net
@@ -206,23 +237,38 @@ func churn(diff string) (closed, reopened, boxes int) {
 		}
 	}
 	net := 0
+	var pre, post checklistScope
 	for _, l := range strings.Split(diff, "\n") {
 		if isCommitSHA(l) {
 			flush(net)
 			net = 0
+			pre, post = checklistScope{}, checklistScope{}
 			continue
 		}
 		// A diff header line begins with +++ or ---; it is not content.
 		if strings.HasPrefix(l, "+++") || strings.HasPrefix(l, "---") {
 			continue
 		}
+		inPre, inPost := true, true
+		if checklist && l != "" {
+			switch l[0] {
+			case ' ':
+				inPre, inPost = pre.holds(l[1:]), post.holds(l[1:])
+			case '+':
+				inPost = post.holds(l[1:])
+			case '-':
+				inPre = pre.holds(l[1:])
+			}
+		}
 		switch {
-		case strings.HasPrefix(l, "+") && boxIn(l) != "":
+		case strings.HasPrefix(l, "+") && inPost && boxIn(l) != "":
+			seen = true
 			boxes++
 			if boxIn(l) == "x" {
 				net++
 			}
-		case strings.HasPrefix(l, "-") && boxIn(l) != "":
+		case strings.HasPrefix(l, "-") && inPre && boxIn(l) != "":
+			seen = true
 			boxes--
 			if boxIn(l) == "x" {
 				net--
@@ -230,7 +276,7 @@ func churn(diff string) (closed, reopened, boxes int) {
 		}
 	}
 	flush(net)
-	return closed, reopened, boxes
+	return closed, reopened, boxes, seen
 }
 
 func isCommitSHA(l string) bool {

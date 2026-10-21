@@ -33,7 +33,7 @@ A skill whose instructions change bumps its own `metadata.version`.
   Waits on: nothing.
   Evidence: five new tests red first, L2 amended as specified, old-layout proofs unedited; anchors 17 → 11.
 
-- [ ] **3. `metrics` reads churn from the change document** — cli unit 3.
+- [x] **3. `metrics` reads churn from the change document** — cli unit 3.
   A third `git log` for `proposal.md`, first, whole-file `--unified=`; found only with an in-scope
   box; section tracked in pre- and post-image for `proposal.md` only; `fakeGit` refuses a
   `proposal.md` query without `--unified=`; `flowLegend`'s `—` line; plain comment replaces the
@@ -43,6 +43,7 @@ A skill whose instructions change bumps its own `metadata.version`.
   `TestChangeDocumentChurnIsScopedToTheChecklist`, `TestTheReportExplainsItsColumns` (amended per
   M4); M2 observed failing under the naive order; no landed change's numbers move.
   Waits on: nothing.
+  Evidence: M1-M3 red first, M2 red under the naive order; real-history metrics identical but the legend line; anchors 11 → 8.
 
 - [ ] **4. `wiki` in-flight strip uses the same rule** — cli unit 4.
   `readInFlight` through `checklistPath`, the section counter and `planLine`; `Queued:` untouched;
