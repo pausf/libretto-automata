@@ -49,6 +49,30 @@ func TestInitBootstrapsAFreshProject(t *testing.T) {
 	}
 }
 
+// A dangling symlink is present, not missing: os.Stat follows it and reports
+// not-exist, and a write through it lands wherever it points — outside .agents/.
+func TestInitNeverWritesThroughASymlink(t *testing.T) {
+	root := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "elsewhere.md")
+	if err := os.MkdirAll(filepath.Join(root, ".agents"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, ".agents", "lessons.md")); err != nil {
+		t.Fatal(err)
+	}
+
+	out, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, nil)) })
+	if err != nil {
+		t.Fatalf("init over a dangling symlink: %v", err)
+	}
+	if _, err := os.Lstat(outside); err == nil {
+		t.Fatalf("init wrote through the symlink to %s", outside)
+	}
+	if !strings.Contains(out, "exists   .agents/lessons.md") {
+		t.Errorf("the symlink must read as present:\n%s", out)
+	}
+}
+
 func TestInitIsIdempotent(t *testing.T) {
 	root := t.TempDir()
 

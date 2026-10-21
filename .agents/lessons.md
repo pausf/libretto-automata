@@ -304,3 +304,25 @@ name it. Fixed in this pass: the In list names present-work and why.
 The README's flow diagram had only its text guard as proof; the render-and-look step was recorded
 as skipped because mmdc was absent. Fixed in this pass: rendered through mermaid.ink (public
 repository, no install) and looked at — two decisions, the last the push, linear.
+
+## 2026-10-21 · add-init-command · 6→7
+
+init checked presence with os.Stat, which follows symlinks: a dangling .agents/lessons.md link read
+as missing and the write landed at its target, outside .agents/. Fixed in this pass: Lstat plus an
+O_EXCL write, and a criterion with TestInitNeverWritesThroughASymlink, observed red first.
+
+## 2026-10-21 · add-init-command · 6→7
+
+The payload delta required write-spec version 1.3, written before adopt-organic-driven-development
+moved the base to 2.0; the bump went 2.0 → 2.1. Fixed in this pass: the delta, plan claim and tasks
+now say 2.0 → 2.1.
+
+## 2026-10-21 · add-init-command · 6→7
+
+Line citations went stale across a rebase (spec-drift:80-82, payload/spec.md:155). Fixed in this
+pass: the delta and init.go's comment cite SPEC_ROOTS/CHANGE_ROOTS and the non-goal by name.
+
+## 2026-10-21 · add-init-command · 6→7
+
+The README gained an init row that the cli delta's scope never named. Fixed in this pass: Scope ·
+In names the README row and that no readme promise moves.

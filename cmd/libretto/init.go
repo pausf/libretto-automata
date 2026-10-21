@@ -16,7 +16,7 @@ import (
 // has nothing to carry them, which is why a non-repo is a refusal and not a warning.
 
 // The foreign consolidation roots, mirroring SPEC_ROOTS/CHANGE_ROOTS in
-// skills/record-work/spec-drift lines 80-82 minus the .agents/ pair — the layout
+// skills/record-work/spec-drift, minus the .agents/ pair — the layout
 // being bootstrapped. spec-drift is the single authority for these lists; a
 // divergence is a bug in this copy.
 var (
@@ -56,7 +56,9 @@ func initCmd(w io.Writer, git gitRunner) error {
 	fmt.Fprintln(w, root)
 
 	// Present in any form means untouched — init cannot tell its own .gitkeep from
-	// anyone else's and does not need to.
+	// anyone else's and does not need to. A symlink is present too, dangling or not:
+	// Lstat sees it where Stat would follow it, and O_EXCL refuses to write through
+	// one created in between, so nothing ever lands outside the root.
 	artifacts := []struct {
 		rel     string
 		content string
@@ -67,15 +69,23 @@ func initCmd(w io.Writer, git gitRunner) error {
 	}
 	for _, a := range artifacts {
 		path := filepath.Join(root, a.rel)
-		if _, err := os.Stat(path); err == nil {
+		if _, err := os.Lstat(path); err == nil {
 			fmt.Fprintf(w, "  exists   %s\n", filepath.ToSlash(a.rel))
 			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(path, []byte(a.content), 0o644); err != nil {
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if err != nil {
 			return err
+		}
+		_, werr := f.WriteString(a.content)
+		if cerr := f.Close(); werr == nil {
+			werr = cerr
+		}
+		if werr != nil {
+			return werr
 		}
 		fmt.Fprintf(w, "  created  %s\n", filepath.ToSlash(a.rel))
 	}

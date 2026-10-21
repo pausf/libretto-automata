@@ -3,7 +3,7 @@ Targets: payload
 # Delta — the bootstrap non-goal gets an owner, and the refusal sites point at it
 
 The payload capability forbids creating a `changes/` directory in a project that has
-none (`.agents/specs/payload/spec.md:155`). That prohibition was written when nothing
+none (the *Scope boundaries · Out* bullet in `.agents/specs/payload/spec.md` beginning "creating a `changes/` directory in a project that has none"). That prohibition was written when nothing
 sanctioned existed to do it; `libretto init` (the sibling delta, `Targets: cli`) now
 does. This delta rewrites the non-goal so implicit creation by skills stays forbidden
 while explicit, user-invoked `libretto init` becomes the named owner of bootstrap, and
@@ -26,8 +26,9 @@ gives the two refusal sites one guarded sentence each pointing at it.
   refusal stands unchanged.
 - `commands/libretto-queue.md` (the "Never create the directory" section, line ~70)
   gains the same guarded sentence, matching the same grammar.
-- `skills/write-spec/SKILL.md` frontmatter `version:` bumps `"1.2"` → `"1.3"` — its
-  instructions changed meaningfully. `commands/*.md` carry no `version:` frontmatter
+- `skills/write-spec/SKILL.md` frontmatter `version:` bumps `"2.0"` → `"2.1"` — its
+  instructions changed meaningfully. (Written as 1.2 → 1.3; the base moved to 2.0 under
+  adopt-organic-driven-development before this landed — 6→7 review, 2026-10-21.) `commands/*.md` carry no `version:` frontmatter
   (verified: only `description:`), so `libretto-queue.md` bumps nothing.
 
 ## Scope boundaries
@@ -82,7 +83,7 @@ Standing, not relitigated here: skills must be self-sufficient once installed
 1. Rewrite the non-goal bullet in `.agents/specs/payload/spec.md` Scope boundaries
    (line 155) to the replacement text above. Lands with this delta's landing commit.
 2. Add the guarded pointer sentence to `skills/write-spec/SKILL.md`'s refusal
-   paragraph and bump frontmatter `version:` to `"1.3"`.
+   paragraph and bump frontmatter `version:` to `"2.1"`.
 3. Add the guarded pointer sentence to `commands/libretto-queue.md`'s refusal section.
    No version to bump — the file has no version frontmatter.
 
@@ -107,6 +108,6 @@ Each unit is one file; any order; all three land together with the sibling delta
   binary is absent, it **shall** say so and stop, exactly as it does today.
   Proof: commands/libretto-queue.md
 - **When** this delta lands, `skills/write-spec/SKILL.md` frontmatter **shall** carry
-  `version: "1.3"`, and its frontmatter **shall** still parse with `name:` matching
+  `version: "2.1"`, and its frontmatter **shall** still parse with `name:` matching
   the directory.
   Proof: scripts/check-payload

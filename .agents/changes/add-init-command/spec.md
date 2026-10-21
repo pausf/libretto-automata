@@ -39,7 +39,7 @@ Refusals, each an error return (stderr via `main`, exit 1):
 - **a foreign layout** — any other spec-drift consolidation root present as a
   directory: specs roots `specs`, `openspec`, `docs/specs`, `spec`; change roots
   `changes`, `openspec/changes` (the lists in
-  `skills/record-work/spec-drift`, lines 80–82, are the layout authority). The
+  `SPEC_ROOTS` and `CHANGE_ROOTS` in `skills/record-work/spec-drift` are the layout authority). The
   refusal names what it found. The project already has a convention, and inventing a
   second one is two sources of truth.
 
@@ -59,7 +59,9 @@ Wiring, all three in the same change:
 ## Scope boundaries
 
 **In:** the `init` subcommand — repository-root resolution, the foreign-layout probe,
-the create-what-is-missing plan, the report, the three wiring points, its tests, and
+the create-what-is-missing plan, the report, the three wiring points, its tests, the
+`libretto init` row in the README command table (the readme capability; no readme promise
+moves), and
 dogfooding: `.agents/changes/.gitkeep` is created and committed **in this
 repository** as part of this change.
 
@@ -203,5 +205,9 @@ Each unit independently assignable; 1 before 2; 4 any time after 1.
 - **The report shall name the repository root it acted on before the per-artifact
   lines, and shall carry no escape codes when piped.**
   Proof: cmd/libretto/init_test.go TestInitNamesTheRootAndCarriesNoEscapeCodes
+- **If an artifact path is a symlink, dangling or not, then init shall report it as
+  present and shall write nothing through it.** Found by the 6→7 review, 2026-10-21:
+  `os.Stat` followed a dangling link and the write landed outside `.agents/`.
+  Proof: cmd/libretto/init_test.go TestInitNeverWritesThroughASymlink
 - **`help` shall list `init` with a line saying what it bootstraps.**
   Proof: cmd/libretto/main_test.go TestHelpNamesInit

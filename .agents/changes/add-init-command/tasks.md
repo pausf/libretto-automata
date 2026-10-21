@@ -28,14 +28,14 @@ in the same commit as the work that closed them.
   Waits on: nothing.
 
 - [x] **2. The two guarded payload pointers** — done 2026-08-21; evidence: both
-  sentences in place in the record-work grammar, write-spec 1.2→1.3,
+  sentences in place in the record-work grammar, write-spec 2.0→2.1 (the base had moved to 2.0),
   `scripts/check-payload` exit 0 read to completion. — one sentence appended to
   `skills/write-spec/SKILL.md`'s "Never create a `changes/` directory" paragraph
   (~line 176) and one to `commands/libretto-queue.md`'s refusal section (~line 70),
   both in the record-work guarded grammar (`skills/record-work/SKILL.md:104-108`):
   where `libretto` is on PATH the sanctioned bootstrap is `libretto init`; where
   absent, the refusal stands unchanged. Bump write-spec frontmatter
-  `version: "1.2"` → `"1.3"`; libretto-queue has no version frontmatter, bump nothing.
+  `version: "2.0"` → `"2.1"`; libretto-queue has no version frontmatter, bump nothing.
   Neither sentence weakens a refusal.
   Closes: the payload delta's three pointer/version criteria — proof is the sentences
   present in the two cited files and `scripts/check-payload` green (frontmatter
