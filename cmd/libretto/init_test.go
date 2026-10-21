@@ -13,9 +13,9 @@ import (
 // that need real git (a subdirectory cwd, a directory that is not a repo) build a
 // throwaway repository and skip under -short.
 
-// fakeGit returns root for rev-parse and logs every call, so a test can assert
+// initGit returns root for rev-parse and logs every call, so a test can assert
 // both what init asked git and that it asked nothing else.
-func fakeGit(root string, log *[]string) gitRunner {
+func initGit(root string, log *[]string) gitRunner {
 	return func(args ...string) (string, error) {
 		if log != nil {
 			*log = append(*log, strings.Join(args, " "))
@@ -34,7 +34,7 @@ var initArtifacts = []string{
 func TestInitBootstrapsAFreshProject(t *testing.T) {
 	root := t.TempDir()
 
-	out, _, err := capture(t, func() error { return initCmd(os.Stdout, fakeGit(root, nil)) })
+	out, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, nil)) })
 	if err != nil {
 		t.Fatalf("init on a fresh project: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestInitBootstrapsAFreshProject(t *testing.T) {
 func TestInitIsIdempotent(t *testing.T) {
 	root := t.TempDir()
 
-	if _, _, err := capture(t, func() error { return initCmd(os.Stdout, fakeGit(root, nil)) }); err != nil {
+	if _, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, nil)) }); err != nil {
 		t.Fatalf("first run: %v", err)
 	}
 	lessons := filepath.Join(root, ".agents", "lessons.md")
@@ -61,7 +61,7 @@ func TestInitIsIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, _, err := capture(t, func() error { return initCmd(os.Stdout, fakeGit(root, nil)) })
+	out, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, nil)) })
 	if err != nil {
 		t.Fatalf("second run over its own output: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestInitFillsAPartialLayoutWithoutTouchingWhatExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, _, err := capture(t, func() error { return initCmd(os.Stdout, fakeGit(root, nil)) })
+	out, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, nil)) })
 	if err != nil {
 		t.Fatalf("init on a partial layout: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestInitRefusesAForeignLayoutAndNamesIt(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			_, _, err := capture(t, func() error { return initCmd(os.Stdout, fakeGit(root, nil)) })
+			_, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, nil)) })
 			if err == nil {
 				t.Fatalf("init did not refuse with %s/ present", foreign)
 			}
@@ -146,7 +146,7 @@ func TestInitRefusesAForeignLayoutAndNamesIt(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(root, "specs"), []byte("just a file"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := capture(t, func() error { return initCmd(os.Stdout, fakeGit(root, nil)) }); err != nil {
+		if _, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, nil)) }); err != nil {
 			t.Errorf("init refused over a plain file named specs: %v", err)
 		}
 	})
@@ -166,7 +166,7 @@ func TestInitRefusalWinsOverAPartialLayout(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, _, err := capture(t, func() error { return initCmd(os.Stdout, fakeGit(root, nil)) })
+	_, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, nil)) })
 	if err == nil {
 		t.Fatal("init filled a partial layout beside a foreign root instead of refusing")
 	}
@@ -240,7 +240,7 @@ func TestInitNeverCommitsAndRunsOnlyRevParse(t *testing.T) {
 	root := t.TempDir()
 	var log []string
 
-	if _, _, err := capture(t, func() error { return initCmd(os.Stdout, fakeGit(root, &log)) }); err != nil {
+	if _, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, &log)) }); err != nil {
 		t.Fatal(err)
 	}
 	if len(log) != 1 || log[0] != "rev-parse --show-toplevel" {
@@ -250,7 +250,7 @@ func TestInitNeverCommitsAndRunsOnlyRevParse(t *testing.T) {
 
 func TestInitLessonsHeaderIsTheStandardOne(t *testing.T) {
 	root := t.TempDir()
-	if _, _, err := capture(t, func() error { return initCmd(os.Stdout, fakeGit(root, nil)) }); err != nil {
+	if _, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, nil)) }); err != nil {
 		t.Fatal(err)
 	}
 
@@ -266,7 +266,7 @@ func TestInitLessonsHeaderIsTheStandardOne(t *testing.T) {
 
 func TestInitWritesNoReadmeIntoSpecs(t *testing.T) {
 	root := t.TempDir()
-	if _, _, err := capture(t, func() error { return initCmd(os.Stdout, fakeGit(root, nil)) }); err != nil {
+	if _, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, nil)) }); err != nil {
 		t.Fatal(err)
 	}
 
@@ -303,7 +303,7 @@ func TestInitWorksWithNoPayload(t *testing.T) {
 func TestInitNamesTheRootAndCarriesNoEscapeCodes(t *testing.T) {
 	root := t.TempDir()
 
-	out, _, err := capture(t, func() error { return initCmd(os.Stdout, fakeGit(root, nil)) })
+	out, _, err := capture(t, func() error { return initCmd(os.Stdout, initGit(root, nil)) })
 	if err != nil {
 		t.Fatal(err)
 	}

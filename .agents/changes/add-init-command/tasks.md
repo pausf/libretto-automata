@@ -4,7 +4,7 @@ Executor: build-and-check (phase 6). One fresh session per open box; each box le
 the tree green and mergeable on its own. Boxes are marked by the orchestrator only,
 in the same commit as the work that closed them.
 
-- [ ] **1. The `init` command, wired and proven end to end** — new
+- [x] **1. The `init` command, wired and proven end to end** — done 2026-10-21; evidence: 13 tests, two red on the wip wiring, eleven forced red by breaking init.go and restored; six gates green — new
   `cmd/libretto/init.go` (`initCmd(w io.Writer, git gitRunner) error`): one
   `rev-parse --show-toplevel` through the `gitRunner` seam, trimmed root, foreign-root
   probe (spec roots `specs`/`openspec`/`docs/specs`/`spec`, change roots

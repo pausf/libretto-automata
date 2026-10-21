@@ -123,7 +123,7 @@ func needsPayload(args []string) bool {
 		return true // the panel shows the tree's state
 	}
 	switch args[0] {
-	case "models", "update", "loop", "metrics", "land":
+	case "models", "update", "loop", "metrics", "land", "init":
 		// `update` is what fixes a missing payload on an installed copy, so it cannot be
 		// gated on having one. In a checkout the payload is the tree and is always there.
 		//
@@ -135,6 +135,9 @@ func needsPayload(args []string) bool {
 		// `land` reads the project being landed, never ~/.claude or the payload tree —
 		// the machine record-work invokes it on is exactly one that installed the binary
 		// and nothing else.
+		//
+		// `init` bootstraps the project's .agents/ layout and never reads the payload, so
+		// a fresh `go install` machine — the one init is for — must not be refused.
 		return false
 	default:
 		return true

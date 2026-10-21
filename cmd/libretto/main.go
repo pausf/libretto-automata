@@ -1350,6 +1350,7 @@ func usage() {
   %[2]s metrics        what every change cost, derived from git, read-only
   %[2]s metrics <change>   just that one
   %[2]s land [<change>]   verify the staged landing commit, read-only; non-zero on a missing part
+  %[2]s init          bootstrap the .agents/ layout at the repository root; never overwrites
   %[2]s wiki          render this project's specs into <specs-dir>/README.md
   %[2]s wiki --html   the same specs as a self-contained viewer, <specs-dir>/wiki.html
   %[2]s wiki --open   write the viewer and open it in the default browser
