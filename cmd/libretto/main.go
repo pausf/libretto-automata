@@ -216,6 +216,8 @@ func run(args []string) error {
 		return metrics(os.Stdout, args[1:], execGit(projectDir), transcriptProjects())
 	case "land":
 		return land(os.Stdout, os.Stderr, args[1:], execGit(projectDir))
+	case "init":
+		return initCmd(os.Stdout, execGit(projectDir))
 	case "wiki":
 		return wiki(os.Stdout, projectDir, args[1:])
 	default:
