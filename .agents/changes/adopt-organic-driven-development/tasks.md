@@ -116,7 +116,7 @@ A skill whose instructions change bumps its own `metadata.version`.
   Waits on: 7.
   Evidence: the anchor phrase survived, TestMovedReasoningLandedInDocs unedited and green; remaining old-agent names in FLOW.md are four dated history lines.
 
-- [ ] **10. README: one stop before code** — readme units 1-3.
+- [x] **10. README: one stop before code** — readme units 1-3.
   Amend `TestWhatYouGetCarriesTheDiagrams`, `TestReadmeWalksAFirstRun`; add
   `TestReadmeNamesNoMethodAcronym`; each red on today's README (the acronym one on a hand-broken
   copy). Rewrite the four places at net ≤ 0 lines.
@@ -124,6 +124,7 @@ A skill whose instructions change bumps its own `metadata.version`.
   walk names `/libretto-flow`, `change document`, `push`; no acronym; ≤ 380 lines, ceiling unedited;
   no moved-reasoning subject removed.
   Waits on: 9.
+  Evidence: three guards red on today's README (acronym red by hand), 380 → 379 lines, ceiling unedited; moved-reasoning subject relabelled only. Diagram NOT rendered: mmdc absent, nothing installed.
 
 ## Layer 4 — landing
 

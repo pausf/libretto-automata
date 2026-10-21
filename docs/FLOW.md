@@ -469,7 +469,7 @@ only the door.
 | 1 · read the task | no | — the reading is stated, and the contract is where it gets corrected |
 | 2–3 · the contract | no | — agreed below, beside what building it costs |
 | 5 · the approach | no | — agreed below, beside the boxes it produced |
-| 5→6 · the checklist and the cold read | **yes** | the whole change document: contract, approach, order |
+| before 6 · the change document, after the cold read | **yes** | the whole change document: contract, approach, order |
 | 6 · build | no | — |
 | 6→7 · review | no | — the seam fixes what it finds |
 | 7 · present | no | — |

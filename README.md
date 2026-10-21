@@ -45,23 +45,21 @@ flowchart LR
     home -->|reads| cc
 ```
 
-What changes in practice: you say what you want, and before any code exists you get a
-**contract** — what "done" means, what is deliberately out of scope, and how each promise
-will be proven. You approve that, then a **plan** — how it gets built and which alternatives
-lost — with the checklist an agent cut from it without sitting through the argument. A fresh
-reviewer that saw none of the session checks the result, and the last question is whether to push.
+What changes in practice: you say what you want, and before any code exists you get one
+**change document** — what "done" means, what is deliberately out of scope, how each promise
+will be proven, how it gets built, and the checklist. A reviewer that saw none of the session
+reads it before you do, and you agree it once. A second fresh reviewer checks the *result*,
+and the last question is whether to push.
 
 ```mermaid
 flowchart LR
-    f1["1. find the work"] --> f2["2-4. write the spec,<br/>ask what is open"]
-    f2 --> s1{"stop: agree<br/>the spec"}
-    s1 --> f5["5. write the plan<br/><i>the how</i>"]
-    f5 --> c5["5→6. cut the tasks<br/><i>fresh agent</i>"]
-    c5 --> s2{"stop: agree the<br/>approach and the order"}
-    s2 --> f6["6. build and check"]
+    f1["1. find the work"] --> f2["2-5. write one change document<br/><i>contract, approach, checklist</i>"]
+    f2 --> r1["a fresh reviewer<br/>reads it cold"]
+    r1 --> s1{"stop: agree<br/>the whole document"}
+    s1 --> f6["6. build and check"]
     f6 --> f7["7. review, present"]
     f7 --> f8["8. record"]
-    f8 --> s3{"stop:<br/>push?"}
+    f8 --> s2{"stop:<br/>push?"}
 ```
 
 Links are made **per item, never per directory**, so this coexists with anything else
@@ -124,22 +122,22 @@ Claude Code** — what follows are slash commands, not shell commands.
    It reads the request, names the change, and writes it down before anything else. Hand it
    a tracker key instead — `/libretto-flow EUCAR-1234` — and it reads the ticket.
 
-2. **It stops at the spec.** You get the contract: outcomes, what is out of scope, the
-   constraints it found in your code, and the test that will prove each promise. **This is
-   the cheap place to disagree.**
-3. **It writes the plan** — how it gets built, and which alternatives lost. It does not wait.
-4. **It stops once the tasks are cut** by a fresh agent that saw none of the conversation,
-   which reports **what the spec and the plan failed to answer**. You agree both at once.
-5. **It builds**, marking boxes as it goes, and leaves a proportionate test behind — one
+2. **It writes one change document**, without waiting in between: the contract — outcomes,
+   what is out of scope, the constraints it found in your code, the test that will prove each
+   promise — then how it gets built and which alternatives lost, then the checklist.
+3. **It stops once a fresh reviewer has read it.** The reviewer saw none of the conversation
+   and reports, box by box, **what the document fails to answer**. You agree the whole
+   document at once. **This is the cheap place to disagree.**
+4. **It builds**, marking boxes as it goes, and leaves a proportionate test behind — one
    runnable check for real logic, none for a one-liner with no logic in it.
-6. **A fresh reviewer reads the result.** It saw none of the session that wrote the code,
+5. **A fresh reviewer reads the result.** It saw none of the session that wrote the code,
    which is the entire point, and it re-runs every proof the change touched.
-7. **It reports** in the spec's own terms, including what it deliberately did not build and
+6. **It reports** in the spec's own terms, including what it deliberately did not build and
    what would bring it back.
-8. **It asks once about pushing.** That answer is always yours.
+7. **It asks once about pushing.** That answer is always yours.
 
-Those are the three places it waits, and each one is a question your terminal puts in front
-of you — not a line at the bottom of a report.
+Those are the two places it waits, the stop and the push, and each one is a question your
+terminal puts in front of you — not a line at the bottom of a report.
 
 Nothing else to learn to start. The rest is knowing which door to use:
 
@@ -154,11 +152,11 @@ Nothing else to learn to start. The rest is knowing which door to use:
 /libretto-attacca             # the same flow, without stopping — straight to a pushed PR
 ```
 
-**`/libretto-attacca` answers those stops in advance.** Same phases, same spec, same plan
-and tasks, same report — it just never waits, and it ends with the branch pushed and the
-request open. A failing gate still stops it where it stands, and it never merges, tags or
-releases; [FLOW.md](docs/FLOW.md) says why that boundary is where it is. `attacca` is what
-a score writes to mean *go on to the next movement without pausing*.
+**`/libretto-attacca` answers those stops in advance.** Same phases, same change document,
+same report — it just never waits, and it ends with the branch pushed and the request open.
+A failing gate still stops it where it stands, and it never merges, tags or releases;
+[FLOW.md](docs/FLOW.md) says why that boundary is where it is. `attacca` is what a score
+writes to mean *go on to the next movement without pausing*.
 
 **The flow does not begin at a tracker.** Phase 1 asks three sources in order — a change
 already in flight, a tracker key or URL, and what you said — and [FLOW.md](docs/FLOW.md) says why.
@@ -167,8 +165,9 @@ already in flight, a tracker key or URL, and what you said — and [FLOW.md](doc
 |---|---|---|
 | 1 | find the work — in flight, tracker, or asked for | `find-work` |
 | 0·2·3 | does a spec even need to exist · the six pillars · one per subtask | `write-spec` |
-| 5 | the plan — the approach, and the alternatives it beat | `write-plan` |
-| 5→6 | the tasks — cut by a fresh agent, live state, one writer | `write-tasks` |
+| 5 | the approach, and the alternatives it beat | `write-plan` |
+| 5→6 | the checklist — the change document's last section, one writer | `write-tasks` |
+| before 6 | a fresh reviewer reads the whole document, then the one stop | `review-spec` |
 | 6 | build, with proportionate checks | `build-and-check` |
 | 7 | present, including what was left out | `present-work` |
 | 8 | commit, and make the spec true again | `record-work` |
