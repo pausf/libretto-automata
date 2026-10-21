@@ -23,8 +23,10 @@ fan-out. This delta teaches all of them the new layout without breaking the old 
 2. `libretto loop <change>` refuses a queued proposal (a capture with no `## Checklist` boxes,
    no `tasks.md` and no `plan.md`) as having no checklist. The refusal comes before the PATH
    check for `claude`.
-3. `libretto loop` on an old-layout change behaves exactly as it does today. That covers a
-   change with `tasks.md` or `plan.md` whose `proposal.md` has no `## Checklist` boxes.
+3. `libretto loop` on an old-layout change behaves exactly as it does today, with one
+   exception: a box inside a fence is not counted, in `tasks.md` and `plan.md` as in the change
+   document (decision 16 — one box definition in every reader, `find-work` included). That
+   covers a change with `tasks.md` or `plan.md` whose `proposal.md` has no `## Checklist` boxes.
 4. `libretto metrics` reads box churn for a new-layout change from the `## Checklist` lines in
    `proposal.md`'s history. For an old-layout change it reads `tasks.md`, then `plan.md`,
    counting every box as today. Each change is read from one file. Counts from two files are
@@ -92,8 +94,12 @@ fan-out. This delta teaches all of them the new layout without breaking the old 
   close only on `^##[[:space:]]`. If `## Checklist` appears more than once, every such section
   counts. Boxes anywhere else in `proposal.md` (a quoted ask, a *Task breakdown* written as
   boxes) are not the checklist.
-- **Old-layout files count every box.** `tasks.md` and `plan.md` are read whole by
-  `countBoxes`, as today.
+- **Old-layout files count every box outside a fence.** `tasks.md` and `plan.md` are read whole
+  by `countBoxes`, which skips fenced boxes as the section counter does (decision 16). **Named
+  ceiling:** `metrics` reads old-layout churn from default 3-line hunks, which do not carry fence
+  state, so a fenced box in an old `tasks.md`/`plan.md` history still counts there. Widening those
+  queries to whole-file context would change what reaches git for every old change; the real
+  history holds no fenced box, so the ceiling is accepted rather than paid for.
 - **One definition of a box.** It is `planLine` (loop.go:31). `metrics` already delegates to
   it through `boxIn` (metrics.go:254). `wiki`'s `readInFlight` does not. It matches
   `strings.HasPrefix(t, "- [ ]")` and `"- [x]"` (wiki.go:864-868), so `* [ ]` and `[X]` count
@@ -284,6 +290,9 @@ This delta records the following, to be retired into `cli`'s *Prior decisions* a
 - **L5. The `no checklist at` and `no task boxes` refusals shall not contain `cut into
   tasks`.**
   Proof: cmd/libretto/loop_test.go TestLoopRefusalsDoNotNameTheCutter
+- **L6. When `countBoxes` reads a `tasks.md` or `plan.md`, it shall not count a box inside a
+  ``` fence.**
+  Proof: cmd/libretto/loop_test.go TestCountBoxesSkipsFences
 
 ### `metrics`
 

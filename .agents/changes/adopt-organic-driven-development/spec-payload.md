@@ -156,8 +156,9 @@ lands:
 **In:**
 
 - `skills/write-spec`, `write-plan`, `write-tasks`, `review-spec`, `find-work`,
-  `record-work` (its prose and `spec-drift`), `review-work` and `build-and-check`, each where
-  it names a document this delta renames, moves or retires
+  `record-work` (its prose and `spec-drift`), `review-work`, `build-and-check` and
+  `present-work`, each where it names a document this delta renames, moves or retires, or a
+  stop it counts
 - `agents/spec-reviewer.md` (new); `agents/plan-writer.md` and `agents/task-cutter.md`
   (deleted); `agents/spec-writer.md` (narrowed to the fan-out, reading `proposal.md` by path
   instead of `brief.md` and `decisions.md`, per *Outcomes* 2); `agents/work-reviewer.md` (reads the contract in either layout, and its

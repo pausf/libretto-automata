@@ -4,7 +4,7 @@ description: "Trigger: a task is finished and needs committing; writing a commit
 license: MIT
 metadata:
   author: pausf
-  version: "1.4"
+  version: "1.5"
 ---
 
 ## What this does

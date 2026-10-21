@@ -125,7 +125,7 @@ A skill whose instructions change bumps its own `metadata.version`.
   walk names `/libretto-flow`, `change document`, `push`; no acronym; ≤ 380 lines, ceiling unedited;
   no moved-reasoning subject removed.
   Waits on: 9.
-  Evidence: three guards red on today's README (acronym red by hand), 380 → 379 lines, ceiling unedited; moved-reasoning subject relabelled only. Diagram NOT rendered: mmdc absent, nothing installed.
+  Evidence: three guards red on today's README (acronym red by hand), 380 → 379 lines, ceiling unedited; moved-reasoning subject relabelled only. Diagram rendered after the 6→7 review via mermaid.ink and looked at: two decisions, the last the push.
 
 ## Layer 4 — landing
 
