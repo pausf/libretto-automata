@@ -356,6 +356,13 @@ check_absent skills/find-work/SKILL.md "rg -c '\^\\\\s\*- " 'the bare whole-file
 check_absent skills/find-work/SKILL.md 'needed no spec never creates'  'phase 1 no longer claims the trivial lane leaves no change folder'
 check_wiring skills/write-spec/SKILL.md 'in the trivial lane.s own commit' 'the trivial lane deletes its phase-1 capture'
 check_absent skills/write-spec/SKILL.md 'Six pillars, a brief and a plan' 'step 0 names no brief or plan the flow no longer writes'
+# The method borrows an idea and none of a name: what installs speaks Libretto's own vocabulary.
+# Case-sensitive on the acronym, so the ordinary word "odd" stays free to be used.
+for d in skills agents commands; do
+  if rg -qN -w -- 'ODD' "$d" 2>/dev/null || rg -qNi -- 'organic[- ]driven' "$d" 2>/dev/null; then
+    fail "$d names the borrowed method — the installed payload uses Libretto's own vocabulary"
+  else ok "$d carries no borrowed method name"; fi
+done
 check_wiring commands/libretto-status.md 'Skill\(skill="find-work"\)' 'status delegates the scan to find-work'
 check_wiring commands/libretto-status.md 'proposal\.md..s .## Checklist.' 'status names proposal.md among the files the scan reads'
 

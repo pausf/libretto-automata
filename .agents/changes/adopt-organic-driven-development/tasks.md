@@ -98,11 +98,12 @@ A skill whose instructions change bumps its own `metadata.version`.
   Waits on: 1, 5.
   Evidence: 44 check-payload failures on today's prose before the edit, all green after; R1 red with a plan-writer key, R2 red before the agent file; recommend's four cases unedited; anchors 5 → 3.
 
-- [ ] **8. No method acronym in what installs** — payload unit 6.
+- [x] **8. No method acronym in what installs** — payload unit 6.
   One `check-payload` row over `skills/`, `agents/`, `commands/`: the acronym case-sensitive whole
   word, the spelled-out name any case.
   Closes: that criterion, watched red on a hand-broken copy and reverted.
   Waits on: 7.
+  Evidence: red on the acronym in skills/ and on the spelled name in agents/, green on the plain word "odd"; reverted, no diff.
 
 ## Layer 3 — prose
 
