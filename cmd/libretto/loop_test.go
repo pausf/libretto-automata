@@ -291,8 +291,12 @@ func TestChecklistPathFallsBackToPlan(t *testing.T) {
 		t.Errorf("tasks.md wins when both are there, got %s", got)
 	}
 
-	if got := checklistPath(dir, "neither"); filepath.Base(got) != "tasks.md" {
+	if got := checklistPath(dir, "neither"); filepath.Base(got) != "proposal.md" {
 		t.Errorf("with neither present the error must name the current file, got %s", got)
+	}
+	writeChecklist(t, dir, "queued", "proposal.md", "## Task breakdown\n- [ ] not the checklist\n")
+	if got := checklistPath(dir, "queued"); filepath.Base(got) != "proposal.md" {
+		t.Errorf("boxes outside ## Checklist still name the current file, got %s", got)
 	}
 
 	// And the prompt has to carry the file that was actually found, not a constant.
@@ -332,5 +336,142 @@ func TestLoopIsNotGatedOnThePayload(t *testing.T) {
 	if needsPayload([]string{"loop", "add-thing"}) {
 		t.Fatal("loop reads the project's plan, not the payload tree — gating it refuses " +
 			"the loop on exactly the machine it is for")
+	}
+}
+
+func TestOnlyTheChecklistSectionCounts(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   string
+		want planCount
+	}{
+		{"a box under Task breakdown is not the checklist",
+			"## Task breakdown\n- [ ] cut\n## Checklist\n", planCount{}},
+		{"a fenced box inside the checklist does not count",
+			"## Checklist\n```\n- [ ] example\n```\n", planCount{}},
+		{"a ### subheading does not close the section",
+			"## Checklist\n### Layer 1\n- [ ] one\n", planCount{open: 1}},
+		{"the next ## heading closes it",
+			"## Checklist\n- [x] in\n## Notes\n- [ ] out\n", planCount{done: 1}},
+		{"a # heading does not close it",
+			"## Checklist\n- [ ] a\n# Title\n- [ ] b\n", planCount{open: 2}},
+		{"every Checklist section counts",
+			"## Checklist\n- [ ] a\n## Notes\n- [ ] no\n## Checklist\n- [X] b\n", planCount{open: 1, done: 1}},
+		{"a heading inside a fence opens nothing",
+			"```\n## Checklist\n```\n- [ ] a\n", planCount{}},
+		{"trailing space still names the section",
+			"## Checklist  \n- [ ] a\n", planCount{open: 1}},
+		{"a longer heading is another section",
+			"## Checklists\n- [ ] a\n", planCount{}},
+		// C2: no heading means no checklist, whatever boxes the file holds.
+		{"no Checklist heading counts nothing",
+			"# Proposal\n- [ ] a\n- [x] b\n## Task breakdown\n- [ ] c\n", planCount{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := countChecklist(strings.NewReader(tc.in)); got != tc.want {
+				t.Fatalf("wanted %+v, got %+v", tc.want, got)
+			}
+		})
+	}
+}
+
+// The change document wins only when it holds the checklist. Its mere existence is never
+// the signal: every change in both layouts has a proposal.md.
+func TestChecklistPathPrefersTheChangeDocument(t *testing.T) {
+	dir := t.TempDir()
+	doc := "# Proposal\n\n## Checklist\n- [ ] one\n"
+	for _, tc := range []struct {
+		change string
+		others []string
+	}{
+		{"alone", nil},
+		{"beside-tasks", []string{"tasks.md"}},
+		{"beside-plan", []string{"plan.md"}},
+		{"beside-both", []string{"tasks.md", "plan.md"}},
+	} {
+		writeChecklist(t, dir, tc.change, "proposal.md", doc)
+		for _, o := range tc.others {
+			writeChecklist(t, dir, tc.change, o, "- [ ] old layout\n")
+		}
+		if got := checklistPath(dir, tc.change); filepath.Base(got) != "proposal.md" {
+			t.Errorf("%s: a proposal.md with a checklist must win, got %s", tc.change, got)
+		}
+	}
+}
+
+// A queued idea is a proposal.md with no checklist. Naming it as missing `claude` would
+// send the reader to install a dependency for a change that has nothing to drive.
+func TestLoopRefusesAQueuedProposal(t *testing.T) {
+	t.Setenv("PATH", "")
+	dir := t.TempDir()
+	p := writeChecklist(t, dir, "c", "proposal.md", "Queued: 2026-10-01\n\n# An idea\n\n- [ ] not a checklist\n")
+	err := loop(dir, []string{"c"})
+	if err == nil {
+		t.Fatal("wanted a refusal")
+	}
+	if !strings.Contains(err.Error(), "no task boxes") || !strings.Contains(err.Error(), p) {
+		t.Fatalf("wanted %s named as having no task boxes, got %v", p, err)
+	}
+}
+
+func TestTheLoopDrivesTheChangeDocumentsChecklist(t *testing.T) {
+	dir := t.TempDir()
+	doc := writeChecklist(t, dir, "c", "proposal.md",
+		"# Proposal\n\n## Task breakdown\n- [ ] outside a\n- [ ] outside b\n\n## Checklist\n- [ ] one\n")
+	want := []string{".agents/changes/c/proposal.md", "## Checklist"}
+
+	var out strings.Builder
+	if err := runLoop(&out, dir, loopOpts{change: "c", max: 5, dryRun: true}, func(string) error {
+		t.Fatal("--dry-run must not start a session")
+		return nil
+	}); err != nil {
+		t.Fatalf("a proposal.md with a checklist must drive the loop, got %v", err)
+	}
+	for _, w := range want {
+		if !strings.Contains(out.String(), w) {
+			t.Errorf("the dry-run prompt must name %q:\n%s", w, out.String())
+		}
+	}
+
+	// Each session closes a box outside the section. That is not progress, so two rounds
+	// of it stop the loop; counting the whole file would have read both as progress.
+	var prompts []string
+	run := func(p string) error {
+		prompts = append(prompts, p)
+		b, _ := os.ReadFile(doc)
+		return os.WriteFile(doc, []byte(strings.Replace(string(b), "- [ ] outside", "- [x] outside", 1)), 0o644)
+	}
+	if err := runLoop(io.Discard, dir, loopOpts{change: "c", max: 5}, run); err == nil {
+		t.Fatal("boxes closed outside ## Checklist must not count as progress")
+	}
+	if len(prompts) != 2 {
+		t.Fatalf("wanted 2 barren rounds, got %d", len(prompts))
+	}
+	for _, w := range want {
+		if !strings.Contains(prompts[0], w) {
+			t.Errorf("the session prompt must name %q:\n%s", w, prompts[0])
+		}
+	}
+}
+
+// Nothing cuts the checklist any more, so a refusal naming the cutter sends the reader
+// looking for a step that no longer exists.
+func TestLoopRefusalsDoNotNameTheCutter(t *testing.T) {
+	t.Setenv("PATH", "")
+	dir := t.TempDir()
+	writeTasks(t, dir, "empty", "# Tasks\n\nno boxes\n")
+	never := func(string) error { t.Fatal("no session may start"); return nil }
+
+	var errs []error
+	errs = append(errs, loop(dir, []string{"nope"}))
+	errs = append(errs, runLoop(io.Discard, dir, loopOpts{change: "nope", max: 1}, never))
+	errs = append(errs, runLoop(io.Discard, dir, loopOpts{change: "empty", max: 1}, never))
+	for _, err := range errs {
+		if err == nil {
+			t.Fatal("wanted a refusal")
+		}
+		if strings.Contains(err.Error(), "cut into tasks") {
+			t.Errorf("a refusal must not name the cutter: %v", err)
+		}
 	}
 }

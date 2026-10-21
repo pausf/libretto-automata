@@ -19,10 +19,11 @@ import (
 // context per iteration, and a skill runs inside the context it would be trying to
 // discard. So the engine has to sit outside, which is the binary.
 //
-// It owns no state of its own. `.agents/changes/<change>/tasks.md` is the state, the
-// same file the 5→6 seam cuts and phase 6 marks, and the loop's only job is to notice
-// when the boxes stop moving. Everything the iteration does — reading the checklist,
-// building, gating, committing — belongs to the flow and stays there.
+// It owns no state of its own. The change's checklist is the state — the `## Checklist`
+// section of `.agents/changes/<change>/proposal.md`, or `tasks.md`/`plan.md` in a change
+// written before that — and the loop's only job is to notice when the boxes stop moving.
+// Everything the iteration does — reading the checklist, building, gating, committing —
+// belongs to the flow and stays there.
 
 // planLine matches a markdown task checkbox at any indentation: `- [ ]` or `- [x]`.
 // Only the box is read. What follows is the task's own text and this never parses it —
@@ -37,15 +38,53 @@ func countBoxes(r io.Reader) planCount {
 	s := bufio.NewScanner(r)
 	s.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for s.Scan() {
-		m := planLine.FindStringSubmatch(s.Text())
-		if m == nil {
+		c = c.add(s.Text())
+	}
+	return c
+}
+
+var (
+	checklistHeading = regexp.MustCompile(`^##\s+Checklist\s*$`)
+	sectionHeading   = regexp.MustCompile(`^##\s`)
+	fenceLine        = regexp.MustCompile("^\\s*```")
+)
+
+// countChecklist counts the boxes of a change document: only those under a `## Checklist`
+// heading, up to the next `##`, outside fences. The boundaries are spec-drift's, so the
+// two never disagree about which lines are the checklist. Everything else in the file —
+// a quoted ask, a breakdown written as boxes — is prose that happens to look like a task.
+func countChecklist(r io.Reader) planCount {
+	var c planCount
+	in, fenced := false, false
+	s := bufio.NewScanner(r)
+	s.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for s.Scan() {
+		line := s.Text()
+		switch {
+		case fenceLine.MatchString(line):
+			fenced = !fenced
+			continue
+		case fenced:
+			continue
+		case sectionHeading.MatchString(line):
+			in = checklistHeading.MatchString(line)
+			continue
+		case !in:
 			continue
 		}
-		if m[1] == " " {
-			c.open++
-		} else {
-			c.done++
-		}
+		c = c.add(line)
+	}
+	return c
+}
+
+func (c planCount) add(line string) planCount {
+	m := planLine.FindStringSubmatch(line)
+	switch {
+	case m == nil:
+	case m[1] == " ":
+		c.open++
+	default:
+		c.done++
 	}
 	return c
 }
@@ -56,6 +95,9 @@ func readPlan(path string) (planCount, error) {
 		return planCount{}, err
 	}
 	defer f.Close()
+	if filepath.Base(path) == "proposal.md" {
+		return countChecklist(f), nil
+	}
 	return countBoxes(f), nil
 }
 
@@ -63,13 +105,17 @@ func readPlan(path string) (planCount, error) {
 // every rule the iteration needs already lives in a skill, and restating one here
 // creates a second copy that drifts from the installed one.
 func loopPrompt(change, checklist string) string {
+	where := ""
+	if checklist == "proposal.md" {
+		where = " under `## Checklist`"
+	}
 	return fmt.Sprintf(`/libretto-attacca continue the change %q.
 
-Read .agents/changes/%s/%s, take the FIRST unchecked box, and do only that one.
+Read .agents/changes/%s/%s, take the FIRST unchecked box%s, and do only that one.
 Mark it the moment it is genuinely finished, and commit. Then stop — do not take a
 second box, and do not push or open a request. Another session follows this one.
 
-If a gate fails twice on this box, stop and say what you observed.`, change, change, checklist)
+If a gate fails twice on this box, stop and say what you observed.`, change, change, checklist, where)
 }
 
 type loopOpts struct {
@@ -125,12 +171,11 @@ func loop(projectDir string, args []string) error {
 		return err
 	}
 	// The checklist is checked before PATH is, and the order is the point: `loop <typo>`
-	// on a machine without `claude` should name the file it could not find, not a
-	// dependency that is irrelevant to the mistake actually made.
-	checklist := checklistPath(projectDir, o.change)
-	if _, err := os.Stat(checklist); err != nil {
-		return fmt.Errorf("no checklist at %s\n"+
-			"       the loop drives a change the 5→6 seam already cut into tasks", checklist)
+	// on a machine without `claude` should name the file it could not find, and a queued
+	// proposal should be named as having nothing to drive — not as missing a dependency
+	// that is irrelevant to either.
+	if _, _, err := openChecklist(projectDir, o.change); err != nil {
+		return err
 	}
 	if !o.dryRun {
 		if _, err := exec.LookPath("claude"); err != nil {
@@ -152,38 +197,53 @@ func loop(projectDir string, args []string) error {
 //
 // It never pushes, never merges, never tags. Those are attacca's answered questions
 // for one branch, and nothing here was asked.
-// checklistPath answers "which file holds this change's boxes", and it answers it twice
-// because the file was renamed. `tasks.md` is what the 5→6 seam cuts now that `plan.md`
-// holds the technical approach instead; `plan.md` is what every change created before
-// that rename still carries. A loop that could not drive one of those would have broken
-// work already in flight to tidy a name.
+// checklistPath answers "which file holds this change's boxes", and it answers it three
+// times because the checklist moved twice. The `## Checklist` section of `proposal.md` is
+// where the flow writes it now; `tasks.md` is what the 5→6 seam used to cut; `plan.md` is
+// what every change created before that carries. A loop that could not drive one of those
+// would have broken work already in flight to tidy a name.
 //
-// When neither is there it returns the current name, so the error names the file the
-// change should have rather than the one it has not needed since.
+// `proposal.md` wins only when its section holds a box. Every change in both layouts has a
+// proposal.md, so its existence alone would hide every old change's boxes. When nothing
+// holds the checklist it returns `proposal.md`, so the error names the file the change
+// should have rather than one the flow no longer writes.
 //
-// ponytail: the fallback goes when no `.agents/changes/*/plan.md` anywhere holds a checkbox.
+// ponytail: the tasks.md and plan.md fallbacks go when no `.agents/changes/*/tasks.md` or
+// `.agents/changes/*/plan.md` anywhere holds a checkbox.
 func checklistPath(projectDir, change string) string {
 	dir := filepath.Join(projectDir, ".agents", "changes", change)
-	tasks := filepath.Join(dir, "tasks.md")
-	if _, err := os.Stat(tasks); err == nil {
-		return tasks
+	doc := filepath.Join(dir, "proposal.md")
+	if c, err := readPlan(doc); err == nil && c.open+c.done > 0 {
+		return doc
 	}
-	legacy := filepath.Join(dir, "plan.md")
-	if _, err := os.Stat(legacy); err == nil {
-		return legacy
+	for _, name := range []string{"tasks.md", "plan.md"} {
+		p := filepath.Join(dir, name)
+		if _, err := os.Stat(p); err == nil {
+			return p
+		}
 	}
-	return tasks
+	return doc
+}
+
+// openChecklist is both refusals, shared by loop() — which must run them before the PATH
+// check — and runLoop, which the tests drive directly.
+func openChecklist(projectDir, change string) (string, planCount, error) {
+	checklist := checklistPath(projectDir, change)
+	c, err := readPlan(checklist)
+	if err != nil {
+		return checklist, c, fmt.Errorf("no checklist at %s\n"+
+			"       the loop drives a change whose checklist already exists", checklist)
+	}
+	if c.open == 0 && c.done == 0 {
+		return checklist, c, fmt.Errorf("%s has no task boxes — nothing to drive", checklist)
+	}
+	return checklist, c, nil
 }
 
 func runLoop(w io.Writer, projectDir string, o loopOpts, run loopRunner) error {
-	checklist := checklistPath(projectDir, o.change)
-	before, err := readPlan(checklist)
+	checklist, before, err := openChecklist(projectDir, o.change)
 	if err != nil {
-		return fmt.Errorf("no checklist at %s\n"+
-			"       the loop drives a change the 5→6 seam already cut into tasks", checklist)
-	}
-	if before.open == 0 && before.done == 0 {
-		return fmt.Errorf("%s has no task boxes — nothing to drive", checklist)
+		return err
 	}
 
 	fmt.Fprintf(w, "\n  %s — %d open, %d done, at most %d iteration(s)\n\n",

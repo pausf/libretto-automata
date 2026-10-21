@@ -21,7 +21,7 @@ A skill whose instructions change bumps its own `metadata.version`.
   Waits on: nothing.
   Evidence: `spec-drift --self-test` 0, nine new cases (three red before the fix, the rest force-red), land cases unedited.
 
-- [ ] **2. Section counter and `loop` read the change document** — cli units 1-2.
+- [x] **2. Section counter and `loop` read the change document** — cli units 1-2.
   Section-scoped counter beside `countBoxes`, `planLine` the only box definition. `checklistPath`:
   `proposal.md` when its `## Checklist` holds a box, then `tasks.md`, then `plan.md`. Queued refusal
   before the PATH check; refusals stop saying `cut into tasks`; the prompt names `proposal.md` and
@@ -31,6 +31,7 @@ A skill whose instructions change bumps its own `metadata.version`.
   `TestLoopRefusesAQueuedProposal`, `TestTheLoopDrivesTheChangeDocumentsChecklist`,
   `TestLoopRefusalsDoNotNameTheCutter`; each red first; spec-cli's old-layout proofs unedited.
   Waits on: nothing.
+  Evidence: five new tests red first, L2 amended as specified, old-layout proofs unedited; anchors 17 → 11.
 
 - [ ] **3. `metrics` reads churn from the change document** — cli unit 3.
   A third `git log` for `proposal.md`, first, whole-file `--unified=`; found only with an in-scope
