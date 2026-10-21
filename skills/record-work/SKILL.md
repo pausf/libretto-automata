@@ -4,7 +4,7 @@ description: "Trigger: a task is finished and needs committing; writing a commit
 license: MIT
 metadata:
   author: pausf
-  version: "1.3"
+  version: "1.4"
 ---
 
 ## What this does
@@ -106,6 +106,13 @@ run `libretto wiki` before the landing commit**, so the refreshed index rides th
 same commit as the delta that changed it — a generated view left behind by a landing
 is drift wearing a marker comment. Where the binary is absent, say the wiki may be
 stale and continue; a missing convenience never blocks a landing.
+
+**Where `libretto` is on PATH, run `libretto land` before the landing commit** — after
+everything, including the refreshed wiki, is staged; it verifies the staged index. On a
+non-zero exit naming a missing part, fix that part and re-run — never commit past it. A
+binary too old to know `land` fails with *unknown command* and names no part; that is
+the absent case, not a blocked landing. Where the binary is absent, say the landing is
+unverified and continue — the same rule as the wiki above.
 
 **`spec-drift` asks it for you**, mechanically, in three directions. It ships beside
 this file — `<skill-base>/spec-drift`, whatever directory this skill was installed

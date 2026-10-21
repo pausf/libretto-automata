@@ -214,6 +214,8 @@ func run(args []string) error {
 		return loop(projectDir, args[1:])
 	case "metrics":
 		return metrics(os.Stdout, args[1:], execGit(projectDir), transcriptProjects())
+	case "land":
+		return land(os.Stdout, os.Stderr, args[1:], execGit(projectDir))
 	case "wiki":
 		return wiki(os.Stdout, projectDir, args[1:])
 	default:
@@ -1345,6 +1347,7 @@ func usage() {
   %[2]s loop <change> --max 3 --dry-run   raise the cap; print the prompt, run nothing
   %[2]s metrics        what every change cost, derived from git, read-only
   %[2]s metrics <change>   just that one
+  %[2]s land [<change>]   verify the staged landing commit, read-only; non-zero on a missing part
   %[2]s wiki          render this project's specs into <specs-dir>/README.md
   %[2]s wiki --html   the same specs as a self-contained viewer, <specs-dir>/wiki.html
   %[2]s wiki --open   write the viewer and open it in the default browser

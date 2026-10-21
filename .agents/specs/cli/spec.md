@@ -400,6 +400,17 @@ prerequisite report.
   user is a test has no user.
 - **requiring any optional companion.** The prerequisite report says what is present.
   It never blocks.
+- **`land` performing the landing.** No write mode, no staging, no `git` mutation of
+  any kind. Verify-only is forward-compatible: a write mode is a later change, not a
+  hedge.
+- **`land` checking part 1 or part 3 of the landing contract.** The final code is
+  unverifiable mechanically, and part 3 is owned by `spec-drift --retired` — `land`
+  names the owner and checks nothing.
+- **`land` running `spec-drift`, or any gate.** One more voice, not an orchestrator.
+  It verifies no delta content either — EARS, `Proof:` citations, pillar structure are
+  `--anchors`' to fail.
+- **a `--commit <sha>` mode for `land`.** The staged index is the default, and the
+  decision log records that a commit mode can be added later without moving it.
 - **configuration files. There are none, deliberately** — nothing on disk changes what a
   command does, and the environment-variable table below is the whole of what is
   configurable.
@@ -483,6 +494,19 @@ nothing is asserted that was not observed.
 **Two timeouts, deliberately different.** The bootstrap clone gets five minutes because the
 user is waiting for the payload they asked for; the release check gets five seconds because
 nobody is waiting to be told they are up to date.
+
+**`land` is read-only, absolutely.** No file written, no index touched, no ref moved —
+the repository's bytes before and after a run are identical, and that is tested rather
+than assumed, because the command runs immediately before the most destructive commit in
+the flow. Stdlib plus exec'd git only, through the same `gitRunner`-style seam `metrics`
+drives, so tests parse real output and the integration tests build real temporary
+repositories (`make test-short` skips those, per the suite's convention). It needs no
+payload: it reads the project being landed, not `~/.claude` and not the payload tree, so
+it joins the `needsPayload` exemptions beside `models`, `update`, `loop` and `metrics` —
+a machine that installed the binary and nothing else is exactly the machine record-work
+invokes it on. Outside a git repository it refuses with the same shape as `metrics`: an
+error, not an empty report. Warnings go to stderr and the report to stdout; the exit
+code means the contract and nothing else, and the wiki warning never changes it.
 
 **Nothing in the test suite writes to a real payload home, and nothing runs a real `go install`.**
 `LIBRETTO_ROOT` is the second half of what `CLAUDE_HOME` does for targets, and `resolveRoot` takes
@@ -615,6 +639,45 @@ equivalent. It goes when `libretto install` has been verified against a real
   instruction closed under new views, and it is why a foreign `wiki.html` is skipped
   silently on a plain run: erroring there would block every landing regeneration.
   2026-08-18.
+- **`land` is verify-only — a read-only gate over the staged index, never a performer.**
+  Applying a delta is a semantic merge a binary cannot do, and the observed failures
+  were *incomplete* landings, which a verifier catches. If wrong: the command grows a
+  write mode later; verify-only is forward-compatible. Assumed 2026-08-21, attacca run.
+- **`land` checks parts 2 and 4 of the landing; part 3 stays owned by `spec-drift
+  --retired`.** Every file of the change folder deleted with no partial deletion, and
+  each delta's `Targets:` capability spec modified in the same staged diff. Duplicating
+  the retirement check in the binary is two sources of truth about what "retired"
+  means. If wrong: the check list grows, the ownership split does not. Assumed
+  2026-08-21, attacca run.
+- **The staged index, pre-commit — before the mistake is history.** Change name
+  optional: with none given, `land` infers from staged change-folder deletions. If
+  wrong: a `--commit <sha>` mode can be added without moving the default. Assumed
+  2026-08-21, attacca run.
+- **A stale wiki does not block `land` — warn only**, the same rule as record-work's
+  "a missing convenience never blocks a landing". Assumed 2026-08-21, attacca run.
+- **The payload learns about the command, minimally** — one guarded clause in
+  `record-work`, the wiki clause's shape, owned by the `payload` capability. A verifier
+  nothing invokes verifies nothing. Recorded here only so this spec is not read as the
+  whole change; if wrong, the clause is one sentence to remove. Assumed 2026-08-21,
+  attacca run.
+- **`land` is one self-contained file, `cmd/libretto/land.go`.** An `internal/land`
+  package lost on one consumer — a package boundary for a single command is a premature
+  abstraction, and it lifts into `internal/` the day a second consumer exists. A payload
+  bash script beside `spec-drift` lost because the command must run on machines that
+  installed the binary and nothing else — exactly the machine record-work invokes it on
+  — and payload never implements delivery. go-git lost to the ladder — stdlib first —
+  and to the exec'd-git seam already here (`metrics`, `wiki`): a library's index
+  semantics are a second implementation of git to trust. 2026-08-21.
+- **`landChangeRoots` duplicates spec-drift's `CHANGE_ROOTS`, and the script is the
+  authority.** Three strings in Go mirroring three in bash; a shared source would mean
+  the binary parsing the script or the script reading Go, and both cost more than three
+  strings. Ceiling: unify — or add a cross-checking test that greps the script — the
+  day the two lists diverge. 2026-08-21.
+- **A rename out of the change folder counts its source as removed** — the contract is
+  that nothing under the folder survives the commit, and a rename-out leaves the folder
+  empty. The diff base is ordinary `HEAD`; in-progress merges are out of scope. One
+  exit code covers every failure kind — distinct codes wait for a caller that needs
+  them. All three assumed 2026-08-21, attacca run.
 
 ## Task breakdown
 
@@ -1482,3 +1545,117 @@ The flow itself gets a page, from the ledgers, absent when they are.
 - **Where the flow article exists, the home shall link `#flow`; where it does
   not, no such link.**
   Proof: cmd/libretto/wiki_test.go TestWikiHomeLinksTheFlowBoard
+
+### `land` — the landing commit verified before it exists
+
+A landing is one commit doing four things — final code, delta applied onto each
+`Targets:` capability spec, durable decisions retired, change folder deleted — and it
+failed twice by half-finishing silently. `land [<change>]` inspects `git diff --cached`,
+before the mistake is history, and exits zero only when the two parts a binary can check
+both hold: every tracked file under the change folder a staged deletion with nothing
+under the folder surviving the commit (part 4 — a tracked file not staged for deletion
+and an untracked file still on disk both fail, by name), and each delta's `Targets:`
+capability spec added or modified in the same staged diff (part 2). It verifies; it
+never performs — applying a delta is a semantic merge a binary cannot do, and the
+observed failures were incomplete landings, which a verifier catches.
+
+**Part 3 is deliberately not checked.** `spec-drift --retired`, inside `--anchors`, owns
+it, and a second implementation is two sources of truth about what "retired" means. The
+failure report says so — it attributes part 3 to `spec-drift --anchors` rather than
+staying silent about a part it does not verify, so a green `land` is never read as the
+whole contract passing.
+
+**The deltas are read from `HEAD`, not from disk or the index.** A staged deletion
+removes the file from the index and the landing may already have removed it from the
+working tree, so `HEAD` is the one place the `Targets:` lines are guaranteed to still
+be. `Targets:` lines inside fenced code blocks do not count, matching `spec-drift`'s
+own fence-stripping — the two tools must not disagree about what a delta targets.
+
+**The change name is optional.** With none given, the change is inferred from staged
+deletions under a change root; with more than one folder landing, each is verified —
+each has its own contract, and refusing an unusual-but-legal commit helps nobody. With
+none inferable, or with a named change that has no staged deletions, the exit is
+non-zero saying nothing is landing: a verifier that exits zero having verified nothing
+is the silent half-landing wearing a green light. A folder whose deletion carries no
+delta passes part 2 vacuously, and the report says so — deleting a queued proposal is
+abandoning an idea, which the flow says costs nothing; it is not a landing and must not
+be failed as a broken one.
+
+**Discovery mirrors what already exists, on both axes.** Change roots are the three
+`spec-drift` reads — `.agents/changes`, `changes`, `openspec/changes` — and the specs
+directory is `findSpecsDir`'s order (`.agents/specs`, `specs`, `openspec`, `docs/specs`,
+`spec`). A fourth list in the binary would disagree with the others exactly when it
+matters.
+
+**A stale wiki warns and never blocks.** Stale, operationally: a marked view
+(`README.md` under the wiki marker, or `wiki.html` under the HTML marker) exists in the
+specs directory, a capability `spec.md` is in the staged diff, and that view is not.
+That is the mechanical reading of record-work's own clause — the refreshed index rides
+the same commit as the delta that changed it. The warning goes to stderr and the exit
+code is untouched; a foreign view (no marker) is ignored silently, matching `wiki`'s
+own precedent. No marked view present means nothing to say.
+
+**Every failure names its part.** The non-zero exit carries one line per missing part —
+which file survived, which capability spec did not move — so the fix is legible from
+the output. All failures are reported in one run; stopping at the first would make the
+repair iterative for no reason. Remedy lines carry `invokedAs()`, as everywhere else.
+
+These run against real temporary git repositories built per case — an index is a git
+fact, and a faked one proves nothing about the command that reads the real thing.
+
+- **When the staged index deletes every file of the change folder and modifies each
+  delta's `Targets:` capability spec, `land` shall exit zero.**
+  Proof: cmd/libretto/land_test.go TestLandPassesACompleteLanding
+- **If a tracked file under the change folder is not a staged deletion, then `land`
+  shall exit non-zero and name that file under part 4.**
+  Proof: cmd/libretto/land_test.go TestLandFailsAPartialFolderDeletion
+- **If an untracked file remains on disk under the change folder, then `land` shall
+  exit non-zero and name it** — the commit cannot delete a folder it leaves a file in.
+  Proof: cmd/libretto/land_test.go TestLandFailsAnUntrackedLeftover
+- **If a delta's `Targets:` capability spec is neither added nor modified in the staged
+  diff, then `land` shall exit non-zero and name the capability under part 2.**
+  Proof: cmd/libretto/land_test.go TestLandFailsWhenTheCapabilitySpecDidNotMove
+- **When both checked parts are missing, `land` shall name both in one run**, not stop
+  at the first.
+  Proof: cmd/libretto/land_test.go TestLandNamesEveryMissingPart
+- **`land` shall read `Targets:` lines from `HEAD`**, so a delta already deleted from
+  the working tree is still verified, **and shall ignore a `Targets:` inside a fenced
+  code block**, matching spec-drift's fence-stripping.
+  Proof: cmd/libretto/land_test.go TestLandReadsTargetsFromHeadAndSkipsFences
+- **When several delta files in one folder carry `Targets:` lines, `land` shall check
+  every named capability**, failing on any one whose spec did not move.
+  Proof: cmd/libretto/land_test.go TestLandChecksEveryDeltasTarget
+- **When no change name is given, `land` shall infer the change from staged deletions
+  under a change root**, and shall verify each folder when more than one is landing.
+  Proof: cmd/libretto/land_test.go TestLandInfersTheChangeFromStagedDeletions
+  Proof: cmd/libretto/land_test.go TestLandVerifiesEveryStagedChangeFolder
+- **If no staged deletion lies under any change root and no name was given, then `land`
+  shall exit non-zero saying nothing is landing**; a named change with no staged
+  deletions shall be refused the same way.
+  Proof: cmd/libretto/land_test.go TestLandWithNothingStagedRefuses
+  Proof: cmd/libretto/land_test.go TestLandRefusesANamedChangeWithNothingStaged
+- **When a change folder's deletion carries no delta, `land` shall pass part 2
+  vacuously and say so** — an abandoned queued proposal is not a broken landing.
+  Proof: cmd/libretto/land_test.go TestLandAllowsADeltalessFolderDeletion
+- **`land` shall discover change folders under `.agents/changes`, `changes` and
+  `openspec/changes`** — the same three roots spec-drift reads.
+  Proof: cmd/libretto/land_test.go TestLandDiscoversEveryChangeRoot
+- **`land` shall not check part 3, and its report shall attribute it to
+  `spec-drift --anchors`** — a landing that would fail `--retired` still passes `land`.
+  Proof: cmd/libretto/land_test.go TestLandLeavesPartThreeToSpecDrift
+- **When a marked wiki view exists and a capability spec is staged while that view is
+  not, `land` shall warn on stderr and shall not change the exit code.**
+  Proof: cmd/libretto/land_test.go TestLandWarnsOnAStaleWikiWithoutBlocking
+- **When no marked view exists, or the view rides the same staged diff, `land` shall
+  print no warning**, and a foreign unmarked view shall be ignored silently.
+  Proof: cmd/libretto/land_test.go TestLandStaysSilentWhenTheWikiIsCurrentOrForeign
+- **`land` shall write nothing** — the repository's files, index and refs are
+  byte-identical before and after a run, on the passing path and on every failing one.
+  Proof: cmd/libretto/land_test.go TestLandChangesNothing
+- **`land` shall run with no payload installed** — it reads the project, not the tree.
+  Proof: cmd/libretto/land_test.go TestLandWorksWithNoPayload
+- **If the working directory is not inside a git repository, then `land` shall exit
+  non-zero with an error naming git**, never an empty report.
+  Proof: cmd/libretto/land_test.go TestLandOutsideARepositoryFails
+- **`help` shall name `land`**, or the feature was not delivered.
+  Proof: cmd/libretto/main_test.go TestHelpNamesLand
