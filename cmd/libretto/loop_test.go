@@ -44,6 +44,16 @@ Prose mentioning - [ ] mid-line does not count
 	}
 }
 
+// A box shown as an example inside a fence is not work, in tasks.md as in proposal.md —
+// find-work's scan skips it, and the loop must count what phase 1 counts.
+func TestCountBoxesSkipsFences(t *testing.T) {
+	in := "- [ ] real\n```\n- [ ] example\n- [x] example\n```\n- [x] real\n"
+	got := countBoxes(strings.NewReader(in))
+	if got.open != 1 || got.done != 1 {
+		t.Fatalf("wanted 1 open / 1 done outside the fence, got %d open / %d done", got.open, got.done)
+	}
+}
+
 func TestLoopStopsWhenEveryBoxIsClosed(t *testing.T) {
 	dir := t.TempDir()
 	plan := writeTasks(t, dir, "c", "- [ ] one\n- [ ] two\n")

@@ -35,10 +35,17 @@ type planCount struct{ open, done int }
 
 func countBoxes(r io.Reader) planCount {
 	var c planCount
+	fenced := false
 	s := bufio.NewScanner(r)
 	s.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for s.Scan() {
-		c = c.add(s.Text())
+		if fenceLine.MatchString(s.Text()) {
+			fenced = !fenced
+			continue
+		}
+		if !fenced {
+			c = c.add(s.Text())
+		}
 	}
 	return c
 }
