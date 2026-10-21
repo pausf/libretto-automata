@@ -62,12 +62,13 @@ A skill whose instructions change bumps its own `metadata.version`.
   Waits on: 2, 3, 4.
   Evidence: nine check-payload rows, eight red on today's prose, the delegation row forced red by hand; scan hand-tested on fences, nested and out-of-section boxes.
 
-- [ ] **6. `land` proves the new layout** — cli unit 5. Tests only.
+- [x] **6. `land` proves the new layout** — cli unit 5. Tests only.
   Closes: `TestLandReadsTargetsFromTheChangeDocument`,
   `TestLandReadsTargetsFromAnExtraCapabilitySpec`, `TestLandOldLayoutTargetsAreUnchanged`, each
   forced red by excluding `proposal.md`/`spec-*.md` from `headTargets` and reverted; #71's own
   cases unedited.
   Waits on: PR #71 merged by the user, and this branch rebased onto it. Blocks only box 11.
+  Evidence: all three green on first run, each forced red through a headTargets mutation and reverted; land.go unchanged; anchors 0 broken.
 
 ## Layer 2 — the writers move, as one commit
 
