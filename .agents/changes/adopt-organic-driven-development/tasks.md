@@ -107,13 +107,14 @@ A skill whose instructions change bumps its own `metadata.version`.
 
 ## Layer 3 — prose
 
-- [ ] **9. Docs describe the result** — payload unit 7.
+- [x] **9. Docs describe the result** — payload unit 7.
   `docs/FLOW.md` (phases 2-5, the stops, delegation, attacca, one gentle-ai credit line),
   `docs/STATE.md` 18 and 68, `AGENTS.md` 58, 112, 131, 159-163. If the rewrite drops
   `more expensive than this one`, the `TestMovedReasoningLandedInDocs` anchor is re-chosen here,
   under readme's two anchor rules — never deleted.
   Closes: six gates green, `TestMovedReasoningLandedInDocs` included.
   Waits on: 7.
+  Evidence: the anchor phrase survived, TestMovedReasoningLandedInDocs unedited and green; remaining old-agent names in FLOW.md are four dated history lines.
 
 - [ ] **10. README: one stop before code** — readme units 1-3.
   Amend `TestWhatYouGetCarriesTheDiagrams`, `TestReadmeWalksAFirstRun`; add
