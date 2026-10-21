@@ -4,7 +4,7 @@ description: "Trigger: a task is finished and needs reporting; summarising what 
 license: MIT
 metadata:
   author: pausf
-  version: "1.1"
+  version: "1.2"
 ---
 
 ## What this does
@@ -128,9 +128,9 @@ What the wait actually cost was a round trip on every single change, and the flo
 already conceded the point for changes with no spec. Conceding it once for typos and
 holding it everywhere else is how a rule becomes a thing people route around.
 
-The two stops that survive are earlier and better placed: the spec, where the contract
-can still be argued with, and the plan, where the order can. By here both were agreed
-and the work matches them — `review-work` fixed what it did not.
+The stop that survives is earlier and better placed: the one before code, where the
+contract, the approach and the order can all still be argued with. By here it was agreed
+and the work matches it — `review-work` fixed what it did not.
 
 **What was never conditional is the content.** All three things still get said — what
 was done, where the evidence is, and what was left out with the condition that brings

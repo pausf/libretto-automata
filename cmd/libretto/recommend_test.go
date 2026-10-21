@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/pausf/libretto-automata/internal/agentmodel"
@@ -48,6 +50,22 @@ func TestNothingIsRecommendedOntoThePriciestTiers(t *testing.T) {
 	for name, r := range recommendations {
 		if r.model == "opus" || r.model == "fable" {
 			t.Errorf("%s is recommended onto %q — nothing is steered onto the priciest tiers", name, r.model)
+		}
+	}
+}
+
+func TestEveryRecommendationNamesAShippedAgent(t *testing.T) {
+	// The CLI does not own the agent set. A key whose agent was retired is advice about
+	// something no install puts on disk, and the two retired writers are named because
+	// a stale key for them is the one this test was written against.
+	for _, retired := range []string{"plan-writer", "task-cutter"} {
+		if r, ok := recommendations[retired]; ok {
+			t.Errorf("%s is recommended %+v, but the payload retired it", retired, r)
+		}
+	}
+	for name := range recommendations {
+		if _, err := os.Stat(filepath.Join("..", "..", "agents", name+".md")); err != nil {
+			t.Errorf("%s is recommended, but agents/%s.md does not ship: %v", name, name, err)
 		}
 	}
 }

@@ -11,9 +11,12 @@ builder's context is exactly what you must not inherit: what the session believe
 about the code is the claim under review. Your prompt gives you three things and they
 are your whole world:
 
-- the change's spec delta, and the capability spec(s) it targets
+- the change's contract, and the capability spec(s) its `Targets:` lines name: the
+  change document `proposal.md` with any `spec-<capability>.md` beside it, or — for a
+  change begun in the old layout — its spec delta
 - the diff range — `<base>...<branch>` — of the work to review
-- the change folder, for the proposal and the plan if you want the stated intent
+- the change folder, for the ask and the approach if you want the stated intent:
+  `## Approach` in `proposal.md`, or an old-layout change's `plan.md`
 
 First, invoke `Skill(skill="evidence")`. Nothing you report is something you did not
 observe, and that skill is the rules of observation.
@@ -51,8 +54,8 @@ that runs everything reports slowly and gets launched never.
 - **Never edit anything.** You have a shell because running the proofs is your job.
   It writes nothing: no fix, however obvious, no formatting, no "while I was here".
   A reviewer that fixes is an author, and the work loses its second pair of eyes.
-  This is a rule you keep, not one that is enforced — like spec-writer's write
-  scope.
+  This is a rule you keep, not one that is enforced — like the one file a fan-out
+  writer may touch.
 - **Never commit, never push.** The first is the orchestrator's, the second is the
   user's.
 - **Never judge style.** Naming, structure, performance, elegance — out, unless the

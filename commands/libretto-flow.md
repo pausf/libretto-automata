@@ -46,17 +46,19 @@ asked why the flow had not run. It had, in substance. Nothing said so.
 Invoking is not gating. A phase that declines does not add a wait — see the trivial
 lane below.
 
-### The flow stops in three places
+### The flow stops in two places
 
-**Two of them, and only two, are inside the work:** after the spec, and after the plan's
-tasks are cut. Everything else runs through.
+**One of them, and only one, is inside the work:** before code, once the change document
+is whole and a reader with none of the conversation has read it. Everything else runs
+through.
 
 | After | Stops | Because |
 |---|---|---|
-| 1 · find-work | no | the reading is stated; the place to disagree with it is the spec |
-| 2–3 · write-spec | **yes** | the contract, and it is cheapest to change here |
+| 1 · find-work | no | the reading is stated; the place to disagree with it is the contract |
+| 2–3 · write-spec | no | the contract is agreed at the stop below, with what building it costs |
 | 5 · write-plan | no | the approach is agreed at the stop below, with the boxes it produced |
-| 5→6 · write-tasks | **yes** | the approach, the order, and what the cutter found missing |
+| 5→6 · write-tasks | no | the order is agreed at the stop below |
+| before 6 · review-spec | **yes** | the whole change document — contract, approach, checklist — with the fresh reader's findings; cheapest to change here |
 | 6 · build-and-check | no | |
 | 6→7 · review-work | no | it fixes what it finds rather than asking |
 | 7 · present-work | no | the report and the commits land together |
@@ -70,12 +72,12 @@ A stop is where the user changes something. A stop where the only available answ
 "yes, carry on" is a round trip charged for a rubber stamp, and a flow that charges
 those gets routed around.
 
-**All three are asked with `AskUserQuestion`, never as a sentence at the end of a report** —
+**Both are asked with `AskUserQuestion`, never as a sentence at the end of a report** —
 and so is phase 1's choice between work in flight and something new. The recommended option
 first, saying what will actually run; the real alternatives; room to answer differently. The
 reason lives once, in `skills/record-work/`.
 
-`/libretto-attacca` is the same flow with all three answered in advance, and it owns that
+`/libretto-attacca` is the same flow with both answered in advance, and it owns that
 classification — including what stays a stop under it, because a gate is not one.
 
 ## 1 · Find the work
@@ -110,19 +112,20 @@ flight, where continuing it or not is the user's call, and a tracker whose CLI i
 Skill(skill="write-spec")
 ```
 
-Decides whether the task needs a spec at all, whether it is one spec or several,
-reads the code before writing, fans out with a shared brief when there are many,
-asks what it cannot settle, and writes the six pillars.
+Decides whether the task needs a spec at all, whether it amends one capability or
+several, reads the code before writing, asks what it cannot settle, and writes the
+contract into the change document, `proposal.md` — fanning out one writer per extra
+capability only when context requires it.
 
 **It may report that no spec is needed.** That is a legitimate outcome for a
 one-line change — go straight to phase 6, then 8.
 
-Then **wait** for the go-ahead. This is the first of the two stops, and the one that
-matters most: everything downstream is measured against what gets agreed here.
+**Do not wait here.** The contract is agreed once, at the stop before code, beside the
+approach and the checklist it produced and a fresh reader's findings.
 
 ### The trivial lane
 
-**A "no spec needed" collapses both remaining stops, not only the spec.** That route is
+**A "no spec needed" collapses the stop before code, not only the spec.** That route is
 phase 6, then 7 and 8 **in the same turn**, and exactly one question at the end: push
 and open the request. There is no plan either — a change with no contract has nothing to
 break into ordered tasks.
@@ -130,10 +133,39 @@ break into ordered tasks.
 Everything still gets said. Phase 7 reports what was done, its evidence and what was
 left out; phase 8 commits per task.
 
-So the gear is: **two stops with a contract, none without, and phase 8's question in
-both.**
+So the gear is: **one stop on the contract lane, none on the trivial lane, and phase 8's
+question in both.**
 
-### Before the stop, read the contract
+## 5 · Plan it
+
+```
+Skill(skill="write-plan")
+```
+
+Asks its one question — the approach, chosen by the user from two or three with named
+tradeoffs — then the session writes the **how** into the change document as
+`## Approach`: technical context, the approach and the alternatives it beat, risks,
+validation, rollback. No boxes — that section holds no state.
+
+**Do not wait here.** The approach is agreed at the stop before code, where the user sees
+it *and* the boxes it produced *and* whatever the fresh reader found missing — one
+decision, made with everything on the table.
+
+## 5→6 · Cut the tasks
+
+```
+Skill(skill="write-tasks")
+```
+
+The session cuts the checklist inline, as `## Checklist`, the change document's last
+section. One writer: the session marks boxes, sub-agents report.
+
+**Not a numbered phase, on purpose** — the same answer the 6→7 review already gives.
+Renumbering everything that says eight buys nothing.
+
+**Do not wait here either.** The order is agreed at the stop that follows.
+
+## Before 6 · Read it cold, then stop
 
 ```
 Skill(skill="review-spec")
@@ -143,48 +175,17 @@ Skill(skill="review-spec")
 running it there is ceremony on a one-line change.
 
 Every other review in this flow reads code, and all of them run after the code exists.
-This one reads the promise: ambiguity that forks the work, criteria no run could fail,
-`Governs:` boundaries that describe nothing, a criterion another capability contradicts.
-It reports; phase 3's author decides.
+This one launches one fresh `spec-reviewer` over the whole change document: ambiguity
+that forks the work, criteria no run could fail, `Governs:` boundaries that describe
+nothing, a criterion another capability contradicts — and, box by box, what the document
+fails to answer for building it. It reports; the session that wrote the document decides.
 
-**It runs before the stop, not after.** The stop is where the contract is agreed, and
-agreeing to a criterion nothing can fail is the failure this phase exists to prevent —
+**It runs before the stop, not after.** The stop is where the document is agreed, and
+agreeing to a criterion nothing can fail is the failure this review exists to prevent —
 so the findings have to be on the table while the agreement is still being made.
 
-## 5 · Plan it
-
-```
-Skill(skill="write-plan")
-```
-
-Asks its one question — the approach, chosen by the user from two or three with named
-tradeoffs — then a fresh `plan-writer` drafts the **how**: technical context, the
-approach and the alternatives it beat, risks, validation, rollback. No boxes — this
-file holds no state.
-
-**Do not wait here.** Splitting the plan from the checklist invited a third stop, and the
-flow spends its length arguing against exactly that. The stop moves one seam later
-instead, where the user sees the approach *and* the boxes it produced *and* whatever the
-cutter found missing — the same single decision, made with more on the table.
-
-## 5→6 · Cut the tasks
-
-```
-Skill(skill="write-tasks")
-```
-
-Launches one fresh `task-cutter` with the spec and the plan and nothing else, then writes
-the checklist it returns. One writer: the orchestrator marks boxes, sub-agents report.
-
-**Not a numbered phase, on purpose** — the same answer the 6→7 review already gives.
-Independence comes from the fresh context, not from renumbering everything that says
-eight.
-
-Report what the cutter said the documents failed to answer, in its words. A gap goes back
-to phase 5 or to the contract; it never becomes a box that says "figure out X".
-
-Then **wait**. The second stop and the last one before the work runs — what is being
-agreed is the approach, the order, and what waits on what.
+Then **wait**. The one stop before code — what is being agreed is the contract, the
+approach, the order, and what waits on what. `review-spec` asks it.
 
 ## 6 · Build it
 
@@ -264,13 +265,13 @@ the bias when in doubt is to ask. No hard cap, but judgment both ways around a s
 five: never a form-length interrogation of things the code already answers. Zero is
 legitimate and is said in one line; a quota manufactures questions the code already
 answers. Phase 5 asks exactly one: the approach, chosen from two or three with named
-tradeoffs. Every answer lands verbatim in the change's `decisions.md`. The 5→6 seam
-stops for the approach and the order, and opens no second tranche, and no stop is
-added: the questions ride the phases that already have them.
+tradeoffs. Every answer lands verbatim under the change document's `## Decision log`.
+The stop before code asks whether the whole document is right and opens no second
+tranche, and no stop is added: the questions ride the phases that already have them.
 
 **Ask it before the plan is agreed.** Phases 1, 2 and 5 are where a question is cheap,
-because nothing has been built on the answer yet. That is not a coincidence — the two
-stops sit there for the same reason.
+because nothing has been built on the answer yet. That is not a coincidence — the one stop
+before code sits there for the same reason.
 
 **After the plan, a question becomes a finding.** Anything discovered in phase 6 or in
 the review seam that cannot be settled from the code goes into the phase 7 report as an
@@ -278,7 +279,7 @@ open decision, with what was assumed in the meantime and what would change if th
 assumption is wrong. The user meets it at phase 8, in one place, with everything else.
 
 The alternative is the flow interrupting mid-build to ask something the user cannot
-answer without the context the build just produced — which is how a three-stop flow
+answer without the context the build just produced — which is how a two-stop flow
 becomes a nine-stop one, one reasonable exception at a time.
 
 The answer goes into the spec, under prior decisions, next to what it settled. An answer

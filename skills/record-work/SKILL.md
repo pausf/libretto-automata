@@ -48,40 +48,49 @@ Before committing, ask it explicitly: **did this change teach the spec anything?
 yes, the spec change is part of the commit. If no, say so and move on — the question
 takes five seconds and the drift it prevents takes an afternoon.
 
-While the work is in flight, "the spec" means the delta inside
-`.agents/changes/<change>/spec.md`. That is where amendments belong until they land.
+While the work is in flight, "the spec" means the change's contract: the level-2 pillars in
+`.agents/changes/<change>/proposal.md` and any `spec-<capability>.md` beside it — or, for a
+change begun in the old layout, its delta `spec.md`. That is where amendments belong until
+they land.
 
 ## Landing a change consolidates it
 
 The last commit of a change does three things together, in one commit:
 
 1. the final code
-2. **the delta applied onto the capability spec** it targets, in
-   `.agents/specs/<capability>/spec.md`
-3. **the plan's durable decisions retired** into that spec's *Prior decisions*
-4. **the change folder deleted** — proposal, delta, plan and tasks
+2. **the contract applied onto the capability spec** its `Targets:` names —
+   `proposal.md`'s contract and each `spec-<capability>.md` beside it, each onto its
+   own `.agents/specs/<capability>/spec.md`
+3. **the durable decisions retired** into that spec's *Prior decisions* — the
+   `## Prior decisions` entries that outlive the change
+4. **the change folder deleted** — the change document and everything beside it
+
+**An old-layout change lands as it always has**: its `spec.md` delta is what gets applied,
+and its `plan.md` is where the durable decisions are read. Every reader still finds an
+old-layout change, and this rule stays until nothing in flight uses that layout.
 
 All four or none. A delta applied without deleting the change leaves two documents
 describing the same capability, and the next reader has no way to tell which one is
 current. A change folder deleted without applying the delta loses the work
 outright.
 
-**Step 3 is the one that gets skipped, and it is gated.** The plan holds why the change
-was built the way it was — the approach, and the alternatives it beat — and step 4
-destroys that. It survives in git history, which is to say nobody reads it again.
+**Step 3 is the one that gets skipped, and it is gated.** The approach holds why the
+change was built the way it was — and the alternatives it beat — and step 4 destroys that.
+It survives in git history, which is to say nobody reads it again.
 
-So before deleting: read the plan's *alternatives* and *prior decisions*, and move
-anything that will still constrain work after this lands. Not the whole plan — a
-decision about how *this* change was sequenced dies with it correctly. The one worth
-keeping is the one somebody would otherwise make again, differently.
+So before deleting: read the approach's *alternatives* and the contract's *prior
+decisions*, and move anything that will still constrain work after this lands. Not the
+whole approach — a decision about how *this* change was sequenced dies with it correctly.
+The one worth keeping is the one somebody would otherwise make again, differently.
 
-`spec-drift --retired`, inside `--anchors`, fails this commit when a `plan.md` is deleted
-and no capability spec's *Prior decisions* section moved with it. A plan that genuinely
-retires nothing says so on its own line — `Durable decisions: none` — written when the
-plan was written, per `skills/write-plan/`. **Adding that line here, to get past the
+`spec-drift --retired`, inside `--anchors`, fails this commit when a change document
+carrying `Targets:` — or an old-layout `plan.md` — is deleted and no capability spec's
+*Prior decisions* section moved with it. A change that genuinely retires nothing says so
+on its own line — `Durable decisions: none` — written when the approach was, per
+`skills/write-plan/`. **Adding that line here, to get past the
 gate, is the one thing this step is designed to stop.**
 
-Applying is not copying. The delta says what changes; the capability spec has to
+Applying is not copying. The contract says what changes; the capability spec has to
 read afterwards as though the feature had always been there. Requirements merge into
 the existing numbering, `Governs:` gains any new paths, `Proof:` citations come
 across, and contradicted sentences are rewritten rather than left beside their
@@ -98,7 +107,7 @@ sibling of this file, wherever the payload was installed:
 A citation that survived consolidation pointing at a test that did not is the most
 common way this goes wrong.
 
-If a change spans several capabilities, every delta is applied in that same commit.
+If a change spans several capabilities, every contract is applied in that same commit.
 Half-consolidated is the one state with no honest description.
 
 **Where `libretto` is on PATH and the project holds a consolidated specs directory,
@@ -256,7 +265,7 @@ not the same act as assuming one, and the invocation answered the push, not the 
 And it is paid for in the request's description, which carries three things or the run has
 bought silence rather than speed:
 
-- **what the invocation answered** — the two stops and the push — so a reader can tell
+- **what the invocation answered** — the one stop and the push — so a reader can tell
   which of the decisions in front of them a person made
 - **every question the run assumed past**, each with what changes if it is wrong
 - **the bump a person chose**, and that a person chose it — see the bump section below. A

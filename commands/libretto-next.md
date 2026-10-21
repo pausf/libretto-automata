@@ -57,8 +57,9 @@ whether to continue the thing just chosen.
 Skill(skill="write-spec")
 ```
 
-From there the flow is the flow, exactly as `/libretto-flow` runs it: the spec stop, the
-plan stop, build, review, present, and phase 8's question about pushing. Each phase's
+From there the flow is the flow, exactly as `/libretto-flow` runs it: the change document
+written, one stop before code, build, review, present, and phase 8's question about
+pushing. Each phase's
 skill owns its own rules; this command only knows how the work got picked.
 
 ## One idea, then stop

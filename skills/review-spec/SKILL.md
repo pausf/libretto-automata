@@ -1,32 +1,79 @@
 ---
 name: review-spec
-description: "Trigger: a spec has just been written and a plan is about to be built on it; reviewing a capability spec or a change delta for ambiguity, untestable criteria, dead Governs: paths or a criterion that contradicts another capability. The seam between phases 3 and 5 — the only review in the flow that reads the contract instead of the code."
+description: "Trigger: a change document's checklist has just been written and code is about to start; reviewing a capability spec or a change's contract for ambiguity, untestable criteria, dead Governs: paths or a criterion that contradicts another capability. Launches one fresh spec-reviewer, relays it unedited, then asks the flow's one stop before code — the only review in the flow that reads the contract instead of the code."
 license: MIT
 metadata:
   author: pausf
-  version: "1.0"
+  version: "2.0"
 ---
 
 ## What this does
 
 **Every other review in this flow reads code. This one reads the promise the code will
-be measured against**, in the seam between phase 3 writing the spec and phase 5 building
-a plan on it.
+be measured against**, once the change document is whole — contract, approach and
+checklist — and before the first line of code.
 
-That seam is where a spec is cheapest to fix and most expensive to leave. A vague
-criterion costs one edit here. Past phase 5 it has become tasks; past phase 6 it has
-become code; and at phase 7 the reviewer measures the work against a sentence nobody
-could have failed, so the work passes and the promise was never real.
+That is where a contract is cheapest to fix and most expensive to leave. A vague
+criterion costs one edit here. Past phase 6 it has become code; and at phase 7 the
+reviewer measures the work against a sentence nobody could have failed, so the work
+passes and the promise was never real.
 
 The five code lenses all run **after** the work exists. By then the contract is a fact.
+
+**Only on the contract lane.** A change step 0 sent down the trivial lane has no contract
+to read, and running this there is ceremony on a one-line change.
+
+## Launch exactly one fresh reviewer
+
+The launch, the relay and the stop below are **the session's conduct** — a
+`spec-reviewer` invoking this skill for the reading starts at *What it does not do* and
+follows nothing above that heading.
+
+**Launch exactly one `spec-reviewer`**, foreground, given by path the change document, every
+`spec-<capability>.md` beside it, and the capability spec(s) their `Targets:` lines name —
+and none of the conversation. Not a summary of what was decided, not which findings would
+be welcome: telling the reviewer what to expect is priming the witness. A change begun in
+the old layout is given its delta, `plan.md` and `tasks.md` in their place.
+
+The session that wrote the document cannot read it cold. It remembers what it *considered*
+as vividly as what it *chose*, and reads every gap as filled. A reviewer with no memory
+can only read what is on the page — which makes it the only check this flow has that the
+document says enough to be built from, box by box.
+
+One, not a panel — the same answer `review-work` gives. **Silence is not a clean review**:
+a reviewer that died or returned nothing did not read the document. Launch it again, once.
+
+## Relay it, unedited
+
+Its findings go to the user in its words, attributed, before the question — never
+summarised, never filtered for the ones the session agrees with. A finding the session
+thinks is wrong is relayed anyway, with the session's reading beside it; the user decides
+between them at the stop.
+
+## The stop — the one before code
+
+Then stop. **This is the flow's only stop before code**, and it carries everything phase 2,
+phase 5 and the 5→6 seam produced: the contract, the approach and the checklist, with the
+reviewer's findings on the table while the agreement is still being made.
+
+**Ask it with `AskUserQuestion` — the host's native prompt, or in conversation where there
+is none — never as a sentence at the end of the report.** Carry on to phase 6 —
+recommended, naming the first box — change the document first, or stop here. **And room
+to answer differently**, because the reason to reject a document is rarely one of three
+things somebody guessed in advance.
+
+Same rule as every stop. The reason lives once, in `skills/record-work/`.
+
+Under `/libretto-attacca` the stop is answered by the invocation, and the run that wrote
+the document acts on the findings before phase 6 — the command owns that rule.
 
 ## What it does not do
 
 **It never asks whether the spec is a good idea.** That was phase 2's question and it was
 answered. This reads only whether what is written can be built against and measured.
 
-**It never rewrites the spec.** It reports; the phase-3 author decides. A reviewer that
-edits the contract it is reviewing is the author twice over.
+**It never rewrites the spec.** It reports; the session that wrote the document decides. A
+reviewer that edits the contract it is reviewing is the author twice over.
 
 ## Run the mechanical half first
 
@@ -115,6 +162,18 @@ code that has to satisfy both, and by then it is a bug with two specs defending 
 Same for silent duplication — the same promise stated in two capabilities drifts, and
 the copy nobody edited is the one that reads as authoritative.
 
+## The checklist — could each box be built from this?
+
+The question a cutter used to ask, now asked by the one cold reader left: **for each box,
+what do the contract and the approach together fail to answer for building it?** A task
+implied with no mechanism described, a criterion with no proof saying what closes it, two
+statements that cannot both hold, a boundary that does not say which side something falls
+on.
+
+Name the gap and the part of the document that should have answered it, never the answer.
+A gap goes back to the contract or the approach; it never becomes a box that says "figure
+out X".
+
 ## Proportion
 
 **This skill can generate infinite findings and that is its failure mode, not its
@@ -130,10 +189,11 @@ work, and say plainly when the answer is nothing.
 Group by spec file. Per finding, in one or two lines:
 
 - the criterion, quoted
-- which of the four it is — ambiguity, testability, governs, contradiction
+- which of the five it is — ambiguity, testability, governs, contradiction, or a box the
+  document cannot build
 - **for ambiguity, both readings.** For testability, the failing run that does not exist.
 - what would settle it — never the settled version. That is the author's to write.
 
 End with what was read and found clean. A review that lists only problems reads as a
-review that found everything wrong with everything, and the phase-3 author cannot tell
+review that found everything wrong with everything, and the document's author cannot tell
 what was checked from what was skipped.

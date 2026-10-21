@@ -36,7 +36,8 @@ var recommendations = map[string]recommendation{
 	"review-lens-reliability": {"sonnet", "high", "races and error paths are reasoning, not matching"},
 	"review-lens-security":    {"sonnet", "xhigh", "the skill says security does not run cheap"},
 
-	"spec-writer":   {"sonnet", "high", "it writes the contract everything later is measured against"},
+	"spec-reviewer": {"sonnet", "high", "a cheap miss here is a false green"},
+	"spec-writer":   {"sonnet", "high", "a fan-out writer drafts an extra capability's contract with none of the conversation"},
 	"work-reviewer": {"sonnet", "high", "a cheap miss here is a false green"},
 }
 

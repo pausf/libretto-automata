@@ -71,7 +71,7 @@ A skill whose instructions change bumps its own `metadata.version`.
 
 ## Layer 2 — the writers move, as one commit
 
-- [ ] **7. One change document, one stop, one fresh reviewer** — payload units 3, 4, 5, 8 and cli
+- [x] **7. One change document, one stop, one fresh reviewer** — payload units 3, 4, 5, 8 and cli
   unit 6, one commit: between any two of them the payload launches writers against inputs nobody
   writes any more.
   - `write-spec` grows `proposal.md` (`Targets:`, `## Decision log`, six level-2 pillars; creates it
@@ -96,6 +96,7 @@ A skill whose instructions change bumps its own `metadata.version`.
   `plan-writer` key and reverted, R2 red before the agent file exists; the four existing
   `recommend_test.go` cases unedited.
   Waits on: 1, 5.
+  Evidence: 44 check-payload failures on today's prose before the edit, all green after; R1 red with a plan-writer key, R2 red before the agent file; recommend's four cases unedited; anchors 5 → 3.
 
 - [ ] **8. No method acronym in what installs** — payload unit 6.
   One `check-payload` row over `skills/`, `agents/`, `commands/`: the acronym case-sensitive whole
