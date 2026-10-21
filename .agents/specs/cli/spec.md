@@ -521,14 +521,47 @@ equivalent. It goes when `libretto install` has been verified against a real
 
 ## Prior decisions
 
-- **`metrics` reads churn with two `git log` calls, not one pathspec covering both
-  names.** The checklist was renamed from `plan.md` to `tasks.md` on 2026-08-17, and this
-  report is retroactive over changes whose folders are already deleted — so the legacy
-  path can never go. One pathspec naming both files is shorter and wrong: `plan.md` is
+- **`metrics` reads churn with one `git log` call per file name, never one pathspec
+  covering several.** The checklist was renamed from `plan.md` to `tasks.md` on 2026-08-17,
+  and this report is retroactive over changes whose folders are already deleted — so the
+  legacy path can never go. One pathspec naming both files is shorter and wrong: `plan.md` is
   the technical approach now, a prose document allowed to show a checkbox in an example,
   and counting its diffs would inflate the churn of every change from here on. Retired
   out of `add-design-phase`'s plan, which `payload` could not hold: `cmd/libretto/**` is
-  governed here.
+  governed here. The calls became three on 2026-10-21, `proposal.md` first.
+- **One change document, both layouts read.** User, 2026-10-21, from
+  `adopt-organic-driven-development`: a new change is born as one `proposal.md` — the
+  capture grown in place to hold the contract, the approach and, last, a `## Checklist`
+  section — and `loop`, `metrics`, `wiki` and `land` keep reading the old layout
+  (`tasks.md`, `plan.md`, `spec.md`) for what already exists. Nothing in flight is
+  migrated, and no reader rewrites a file. A change amending several capabilities carries
+  the primary one's contract in `proposal.md` and one `spec-<capability>.md` per extra
+  capability, each with its own `Targets:`.
+- **The checklist is the boxes under a level-2 `## Checklist`, and nothing else.** Derived,
+  2026-10-21: spec-drift's parsers open and close a section on `^##\s` only, and a box
+  anywhere else in the document would be read as a criterion by `--ears`. So the CLI uses
+  spec-drift's boundaries exactly — fences dropped, `###` and `#` closing nothing.
+- **`proposal.md` is the checklist when, and only when, its `## Checklist` section holds a
+  box.** Retired from `adopt-organic-driven-development`, 2026-10-21. *Existence selects it*
+  lost: every change in both layouts has a `proposal.md`, so that rule would hide every old
+  change's `tasks.md`/`plan.md` behind a prose capture and blank its loop, its strip entry
+  and its churn. The 2026-08-17 precedent's *newer wins* survives; its *exists* test cannot.
+- **The `proposal.md` churn query carries whole-file context.** Retired from
+  `adopt-organic-driven-development`, 2026-10-21. *Querying with git's default 3-line diff*
+  lost: a hunk does not carry its section heading, so whether a box sits under
+  `## Checklist` cannot be decided from it. **Named ceiling, accepted:** old-layout churn
+  still reads 3-line hunks with no fence state, so a fenced box in an old `tasks.md`/`plan.md`
+  history counts there. Widening those queries would change what reaches git for every old
+  change, and the real history holds no fenced box.
+- **`land` gained no discovery code for the change document.** Retired from
+  `adopt-organic-driven-development`, 2026-10-21. `headTargets` already read `Targets:` from
+  every `.md` the folder holds at `HEAD`, fences stripped, so `proposal.md` and
+  `spec-<capability>.md` were covered before anyone asked; *new `Targets:` discovery in
+  `land`* lost to three tests proving what was already true.
+- **`Targets:` outside fences is the one contract discriminator**, shared with
+  `spec-drift --retired`. Derived, 2026-10-21: a second arm (`## Verification criteria`)
+  was considered and dropped because it let `spec-drift` and `land` give opposite verdicts
+  on one commit.
 - The command is `libretto`; `libretto-automata` is linked too. `lib` was rejected: it
   reads as a system directory.
 - `make link` symlinks rather than copies, so `make build` updates the installed
@@ -945,18 +978,56 @@ A missing payload:
   `AGENTS.md` and the plan's own boxes. Copying the structure would duplicate state; the
   engine was the only piece genuinely missing.
   Proof: cmd/libretto/loop_test.go TestTheLoopPromptRoutesAndNeverAuthorises
-- **it owns no state.** `.agents/changes/<change>/tasks.md` is the state — the file the
-  5→6 seam cuts and phase 6 marks — and the loop reads the boxes and nothing else. Only the
-  box is parsed, never the task text: the flow owns the checklist's shape, and a runner that
-  understood it would be a second opinion about what a task is.
+- **it owns no state.** The change's checklist is the state — the `## Checklist` section
+  of `.agents/changes/<change>/proposal.md`, or `tasks.md` (`plan.md` before 2026-08-17) for
+  a change in the old layout: the boxes the 5→6 seam writes and phase 6 marks — and the loop
+  reads the boxes and nothing else. Only the box is parsed, never the task text: the flow
+  owns the checklist's shape, and a runner that understood it would be a second opinion
+  about what a task is. The section boundary is the one addition, and it decides which
+  boxes are in scope, never what they say.
   Proof: cmd/libretto/loop_test.go TestCountBoxesReadsOnlyTheBox
-- **it reads a change created before the checklist was renamed.** `tasks.md` when it is
-  there, `plan.md` otherwise, and the prompt names whichever was found. The checklist
-  carried the name `plan.md` until 2026-08-17, when `plan.md` became the technical
-  approach; a rename that stranded work already in flight would have cost more than the
-  name was worth, and with neither file present the error names the current one so it
-  teaches the layout the flow actually writes.
+- **When counting a change document, the section counter shall count only `planLine` boxes
+  that lie after a `## Checklist` line, before the next line matching `^##\s`, and outside
+  fenced code blocks.** A box under `## Task breakdown`, a box in a fence inside
+  `## Checklist`, and a box under a `### ` subheading inside `## Checklist` count as zero,
+  zero and one respectively — spec-drift's boundaries exactly, so the two cannot disagree
+  about what the checklist is.
+  Proof: cmd/libretto/loop_test.go TestOnlyTheChecklistSectionCounts
+- **Where a change document has no `## Checklist` heading, the section counter shall return
+  zero open and zero done**, whatever boxes the file holds elsewhere.
+  Proof: cmd/libretto/loop_test.go TestOnlyTheChecklistSectionCounts
+- **When `countBoxes` reads a `tasks.md` or `plan.md`, it shall not count a box inside a
+  ``` fence** — one box definition in every reader, `find-work` included.
+  Proof: cmd/libretto/loop_test.go TestCountBoxesSkipsFences
+- **Where a change's `proposal.md` holds at least one box under `## Checklist`,
+  `checklistPath` shall return that `proposal.md`**, whether or not `tasks.md` or `plan.md`
+  also exist in the folder. Existence is never the signal: every change in both layouts
+  has a `proposal.md`.
+  Proof: cmd/libretto/loop_test.go TestChecklistPathPrefersTheChangeDocument
+- **Where a change's `proposal.md` holds no box under `## Checklist`, `checklistPath` shall
+  return `tasks.md` when it exists and otherwise `plan.md` when it exists; where neither
+  exists, it shall return `proposal.md`**, including when `proposal.md` holds boxes outside
+  `## Checklist`. It reads a change created before either rename: the checklist carried the
+  name `plan.md` until 2026-08-17 and `tasks.md` until 2026-10-21, and a rename that
+  stranded work already in flight would have cost more than the name was worth. With no
+  checklist anywhere the error names the file the flow now writes, so it teaches the layout
+  the flow actually uses. The fallbacks carry a `ponytail:` saying when they go: once no
+  `tasks.md` or `plan.md` under any change folder holds a box.
   Proof: cmd/libretto/loop_test.go TestChecklistPathFallsBackToPlan
+- **If a change holds a `proposal.md` with no box under `## Checklist` and has neither
+  `tasks.md` nor `plan.md`, then `loop` shall return an error containing `no task boxes` and
+  the `proposal.md` path while PATH is empty, and shall start no session.** A queued capture
+  is named as having no checklist rather than as missing `claude`; the empty PATH proves the
+  refusal comes before the dependency check.
+  Proof: cmd/libretto/loop_test.go TestLoopRefusesAQueuedProposal
+- **While `proposal.md` is the selected checklist, the loop shall count progress from
+  `## Checklist` boxes only, and the prompt printed by `--dry-run` and handed to each session
+  shall name `.agents/changes/<change>/proposal.md` and `## Checklist`.** A box closed outside
+  the section is not progress.
+  Proof: cmd/libretto/loop_test.go TestTheLoopDrivesTheChangeDocumentsChecklist
+- **The `no checklist at` and `no task boxes` refusals shall not contain `cut into tasks`.**
+  No agent cuts the checklist any more; the session writes it in the 5→6 seam.
+  Proof: cmd/libretto/loop_test.go TestLoopRefusalsDoNotNameTheCutter
 - one session per open box, and it stops when the last one closes
   Proof: cmd/libretto/loop_test.go TestLoopStopsWhenEveryBoxIsClosed
 - **two consecutive rounds that close nothing stop the loop.** This is the guardrail the
@@ -1011,7 +1082,7 @@ A missing payload:
   skills have to remember, and a metric collected only when somebody remembers has holes
   exactly where the interesting runs are. Git already holds the answer: a change folder's
   first and last commits are the wall clock, the commits between are the iterations, and
-  `plan.md`'s diffs are the churn. It works retroactively on every change ever landed.
+  the checklist's diffs are the churn. It works retroactively on every change ever landed.
   Proof: cmd/libretto/metrics_test.go TestChangeNamesSeesLandedChangesNotJustOpenOnes
 - **`--full-history` on every query, and it is load-bearing.** Git's default history
   simplification prunes commits that do not change a path's *final* state, and a landed
@@ -1021,15 +1092,38 @@ A missing payload:
   **no `plan.md` was found for any of them**, so every churn column read as "no plan" on
   changes that plainly had one.
   Proof: cmd/libretto/metrics_test.go TestChangeNamesSeesLandedChangesNotJustOpenOnes
-- **churn is read from `tasks.md`, then from `plan.md`, and the second query is not
-  optional.** Every change that landed before 2026-08-17 carries the checklist under its
-  old name and a folder that no longer exists, so it can never acquire the new one — and
-  this report is retroactive by design. Dropping the legacy path would blank the churn
-  column for the whole history to tidy a filename, which is the same failure the bullet
-  above already records paying for once. Two queries and not one pathspec covering both:
-  `plan.md` is the technical approach now, a prose document allowed to show a checkbox in
-  an example, and counting its diffs would inflate every change from here on.
+- **churn is read from `proposal.md`'s `## Checklist`, then from `tasks.md`, then from
+  `plan.md`, and the old-layout queries are not optional.** Every change that landed before
+  2026-10-21 carries its checklist in `tasks.md` — or, before 2026-08-17, `plan.md` — and a
+  folder that no longer exists, so it can never acquire the new one; and this report is
+  retroactive by design. Dropping a legacy path would blank the churn column for the whole
+  history to tidy a filename, which is the same failure the bullet above already records
+  paying for once. Separate queries and not one pathspec: `plan.md` is the technical
+  approach now, a prose document allowed to show a checkbox in an example, and counting its
+  diffs would inflate every change from here on. Each change is read from one file; counts
+  from two are never added together.
   Proof: cmd/libretto/metrics_test.go TestMetricsFallsBackToLegacyPlan
+- **Where a change's `proposal.md` history (`--full-history --diff-filter=AM -p`) carries at
+  least one box line under `## Checklist`, `measure` shall report `checked`, `uncheck` and
+  `boxes` from that history alone**, even when the `tasks.md` history for the same change
+  also carries boxes. The fixture gives the two files different numbers, so a sum or the
+  wrong file fails.
+  Proof: cmd/libretto/metrics_test.go TestMetricsReadsChurnFromTheChangeDocument
+- **Where a change's `proposal.md` history is non-empty but carries no box line under
+  `## Checklist`, `measure` shall report churn from `tasks.md`, or from `plan.md` when
+  `tasks.md` has none; where neither carries a box, it shall leave `planSeen` false so the
+  row prints a dash.** A first non-empty diff is not a signal: the capture adds every
+  `proposal.md`, so testing for a non-empty diff with `proposal.md` queried first would blank
+  the churn of every old-layout change — watched failing under exactly that order.
+  Proof: cmd/libretto/metrics_test.go TestAProposalWithoutAChecklistDoesNotShadowTheOldLayout
+- **When `measure` queries `proposal.md` history, it shall pass `--unified=`, and `churn`
+  shall count a `+` box only when its post-image section is `## Checklist` and a `-` box only
+  when its pre-image section is `## Checklist`.** The post-image is context and `+` lines,
+  the pre-image context and `-` lines, and the section resets at each commit. `fakeGit`
+  refuses a `proposal.md` query without `--unified=`. **Named limit:** a commit that renames
+  a heading so that untouched boxes move into or out of `## Checklist` changes no box line,
+  so it moves neither the churn nor the denominator.
+  Proof: cmd/libretto/metrics_test.go TestChangeDocumentChurnIsScopedToTheChecklist
 - **the churn query excludes deletions, or every number inverts.** A change lands by
   deleting its folder, and that commit's diff removes every line of `plan.md` — so every
   box ever closed also appears as a removed `[x]`, and the report reads as 0 closed and 52
@@ -1093,7 +1187,9 @@ A missing payload:
   Proof: cmd/libretto/metrics_test.go TestClosedShowsItsDenominator
 - **the report explains its own columns.** A legend beside the not-measured note names
   the six measured facts, including the `unreadable` state and the `—` cell. It already
-  printed what it cannot measure; what it does measure deserves no less.
+  printed what it cannot measure; what it does measure deserves no less. **The legend's `—`
+  line shall state that the change has no checklist in its history and name `proposal.md`,
+  `tasks.md` and `plan.md`** — it said "no plan.md in its history", stale since 2026-08-17.
   Proof: cmd/libretto/metrics_test.go TestTheReportExplainsItsColumns
 - one change may be named, by full name or unambiguous prefix — a name is typed from
   memory of how it starts. Exact wins even when it prefixes a sibling, an ambiguous
@@ -1291,6 +1387,16 @@ against, in the one package whose layering claim is that it is testable against 
 - **the panel is handed the answer through the existing adapter**, exactly as it was
   handed `Efforts`, so `internal/ui` still imports no `agentmodel`.
   Proof: cmd/libretto/models_test.go TestAgentRowsCarryTheRecommendation
+- **For every key in the recommendation table, the repository shall hold `agents/<key>.md`.**
+  The CLI does not own the agent set, so a key is valid only when the payload ships its file,
+  read from `../../agents` as `gates_test.go` already reads repository files. `spec-reviewer`
+  is recommended sonnet/high with `work-reviewer`'s reason — a cheap miss there is a false
+  green (user, 2026-10-21) — and `spec-writer` keeps sonnet/high, because it survives for the
+  fan-out.
+  Proof: cmd/libretto/recommend_test.go TestEveryRecommendationNamesAShippedAgent
+- **The recommendation table shall have no `plan-writer` or `task-cutter` key.** Both agents
+  were retired on 2026-10-21. Watched red with a `plan-writer` key added, then reverted.
+  Proof: cmd/libretto/recommend_test.go TestEveryRecommendationNamesAShippedAgent
 
 **The values themselves are reviewed and never tested**, and review caught one: the table
 shipped `high` for `review-lens-intent` while the change's own table omitted it, and every
@@ -1463,13 +1569,24 @@ never a second authority and never a gate.
   the last commit subject from the git seam — omitting the rail entirely when no
   capability has a date.
   Proof: cmd/libretto/wiki_test.go TestWikiHomeCarriesTheRecentRail
-- **Where the changes directory holds a checklist (`tasks.md`, or the legacy
-  `plan.md` the loop also reads) with open boxes, the home shall carry an
-  in-flight strip** naming each such change with its closed/total box count and
-  the count of `Queued:` proposals; where there are none it shall be absent — a
-  queue alone does not summon the strip (assumed 2026-08-19 under attacca; if
-  wrong, the fix is rendering the count solo).
+- **Where the changes directory holds a checklist with open boxes — chosen per change by
+  `checklistPath`, the loop's rule — the home shall carry an in-flight strip** naming each
+  such change with its closed/total box count and the count of `Queued:` proposals; where
+  there are none it shall be absent — a queue alone does not summon the strip (assumed
+  2026-08-19 under attacca; if wrong, the fix is rendering the count solo).
   Proof: cmd/libretto/wiki_test.go TestWikiHomeCarriesTheInFlightStrip
+- **Where a change's `proposal.md` holds an open box under `## Checklist`, the in-flight
+  strip shall name that change with its closed/total count read from that section**,
+  including when the folder also holds a `tasks.md` with different counts and `proposal.md`
+  holds boxes outside the section.
+  Proof: cmd/libretto/wiki_test.go TestWikiInFlightReadsTheChangeDocument
+- **Where a change's `proposal.md` carries a `Queued:` line and no box under `## Checklist`,
+  the wiki shall count it in the queue and shall not name it in the in-flight strip.**
+  Proof: cmd/libretto/wiki_test.go TestWikiInFlightReadsTheChangeDocument
+- **The in-flight strip shall count boxes with the loop's definition: a `* [ ]` line and a
+  `- [X]` line in a `tasks.md` shall count as one open box and one closed box.** It matched
+  `- [ ]` and `- [x]` by prefix while its comment claimed the loop's definition.
+  Proof: cmd/libretto/wiki_test.go TestWikiInFlightCountsBoxesAsTheLoopDoes
 - **The home shall carry a segmented health bar whose green width is the integer
   division of `shall`-carrying criteria over the total and whose amber width is
   the remainder to 100** — the bar always closes — with the count of criteria
@@ -1565,7 +1682,10 @@ failure report says so — it attributes part 3 to `spec-drift --anchors` rather
 staying silent about a part it does not verify, so a green `land` is never read as the
 whole contract passing.
 
-**The deltas are read from `HEAD`, not from disk or the index.** A staged deletion
+**The deltas are read from `HEAD`, not from disk or the index.** A delta is any `.md` in
+the folder carrying `Targets:` — `proposal.md` and each `spec-<capability>.md` in the
+change-document layout, the old layout's delta files otherwise; a capture with no
+`Targets:` contributes no capability. A staged deletion
 removes the file from the index and the landing may already have removed it from the
 working tree, so `HEAD` is the one place the `Targets:` lines are guaranteed to still
 be. `Targets:` lines inside fenced code blocks do not count, matching `spec-drift`'s
@@ -1625,6 +1745,20 @@ fact, and a faked one proves nothing about the command that reads the real thing
 - **When several delta files in one folder carry `Targets:` lines, `land` shall check
   every named capability**, failing on any one whose spec did not move.
   Proof: cmd/libretto/land_test.go TestLandChecksEveryDeltasTarget
+- **When a change's `proposal.md` at `HEAD` carries `Targets: <cap>` outside fences, `land`
+  shall treat `<cap>` as one of the change's capabilities**, including when the index has
+  deleted the change folder.
+  Proof: cmd/libretto/land_test.go TestLandReadsTargetsFromTheChangeDocument
+- **When a change folder at `HEAD` holds a `spec-<cap>.md` carrying `Targets: <cap>`, `land`
+  shall treat `<cap>` as one of the change's capabilities** alongside those named by
+  `proposal.md`.
+  Proof: cmd/libretto/land_test.go TestLandReadsTargetsFromAnExtraCapabilitySpec
+- **If a change's `proposal.md` carries no `Targets:` line outside fences, then `land` shall
+  derive no capability from it, and `land` on an old-layout change shall find the same
+  capabilities it found before the change document existed.** Forced red by excluding
+  `proposal.md` and `spec-*.md` from `headTargets`, then reverted — all three were green on
+  their first run, which is not evidence.
+  Proof: cmd/libretto/land_test.go TestLandOldLayoutTargetsAreUnchanged
 - **When no change name is given, `land` shall infer the change from staged deletions
   under a change root**, and shall verify each folder when more than one is landing.
   Proof: cmd/libretto/land_test.go TestLandInfersTheChangeFromStagedDeletions
