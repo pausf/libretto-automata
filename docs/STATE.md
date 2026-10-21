@@ -15,7 +15,7 @@ a pointer.
 
 ```
 skills/     20 items   (phase skills + evidence + review lenses + vendored delegates)
-agents/      7 items   (spec-writer, work-reviewer, 5 review lenses)
+agents/      8 items   (spec-reviewer, spec-writer, work-reviewer, 5 review lenses)
 commands/    5 items   (libretto-flow, libretto-status, libretto-review,
                         libretto-queue, libretto-next)
 ```
@@ -49,7 +49,7 @@ before seeing a terminal catches that; a WCAG measurement after seeing it caught
 immediately.
 
 The second answer is smaller and turned out to matter more: **work is found, not
-fetched.** Phase 1 asks home first — unchecked boxes in `.agents/changes/*/plan.md`
+fetched.** Phase 1 asks home first — unchecked boxes in a change's checklist
 — then a tracker, then what the user said. Every change in this repository arrived
 by the third route.
 
@@ -65,7 +65,7 @@ by the third route.
 | 5 | subcommands: `status` `preview` `install` `uninstall` `update` `doctor` `prune` `version` `help`, TTY detection | `cmd/libretto` tests |
 | 6 | logo, theme, fluid panel, model, destination switch, in-place actions and confirmation | `internal/ui` + `panelrun_test.go` |
 | 7 | `Makefile`, README rewritten, licence | — |
-| — | the payload: 7 phase skills, `evidence`, both commands, `spec-writer`, `spec-drift`, `check-payload` | `scripts/check-payload` |
+| — | the payload: 7 phase skills, `evidence`, both commands, `spec-drift`, `check-payload` | `scripts/check-payload` |
 
 `libretto install` installs into the global config or into the project, per the
 active destination in the strip. `uninstall` undoes it. `prune` asks in place and

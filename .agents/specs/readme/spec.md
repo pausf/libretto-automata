@@ -32,7 +32,13 @@ no spec governs is a path where drift is nobody's finding.
    of the module cache, no `$GOMODCACHE` tree, no version-in-the-path argument.
 
 3. **A first-run walk exists**, between Install and Commands, naming `/libretto-flow` and
-   every stop the flow makes — including that the push is asked and never assumed.
+   every place the flow waits — and there are two. Phases 1 to 5 write **one change
+   document** (contract, approach, checklist); a fresh reviewer reads it; the flow stops
+   **once** on the whole document, carrying the reviewer's findings, including what the
+   document fails to answer for each box; and the push is asked and never assumed. The
+   phase table and the `/libretto-attacca` paragraph describe the same shape: no tasks "cut
+   by a fresh agent", no plan and tasks as separate documents, and a `review-spec` row for
+   the stop's owner.
 
 4. **Reasoning lives in `docs/`, and being there is checked.** For each argument the
    README once carried — no `--force`; `prune` is not `uninstall`; both scope flags is an
@@ -61,9 +67,13 @@ no spec governs is a path where drift is nobody's finding.
 7. **`What you get` shows how the system works in two Mermaid diagrams**, rendered by
    GitHub as images: the delivery diagram — this repository's payload, `libretto install`
    linking it item by item into `~/.claude`, Claude Code sessions reading it from there,
-   direction visible — and the flow diagram, the eight phases in order with the three
-   stops (spec, plan, push) marked as decisions. No new section: both live inside
-   section 2, so the reading order of outcome 1 is untouched.
+   direction visible — and the flow diagram, the eight phases in order with **two
+   decisions**: the stop on the change document, after a fresh reviewer has read it, and
+   the push, last. No node draws a separate plan stop, a task cut, or an agent that cuts
+   tasks. The prose around it matches: two readers that saw none of the session — the one
+   before the stop and the phase-7 reviewer of the result — described as two, not merged.
+   No new section: both live inside section 2, so the reading order of outcome 1 is
+   untouched.
 
 8. **No badge asserts a run outcome from a hardcoded literal.** A `shields.io/badge/…` image
    is a literal: whatever it says, it says forever. That is fine for a fact that does not
@@ -98,6 +108,12 @@ no spec governs is a path where drift is nobody's finding.
    The ask that produced this read *long and sometimes prescriptive*. The prescriptive half was
    real. **The long half mostly is not fixable by moving prose**, because what remains is
    reference, and a reference that stops listing things is not shorter — it is incomplete.
+
+10. **No method acronym, and no credit line.** `README.md` never names the flow by the
+    acronym of the method that inspired it, nor by that method's spelled-out name. The flow
+    is *the Libretto flow*, in its own vocabulary — the same rule the payload holds for what
+    installs. The one credit to gentle-ai lives in `docs/FLOW.md`: *Standing on other
+    people's work* lists vendored skills, and gentle-ai is not vendored.
 
 ## Scope boundaries
 
@@ -182,6 +198,25 @@ no spec governs is a path where drift is nobody's finding.
   mermaid-cli and read before the review seam, 2026-08-14 — which is how `~/.claude`'s
   tilde was confirmed a tilde and not a dash at small sizes.
 
+- **One stop before code, then the push — two decisions, not three.** User, 2026-10-21,
+  from `adopt-organic-driven-development`. One change document replaces the proposal → brief
+  → spec → plan → tasks chain; contract, approach and checklist are agreed together, once,
+  after one fresh reviewer has read them, and that reviewer also reports per box what the
+  document fails to answer. **Reversed:** outcome 7's "three stops (spec, plan, push) marked
+  as decisions" and its criterion naming them, and outcome 3's criterion naming "the spec
+  stop, the plan stop and the push". The diagram format, the two-diagram split, their place
+  in `What you get`, judging by looking, reasoning in `docs/` and unpinned wording are
+  unchanged.
+
+- **No acronym, own vocabulary.** User, 2026-10-21, from `adopt-organic-driven-development`:
+  the flow stays *the Libretto flow*, with one credit line to gentle-ai in `docs/FLOW.md`.
+  **Derived, same day:** the payload's rule covers `skills/`, `agents/` and `commands/`, and
+  the README is none of those — it follows the rule anyway, because it is the public
+  description of the same flow.
+
+- **The ASCII label rule became a check because prose did not hold it.** `5→6` sat in the
+  flow diagram, unnoticed, against this capability's own *Constraints*. 2026-10-21.
+
 ## Task breakdown
 
 Held by this capability going forward, not open work:
@@ -200,9 +235,15 @@ Held by this capability going forward, not open work:
   and none of `GOMODCACHE`, `@v0.`, `checksum database`.
   Proof: cmd/libretto/readme_test.go TestInstallSectionIsStepsOnly
 
-- **Outcome 3** — a `Your first run` section exists and names `/libretto-flow`, the spec
-  stop, the plan stop and the push.
+- **Outcome 3** — **When** `## Your first run` is read through `flat()`, it **shall** contain
+  `/libretto-flow`, `change document` and `push`.
   Proof: cmd/libretto/readme_test.go TestReadmeWalksAFirstRun
+
+  **Watched red** on the README of the two-stop flow, which had no `change document`.
+  **Ceiling named:** this proves the vocabulary arrived. It does not prove the walk describes
+  *one* stop — a walk that names the change document and still draws two stops stays green.
+  The count of stops in prose is judged by reading; the decision-node count under outcome 7
+  holds the diagram's.
 
 - **Outcome 4** — all **thirteen** relocated arguments absent from `README.md` and present in
   `docs/DESIGN.md` or `docs/FLOW.md`. Eight from the original move, five more when the README was
@@ -248,11 +289,20 @@ Held by this capability going forward, not open work:
   placeholder row, and it will not catch a row that says something false. The replacement,
   the day that matters, is a criterion about what a row must contain — not a longer regex.
 
-- **Outcome 7** — two ```mermaid fences inside `What you get`, and one of them names the
-  three stops — spec, plan and push.
+- **Outcome 7** — **When** `README.md`'s `## What you get` section is read, it **shall**
+  contain exactly two ```` ```mermaid ```` fences, and the fence that contains decision nodes
+  **shall** contain exactly two of them, written `<id>{"`. The last of those two **shall**
+  name `push`.
   Proof: cmd/libretto/readme_test.go TestWhatYouGetCarriesTheDiagrams
 
-  **Ceiling named:** the guard counts fences and stop names. It cannot count phases or
+- **Outcome 7** — **If** any character outside ASCII appears inside either Mermaid fence in
+  `## What you get`, **then** the guard **shall** fail, naming the character.
+  Proof: cmd/libretto/readme_test.go TestWhatYouGetCarriesTheDiagrams
+
+  **Both watched red** on the README of the two-stop flow: three decision nodes, and a `5→6`
+  label that broke the ASCII rule while the rule was still only prose.
+
+  **Ceiling named:** the guard counts fences and decision nodes. It cannot count phases or
   judge the drawing — a diagram that loses a phase stays green, which the 6→7 reviewer
   demonstrated on this outcome's first run. The looking is the check, per
   build-and-check's render rule.
@@ -295,3 +345,11 @@ Held by this capability going forward, not open work:
 
   **Watched biting**, not merely passing: six blank lines appended in an exported copy gives
   `README.md is 382 lines, over its 380 ceiling`.
+
+- **Outcome 10** — **If** `README.md`, read through `flat()`, contains the method's acronym
+  as a whole word (case-sensitive) or its spelled-out name (case-insensitive), **then** the
+  guard **shall** fail, naming which one it found.
+  Proof: cmd/libretto/readme_test.go TestReadmeNamesNoMethodAcronym
+
+  **Watched red on a hand-broken copy**, because the README it shipped against carried
+  neither; a guard with nothing to fail on is green for the wrong reason until forced.

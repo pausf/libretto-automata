@@ -4,7 +4,7 @@ description: "Trigger: phase 6 finished and the work has a spec; before present-
 license: MIT
 metadata:
   author: pausf
-  version: "1.1"
+  version: "1.2"
 ---
 
 ## What this does
@@ -39,12 +39,14 @@ phase 2 just waived.
 
 The reviewer gets three things, all paths and ranges, no narration:
 
-- **the contract**: the change's spec delta (`.agents/changes/<change>/spec.md` or
-  the project's own layout), and the capability spec(s) its `Targets:` names
+- **the contract**: the change document `.agents/changes/<change>/proposal.md` and any
+  `spec-<capability>.md` beside it — or, for a change begun in the old layout, its spec
+  delta `spec.md`, or the project's own layout — and the capability spec(s) their
+  `Targets:` lines name
 - **the work**: the diff range, `<base>...<branch>` — read the base off the
   repository rather than assuming it
-- **the folder**: the change directory, for the proposal and the plan if the
-  reviewer wants the stated intent
+- **the folder**: the change directory, for the ask and the approach — `## Approach`, or
+  an old-layout `plan.md` — if the reviewer wants the stated intent
 
 What it never gets: this conversation, the session's summary of what was built, or
 any hint of which findings would be welcome. Telling the reviewer what to expect is

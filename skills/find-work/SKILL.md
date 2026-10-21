@@ -4,7 +4,7 @@ description: "Trigger: starting the Libretto flow; asking what to work on; resum
 license: MIT
 metadata:
   author: pausf
-  version: "1.2"
+  version: "1.3"
 ---
 
 ## What this does
@@ -27,7 +27,7 @@ is stated here as an output instead:
 
 | Source | Phase 1 has not finished until |
 |---|---|
-| 1 · in flight | the open boxes and what can start now have been read off the plan |
+| 1 · in flight | the open boxes and what can start now have been read off the checklist |
 | 2 · tracker | the issue was fetched and its description read — not just its header |
 | 3 · what the user said | **`proposal.md` exists**, with `Tracker: none` and the ask verbatim |
 
@@ -56,7 +56,7 @@ from, and in practice the least common:
 
 | Source | When |
 |---|---|
-| **a change already in flight** | there are unchecked boxes in `.agents/changes/*/tasks.md` |
+| **a change already in flight** | a change's checklist under `.agents/changes/` has an open box |
 | **a tracker key or URL** | one was given |
 | **what the user said** | anything else — the request *is* the input |
 
@@ -69,29 +69,55 @@ is not the wasted work — it is a `.agents/changes/` directory nobody trusts an
 Look at home before looking anywhere else.
 
 ```
-rg -c '^\s*- \[ \]' .agents/changes/*/tasks.md .agents/changes/*/plan.md
-rg -c '^\s*- \[x\]' .agents/changes/*/tasks.md .agents/changes/*/plan.md
+scan() {  # $1: ' ' for the open scan, 'xX' for the closed one
+  for d in .agents/changes/*/; do
+    for f in proposal.md tasks.md plan.md; do
+      [ -f "$d$f" ] || continue
+      awk -v doc="$([ $f = proposal.md ] && echo 1)" -v want="$1" '
+        /^[[:space:]]*```/ { fenced = !fenced; next }
+        fenced { next }
+        doc && /^##[[:space:]]/ { listed = ($0 ~ /^##[[:space:]]+Checklist[[:space:]]*$/); next }
+        doc && !listed { next }
+        /^[[:space:]]*[-*][[:space:]]+\[( |x|X)\]/ { all++; if (index(want, substr($0, index($0, "[") + 1, 1))) n++ }
+        END { if (n) print FILENAME ":" n; exit !all }' "$d$f" && break
+      [ $f = proposal.md ] || break
+    done
+  done
+}
+scan ' '; scan xX
 ```
 
-**Both names, and the second one is not a typo.** The checklist was `plan.md` until
-2026-08-17, when `plan.md` became the technical approach and the boxes moved to
-`tasks.md`. A change created before that still carries the old layout, and a search that
-saw only the new name would report the work in flight as nothing in flight — which is
-precisely the failure this source exists to prevent, arriving through the fix for a
-different one.
+**Three names, because the checklist moved twice.** It was `plan.md` until 2026-08-17,
+then `tasks.md`, and now it is the `## Checklist` section of `proposal.md`. A change
+created before each move still carries the old layout, and a search that saw only the
+newest name would report the work in flight as nothing in flight — which is precisely the
+failure this source exists to prevent, arriving through the fix for a different one.
+
+**A box is a line matching `^\s*[-*]\s+\[( |x|X)\]`, and a box inside a fence does not
+count.** That is the CLI's definition, and the scan above is it. In `proposal.md` only the
+boxes in a section opened by a `## Checklist` heading and closed by the next `^##\s`
+heading count; in `tasks.md` and `plan.md` every box outside a fence does. A bare count of
+`- [ ]` lines over the whole file is not this: it counts the boxes in a fenced example,
+and in `proposal.md` a breakdown or a quoted ask that happens to look like a task.
+
+**`proposal.md` is the checklist when its `## Checklist` holds a box** — otherwise
+`tasks.md`, otherwise `plan.md`. A file existing never decides it alone, because every
+change in every layout has a `proposal.md`, and its existence would hide every old
+change's boxes. A queued capture has no `## Checklist`, so it falls through to the third
+row below.
 
 ### Read both scans, not just the first one
 
-`rg -c` prints a line only for a file that matched, and stays silent for the rest. That
-asymmetry is not a quirk of the output — **it is the second question this source answers**,
-and until 2026-08-18 nothing said so, which is how two changes shipped with their landing
-half-done and phase 1 walked past them twice.
+Each scan prints a line only for a change whose count is not zero, and stays silent for
+the rest. That asymmetry is not a quirk of the output — **it is the second question this
+source answers**, and until 2026-08-18 nothing said so, which is how two changes shipped
+with their landing half-done and phase 1 walked past them twice.
 
 | In the open scan | In the closed scan | What it is |
 |---|---|---|
 | yes | either | **work in flight** — the report below |
 | **no** | **yes** | **finished and not landed** — every box closed and the folder still here |
-| no | no | no checklist yet: a captured idea, or a change not cut. Say nothing |
+| no | no | no checklist yet: a queued idea, a trivial-lane capture, or a change not cut. Say nothing |
 
 **The middle row is reported by name, and it is not work in flight.** There is nothing to
 continue — the boxes are all closed. What it means is that `record-work`'s landing did not
@@ -129,10 +155,11 @@ That is a state, not an error — say it in one line and move on.
 
 ### A branch is also work in flight
 
-**The scan above cannot see the trivial lane.** A change that needed no spec never creates
-a `changes/` directory — by definition it has no spec and no plan — so it lives only as
-commits on a branch, and `rg` over `tasks.md` reports nothing in flight while the work sits
-there unmerged.
+**The scan above cannot see the trivial lane.** Source 3 writes `proposal.md` before phase
+2 decides the lane, so a change that needed no spec does get a folder — a capture with no
+`## Checklist`, which the scan reads as the third row, and which the trivial lane deletes in
+its own commit. After that it lives only as commits on a branch, and the scan reports
+nothing in flight while the work sits there unmerged.
 
 That is not hypothetical: the lane's own first run produced a commit on a local branch,
 and the next phase 1 reported an empty house.

@@ -71,6 +71,32 @@ arrives, and every change in this repository so far arrived that way.
 
 ## 2 · Write the spec
 
+The first question is whether there is a contract at all, and the answer picks the lane:
+
+| Lane | When | What it costs |
+|---|---|---|
+| **trivial** | nobody could reasonably disagree about what "done" means — a typo, a rename, a one-line fix | the change, its check, a commit, and phase 8's question. Nothing else |
+| **contract** | somebody could | one change document, one fresh reader, **one stop before code**, then phase 8's question |
+
+### Why two lanes and not a ladder
+
+Until 2026-10-21 the flow had no middle gear. The trivial lane was free, and the moment a
+change was not trivial it paid the full price: a proposal, a spec delta, `plan.md`,
+`tasks.md` and a decision log — five artifacts — drafted by three fresh writers
+(`spec-writer`, `plan-writer`, `task-cutter`), with two stops before code. A change that
+needed four sentences of contract paid the same as one that needed forty.
+
+**The cost was not the writing, it was the hand-offs.** Each fresh writer started from
+files instead of the conversation, so each one re-read what the session already knew, and
+each stop asked the user to agree to part of a decision before seeing the rest of it. The
+contract lane now costs what its contract costs: the document grows only as long as the
+change needs, and the fresh eye moved from drafting the document to reading it.
+
+The proportional shape owes its idea to Gentleman Programming's gentle-ai and its Organic
+Driven Development; the vocabulary and the living specs are this flow's own.
+
+### The contract lane
+
 An easy task is one spec and one session.
 
 A large one is split — not for parallelism, but so each piece holds a single
@@ -96,13 +122,36 @@ by statistical association:
 ├── specs/                        the living, consolidated specification
 │   └── bundle-products/
 │       └── spec.md               Governs: src/bundles/**
-└── changes/                      proposals in flight
-    └── add-relative-discounts/
-        ├── proposal.md
-        ├── spec.md               Targets: bundle-products
-        ├── plan.md               the approach
-        └── tasks.md              the checklist
+└── changes/                      changes in flight
+    ├── add-relative-discounts/   one capability
+    │   └── proposal.md           Targets: bundle-products
+    └── add-bundle-gift-cards/    two capabilities
+        ├── proposal.md           Targets: bundle-products
+        └── spec-gift-cards.md    Targets: gift-cards — that capability's six pillars
 ```
+
+**One change document.** `proposal.md` is the file phase 1 or the queue captured, and it
+grows in place rather than gaining siblings. Top to bottom:
+
+| Part | Where | Written at |
+|---|---|---|
+| `Tracker:` · `Targets:` · `Durable decisions:` | the top lines | 1, 2, 5 |
+| the ask, verbatim, and the reading | the capture's own headings | 1, or the queue |
+| every answer, verbatim, `(assumed)` kept | `## Decision log` | 2 and 5 |
+| the contract | the six pillars as `##` headings | 2–3 |
+| the how | `## Approach` | 5 |
+| the boxes, and nothing else | `## Checklist`, always last | 5→6 |
+
+A change that amends a second capability adds one `spec-<capability>.md` beside it, with
+its own `Targets:` and its own six pillars. The decision log, the approach and the
+checklist still exist once, in `proposal.md` — a second file about the same change is a
+second source of truth.
+
+**The old layout is still read.** A change begun before 2026-10-21 — a `spec.md` delta,
+`plan.md`, `tasks.md` beside its proposal — finishes in the layout it started in. Every
+reader picks a change's checklist the same way: `proposal.md` when it holds a box under
+`## Checklist`, otherwise `tasks.md`, otherwise `plan.md`. Nothing in flight is migrated,
+because migrating a half-built change is how its reasoning gets lost in transit.
 
 **One spec per capability, never per ticket.** A capability spec accumulates and
 stays true; a spec named after a ticket is dead the day the ticket closes, and a
@@ -114,16 +163,21 @@ always.
 
 ## 3 · One spec per subtask
 
-When the task has subtasks, each gets its own spec.
+When the task touches several capabilities, each gets its own contract: the primary one in
+`proposal.md`, every other one in a `spec-<capability>.md` beside it.
 
-When there are many, a sub-agent per spec gathers the context that spec needs and
-writes it out as markdown. Research fans out; the specs stay separate files so
-sessions never collide.
+**The session writes them inline**, the same session that held the interview. It already
+holds the answers; a fresh writer would have to rebuild them from files and would get the
+ones nobody wrote down wrong.
 
-What keeps a fanned-out set coherent is a **brief written once before any sub-agent
-starts** — shared conventions, inherited constraints, settled decisions, and the
-vocabulary every spec will use. Each sub-agent writes against it and reports back
-what the brief got wrong. Those reports are where the real findings are.
+**Context is the only reason to fan out.** When the extra capabilities' research will not
+fit in this session — ten subtasks researched in one thread — one `spec-writer` per extra
+`spec-<capability>.md` gathers what that file needs and writes it, and nothing else.
+Research fans out; the files stay separate so sessions never collide.
+
+What keeps a fanned-out set coherent is `proposal.md`, **written first**: its decision log,
+the primary contract and the vocabulary every file will use. Each writer is given it by
+path and reports back what it got wrong. Those reports are where the real findings are.
 
 ## 4 · Ask
 
@@ -152,7 +206,8 @@ batch was cheap but it interviewed nobody — all its questions came from the sa
 and the user met them as a form. What keeps the sequence from becoming the serial
 ceremony this flow argues against is the soft bound around five and a standing "no more
 questions" option, and the answers still have to be *in* the contract rather than bolted
-on afterwards — they land verbatim in the change's `decisions.md` as they arrive.
+on afterwards — they land verbatim under the change document's `## Decision log` as they
+arrive, and in its *Prior decisions* beside what they settled.
 
 The count was capped at three until 2026-08-14, when the user lifted it: better asked out
 of caution than swallowed out of fear. What replaced the cap is judgment with both edges
@@ -161,12 +216,12 @@ interrogation of things the code already answers. The bias, when in doubt, is to
 
 **Phase 5 asks too, since 2026-08-19, and it asks exactly one thing: the approach.** Two
 or three real ones with named tradeoffs, the recommendation first with its reason, the
-user choosing — chosen and rejected logged with why, which is what makes the plan's
+user choosing — chosen and rejected logged with why, which is what makes the approach's
 alternatives table reconstructible outside the session that argued it. "Phase 2 alone,
 not phase 5" was the rule from 2026-08-12, declined on the no-third-stop argument; the
 user retired it, and the argument survives the retirement — the fork rides inside phase
-5, and asking N questions before the first line of code is still how a three-stop flow
-grows back into a nine-stop one when the questions stop being cheap.
+5, and asking N questions before the first line of code is still how a flow with one stop
+before code grows back into one with nine when the questions stop being cheap.
 
 **Zero is legitimate, and it is said in one line.** The alternative — always three, stretched
 if necessary — was offered and declined for the reason `AGENTS.md` already gives: do not ask
@@ -184,7 +239,8 @@ plans read like task lists. The diagnosis was one line long — the spec's task 
 was transcribed into checkboxes, so the *technical reasoning* never got written down
 anywhere at all.
 
-`plan.md` now holds six things, and the fourth is the one this flow had no home for:
+`## Approach`, in the change document after the contract, holds six things, and the fourth
+is the one this flow had no home for:
 
 | | |
 |---|---|
@@ -199,42 +255,50 @@ A diff shows what was built. Nothing in a repository shows what was **not** buil
 why — so if it is not here it is gone, and the decision gets made again by somebody with
 less context in the middle of phase 6.
 
-Who writes it changed on 2026-08-19, and it changed to the same shape the two seams
-already have: the user chooses the approach at the fork, the choice and the losers land
-in `decisions.md`, and **one fresh `plan-writer` drafts the document from the spec, the
-proposal and that log** — none of the conversation, so it can only draft what the fork
-actually recorded. Gaps come back in its return; the orchestrator writes the file.
+**The session writes it inline**, right after the fork: the user chooses the approach, the
+choice and the losers land in the decision log, and the session that heard the argument
+writes the section. It also writes the `Durable decisions:` line at the top of the
+document — which *Prior decisions* outlive the change, or `none` — because the landing
+commit deletes the change and `--anchors` fails it when reasoning leaves with the folder
+undeclared.
+
+From 2026-08-19 until 2026-10-21 a fresh `plan-writer` drafted this from the files alone,
+so it could only draft what the fork recorded. That check did not disappear, it moved: the
+reader before the stop now asks the same question of the whole document at once.
 
 No checkboxes. No state. That is the next seam.
 
-## Between 5 and 6 · The tasks
+## Between 5 and 6 · The checklist, then a cold reader
 
-`tasks.md` — the checklist that used to be phase 5's output, with everything it always
-guaranteed: one writer, derived from the contract, ordered by dependency, every box cut
-to merge on its own.
+`## Checklist`, the change document's last section — with everything the checklist always
+guaranteed: one writer, derived from the contract, ordered by dependency, every box cut to
+merge on its own. **Only the boxes under that heading are the checklist**; the *Task
+breakdown* pillar is a list, never boxes, so nothing counts a box twice.
 
-What is new is who cuts it. **One fresh `task-cutter` subagent, given the spec and the
-plan and nothing else** — none of the conversation, none of the design argument, none of
-what was considered and dropped. The session that argued its way to an approach cannot
-tell the difference between what it wrote down and what it merely decided, and it cuts
-boxes against the argument: it writes "wire up the adapter" and knows what that means,
-and nobody else does — including the fresh session `libretto loop` starts tomorrow.
+**The session cuts it inline, and one fresh `spec-reviewer` reads it cold.** The session
+that argued its way to an approach cannot tell what it wrote down from what it merely
+decided, and it cuts boxes against the argument: it writes "wire up the adapter" and knows
+what that means, and nobody else does — including the fresh session `libretto loop`
+starts tomorrow.
 
-So the cutter returns two things, and the second is the point: the checklist, and **what
-the spec and the plan failed to answer.** A cutter that cannot produce a box because the
-plan never said how something gets built has found a defect in the plan, at the last
-moment it is cheap to fix — and it is the only check this flow has that a plan says
-enough to be built from.
+So `review-spec` launches one `spec-reviewer` with the change document and the capability
+specs it targets, and none of the conversation. It reads two things. **The contract**:
+ambiguity that forks the work, criteria no run could fail, `Governs:` that describes
+nothing, a criterion another capability contradicts. **The checklist, box by box**: what the
+contract and the approach fail to answer for building that box — a mechanism never
+described, a criterion with no proof saying what closes it. It names the gap and where the
+answer belonged, and never proposes the answer. It writes nothing; its findings reach the
+user unedited.
 
-**One writer still.** The cutter returns; the orchestrator writes and owns the file.
+Until 2026-10-21 that per-box question was a `task-cutter`'s, asked while cutting. Cutting
+and reading do not need to be the same act; what needs to be fresh is the reading.
+
+**One writer still.** The reviewer returns; the session owns the file and marks the boxes.
 Several agents editing one markdown concurrently lose updates, and a checklist that
 silently forgets a finished task is worse than no checklist.
 
-**The stop moved here rather than multiplying.** Splitting the plan from the checklist
-invited a third stop — one for the approach, one for the order — and this document spends
-its length arguing that a stop whose only answer is "yes, carry on" is a round trip
-charged for a rubber stamp. Phase 5 runs through; the user is asked once, here, with the
-approach and the boxes and the cutter's gaps all on the table at the same time.
+**Then the one stop before code**, with the contract, the approach, the boxes and the
+reviewer's findings all on the table at the same time — see *Where the flow stops*.
 
 Not a numbered phase, on the same grounds as the 6→7 review: independence comes from the
 fresh context, not from renumbering everything that says eight.
@@ -397,13 +461,15 @@ the work exists, and moving off it buys nothing.
 
 ## Where the flow stops, and why only there
 
-Three stops. Two inside the work, one at the door.
+Two stops on the contract lane: one before code, one at the door. The trivial lane keeps
+only the door.
 
 | After | Stops | What the user is changing |
 |---|---|---|
-| 1 · read the task | no | — the reading is stated, and the spec is where it gets corrected |
-| 2 · the spec | **yes** | the contract |
-| 5→6 · the tasks are cut | **yes** | the approach, the order, and what waits on what |
+| 1 · read the task | no | — the reading is stated, and the contract is where it gets corrected |
+| 2–3 · the contract | no | — agreed below, beside what building it costs |
+| 5 · the approach | no | — agreed below, beside the boxes it produced |
+| before 6 · the change document, after the cold read | **yes** | the whole change document: contract, approach, order |
 | 6 · build | no | — |
 | 6→7 · review | no | — the seam fixes what it finds |
 | 7 · present | no | — |
@@ -413,7 +479,13 @@ Three stops. Two inside the work, one at the door.
 whose only available answer is "yes, carry on" is a round trip charged for a rubber
 stamp, and it does not become one by being called a decision point.
 
-**The spec stop is the cheap place to disagree, and that is why it is second rather than
+**One stop before code, not one per document.** Until 2026-10-21 there were two stops
+before code — the contract after phase 2, then the approach and the order after the tasks
+were cut. The first asked the user to agree to a contract before seeing what building it
+would cost, and the second asked again once it was visible. One stop with everything on
+the table is one decision, made once, with the information that decides it.
+
+**It is the cheap place to disagree, and that is why it comes before code rather than
 later.** A wrong sentence in the contract costs a line to fix. The same misunderstanding
 costs a day once it has become code, and by phase 7 it costs the reviewer measuring the work
 against a promise nobody could have failed. Every stop after this one is more expensive than
@@ -421,7 +493,7 @@ this one, which is the argument for making the contract the first thing anybody 
 
 ### What `attacca` answers, and what it cannot
 
-`/libretto-attacca` answers the three stops in advance — the invocation *is* the answer, given
+`/libretto-attacca` answers both stops in advance — the invocation *is* the answer, given
 before the work starts. What it will not answer is a **gate**: a failing check stops it where
 it stands, and it never merges, tags or releases. That boundary is the whole of what makes the
 mode safe rather than merely fast, because a mode that answered a gate would not be unattended,
@@ -434,7 +506,7 @@ under a mode built to answer everything else.
 
 **And every one of them is a native question**, `AskUserQuestion`, never a sentence at the
 end of a report — along with phase 1's choice between work already in flight and something
-new. Three stops, three prompts, the same shape each time: the recommended option first
+new. Two stops, two prompts, the same shape each time: the recommended option first
 saying what will actually run, the real alternatives, and room to answer differently.
 
 The argument was written once for the push, in `skills/record-work/`, and was never
@@ -457,12 +529,12 @@ continuing it or not is a choice about the user's priorities, and a missing or
 unconfigured tracker, where nothing downstream exists. Both are the input failing to
 arrive, not a phase boundary asking to be blessed.
 
-### All three answered in advance
+### Both answered in advance
 
 `/libretto-attacca` — the score's instruction to go on to the next movement without
-pausing — runs the same flow with the three stops answered by the invocation itself, and
+pausing — runs the same flow with both stops answered by the invocation itself, and
 ends at a pushed branch with a request open on it. Nothing about the phases changes: the
-spec, the plan, the commits and the report are all still written.
+change document, the cold read, the commits and the report are all still there.
 
 **What it cannot answer is a gate**, and the distinction is the whole of the feature. A
 stop is where the user changes something; a gate is where the code is measured. A failing
@@ -471,9 +543,16 @@ still stops the phase, and no run reaches for `--force` or a weakened test to ge
 one. **A mode that answers a gate is not unattended, it is unverified.**
 
 A question the flow cannot settle from the code is not asked either — it becomes an
-assumption written into the spec marked as assumed, into the report, and into the
-request's description, with what changes if it is wrong. That is the same rule the flow
-already applies after the plan, moved to the front.
+assumption written into the decision log and *Prior decisions* marked as assumed, into the
+report, and into the request's description, with what changes if it is wrong. That is the
+same rule the flow already applies after the plan, moved to the front.
+
+**The cold reader matters more here, not less.** Nobody reads the document at the stop, so
+the `spec-reviewer` is the only thing between an unfailable criterion and the code built on
+it. It still only reports. Unattended, the run is the document's author, so it acts on the
+findings before phase 6 and names each one it acted on — in the report and in the request,
+exactly like an assumption. A contract rewritten between review and code without saying so
+is a contract nobody agreed to.
 
 ## Three rules, not phases
 
@@ -483,7 +562,7 @@ phase 6, not after phase 7. A flow that treats it as a phase will do it once and
 consider it done.
 
 **Asking is bounded to before the plan.** Phases 1, 2 and 5, where nothing has been
-built on the answer yet — which is why the two stops sit exactly there. After the plan
+built on the answer yet — which is why the one stop before code sits right after them. After the plan
 an unsettled question becomes a *finding*: it goes into the phase 7 report with what was
 assumed in the meantime and what changes if the assumption is wrong, and the user meets
 it at phase 8 alongside everything else.
@@ -504,18 +583,29 @@ A sub-agent starts with none of this. Not the flow, not the standing rules, not 
 was decided three turns ago. Whatever it is not told, it does not know — and it will
 fill the gap with something plausible.
 
+**So the session writes, and sub-agents read.** The change document is written inline by
+the session that held the conversation, because that is where the answers are. A fresh
+context is spent where freshness is the point — reading what was written without the
+memory of what was meant:
+
+| Agent | Launched by | Writes |
+|---|---|---|
+| `spec-reviewer` | `review-spec`, once, before the stop | nothing — findings come back |
+| `work-reviewer` | `review-work`, once, between 6 and 7 | nothing — findings come back |
+| `spec-writer` | `write-spec`, only when an extra capability's research will not fit in context | its one `spec-<capability>.md` |
+
 **Context goes down through a file, findings come back through the return value.**
-The shared ground is written once to a brief and read by all of them; each writes
-exactly one file that nobody else writes; nothing is reported back by editing shared
-state. Every file has one author. That is what makes running several at once safe,
-and it is the same rule the plan follows with a different single writer.
+The shared ground is `proposal.md`, read by path; a writer writes exactly one file that
+nobody else writes; nothing is reported back by editing shared state. Every file has one
+author. That is what makes running several at once safe, and it is the same rule the
+checklist follows with the session as its single writer.
 
 Four prohibitions travel with every launch, because each one is invisible from inside
 a sub-agent's view of the work:
 
 - **no commit** — only the orchestrator sees the whole task
 - **no push** — that is a question for the user, and a sub-agent cannot ask it
-- **no writing the plan, the brief, or a sibling's file**
+- **no writing the change document or a sibling's file**
 - **read-only everywhere except the one path assigned**
 
 And the orchestrator owes them two things in return.

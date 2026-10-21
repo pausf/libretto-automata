@@ -1,16 +1,22 @@
 ---
 name: build-and-check
-description: "Trigger: a plan exists and a task is ready to implement; writing code for a spec; deciding how much to test; choosing a branch or a worktree. Phase 6 of the flow. Writes the code and leaves proportionate proof behind."
+description: "Trigger: a checklist exists and a task is ready to implement; writing code for a spec; deciding how much to test; choosing a branch or a worktree. Phase 6 of the flow. Writes the code and leaves proportionate proof behind."
 license: MIT
 metadata:
   author: pausf
-  version: "1.0"
+  version: "1.1"
 ---
 
 ## What this does
 
-Phase 6 of the Libretto flow: implement one task from the plan and leave behind the
-proof that it works.
+Phase 6 of the Libretto flow: implement one box from the change's checklist and leave
+behind the proof that it works.
+
+**The checklist and the contract are in either layout.** A change document `proposal.md`
+holds both — the contract's level-2 pillars, `## Approach`, and the boxes under
+`## Checklist` — with any `spec-<capability>.md` beside it. A change begun in the old
+layout keeps them in its spec delta, `plan.md` and `tasks.md`. The old names are read until
+nothing in flight still uses them.
 
 **Delegate the parts that are already solved:**
 
@@ -131,9 +137,8 @@ green before it is unproven again.
 
 ## Closing a task
 
-A task is done when the criterion the plan named for it is met, and the run that
-proves it was watched. Then the box gets marked — by the orchestrator, per
-`skills/write-tasks/`.
+A task is done when the criterion its box named is met, and the run that proves it was
+watched. Then the box gets marked — by the session, per `skills/write-tasks/`.
 
 Two failed gates on one task: stop the task. Not a third attempt. Report what
 failed, what was tried, and what is still unknown.

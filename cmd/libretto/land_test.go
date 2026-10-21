@@ -546,3 +546,118 @@ func TestLandParsesTheCachedDiff(t *testing.T) {
 		t.Error("a truncated rename entry must be an error, not a silent miss")
 	}
 }
+
+// landPartTwo lists the capabilities land's report names under part 2, in report
+// order — the observable form of what headTargets found.
+func landPartTwo(out string) []string {
+	var caps []string
+	for _, l := range strings.Split(out, "\n") {
+		rest, ok := strings.CutPrefix(l, "  part 2: ")
+		if !ok || strings.HasPrefix(rest, "no delta") {
+			continue
+		}
+		if c, _, ok := strings.Cut(rest, " spec "); ok {
+			caps = append(caps, c)
+		}
+	}
+	return caps
+}
+
+func TestLandReadsTargetsFromTheChangeDocument(t *testing.T) {
+	// The new layout: one change document whose Targets: line names the capability,
+	// and no spec.md delta beside it. The landing has deleted the folder from the
+	// index and the disk, so HEAD is the only place the line still is.
+	dir := landInit(t)
+	writeLand(t, dir, ".agents/specs/cli/spec.md", "# cli\n")
+	writeLand(t, dir, ".agents/changes/add-x/proposal.md",
+		"# add-x\n\nTracker: none\nTargets: cli\n\n## Checklist\n\n- [x] done\n")
+	commitLand(t, dir)
+	gitLand(t, dir, "rm", "-r", "-q", ".agents/changes/add-x")
+
+	out, err := runLand(t, dir, "add-x")
+	if err == nil {
+		t.Fatalf("cli is the change's capability and its spec did not move — the landing must fail:\n%s", out)
+	}
+	if !strings.Contains(out, "part 2: cli spec did not move") {
+		t.Errorf("the unmoved capability must be named under part 2:\n%s", out)
+	}
+
+	appendLand(t, dir, ".agents/specs/cli/spec.md", "- moved\n")
+	gitLand(t, dir, "add", ".agents/specs/cli/spec.md")
+	out, err = runLand(t, dir, "add-x")
+	if err != nil {
+		t.Fatalf("cli's spec moved, the landing must pass: %v\n%s", err, out)
+	}
+	if !strings.Contains(out, "part 2: cli spec moved") {
+		t.Errorf("the moved capability must be reported:\n%s", out)
+	}
+}
+
+func TestLandReadsTargetsFromAnExtraCapabilitySpec(t *testing.T) {
+	// A second capability rides a spec-<cap>.md beside the change document; both
+	// are the change's capabilities, and both must move.
+	dir := landInit(t)
+	writeLand(t, dir, ".agents/specs/cli/spec.md", "# cli\n")
+	writeLand(t, dir, ".agents/specs/payload/spec.md", "# payload\n")
+	writeLand(t, dir, ".agents/changes/add-x/proposal.md", "Tracker: none\nTargets: cli\n")
+	writeLand(t, dir, ".agents/changes/add-x/spec-payload.md", "Targets: payload\n\n- it shall ship\n")
+	commitLand(t, dir)
+	gitLand(t, dir, "rm", "-r", "-q", ".agents/changes/add-x")
+	appendLand(t, dir, ".agents/specs/cli/spec.md", "- moved\n")
+	gitLand(t, dir, "add", ".agents/specs/cli/spec.md")
+
+	out, err := runLand(t, dir)
+	if err == nil {
+		t.Fatalf("payload's spec did not move and must fail the landing:\n%s", out)
+	}
+	if !strings.Contains(out, "part 2: payload spec did not move") {
+		t.Errorf("the extra capability must be named under part 2:\n%s", out)
+	}
+
+	appendLand(t, dir, ".agents/specs/payload/spec.md", "- moved\n")
+	gitLand(t, dir, "add", ".agents/specs/payload/spec.md")
+	out, err = runLand(t, dir)
+	if err != nil {
+		t.Fatalf("both capabilities moved, the landing must pass: %v\n%s", err, out)
+	}
+	if got, want := landPartTwo(out), []string{"cli", "payload"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("part 2 must report both capabilities, got %v want %v:\n%s", got, want, out)
+	}
+}
+
+func TestLandOldLayoutTargetsAreUnchanged(t *testing.T) {
+	// A change document with no Targets: — a queued or trivial-lane capture — names
+	// no capability, and neither does one whose only Targets: is an example in a fence.
+	for _, tc := range []struct{ name, proposal string }{
+		{"no Targets line", "# an idea\n\nQueued: 2026-10-21\n\n## Checklist\n\n- [ ] do it\n"},
+		{"Targets only in a fence", "# an idea\n\nTracker: none\n\n```\nTargets: bogus\n```\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := landInit(t)
+			writeLand(t, dir, ".agents/changes/an-idea/proposal.md", tc.proposal)
+			commitLand(t, dir)
+			gitLand(t, dir, "rm", "-r", "-q", ".agents/changes/an-idea")
+			out, err := runLand(t, dir)
+			if err != nil {
+				t.Fatalf("a proposal naming no capability must pass part 2 vacuously: %v\n%s", err, out)
+			}
+			if !strings.Contains(out, "part 2: no delta") {
+				t.Errorf("the proposal must contribute no capability:\n%s", out)
+			}
+		})
+	}
+
+	// The old layout: the capability comes from the spec.md delta, and the proposal
+	// beside it adds nothing — exactly what land found before the new layout.
+	t.Run("old layout", func(t *testing.T) {
+		dir := landFixture(t)
+		stageLanding(t, dir)
+		out, err := runLand(t, dir, "add-x")
+		if err != nil {
+			t.Fatalf("an old-layout landing must still pass: %v\n%s", err, out)
+		}
+		if got, want := landPartTwo(out), []string{"cli"}; !reflect.DeepEqual(got, want) {
+			t.Errorf("an old-layout change must find exactly its delta's capability, got %v want %v:\n%s", got, want, out)
+		}
+	})
+}

@@ -22,50 +22,94 @@ Installing this repository gives a working flow on a machine that has nothing el
   the branch, removes the `Queued:` line and enters the flow at phase 2, because phase
   1's artifact already exists
 - one skill per phase, each of which stops where its phase stops
-- **a plan that holds the how, and a checklist that holds the state — two files, not
-  one.** Phase 5 produced a checklist and called it a plan, so the technical reasoning
-  behind a change was never written anywhere: the approach chosen, the alternatives it
-  beat, the risks and how it gets validated all died with the session that had them. That
-  was reported from outside — specs reading like plans, plans reading like task lists.
-  `plan.md` is now the approach and holds no state; `tasks.md` is the checklist and holds
-  nothing else. **The alternatives table is the pillar that pays**: a diff shows what was
-  built, and nothing in a repository shows what was not built and why
-- **the contract and the plan are co-authored with the user and drafted by agents that
-  never saw the conversation.** Phase 2 interviews one question at a time and phase 5
-  forks on the approach; every answer lands verbatim in the change's `decisions.md`, and
-  the documents are then drafted from that log — the spec by `spec-writer` (single case
-  included, `[NEEDS CLARIFICATION]` markers where the inputs run out), the plan by
-  `plan-writer` (read-only, gaps in its return). The user's words reach the artifacts
-  unparaphrased, and the drafting session cannot write down what was merely decided —
-  the same property the task cut already had, arriving two phases earlier
-- **the checklist is cut by an agent that never saw the design.** One fresh `task-cutter`,
-  given the spec and the plan by path and nothing else, in the seam between phases 5 and 6.
-  The session that argued its way to an approach cannot distinguish what it wrote down
-  from what it merely decided, and cuts boxes against the argument — which the next fresh
-  session cannot read. The cutter returns the checklist **and what those two documents
-  failed to answer**, and the second half is the only check this flow has that a plan says
-  enough to be built from. It writes no file: one writer is still the orchestrator
+- **one change document.** A contract-lane change keeps everything in
+  `.agents/changes/<change>/proposal.md` — the file `find-work` or `/libretto-queue`
+  captured, grown in place. No `brief.md`, `decisions.md`, `spec.md`, `plan.md` or
+  `tasks.md` is created for it. Top to bottom:
+
+  | Part | Where | Written by phase |
+  |---|---|---|
+  | `Tracker:` · `Targets:` · `Durable decisions:` lines | top, column 0, outside any fence | 1 (`Tracker:`), 2 (`Targets:`), 5 (`Durable decisions:`) |
+  | the ask, verbatim · the reading | the headings the capture writes | 1 or the queue |
+  | the decision log | `## Decision log` | 2 and 5. One `- Q: … → A: …` line per answer, verbatim, under dated `### Session` headings, `(assumed)` kept |
+  | the contract | `## Outcomes` · `## Scope boundaries` · `## Constraints` · `## Prior decisions` · `## Task breakdown` · `## Verification criteria` | 2–3 |
+  | the approach | `## Approach`, the parts `write-plan` names as `###` subsections | 5 |
+  | the checklist | `## Checklist`: boxes and nothing else, the document's last section | the 5→6 seam |
+
+  **The checklist is the boxes under the level-2 `## Checklist` heading, and nothing else**;
+  the *Task breakdown* pillar is a list, never boxes. The approach holds no box and the
+  checklist holds nothing but boxes — the separation that used to be two files, `plan.md`
+  and `tasks.md`, survives as two sections. It exists because phase 5 once produced a
+  checklist and called it a plan, so the approach chosen, the alternatives it beat, the
+  risks and how it gets validated died with the session that had them. **The alternatives
+  table is the pillar that pays**: a diff shows what was built, and nothing in a repository
+  shows what was not built and why. **A change amending two or more capabilities** carries
+  the primary capability's contract in `proposal.md` and one `spec-<capability>.md` beside
+  it per extra capability, each with its own `Targets:` line and six pillars; the decision
+  log, the approach, the `Durable decisions:` line and the checklist exist once, in
+  `proposal.md`
+- **the change document is co-authored with the user and written inline by the session
+  that held the conversation.** Phase 2 interviews one question at a time and phase 5 forks
+  on the approach; every answer lands verbatim in the document's `## Decision log` and is
+  carried into `## Prior decisions` as it is answered. Nothing launches a writer for
+  `proposal.md`, the approach or the checklist. **The one surviving writer is
+  `write-spec`'s fan-out**: when a change has extra capabilities **and** the session's
+  context cannot hold their research, one `spec-writer` per extra `spec-<capability>.md`,
+  given `proposal.md` by path — its decision log, vocabulary and primary contract are the
+  shared ground a brief used to carry — writing that one file and nothing else. Context is
+  the only reason to fan out
+- **the change document is read by one reviewer that never saw the conversation, before
+  the stop.** Once the checklist is written, `review-spec` launches one fresh
+  `spec-reviewer`, given by path the change document, every `spec-<capability>.md` beside
+  it and the capability specs their `Targets:` name. It runs `spec-drift --trace` and
+  `--ears`, reads the whole document and writes nothing. It reads **the contract** —
+  ambiguity, testability, `Governs:`, cross-capability contradiction — and **the
+  checklist, box by box**: what the contract and the approach together fail to answer for
+  building that box, naming the gap and the part that should have answered it, never
+  proposing the answer. The session that argued its way to an approach cannot distinguish
+  what it wrote down from what it merely decided; the fresh eye moved from drafting to
+  reading, and the per-box question is the only check this flow has that a document says
+  enough to be built from
+- **both layouts are read, by one rule.** Every payload reader that counts boxes uses the
+  CLI's definition: a line matching `^\s*[-*]\s+\[( |x|X)\]`, none inside a fence; in
+  `proposal.md` only boxes in a section opened by `## Checklist` and closed by the next
+  `^##\s` heading, in `tasks.md` and `plan.md` every box outside fences. A change's
+  checklist is `proposal.md` when its `## Checklist` holds a box, otherwise `tasks.md`,
+  otherwise `plan.md` — never decided by a file existing, because every change in both
+  layouts has a `proposal.md`. A queued capture has no `## Checklist`; the `Queued:` scan
+  does not change. Nothing in flight is migrated: a change started in the old layout
+  finishes in it, and each old-layout reading says when it can go
 - **a finished change that never landed is reported, not walked past.** Phase 1 runs two
-  `rg -c` scans over every change's checklist and `rg -c` is silent for a file that did
-  not match, so a change present in the closed scan and absent from the open one has every
-  box closed and its folder still on disk — its landing did not finish. That signal sat in
+  scans over every change's checklist, open boxes and closed ones, so a change present in
+  the closed scan and absent from the open one has every box closed and its folder still
+  on disk — its landing did not finish. That signal sat in
   the output unnamed while two changes shipped half-landed and phase 1 walked over the
   state twice. It is written as a table of three outcomes rather than a paragraph, so the
   empty open scan is a case with a name instead of an absence somebody has to notice, and
   `/libretto-status` delegates to the same scan rather than re-deriving it. **A report,
   never a gate**: `--retired` fires on a deletion, and the failure here is that no deletion
   happened — there is no commit to refuse
-- **a plan cannot be deleted taking its reasoning with it.** The landing commit removes
-  the change folder, and with it the alternatives table whose whole argument is that a
-  diff shows what was built and nothing shows what was not built and why. `spec-drift
+- **an approach cannot be deleted taking its reasoning with it.** The landing commit
+  removes the change folder, and with it the alternatives table whose whole argument is
+  that a diff shows what was built and nothing shows what was not built and why. `spec-drift
   --retired` — inside `--anchors` — fails that commit unless a capability spec's *Prior
-  decisions* section moved in it. **That section, never the file**: the delta lands in the
-  same commit by definition, so "a spec was edited" is green on every landing and measures
-  nothing. The escape is a declaration in the plan being deleted, `Durable decisions:
-  none`, and not a flag — a flag is typed by whoever wants the commit through, a line in
-  the plan is written by the person who knew. **What no mechanism can stop is that line
-  becoming a reflex**, and `review-work` is what reads a full alternatives table sitting
-  beside a `none`
+  decisions* section moved in it. It fires on a deleted `proposal.md` whose `HEAD` copy
+  carries `Targets:` outside fences, and on a deleted old-layout `plan.md`; a change deleting
+  both is reported once. **`Targets:` is the only thing that makes a `proposal.md` a
+  contract** — the same discriminator `libretto land` uses, so the two landing tools cannot
+  disagree — and deleting a queued or trivial-lane capture, which carries none, fails
+  nothing. **That section, never the file**: the delta lands in the same commit by
+  definition, so "a spec was edited" is green on every landing and measures nothing. The
+  escape is a declaration in the document being deleted, `Durable decisions: none`, and not
+  a flag — a flag is typed by whoever wants the commit through, a line in the document is
+  written by the person who knew. **What no mechanism can stop is that line becoming a
+  reflex**, and `review-work` is what reads a full alternatives table sitting beside a
+  `none`
+- **marking a box is not the contract moving.** The change document carries `Targets:`, so
+  default `spec-drift` would read every box-marking commit as the capability's spec moving
+  and say nothing about the code staged beside it. A staged `proposal.md` counts as its
+  targets moving only when something outside its `## Checklist` section differs between
+  `HEAD` and the index
 - **a criterion that can be failed, not merely read.** Verification criteria are written
   in one of the five EARS patterns, and `spec-drift --ears` — inside `--anchors`, so the
   gate count stays at six — fails a change delta whose criterion carries no `shall`. A
@@ -76,10 +120,14 @@ Installing this repository gives a working flow on a machine that has nothing el
   to change a promise that works today. A capability migrates when a delta lands on it.
   The gate checks the marker and never the sentence — *"the system shall behave
   correctly"* passes it, and `review-spec` is what asks whether the response is concrete
-- **the stop moved rather than multiplied.** Splitting the plan from the checklist invited
-  a third stop — one for the approach, one for the order — so phase 5 runs through and the
-  5→6 seam stops for both at once, with the cutter's gaps on the table. The count stays at
-  three, two of them inside the work
+- **one stop before code, on the whole document.** The contract lane stops exactly once
+  before code: after the fresh reviewer returns, on contract, approach and checklist
+  together, with the reviewer's findings relayed unedited. `review-spec` owns it and asks
+  it as a native question — carry on to phase 6 (recommended, naming the first box), change
+  the document first, or stop here, with room to answer differently. Contract, approach and
+  order are argued over one document, so they are agreed over one; a second stop inside
+  the work would be a round trip for the same reading. The count is two, one of them inside
+  the work
 - **a checklist whose boxes are cut to stand alone, not ordered layers.** Phase 5 required a plan
   to be ordered and derived; it never required a box to be worth closing on its own, so the
   checklist inherited phase 2's cut along capabilities. `write-tasks` now states that a box is one
@@ -90,10 +138,14 @@ Installing this repository gives a working flow on a machine that has nothing el
   box**: a delta still lands once, in the final commit. What it buys is `libretto loop`,
   which runs one fresh session per open box and has no way to detect a tree left broken
   between them
-- **the same flow with its three stops answered in advance** — `libretto-attacca`, the
+- **the same flow with its two stops — the one before code and the push — answered in
+  advance** — `libretto-attacca`, the
   score's instruction to go on without pausing, running phases 1 to 8 and ending at a
   pushed branch with a request open on it. It writes everything the attended flow writes;
-  what the invocation answers is the waiting. **What it cannot answer is a gate**, and a
+  what the invocation answers is the waiting. Every question it would have asked becomes an
+  `(assumed)` entry in the change document's `## Decision log`, an assumed entry under
+  `## Prior decisions`, and a line in the report and the request; because the run authors
+  the document, it acts on the fresh reviewer's findings before phase 6 and names each one. **What it cannot answer is a gate**, and a
   question no reading of the code settles becomes an assumption recorded in the spec, the
   report and the request rather than a prompt. **The request's description carries three
   things** — what the invocation answered, what the run assumed, and the bump a person
@@ -115,9 +167,18 @@ Installing this repository gives a working flow on a machine that has nothing el
   touches and returns findings, which phase 7 carries attributed and unedited **with the
   repair beside each one**
 - three standing rules: **commit** and **evidence** hold at every phase; **ask** holds at
-  phases 1, 2 and the 5→6 seam, and nowhere after
-- **ceremony proportional to the change** — two stops for a change with a contract, none
-  for a change too small to have one, and phase 8's question in both
+  phases 1, 2 and 5, up to the stop, and nowhere after
+- **ceremony proportional to the change** — one stop before code on the contract lane,
+  none on the trivial lane, and phase 8's question in both
+- **the trivial lane's capture does not outlive it.** Phase 1 writes `proposal.md` for every
+  source-3 request before phase 2's step 0 decides the lane, so a trivial-lane change always
+  has a capture on its branch; the trivial lane deletes that folder in its own commit. The
+  directory is created, and it is gone by the time the work is committed
+- **no borrowed method's name in what installs.** No file under `skills/`, `agents/` or
+  `commands/` names the method this flow's 2026-10-21 shape was inspired by, as an acronym
+  or spelled out. The flow is *the Libretto flow*, its lanes the contract lane and the
+  trivial lane; `docs/FLOW.md` credits gentle-ai in one line and nowhere else. A spec
+  quoting a decision verbatim may contain the acronym
 - the vendored delegates the thin skills depend on, so a thin skill is never a broken
   one
 - **the companions the flow calls by name ship vendored too** — `ponytail`,
@@ -174,11 +235,18 @@ third-party items and their attribution.
   in sync.
 - **a review that blocks or opines.** Style and taste are not findings; a finding cites a
   pillar or a proof, and nothing a reviewer says stops the flow.
-- **the reviewer writing.** `work-reviewer` keeps the grant it has — `Read`, `Grep`,
-  `Glob`, `Bash`, `Skill` — and gains nothing that edits. `Skill` is there because its
+- **a reviewer writing.** `work-reviewer` and `spec-reviewer` hold the same grant — `Read`,
+  `Grep`, `Glob`, `Bash`, `Skill` — and nothing that edits: a reviewer that edits what it
+  reviews is the author twice. `Skill` is there because its
   first instruction is to invoke `evidence`, `Bash` because running the proofs is its
   job. The repair happens in `review-work`, on the other side of the seam: an agent that
   fixes what it found is grading its own repair.
+- **a second fresh reader before the stop.** One `spec-reviewer`, not a panel.
+- **a contract block per capability inside `proposal.md`.** Extra capabilities go in
+  `spec-<capability>.md` files beside it.
+- **migrating a change in flight.** No change folder is rewritten into the new layout; a
+  change holding `spec.md`, `plan.md` or `tasks.md` finishes in the layout it started in,
+  and what it still lacks the session writes inline in that layout.
 - **a fix loop.** One pass. Two failures on one finding stops that finding, per
   `skills/evidence/`, and it reaches phase 7 as found-and-not-fixed.
 - **asking about a finding**, including one that looks like a product decision. It is
@@ -241,8 +309,9 @@ That is the whole test, and it is what the count is derived from.
 | After | Stops | What is being changed |
 |---|---|---|
 | 1 · find-work | no | — the reading is stated, and the spec is where it gets corrected |
-| 2–3 · write-spec | **yes** | the contract |
-| 5→6 · write-tasks | **yes** | the approach, the order, and what waits on what |
+| 2–3 · write-spec | no | — the contract is written, and agreed at the one stop |
+| 5 · write-plan, 5→6 · write-tasks | no | — the approach and the checklist join the same document |
+| before 6 · review-spec | **yes** | the whole change document: contract, approach, order, and what waits on what — with the fresh reviewer's findings on the table |
 | 6 · build-and-check | no | — |
 | 6→7 · review-work | no | — the seam fixes what it finds |
 | 7 · present-work | no | — |
@@ -278,7 +347,7 @@ unconfigured tracker, where nothing downstream exists. Both are the input failin
 arrive rather than a phase boundary asking to be blessed.
 
 **And the table is what `libretto-attacca` is defined over.** The unattended mode is a
-second reading of this same list rather than a feature of its own: the three stops are
+second reading of this same list rather than a feature of its own: the two stops are
 answered by the invocation, phase 1's in-flight choice resolves to the oldest change with
 open boxes, and everything not in the table is untouched. **A gate is not a stop and
 cannot be answered** — a failing one still stops the run, two on one task still stop the
@@ -286,8 +355,8 @@ task, and a missing credential still stops the phase, because that is the input 
 arrive and no invocation supplies it. A mode that answered a gate would not be unattended,
 it would be unverified.
 
-When phase 2 answers **no spec needed** both remaining stops collapse with it — there is
-no plan either — and phases 6, 7 and 8 run in one turn. **Phase 8's question survives
+When phase 2 answers **no spec needed** the one stop before code collapses with it — there
+is no document to agree — and phases 6, 7 and 8 run in one turn. **Phase 8's question survives
 every collapse**: pushing is the user's decision, not ceremony.
 
 **What collapses is the wait, never the saying.** Phase 7 still reports what was done, its
@@ -301,10 +370,11 @@ payload. A flow that charges a typo the price of a feature gets routed around �
 first, then for small features, until what is left is a ritual reserved for work important
 enough to deserve it.
 
-### Asking is bounded to before the plan
+### Asking is bounded to before the stop
 
-Phases 1, 2 and 5, where nothing has been built on the answer yet — which is why the two
-stops sit exactly there. **After the plan, an unsettled question becomes a finding**: it
+Phases 1, 2 and 5, up to the one stop, where nothing has been built on the answer yet —
+which is why the stop sits exactly there. **After the stop, an unsettled question becomes
+a finding**: it
 reaches the phase 7 report with what was assumed in the meantime and what changes if the
 assumption is wrong, and the user meets it at phase 8 with everything else.
 
@@ -314,10 +384,10 @@ bound around five that judgment crosses in either direction — so the contract 
 by two people rather than handed over finished, and each answer can redirect the next
 question, which a batched call never could. **Phase 5 asks exactly one: the approach**,
 chosen from two or three with named tradeoffs. Every answer lands verbatim in the
-change's `decisions.md`, the log the writer subagents read. **Zero is a legitimate
-answer, reported in one line:** a quota manufactures questions the code already
-answers, which is the rubber-stamp round trip removed from three other phases arriving
-back through the door marked collaboration. The 5→6 seam stops for the approach and the
+change document's `## Decision log`, which is also what a fan-out writer reads. **Zero is
+a legitimate answer, reported in one line:** a quota manufactures questions the code
+already answers, which is the rubber-stamp round trip removed from three other phases
+arriving back through the door marked collaboration. The stop covers the approach and the
 order and opens no second tranche, and **the stop count does not move** — the questions
 ride the phases that already have them. The trivial lane asks nothing, because *no spec
 needed* means there is no contract to disagree about.
@@ -349,7 +419,7 @@ had, in substance. Nothing said so.
 
 | Source | When |
 |---|---|
-| a change already in flight | unchecked boxes in `.agents/changes/*/tasks.md`, and in `plan.md` for a change created before the rename |
+| a change already in flight | unchecked boxes in a change's checklist — `proposal.md`'s `## Checklist`, else `tasks.md`, else `plan.md` for a change created before either rename |
 | a tracker key or URL | one was given |
 | what the user said | anything else — the request *is* the input |
 
@@ -400,9 +470,9 @@ branches when it writes the proposal**, and phase 6's step 0 *ensures* a branch 
 creating one. A step that assumes it is first makes a second branch and splits one change
 across two.
 
-**A branch is work in flight too.** Scanning `.agents/changes/*/tasks.md` cannot see the
-trivial lane: a change that needed no spec has no plan to scan, so it exists only as
-commits on a branch. The lane's first real run produced exactly that, and the next phase 1
+**A branch is work in flight too.** Scanning checklists cannot see the trivial lane: a
+change that needed no spec has no checklist to scan, and its capture is deleted in its own
+commit, so it exists only as commits on a branch. The lane's first real run produced exactly that, and the next phase 1
 reported an empty house. Phase 1 also reads `git branch --no-merged` and the forge's open
 requests, and names the state worth naming: **unpushed and un-requested** is work nobody
 but this machine has.
@@ -431,23 +501,39 @@ the user's project. `docs/FLOW.md` is not somewhere they have.
 caller reads one name off disk and invokes another, and the failure is a sub-agent that
 silently never runs.
 
-**A marked box that was never committed was never marked.** The plan ships in the same
+**A marked box that was never committed was never marked.** The checklist ships in the same
 commit as the task that closed it, exactly as the spec does. A `git add` scoped to the code
 leaves it behind in the working tree, and the change that lands then deletes the folder with
 every unrecorded mark still in it — measured on the run that added this line: six commits,
 0/24 boxes, work finished. Phase 1 reads unchecked boxes to decide what is in flight, so
-the failure is silent until the plan disappears.
+the failure is silent until the checklist disappears.
 
-**Every file has exactly one author.** The brief is written once and read many times;
-each spec delta has one writer; the plan has one writer, the orchestrator. This is what
-makes concurrency safe without locks.
+**Every file has exactly one author.** The change document has one writer, the session;
+each `spec-<capability>.md` has one, the session or a fan-out writer; the fresh reviewer
+writes nothing, and `build-and-check` and any subagent report a finished box for the
+session to mark. This is what makes concurrency safe without locks.
 
 **Sub-agents start with no rules loaded.** Every launch carries them explicitly, or the
 default takes over — and the default is to guess plausibly.
 
-**An agent that ships is named by the skill that launches it.** Phase 3's fan-out runs
-`spec-writer`, named in `write-spec`. An agent nothing references is dead payload —
+**An agent that ships is named by the skill that launches it.** `review-spec` launches
+`spec-reviewer`, named in it; `write-spec`'s fan-out names `spec-writer`, which nothing
+outside that section and the agent file may name. An agent nothing references is dead payload —
 `spec-writer` sat unreferenced from its landing until 2026-08-10, and no gate noticed.
+
+**The parsers fix the change document's heading levels.** `spec-drift`'s `criteria_of`,
+`criteria_without_proof` and `section_of` open and close a section on `^##[[:space:]]`
+only, so `## Verification criteria`, `## Prior decisions` and `## Checklist` are level-2
+headings, `## Checklist` its own section — a box under the criteria with no level-2 heading
+between them is read as a criterion and fails `--ears`. **Every line starting `Proof:` or
+`Targets:` outside a fence counts**, in every `.md` under the change roots: the approach
+and the checklist start a line with `Proof:` only to cite a real test, `proposal.md`
+writes exactly one `Targets:`, for the primary capability, and each `spec-<capability>.md`
+one, for its own.
+
+**Old-layout readers stay until nothing old is in flight**, and every place that reads an
+old-layout name says when that reading can go — a `ponytail:` comment in code, a sentence
+in prose — the precedent the `plan.md` → `tasks.md` rename set on 2026-08-17.
 
 **Vendored items are copied unmodified**, with their licence and version recorded. A
 change needed for this flow goes in the skill that calls them, never into the copy, so
@@ -475,34 +561,41 @@ finding, which is the sentence the `readme` capability was created to answer abo
   means reading a capability spec and deciding whether a delta is *present* in it, which
   is a reading — wrong in one direction it accuses a correct landing, wrong in the other
   it clears a broken one. Zero open boxes is the signal; the user interprets it.
-- **A plan's `Durable decisions:` line is a claim about whether the list is empty, never
-  the list.** The list is the change's `spec.md` *Prior decisions*. Both readings looked
+- **A `Durable decisions:` line is a claim about whether the list is empty, never the
+  list.** The list is the change document's own `## Prior decisions` — the change's
+  `spec.md` *Prior decisions* in the old layout, where the line sits in `plan.md`. Both readings looked
   right and the tree held the contradiction to prove it: one plan declared "the two" over
   a section of three, another carried no line at all. Found by a 5→6 cutter reading both
   documents cold.
 - **`plan.md` was reused for the technical approach rather than adding a `design.md`.**
   The complaint was that the file named `plan` is not a plan; a `design.md` beside an
   unchanged `plan.md` leaves that exact file unchanged and the complaint standing.
-  Answered by the user, 2026-08-17.
-- **The task cut is a subagent, not a numbered phase.** Independence comes from the fresh
-  context; renumbering everything that says eight buys nothing, which is the answer the
-  6→7 review seam already gave for itself.
+  Answered by the user, 2026-08-17. Since 2026-10-21 a new change writes the approach as
+  `proposal.md`'s `## Approach` section; the old-layout `plan.md` keeps this meaning.
+- **The checklist is written inline in the 5→6 seam, which stays unnumbered.** Until
+  2026-10-21 a fresh `task-cutter` cut it — *the task cut is a subagent, not a numbered
+  phase* — and its second output, what the documents failed to answer, moved to the fresh
+  `spec-reviewer`, reported per box. Renumbering everything that says eight still buys
+  nothing, the answer the 6→7 review seam already gave for itself.
 - **Phase 5 asks, since 2026-08-19 — retiring the 2026-08-12 decision that it asked
   nothing.** The user reversed it for the fork alone: the approach is the one phase-5
   decision that is genuinely the user's, and a finished decision can only be
   rubber-stamped while a fork with named costs must be decided. The no-third-stop
   argument the original decision was made for survives: the fork rides inside the phase.
-- **Four answers from the user, 2026-08-19, verbatim options:** the interview bound is
-  *"Blando ~5, con juicio"* — never a hard cap; the single-spec case gets a brief always
-  (*"Brief siempre"*) so `spec-writer` keeps one prompt contract; markers are patched by
-  the orchestrator inline (*"Orquestador parchea inline"*), scoped to the bracket
-  expression, the one declared exception to one-author-per-file; attacca's assumptions
-  land in `decisions.md` marked `(assumed)` (*"Sí, marcadas 'assumed'"*), one home for
-  decisions in both modes.
+- **Four answers from the user, 2026-08-19, verbatim options, as they stand after
+  2026-10-21:** the interview bound is *"Blando ~5, con juicio"* — never a hard cap,
+  untouched. *"Brief siempre"* is **retired** for every new change, fan-out included: no
+  `brief.md` is written in the new layout, and a fan-out writer is given `proposal.md` by
+  path instead. *"Orquestador parchea inline"* survives **for the fan-out only**, where a
+  writer can still leave a `[NEEDS CLARIFICATION]` marker for the session to resolve,
+  scoped to the bracket expression, the one declared exception to one-author-per-file; a
+  single-capability change has no writer and so no marker. *"Sí, marcadas 'assumed'"*
+  survives in a new place: assumed answers land in the change document's `## Decision log`,
+  one home for decisions in both modes.
 - **Deliberately not built, with the conditions that bring them back:**
-  section-by-section plan validation, when plans outgrow one read; markers in plans —
-  `plan-writer` returns gaps in its reply, like the cutter; a hard cap of five, if the
-  soft bound degenerates into interrogation.
+  section-by-section document validation, when change documents outgrow one read; markers
+  in the approach — the fresh reviewer reports gaps per box instead; a hard cap of five, if
+  the soft bound degenerates into interrogation.
 - **The specs wiki regenerates at the landing step, not on a schedule and not by a
   daemon.** The landing is the moment the specification moves, so the refreshed index
   rides the same commit as the delta that changed it; a generated view left behind by a
@@ -512,10 +605,11 @@ finding, which is the sentence the `readme` capability was created to answer abo
   capability spec passes on the delta application alone — that happens in the landing
   commit by definition — so the gate would be green on every landing and measure nothing.
   It is the version that looks like a gate and is not one.
-- **Its escape is a declaration in the plan, not a flag.** A flag is typed by whoever
-  wants the commit through, at the moment they want it to stop complaining; a line in the
-  plan is written while the plan is, by the person who knew. No mechanism can stop that
-  line becoming a reflex — `review-work` reads the plan and the diff together.
+- **Its escape is a declaration in the change document, not a flag.** A flag is typed by
+  whoever wants the commit through, at the moment they want it to stop complaining; a line
+  in the document is written while the approach is, by the person who knew. No mechanism
+  can stop that line becoming a reflex — `review-work` reads the approach and the diff
+  together.
 - **New checks ride inside `--anchors` rather than becoming new gates.** The count "six
   gates" is written in ten places across `AGENTS.md`, the CI spec, the contributing spec
   and the workflow, and a number kept in ten places is a number that drifts. Both the
@@ -566,7 +660,7 @@ finding, which is the sentence the `readme` capability was created to answer abo
   Asked separately they bought a second round trip and no safety — a pushed branch with
   no request opened is a state almost nobody wants, and whoever wants it says so in the
   same breath. Native rather than prose because it is the last question in the flow and
-  usually the only one after the plan: a question written as a sentence is a paragraph
+  usually the only one after the stop: a question written as a sentence is a paragraph
   the reader skims, and the flow then waits on an answer to something that read as a
   summary. Observed 2026-08-10, on the run that landed this.
 - **Phase 8 returns to the base branch when the request opens**, checking it out and
@@ -704,12 +798,68 @@ finding, which is the sentence the `readme` capability was created to answer abo
   mixes them writes one project's manias into the flow and breaks it for every other
   project. An entry that could read both ways is project knowledge until the same lesson
   appears somewhere a second time — the cheaper wrong guess.
+- **One change document, one stop, one fresh reviewer** — answered by the user,
+  2026-10-21, from `adopt-organic-driven-development`, verbatim from its decision log:
+  - Q: for substantial work, what replaces the proposal → brief → spec → plan → tasks chain? → A: Un doc de cambio + specs vivos (Recommended) — one document per change (intent, EARS criteria, approach, checklist); capability specs with Governs:/Proof: and the landing stay
+  - Q: with one change document, where does the flow stop for the go-ahead before the push? → A: Un stop: el doc entero (Recommended) — contract, approach and checklist reviewed together, once, before the first line of code; then only the push question
+  - Q: who writes the change document, and where does the fresh eye stay? → A: Sesión escribe, revisor fresco lee (Recommended) — the session writes the document inline; one fresh reviewer (review-spec) reads it before the stop; spec-writer, plan-writer and task-cutter launches go from three to one review
+  - Q: what happens to changes and tooling that read proposal/plan/tasks today? → A: Leer ambos formatos (Recommended) — new changes are born as one document; loop/metrics/wiki/find-work keep reading the old layout for what already exists; nothing in flight is touched
+  - Q: is the change document the same file growing from the capture, or a new one? → A: proposal.md crece (Recommended) — the queue/find-work capture is the document; criteria, approach and checklist are added to the same file; Queued: and proposal.md scans do not change
+  - Q: what is this called in Libretto? → A: Sin sigla, vocabulario propio (Recommended) — no "ODD" in the payload; the flow stays "the Libretto flow", lanes named in its own vocabulary; FLOW.md credits gentle-ai as inspiration in one line
+  - Q: without task-cutter, who checks that the document is enough to build every box? → A: El revisor fresco lo hereda (Recommended) — the one fresh reviewer reads contract and checklist and reports, per box, what the document fails to answer
+  - Q: how does a change touching two or more capabilities carry its contract? → A: proposal.md + spec-<cap>.md extra (Recommended) — proposal.md carries the primary capability contract; each extra capability gets a spec-<cap>.md beside it with its own Targets:
+  - Q: when an extra spec-<cap>.md needs its own writer, who writes it and what does it read? → A: spec-writer, lee proposal.md (Recommended) — agents/spec-writer.md survives for this case only, given proposal.md by path; no brief.md
+
+  **Reversed by it, each named:** *two stops with a contract, none without, and phase 8's
+  question in both* → one stop and phase 8's question; the stop rows `2–3 · write-spec` and
+  `5→6 · write-tasks` → one row, `before 6 · review-spec`; *the stop moved rather than
+  multiplied … the count stays at three* → two; *the contract and the plan are drafted by
+  agents that never saw the conversation* and *the spec's author is `spec-writer`, single
+  case included* → the session drafts inline and the fresh eye reads; *the checklist is cut
+  by an agent that never saw the design* → cut inline, its gaps question moved to the
+  reviewer; *a plan and a checklist, two files* → two sections of one file; *every file has
+  one author … the brief, the plan* → the document has one, the session; *`ask` holds at the
+  5→6 seam* → up to the stop; attacca's *three stops* → two; *`review-spec` runs in the 3→5
+  seam* → after the checklist, before the stop, as a fresh subagent; attacca's assumptions
+  *in `decisions.md`, where the writers read* → in `## Decision log`.
+- **Derived from those answers, 2026-10-21, by the orchestrator — logged, not user
+  answers:**
+  - the checklist is only the boxes under a level-2 `## Checklist`: settled by the code,
+    since spec-drift's parsers react to `## ` only and boxes elsewhere would be read as
+    criteria by `--ears`
+  - `spec-writer` keeps its `libretto models` recommendation (sonnet/high); only
+    `plan-writer` and `task-cutter` keys are forbidden
+  - a deleted `proposal.md` is a contract for `--retired` and `land` by a `Targets:` line
+    outside fences and nothing else. *`## Verification criteria` as a second arm* lost: it
+    let the two landing tools give opposite verdicts on one commit. **Ceiling named:** a
+    contract-lane document written without `Targets:` is invisible to the gate — the blind
+    spot an old-layout change has when its `plan.md` was never written; the fix that day is
+    the fresh reviewer reporting a contract with no `Targets:`
+  - `find-work` counts boxes as the CLI does: `planLine`'s shape, fences excluded, `^##\s`
+    section boundaries, in every reader
+  - `proposal.md` wins as the checklist only by holding a box under `## Checklist`. *Its
+    existence selects it* lost: every change in both layouts has one, so existence would
+    hide every old change's `tasks.md`/`plan.md`
+  - the decision log is a section of the change document and a new change writes no brief:
+    `brief.md` and `decisions.md` existed to feed writers that never had the conversation,
+    and with the session writing inline a second file would contradict *one document*
+  - `review-spec` owns the stop: it is the last thing before code, and the findings have to
+    be on the table when the agreement is made. Its opening sections are the session's
+    conduct (launch, relay, ask); the reviewer's instructions start at the reading
+  - the fresh reviewer is an agent file, `agents/spec-reviewer.md`, not a generic subagent:
+    every fresh seat here has one, and an agent that ships is named by the skill that
+    launches it. `Bash` because `spec-drift --trace` and `--ears` are its first step,
+    `Skill` because its first instruction is `evidence`
+  - `write-spec`, `write-plan` and `write-tasks` stay as skills, each writing its part of
+    the change document against the rules it already held; the phase numbers stay
+  - the acronym rule's scope is `skills/`, `agents/` and `commands/`, the files that
+    install; specs quoting a decision verbatim may contain it
 
 ## Task breakdown
 
 - [x] `find-work` — phase 1, three sources
 - [x] `libretto-status` — read-only, what is in flight
-- [x] `write-spec` — phases 0, 2, 3, including the fan-out and its brief
+- [x] `write-spec` — phases 0, 2, 3, including the fan-out
 - [x] `write-plan` — phase 5
 - [x] `build-and-check` — phase 6
 - [x] `present-work` — phase 7
@@ -718,14 +868,16 @@ finding, which is the sentence the `readme` capability was created to answer abo
 - [x] `libretto-flow` — the routing command
 - [x] `libretto-queue` and `libretto-next` — capture the queue, drain it one at a time,
       with `find-work` owning the scan both read
-- [x] every stop asked with `AskUserQuestion` — phases 2, 5 and 8, plus phase 1's in-flight
-      choice, with the rule stated in each skill that owns one
-- [x] `libretto-attacca` — the three stops answered by the invocation, the classification
+- [x] every stop asked with `AskUserQuestion` — the stop before code and phase 8, plus
+      phase 1's in-flight choice, with the rule stated in each skill that owns one
+- [x] `libretto-attacca` — the stops answered by the invocation, the classification
       in one file, and the five stop-owning skills each stating what happens to their own
 - [x] vendored delegates with attribution
 - [x] ponytail, ponytail-debt, caveman and caveman-commit vendored, callers' prose
       reconciled, THIRD-PARTY.md and docs recording the reversal
 - [x] `spec-drift` and `check-payload`
+- [x] one change document, one stop, one fresh reviewer — `spec-reviewer` added,
+      `plan-writer` and `task-cutter` retired, both layouts read
 - [x] **the flow run end to end against a real task.** `right-size-the-flow` — phase 1
       found it in flight, 2 wrote the delta, 5 the plan, 6 closed six tasks with a commit
       each, 7 reported, 8 consolidated. The forge stop was exercised for real, not
@@ -744,11 +896,12 @@ finding, which is the sentence the `readme` capability was created to answer abo
 
 ## Verification criteria
 
-- **When** a change folder holds `tasks.md` or `plan.md` with at least one box in it and
-  none of those boxes open, phase 1 **shall** report that change as finished and not
-  landed, naming it — and the status command **shall** carry the same report by delegating
-  to that scan. **Where** the folder holds neither file, it **shall not** be reported that
-  way: a captured idea is not an unlanded change. The plan skill **shall** state that a
+- **When** a change folder's checklist — `proposal.md`'s `## Checklist`, else `tasks.md`,
+  else `plan.md` — holds at least one box and none of those boxes open, phase 1 **shall**
+  report that change as finished and not landed, naming it — and the status command
+  **shall** carry the same report by delegating to that scan. **Where** the folder holds no
+  checklist box, it **shall not** be reported that way: a captured idea is not an unlanded
+  change. The plan skill **shall** state that a
   `Durable decisions:` line is a claim about whether the list is empty and not the list
   itself. **Ceiling named:** the gate proves each mandate is *present* in its file, never
   that a session obeyed it — that is behaviour, checked by running it, and it surfaces in
@@ -760,7 +913,34 @@ finding, which is the sentence the `readme` capability was created to answer abo
   decisions: none`, it **shall** pass instead. **When** no such deletion is staged, it
   **shall** report nothing and **shall not** fail. Driven through real temporary
   repositories, because a fixture made of strings would prove the awk and not the git
-  plumbing, and the plumbing is where a gate goes silent — which reads as green.
+  plumbing, and the plumbing is where a gate goes silent — which reads as green. The three
+  old-layout cases kept their expected exit codes, unedited, when the change document
+  arrived.
+  Proof: skills/record-work/spec-drift --self-test
+- **If** a staged commit deletes a `proposal.md` whose `HEAD` copy carries a `Targets:` line
+  outside fences, and no capability spec's *Prior decisions* section differs between `HEAD`
+  and the index, and the deleted copy carries no `Durable decisions: none` line, **then**
+  `spec-drift --retired` **shall** exit 1 naming the change. **Where** the deleted copy
+  declares `Durable decisions: none`, or a *Prior decisions* section moved, it **shall**
+  exit 0.
+  Proof: skills/record-work/spec-drift --self-test
+- **When** a staged commit deletes a `proposal.md` whose `HEAD` copy carries a `Queued:` line
+  and no `Targets:` line outside fences, `spec-drift --retired` **shall** exit 0 and **shall
+  not** report that change as retired. The case broken first: removing `Targets:` from the
+  contract-lane fixture turns its exit 1 into 0, which proves the discriminator is what
+  fires.
+  Proof: skills/record-work/spec-drift --self-test
+- **When** a staged commit deletes both a change's `plan.md` and its contract-lane
+  `proposal.md`, `spec-drift --retired` **shall** report that change once.
+  Proof: skills/record-work/spec-drift --self-test
+- **If** the only staged difference in a `proposal.md` carrying `Targets:` lies inside its
+  `## Checklist` section, **then** default `spec-drift` **shall** still report staged code
+  governed by that capability as code whose specification did not move. **When** anything
+  outside `## Checklist` differs, it **shall** count as the capability moving.
+  Proof: skills/record-work/spec-drift --self-test
+- **Where** a change document holds `## Verification criteria` followed by a `## Checklist`
+  section of `- [ ]` boxes, `criteria_of` **shall** return the criteria and none of the
+  boxes.
   Proof: skills/record-work/spec-drift --self-test
 - **If** a verification criterion carries no EARS `shall`, **then** `spec-drift` **shall**
   read it as unfailable — **where** emphasis or backticks wrap the keyword, it **shall**
@@ -961,16 +1141,17 @@ finding, which is the sentence the `readme` capability was created to answer abo
   the next heading. Reading every bullet in the document instead buries the real findings
   under the Outcomes section, which has no `Proof:` by design.
   Proof: skills/record-work/spec-drift --self-test
-- **the contract is reviewed before a plan is built on it.** Every other review in the flow
-  reads code and all of them run after the code exists, so a criterion no run could fail is
-  agreed at the phase-3 stop, becomes tasks, becomes code, and is then measured against a
+- **the change document is reviewed before code is built on it.** Every other review in the
+  flow reads code and all of them run after the code exists, so a criterion no run could
+  fail is agreed at the stop, becomes boxes, becomes code, and is then measured against a
   sentence nobody could have failed — the work passes and the promise was never real.
-  `review-spec` runs in the 3→5 seam over ambiguity that forks the work, criteria that
-  cannot fail, `Governs:` boundaries describing nothing, and a criterion another capability
-  contradicts. **Before the stop, not after**, because the findings have to be on the table
-  while the agreement is still being made. It reports and never rewrites the spec — a
-  reviewer editing the contract it reviews is the author twice over. Skipped entirely on the
-  trivial lane, which has no contract.
+  `review-spec` runs once the checklist is written, through one fresh `spec-reviewer`, over
+  ambiguity that forks the work, criteria that cannot fail, `Governs:` boundaries
+  describing nothing, a criterion another capability contradicts, and per box what the
+  document fails to answer. **Before the stop, not after**, because the findings have to be
+  on the table while the agreement is still being made. It reports and never rewrites the
+  spec — a reviewer editing the contract it reviews is the author twice over. Skipped
+  entirely on the trivial lane, which has no contract.
   **The proof is the wiring, not the behaviour**, and the difference is stated because
   citing a static checker for a prompt's conduct is a citation that can never fail: review
   deleted every `review-spec` line from the flow and this script stayed green. What is
@@ -1053,16 +1234,14 @@ finding, which is the sentence the `readme` capability was created to answer abo
   absence over an unbounded set.
   **Proved as wiring only.**
   Proof: scripts/check-payload
-- **a fan-out writer is given named brief sections, and always the vocabulary.** The brief's
-  five contents are a fixed, enumerated heading set, so the prompt can name sections back to
-  the writer and both sides hold the same list. Each writer opens what its subtask touches;
-  the vocabulary is never trimmed, because it is the whole mechanism stopping two writers
-  from giving one concept two names, and a brief read in slices without it is worse than a
-  brief read whole. **Sections are named, never excerpted** — excerpting puts N copies in N
-  contexts, which is the cost the brief was introduced to remove. The return contract is
-  unchanged and carries no criterion: `agents/spec-writer.md` already promises deltas rather
-  than restatements and already forbids the empty return, so a row over it would have been
-  green the moment it was written.
+- **a fan-out writer is given `proposal.md` by path, and always the vocabulary.** The change
+  document is the shared ground a brief used to be: its decision log, its vocabulary and
+  the primary capability's contract. Each writer opens what its subtask touches; the
+  vocabulary is never trimmed, because it is the whole mechanism stopping two writers from
+  giving one concept two names. **Parts are named, never excerpted** — excerpting puts N
+  copies in N contexts. The return contract carries no criterion: `agents/spec-writer.md`
+  already promises deltas rather than restatements and already forbids the empty return, so
+  a row over it would have been green the moment it was written.
   **Proved as wiring only.**
   Proof: scripts/check-payload
 - **model and effort do not move part-way through a fan-out.** A phase is billed a fraction
@@ -1118,36 +1297,109 @@ finding, which is the sentence the `readme` capability was created to answer abo
   all. **Proved as wiring only**, three rows: the interview shape, the judgment rule and
   its upper edge.
   Proof: scripts/check-payload
-- **Where** a change reaches phase 2 and a spec is written, `write-spec` **shall** direct
-  the session to create `decisions.md` in the change folder — first write creates it —
-  and record each answer verbatim, dated, `(assumed)` when nobody gave it, before the
-  spec file is written. One writer, the orchestrator; the durable copy is the delta's
-  *Prior decisions*, made per answer. **Proved as wiring only.**
+- **Where** a change reaches phase 2 on the contract lane, `write-spec` **shall** direct the
+  session to write the primary capability's contract into `proposal.md` itself: `Targets:`,
+  the six pillars as level-2 headings, and every answer verbatim, dated, `(assumed)` when
+  nobody gave it, under `## Decision log`, carried into `## Prior decisions` per answer. It
+  **shall not** direct the session to create `brief.md`, `decisions.md` or `spec.md` for a
+  single-capability change. **Proved as wiring only.**
   Proof: scripts/check-payload
-- **the spec's author is `spec-writer`, single case included** — a single writer is a
-  fan-out of one, launched with `brief.md` and `decisions.md` by path. **Where** the
-  inputs do not settle a decision, the writer **shall** leave `[NEEDS CLARIFICATION:
-  question]` and never guess; the orchestrator **shall** resolve each marker by asking,
-  logging, and replacing the bracket expression only — the one declared exception to
-  one-author-per-file, anything beyond it a relaunch. **Proved as wiring only**, three
-  rows across the skill and the agent.
+- **Where** a change amends more than one capability, `write-spec` **shall** direct that
+  each extra capability's contract is written to a `spec-<capability>.md` beside
+  `proposal.md` with its own `Targets:` line, and **shall** launch a writer for one only when
+  the session's context cannot hold its research. **Where** the inputs do not settle a
+  decision, that writer **shall** leave `[NEEDS CLARIFICATION: question]` and never guess;
+  the session **shall** resolve each marker by asking, logging, and replacing the bracket
+  expression only — the one declared exception to one-author-per-file, anything beyond it a
+  relaunch. **Proved as wiring only.**
   Proof: scripts/check-payload
-- **When** phase 5 runs on a change with a contract, `write-plan` **shall** present two
-  or three approaches with tradeoffs as one native question, recommended first with its
-  reason, and **shall** record chosen and rejected with why in `decisions.md`. `plan.md`
-  **shall** be drafted by `plan-writer` — tools `Read, Grep, Glob, Skill` and nothing
-  else, pinned by its own wiring row — returning markdown the orchestrator writes.
-  **Proved as wiring only**, three rows: the fork, the log, the launch.
+- **When** phase 5 runs on the contract lane, `write-plan` **shall** present two or three
+  approaches with tradeoffs as one native question, recommended first with its reason,
+  logging chosen and rejected verbatim in the decision log, and **shall** direct the session
+  to write `## Approach` and the `Durable decisions:` line into the change document, with no
+  box in the approach. **Proved as wiring only**: the fork row, the `No checkboxes.` row,
+  and the log row naming the decision-log section.
   Proof: scripts/check-payload
-- **While** a run is `/libretto-attacca`, the interview, the fork and every marker
-  **shall** become `(assumed)` entries in `decisions.md`, each naming what changes if
-  wrong — logged where the writers read, so an assumed answer reaches them the same way
-  a given one does. **Proved as wiring only.**
+- **When** the 5→6 seam runs on the contract lane, `write-tasks` **shall** direct the session
+  to write the checklist under a level-2 `## Checklist` as the change document's last
+  section, keeping `one badly cut box` and the one-writer rule. **Proved as wiring only.**
   Proof: scripts/check-payload
-- **the three stops are each asked natively, and the check is the string search across
-  stop-owning skills** — one row per stop: `write-spec`, `write-tasks`, `record-work`.
-  That a fourth stop does not exist stays uncheckable, the same ceiling the stop table
-  above has always named — a script cannot tell a prompt from a paragraph.
+- **If** any file under `skills/`, `agents/` or `commands/` names `plan-writer` or
+  `task-cutter`, or `agents/plan-writer.md` or `agents/task-cutter.md` exists, **then**
+  `check-payload` **shall** fail naming it.
+  Proof: scripts/check-payload
+- **If** any file under `skills/`, `agents/` or `commands/` names `spec-writer` outside
+  `write-spec`'s fan-out section and the agent file itself, **then** `check-payload`
+  **shall** fail naming it. A section-aware row, because the rows are otherwise
+  line-scoped.
+  Proof: scripts/check-payload
+- **If** `agents/spec-writer.md` names `brief.md` or `decisions.md` as an input, **then**
+  `check-payload` **shall** fail naming the file. Observed red on the agent file as it read
+  both, before its prose moved to `proposal.md`.
+  Proof: scripts/check-payload
+- **When** the contract lane's checklist is written, `review-spec` **shall** launch exactly
+  one `spec-reviewer` with, by path, the change document, every `spec-<capability>.md`
+  beside it, and the capability spec(s) their `Targets:` lines name, and with none of the
+  conversation, and **shall** relay the reviewer's findings unedited. **Proved as wiring
+  only**: the launch sentence and the agent name in `review-spec`.
+  Proof: scripts/check-payload
+- The `spec-reviewer` agent **shall** declare exactly the tools `Read, Grep, Glob, Bash,
+  Skill`, and **shall** carry the instruction never to edit what it reviews; `review-spec`
+  **shall** keep `never rewrites the spec`.
+  Proof: scripts/check-payload
+- The `spec-reviewer` agent **shall** report, for each box under `## Checklist`, what the
+  contract and the approach fail to answer for building it, naming the gap and the part of
+  the document that should have answered it, and **shall not** propose the answer. **Proved
+  as wiring only**: one row on the agent's per-box sentence.
+  Proof: scripts/check-payload
+- **When** the fresh reviewer has returned on a contract-lane change, `review-spec` **shall**
+  ask the one stop natively, on the whole change document, and `write-spec` and
+  `write-tasks` **shall not** ask for a go-ahead; phase 8's push stays asked natively in
+  `record-work`. One row each, written against the skills' own wording and observed red
+  before the prose moved. **Ceiling named:** that no other stop exists stays uncheckable,
+  the limit the stop table has always named — a script cannot tell a prompt from a
+  paragraph.
+  Proof: scripts/check-payload
+- **When** `/libretto-flow` routes the contract lane, it **shall** route `write-spec`,
+  `write-plan`, `write-tasks` and then `review-spec`, keep `before the stop, not after`, and
+  state the gear as one stop on the contract lane, none on the trivial lane, and phase 8's
+  question in both. `/libretto-attacca` **shall** still route to `review-spec`. **Proved as
+  wiring only.**
+  Proof: scripts/check-payload
+- **While** a run is `/libretto-attacca`, the interview, the fork and the stop **shall**
+  become `(assumed)` entries in the change document's `## Decision log`, each naming what
+  changes if it is wrong — logged where a fan-out writer reads, so an assumed answer
+  reaches it the same way a given one does — and the command **shall** name the one stop
+  and the push as what the invocation answered. **Proved as wiring only.**
+  Proof: scripts/check-payload
+- **When** phase 8 lands a change-document change, `record-work` **shall** direct the
+  session to do three things in one commit: apply `proposal.md`'s contract and each
+  `spec-<capability>.md` onto the capability spec its `Targets:` names, retire the
+  `## Prior decisions` entries that outlive the change, and delete the folder. For an
+  old-layout change it **shall** read `spec.md` and `plan.md` as before. **Proved as wiring
+  only.**
+  Proof: scripts/check-payload
+- **When** a change folder's `proposal.md` holds at least one box under `## Checklist`,
+  `find-work` **shall** read it as that change's checklist in both scans, ahead of
+  `tasks.md` and `plan.md`; **where** it holds none, the skill **shall** fall back to
+  `tasks.md`, then `plan.md`. It **shall** count boxes by the CLI's definition: a line
+  matching `^\s*[-*]\s+\[( |x|X)\]`, none inside a fence, in `proposal.md` only within a
+  `## Checklist` section closed by the next `^##\s` heading. **Proved as wiring only**: the
+  scan lines, the selection sentence and the box definition are present in the skill.
+  Proof: scripts/check-payload
+- **When** `/libretto-status` reports, it **shall** delegate to `find-work`'s scan, and so
+  count boxes by the same definition as the CLI, and **shall** name `proposal.md` among the
+  files that scan reads, never restating the scan. **Proved as wiring only.**
+  Proof: scripts/check-payload
+- **When** step 0 sends a change down the trivial lane, `write-spec` **shall** direct that
+  the change folder phase 1 created is deleted in the trivial lane's own commit, and
+  `find-work` **shall not** claim the trivial lane never creates a `changes/` directory.
+  **Proved as wiring only**: the instruction is present and the old sentence is absent.
+  Proof: scripts/check-payload
+- **If** any file under `skills/`, `agents/` or `commands/` contains the acronym quoted in
+  the 2026-10-21 naming answer as a case-sensitive whole word, or the method's spelled-out
+  name in any case, **then** `check-payload` **shall** fail naming the file. Observed red on
+  a hand-broken copy before it was trusted, since the tree it shipped against held neither.
   Proof: scripts/check-payload
 
 The bump question's rows, one per condition. **Each was written before the prose it
@@ -1240,8 +1492,8 @@ branch unchanged, and a phase 2 with nothing to ask saying so in one line.
 
 **The unattended mode is prose and none of it has run either**, and it is the one where
 that gap costs the most, because every claim is about what happens when nobody is
-watching. Claims, not facts: that a run passes the spec stop and the plan stop with both
-artifacts on disk; that it ends at a pushed branch with a request whose description names
+watching. Claims, not facts: that a run passes the stop before code with the change
+document on disk; that it ends at a pushed branch with a request whose description names
 what the invocation answered; that **a failing gate stops it on its branch with no request
 opened**; that an absent `gh` stops it with the install line and nothing else; and that a
 question it could not derive appears as a marked assumption in the spec, the report and

@@ -262,6 +262,11 @@ check_wiring() {  # <file> <pattern> <description>
   if rg -qN -- "$2" "$1" 2>/dev/null; then ok "$3"
   else fail "$3 — $1 no longer contains /$2/"; fi
 }
+# The inverse. Two of this change's criteria are about what must NOT be in the command
+# that describes no phase, and a presence check cannot express either.
+check_absent() {  # <file> <pattern> <description>
+  if rg -qN -- "$2" "$1" 2>/dev/null; then fail "$3 — $1 still contains /$2/"; else ok "$3"; fi
+}
 check_wiring commands/libretto-flow.md   'Skill\(skill="review-spec"\)' 'the flow routes to review-spec'
 check_wiring commands/libretto-attacca.md 'Skill\(skill="review-spec"\)' 'attacca routes to review-spec too'
 check_wiring commands/libretto-flow.md   'before the stop, not after'   'review-spec runs before the contract stop'
@@ -271,29 +276,29 @@ check_wiring skills/write-spec/SKILL.md  'fails right now'              'the bug
 check_wiring skills/find-work/SKILL.md   'whether it is a bug'          'phase 1 names bug-or-not'
 check_wiring skills/find-work/SKILL.md   'dispatched by a branch'       'the queue scan drops a proposal its branch already took'
 check_wiring skills/write-spec/SKILL.md  'never the corpus'             'phase 2 selects the governing spec, not the spec root'
-check_wiring skills/write-spec/SKILL.md  'always the vocabulary'        'a fan-out brief section is named per subtask, vocabulary always'
-check_wiring skills/write-spec/SKILL.md  'rebills the whole context'    'the fan-out states what a mid-phase model switch costs'
+check_wiring skills/write-spec/SKILL.md  'proposal\.md.*always the vocabulary' 'a fan-out writer is given proposal.md by path, its vocabulary always'
+check_wiring skills/write-spec/SKILL.md  'rebills the whole context'    'the fan-out of spec-<capability>.md writers states what a mid-phase model switch costs'
 check_wiring skills/record-work/SKILL.md 'opt-in and stays' 'the block hook snippet is documented as opt-in'
 check_wiring skills/build-and-check/SKILL.md 'judging the change means looking' 'phase 6 renders and looks at visual output'
 check_wiring skills/review-work/SKILL.md 'the phase field exactly .6→7.' 'the seam ledgers each finding as 6→7'
 check_wiring skills/write-spec/SKILL.md 'no hard cap, and the bias is toward asking' 'phase 2 questions are judgment, biased to ask'
 check_wiring skills/write-spec/SKILL.md 'never a form-length interrogation' 'the judgment rule keeps its upper edge'
-check_wiring skills/write-spec/SKILL.md  'decisions\.md'                'phase 2 defines the decision log, verbatim and dated'
+check_wiring skills/write-spec/SKILL.md  '## Decision log'              'phase 2 defines the decision log as a section of proposal.md, verbatim and dated'
 check_wiring skills/write-spec/SKILL.md  'one question per .AskUserQuestion. call' 'phase 2 interviews: one at a time, recommendation reasoned, no-more always offered'
-check_wiring skills/write-spec/SKILL.md  'a single writer is a fan-out of one' 'the single-spec case is authored by spec-writer too'
 check_wiring skills/write-spec/SKILL.md  'NEEDS CLARIFICATION'          'the orchestrator resolves markers: ask, log, patch the bracket expression only'
 check_wiring agents/spec-writer.md       'NEEDS CLARIFICATION'          'the writer marks what its inputs left open, never guesses past it'
 check_wiring skills/write-plan/SKILL.md  'two or three approaches'      'phase 5 forks: the user chooses the approach from named tradeoffs'
-check_wiring skills/write-plan/SKILL.md  'decisions\.md'                'the fork logs chosen and rejected, with why, verbatim'
-check_wiring skills/write-plan/SKILL.md  'launch one .plan-writer.'     'the plan is drafted fresh and the orchestrator writes the file'
-check_wiring commands/libretto-attacca.md 'decisions\.md'               'attacca logs every assumed answer where the writers read'
-# The three stops, as the payload spec's own ceiling names the check: the string search
+check_wiring skills/write-plan/SKILL.md  '## Decision log'              'the fork logs chosen and rejected, with why, verbatim'
+check_wiring commands/libretto-attacca.md '## Decision log'             'attacca logs every assumed answer in the change document'
+# The two stops, as the payload spec's own ceiling names the check: the string search
 # across stop-owning skills. Presence of each stop's native question is checkable; that
-# no fourth stop exists is not — a script cannot tell a prompt from a paragraph.
-check_wiring skills/write-spec/SKILL.md   'AskUserQuestion'             'stop 1 — the contract — is asked natively'
-check_wiring skills/write-tasks/SKILL.md  'AskUserQuestion'             'stop 2 — the order, at the 5→6 seam — is asked natively'
-check_wiring skills/record-work/SKILL.md  'AskUserQuestion'             'stop 3 — the push — is asked natively'
-check_wiring agents/plan-writer.md        'tools: Read, Grep, Glob, Skill' 'plan-writer stays read-only — no Write, no Bash'
+# no third stop exists is not — a script cannot tell a prompt from a paragraph. What is
+# checkable is that the two retired stops did not survive beside their replacement, so
+# those are absence rows written against the skills' own wording.
+check_wiring skills/review-spec/SKILL.md  'AskUserQuestion'             'stop 1 — the whole change document, before code — is asked natively'
+check_absent skills/write-spec/SKILL.md   'wait for the go-ahead'       'phase 2 no longer stops for the contract on its own'
+check_absent skills/write-tasks/SKILL.md  'Ask for the go-ahead'        'the 5→6 seam no longer stops for the order on its own'
+check_wiring skills/record-work/SKILL.md  'AskUserQuestion'             'stop 2 — the push — is asked natively'
 check_wiring skills/evidence/SKILL.md    'lessons\.md'                  'evidence captures corrections into the ledger'
 check_wiring skills/evidence/SKILL.md    'Said:'                        'the capture keeps the user words, not a paraphrase'
 check_wiring skills/retro/SKILL.md       'Resolved:'                    'retro spends entries by marking, never editing'
@@ -321,7 +326,6 @@ check_wiring skills/write-tasks/SKILL.md 'one badly cut box' 'a box is cut to st
 # checkbox vocabulary: phase 5 writing state again is the drift back to what was reported.
 check_wiring skills/write-plan/SKILL.md 'No checkboxes.' 'the plan holds the approach and never the state'
 check_wiring skills/write-plan/SKILL.md 'Why it lost' 'the plan records the alternatives the approach beat'
-check_wiring skills/write-tasks/SKILL.md 'task-cutter' 'the checklist is cut by a subagent that never saw the design'
 # Phase 1 ran over this exact state and said nothing: two changes with every box closed,
 # their folders still present, their landing unfinished. The signal was already in the two
 # rg scans it runs — rg -c is silent for a file that did not match — and no sentence said
@@ -332,19 +336,105 @@ check_wiring commands/libretto-status.md 'finished and not landed' 'status repor
 # The 6→7 reviewer found this one missing: the change added three mandates and wired two.
 # The unwired one settled which document a retirement reads, after the tree was already
 # holding the contradiction it exists to prevent.
-check_wiring skills/write-plan/SKILL.md 'never the list' 'the Durable decisions line is a claim about whether the list is empty, not the list'
+check_wiring skills/write-plan/SKILL.md 'never the list' 'the Durable decisions line is a claim about whether the list is empty, not the list, in whichever document carries it'
 
-# The inverse. Two of this change's criteria are about what must NOT be in the command
-# that describes no phase, and a presence check cannot express either.
-check_absent() {  # <file> <pattern> <description>
-  if rg -qN -- "$2" "$1" 2>/dev/null; then fail "$3 — $1 still contains /$2/"; else ok "$3"; fi
-}
 # The pattern is the command's own wording, not the payload spec's. The plan named the
 # spec's phrase — which the command never contained — so the row was green the moment it
 # was written and proved nothing. The red step is what caught it.
 check_absent commands/libretto-attacca.md 'or put a .release:. label on the request' 'the command no longer forbids labelling outright'
 check_absent commands/libretto-attacca.md 'gh pr edit'               'the command does not restate phase 8'
 check_wiring commands/libretto-attacca.md 'a bump the user did not choose' 'labelling is forbidden only when unchosen'
+
+# Two layouts, one box rule. A bare `- [ ]` count over the whole file is not the CLI's
+# definition: it counts fenced boxes, and in proposal.md every box outside `## Checklist`.
+# The absent rows are the old scan and the old trivial-lane sentence, so neither comes back
+# beside its replacement.
+check_wiring skills/find-work/SKILL.md '\^\\s\*\[-\*\]\\s\+\\\[\( \|x\|X\)\\\]' 'phase 1 states the CLI box definition'
+check_wiring skills/find-work/SKILL.md 'is the checklist when its .## Checklist. holds a box' 'phase 1 picks proposal.md, then tasks.md, then plan.md'
+check_wiring skills/find-work/SKILL.md 'for f in proposal\.md tasks\.md plan\.md' 'both scans read the three files in that order'
+check_absent skills/find-work/SKILL.md "rg -c '\^\\\\s\*- " 'the bare whole-file box count is gone'
+check_absent skills/find-work/SKILL.md 'needed no spec never creates'  'phase 1 no longer claims the trivial lane leaves no change folder'
+check_wiring skills/write-spec/SKILL.md 'in the trivial lane.s own commit' 'the trivial lane deletes its phase-1 capture'
+check_absent skills/write-spec/SKILL.md 'Six pillars, a brief and a plan' 'step 0 names no brief or plan the flow no longer writes'
+# The method borrows an idea and none of a name: what installs speaks Libretto's own vocabulary.
+# Case-sensitive on the acronym, so the ordinary word "odd" stays free to be used.
+for d in skills agents commands; do
+  if rg -qN -w -- 'ODD' "$d" 2>/dev/null || rg -qNi -- 'organic[- ]driven' "$d" 2>/dev/null; then
+    fail "$d names the borrowed method — the installed payload uses Libretto's own vocabulary"
+  else ok "$d carries no borrowed method name"; fi
+done
+check_wiring commands/libretto-status.md 'Skill\(skill="find-work"\)' 'status delegates the scan to find-work'
+check_wiring commands/libretto-status.md 'proposal\.md..s .## Checklist.' 'status names proposal.md among the files the scan reads'
+
+# One change document, one stop, one fresh reviewer. The session writes proposal.md
+# inline; a writer survives only for an extra capability's spec-<capability>.md, and a
+# reviewer that never had the conversation reads the whole document before the one stop.
+check_wiring skills/write-spec/SKILL.md 'contract into .proposal\.md. itself' 'phase 2 writes the primary contract into proposal.md, inline'
+check_wiring skills/write-spec/SKILL.md 'six pillars as level-2 headings' 'the six pillars are level-2 headings, where spec-drift reads sections'
+check_absent skills/write-spec/SKILL.md 'brief\.md'                       'phase 2 writes no brief'
+check_absent skills/write-spec/SKILL.md 'decisions\.md'                   'phase 2 writes no separate decision log'
+check_wiring skills/write-spec/SKILL.md 'spec-<capability>\.md'           'an extra capability gets its own spec-<capability>.md beside proposal.md'
+check_wiring skills/write-spec/SKILL.md 'context cannot hold'             'a fan-out writer is launched only when context cannot hold the research'
+check_wiring skills/write-plan/SKILL.md '## Approach'                     'phase 5 writes ## Approach into the change document'
+check_wiring skills/write-tasks/SKILL.md '## Checklist., the change document.s last section' 'the checklist is the change document'"'"'s last section'
+check_wiring skills/write-tasks/SKILL.md 'The session owns the checklist' 'one writer: the session marks the boxes'
+check_wiring skills/record-work/SKILL.md 'proposal\.md..s contract and each .spec-<capability>\.md.' 'phase 8 lands the change document and each extra spec'
+check_wiring skills/record-work/SKILL.md 'old-layout change'              'phase 8 still lands a change in the old layout'
+check_wiring agents/spec-writer.md       'proposal\.md'                    'the fan-out writer reads proposal.md by path'
+check_absent agents/spec-writer.md       '\bbrief\b|decisions\.md'         'the fan-out writer names no brief and no decisions.md as an input'
+check_wiring agents/spec-reviewer.md     '^tools: Read, Grep, Glob, Bash, Skill$' 'spec-reviewer declares exactly Read, Grep, Glob, Bash, Skill'
+check_wiring agents/spec-reviewer.md     'Never edit anything'             'spec-reviewer never edits what it reviews'
+check_wiring agents/spec-reviewer.md     'For each box under .## Checklist.' 'spec-reviewer reports per box what the document fails to answer'
+check_wiring skills/review-spec/SKILL.md 'exactly one .spec-reviewer.'     'review-spec launches one fresh spec-reviewer'
+check_wiring skills/review-spec/SKILL.md 'none of the conversation'        'the reviewer is given paths and none of the conversation'
+check_wiring skills/review-spec/SKILL.md 'unedited'                        'review-spec relays the findings unedited'
+check_wiring commands/libretto-flow.md   'one stop on the contract lane'   'the flow states its gear as one stop, none on the trivial lane'
+check_absent commands/libretto-flow.md   'two stops with a contract'       'the retired two-stop gear is gone'
+check_wiring commands/libretto-attacca.md 'the one stop and the push'      'attacca names the one stop and the push as what it answered'
+
+# The contract lane runs write-spec, write-plan, write-tasks, then review-spec: the
+# reviewer reads the whole document, so it cannot run before the checklist exists.
+if awk '
+  /Skill\(skill="write-spec"\)/  && !a { a = NR }
+  /Skill\(skill="write-plan"\)/  && !b { b = NR }
+  /Skill\(skill="write-tasks"\)/ && !c { c = NR }
+  /Skill\(skill="review-spec"\)/ && !d { d = NR }
+  END { exit !(a && a < b && b < c && c < d) }
+' commands/libretto-flow.md; then
+  ok 'the flow routes write-spec, write-plan, write-tasks, then review-spec'
+else
+  fail 'commands/libretto-flow.md does not route write-spec → write-plan → write-tasks → review-spec in that order'
+fi
+
+# Neither retired writer is named or shipped. An agent that ships is named by the skill
+# that launches it, so a name left behind is either a launch nobody can make or a file
+# the linker installs for nothing.
+retired_hits=$(rg -n 'plan-writer|task-cutter' skills agents commands 2>/dev/null || true)
+for a in plan-writer task-cutter; do
+  [ -e "agents/$a.md" ] && retired_hits="${retired_hits:+$retired_hits$'\n'}agents/$a.md exists"
+done
+if [ -z "$retired_hits" ]; then
+  ok 'neither plan-writer nor task-cutter is named or shipped'
+else
+  while IFS= read -r h; do fail "a retired writer is still named or shipped: $h"; done <<< "$retired_hits"
+fi
+
+# spec-writer survives for one seat: write-spec's fan-out. Line-scoped rows cannot say
+# "only inside that section", so this tracks it — the section opens on `## Step 2b` and
+# closes on the next level-2 heading outside a fence, the boundary spec-drift reads too.
+sw_hits=$(rg -l 'spec-writer' skills agents commands 2>/dev/null | while IFS= read -r f; do
+  [ "$f" = agents/spec-writer.md ] && continue
+  awk -v f="$f" -v ws="$([ "$f" = skills/write-spec/SKILL.md ] && echo 1)" '
+    /^```/ { fence = !fence }
+    ws && !fence && /^## / { fan = ($0 ~ /^## Step 2b/) }
+    /spec-writer/ && !fan { print f ":" NR }
+  ' "$f"
+done)
+if [ -z "$sw_hits" ]; then
+  ok 'spec-writer is named only in write-spec'"'"'s fan-out section and its own file'
+else
+  while IFS= read -r h; do fail "spec-writer named outside write-spec's fan-out: $h"; done <<< "$sw_hits"
+fi
 
 printf '\n── skills never point at an executable that is not installed ──\n'
 # `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md

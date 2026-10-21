@@ -4,7 +4,7 @@ description: "Trigger: a task has been read and needs a specification; writing o
 license: MIT
 metadata:
   author: pausf
-  version: "1.2"
+  version: "2.0"
 ---
 
 ## What this does
@@ -12,7 +12,9 @@ metadata:
 Phase 2 of the Libretto flow: turn a task into a contract.
 
 Input is a task already loaded by `find-work` — key, summary, description,
-subtasks. Output is one or more spec files and nothing else.
+subtasks. Output is the contract, written into the change document
+`.agents/changes/<change>/proposal.md` — plus one `spec-<capability>.md` beside it for each
+extra capability the change amends — and nothing else.
 
 **No code. No branch. No commit. No plan.** Those are phases 5, 6 and 8. A spec
 session that also writes code has stopped being a spec session, and the contract
@@ -26,13 +28,17 @@ are what the whole flow later gets measured against.
 Ask it before anything else, and be willing to hear no.
 
 A one-line change, a typo, a version bump, a rename with no behaviour behind it —
-none of these need a contract. Six pillars, a brief and a plan around a
-two-character fix is the exact over-engineering this project exists to prevent,
-applied to itself.
+none of these need a contract. Six pillars around a two-character fix is the exact
+over-engineering this project exists to prevent, applied to itself.
 
 When the task is that small, say so, hand back to the flow, and let it go straight
 to the change, its check and a commit. **Skipping this phase is a legitimate
 outcome of it.**
+
+**The capture goes with it.** Phase 1 writes `.agents/changes/<name>/proposal.md` for
+every request made in conversation, before this step can say no, so the trivial lane
+starts with a folder holding no contract. It is deleted in the trivial lane's own commit.
+Left behind, it is a change that will never be cut, and every later phase 1 walks past it.
 
 **And the "no" collapses the ceremony with it.** A change that needed no spec does not
 get phase 7's gate either: the report and the commit land in the same turn, and the
@@ -90,15 +96,16 @@ wearing a capability's clothes, and it is dead the day the fix ships. If no exis
 capability owns the path, that is itself the finding — say so, because unowned code is
 how a bug got there unmeasured.
 
-## Step 1 — One spec, or several?
+## Step 1 — One capability, or several?
 
 Ask what the shape is before writing anything.
 
-**One spec** when the task is a single coherent change that fits one session with
-room to spare.
+**One** when the change amends a single capability. Its contract goes in `proposal.md`.
 
-**Several** when it does not. Split by **coherence**, not by parallelism — one spec
-holds one idea that can be argued about on its own. Splitting to make agents run
+**Several** when it amends more. The primary capability's contract goes in
+`proposal.md`, and each extra one in its own `spec-<capability>.md` beside it — step 2b.
+Split by **coherence**, not by parallelism — one spec holds one idea that can be argued
+about on its own. Splitting to make agents run
 concurrently produces specs that each describe half an idea and cannot be reviewed.
 If the subtasks in the tracker already cut along coherent lines, use them; if they
 cut along assignment lines, ignore them and cut again.
@@ -118,11 +125,10 @@ So read the code first. Specifically:
 - what will break if this change is naive
 - whether a decision recorded elsewhere already settles part of this
 
-With one spec, read the code inline — a research sub-agent for a change you can hold
-in your head is a round trip for nothing. **The writing is a different matter**: the
-spec file itself is authored by `spec-writer` in every case, single or fan-out. The
-reading informs the brief and the questions; the drafting leaves this session — see
-step 4b for why.
+Read the code inline — a research sub-agent for a change you can hold in your head is a
+round trip for nothing. **The writing stays here too.** The session that read the code and
+ran the interview writes the contract itself, in step 4b; a writer is launched only for an
+extra capability whose research this context cannot hold — step 2b.
 
 ### The specification is selected, never the corpus
 
@@ -130,7 +136,7 @@ That last bullet is a lookup, and it is one that gets done by reading everything
 not. **Open the spec that governs this change, never the corpus**, and find it in this
 order:
 
-1. **the change's own `Targets:`**, when a delta already exists — that names the
+1. **the change's own `Targets:`**, when its document already carries one — that names the
    capability outright, and it is how `review-work` already assembles a reviewer's world
 2. **the `Governs:` line** that claims the path being changed. That is what `Governs:`
    is for, and it is the same lookup the bug branch above depends on
@@ -177,54 +183,33 @@ above is written to work under all three, which is why it leads with `Targets:` 
 doing the consolidation. A staging area nobody empties is just a second source of
 truth.
 
-## Step 2b — The brief, and the fan-out when there are several
+## Step 2b — The fan-out, only when context requires it
 
-**Every spec gets a brief, whatever the count.** The single-spec brief is shorter —
-often a screen — but it has the same five headings, so `spec-writer`'s contract does
-not change with the count, and what the writer was told is on disk either way. For a
-single spec it is written after step 4's interview, when the decisions it must carry
-exist; for a fan-out it is written here, because the interview's answers are shared
-ground too.
+**One capability is written inline, always.** Nothing is launched for it: step 4b writes
+it into `proposal.md`.
 
-Ten subtasks researched in this thread will exhaust the context, which is the exact
-problem fanning out exists to solve. So sub-agents write their own spec files —
-several in parallel when the change is several specs.
+**A change amending more than one capability** carries the primary capability's contract
+in `proposal.md` and one `spec-<capability>.md` beside it per extra capability, each with
+its own `Targets:` line and its own six pillars. The decision log, the approach, the
+`Durable decisions:` line and the checklist exist once, in `proposal.md`. With room in
+context, the session writes those files inline as well.
 
-**The context is the only reason to fan out.** Fanning out because the answer is not
-yet obvious turns a reflex into a research project — if two readings of the code
-already settle it, settle it and move on. Ten agents dispatched to confirm
-something visible from one file is the expensive kind of thoroughness.
+**The context is the only reason to fan out.** Launch a writer for an extra capability
+only when this session's context cannot hold its research — ten subtasks researched in one
+thread will exhaust it, which is the exact problem fanning out exists to solve. Fanning out
+because the answer is not yet obvious turns a reflex into a research project — if two
+readings of the code already settle it, settle it and move on.
 
-The risk that creates is a set of specs that each make sense alone and contradict
+The risk a fan-out creates is a set of specs that each make sense alone and contradict
 each other — different names for one concept, incompatible assumptions, the same
 decision made twice two ways. Consistency has to come from somewhere other than a
 single author.
 
-**It comes from a brief written once, here, before any sub-agent starts.** Read the
-shared ground and write it to `.agents/changes/<change>/brief.md`, inside the change
-whose deltas it will produce:
-
-- the conventions actually in use — naming, layout, error shape, test style
-- the constraints everyone inherits
-- the decisions already settled, and by whom
-- **the vocabulary** for every concept the specs will share, so two agents cannot
-  give one thing two names
-- the six-pillar structure they all fill in
-
-**Those five are headings in the file, and they are the whole set.** Fixed rather than
-invented per change, because the prompt below names sections back to the writer and a
-name only works when both sides hold the same list.
-
-A file, not a paragraph held in this conversation. Three reasons, and the third is
-the one that matters:
-
-1. Ten sub-agents given the text verbatim is ten copies consuming ten contexts. One
-   path is one line.
-2. It is auditable. What they were told is on disk, so a spec that came out wrong
-   can be traced to the instruction that produced it.
-3. **It can be re-run.** When the brief turns out to be wrong, the fix is to correct
-   the brief and regenerate the affected specs — which is impossible if the brief
-   only ever existed inside a prompt.
+**It comes from `proposal.md`, written first.** Its decision log, the primary contract and
+**the vocabulary** for every concept the specs will share are the ground every writer
+reads, so two writers cannot give one thing two names. No separate brief and no separate
+log are written beside it: the change document already is both, and a second file about
+the same change is a second source of truth.
 
 ### Do not change the model or the effort part-way through a fan-out
 
@@ -242,43 +227,32 @@ Between phases is free — that is a new prefix either way.
 it or stop a hand from moving it; what a skill can do is put the cost where somebody
 about to launch eight writers will see it.
 
-Commit it with the deltas. It is the provenance of the whole change, and it is as
-temporary as the change — when the deltas land on their capability specs, the brief
-goes with the folder. What survives is what the deltas carried into the specs.
-
 ### The bridge runs one way
 
 ```
-orchestrator ──writes once──▶ brief.md ──read-only──▶ N sub-agents
-sub-agent    ──writes──▶ its own spec file       (one author per file)
-sub-agent    ──returns──▶ findings in its reply  (never to a file)
+session  ──writes──▶ proposal.md ──read-only──▶ N writers
+writer   ──writes──▶ its own spec-<capability>.md   (one author per file)
+writer   ──returns──▶ findings in its reply           (never to a file)
 ```
 
-**Sub-agents never write to the brief.** N writers on one file is the lost-update
-race that `skills/write-tasks/` exists to avoid — two reads of the same content, two
-writes, the second silently discarding the first. Findings come back in the return
-value.
+**Writers never write to `proposal.md`.** N writers on one file is the lost-update race
+that `skills/write-tasks/` exists to avoid — two reads of the same content, two writes,
+the second silently discarding the first. Findings come back in the return value.
 
-Every file in this phase has exactly one author. That is the property that makes the
-fan-out safe, and it is the same rule as the plan's, with a different single writer.
+Every file in this phase has exactly one author: the session writes the change document,
+and each `spec-<capability>.md` is written by the session or by one writer.
 
-### What each sub-agent is given
+### What each writer is given
 
-Each one is launched as the `spec-writer` agent — that contract exists for exactly
-this seat, and a generic sub-agent would start without it. In its prompt:
+Each one is launched as the `spec-writer` agent — that contract exists for exactly this
+seat, and a generic sub-agent would start without it. In its prompt:
 
-- the path to the brief, **and which of its five sections this subtask touches — and
-  always the vocabulary**. Naming sections is what keeps a brief affordable as it grows:
-  a brief serving eight subtasks carries eight subtasks' worth of settled decisions, and
-  the writer of one of them pays for all eight to find its own. The vocabulary is never
-  trimmed and never optional, because it is the entire mechanism stopping two writers
-  from giving one concept two names — a brief read in slices with the shared names left
-  out is worse than a brief read whole
-- **the path, never the text.** Sections are named, not excerpted: excerpting is what
-  puts N copies in N contexts, which is the cost the brief exists to remove
-- **the path to `decisions.md`**, when it exists — the user's answers, verbatim, which
-  the writer carries into its *Prior decisions* pillar as they stand
-- its own subtask — key, summary, description
+- **the path to `proposal.md`** — its log, its contract, and always the vocabulary. The
+  log carries the user's answers verbatim, which the writer carries into its *Prior
+  decisions* pillar as they stand. The vocabulary is never optional, because it is the
+  entire mechanism stopping two writers from giving one concept two names
+- **the path, never the text.** Excerpting is what puts N copies in N contexts
+- its own capability — which one, and what of the request it covers
 - the boundary between its spec and its siblings', stated explicitly
 - the one path it may write, and nothing else
 
@@ -286,68 +260,86 @@ And the standing rules, because **a sub-agent starts with none of them**:
 
 - invoke `evidence` before anything: nothing reported that was not observed, no gate
   in the background, no test weakened to go green
-- **do not commit.** The orchestrator commits, because only it sees the whole task
+- **do not commit.** The session commits, because only it sees the whole task
 - **do not push.** Ever. Pushing is a question for the user, and a sub-agent cannot
   ask it
-- **do not touch the plan**, the brief, or a sibling's spec
+- **do not touch `proposal.md`** or a sibling's spec
 - read-only everywhere except the one file assigned
 
-### When a sub-agent gets stuck
+### When a writer gets stuck
 
 There is no channel while it runs. It cannot ask the user — it does not have the
-conversation — and it cannot ask the orchestrator, because the return value happens
-once, at the end.
+conversation — and it cannot ask the session, because the return value happens once, at
+the end.
 
 So the rule has to be explicit, or the default takes over: **a model with no
 instruction guesses plausibly**, which is the exact failure this flow exists to
 prevent.
 
-When a sub-agent hits something it cannot legitimately decide:
+When a writer hits something it cannot legitimately decide:
 
 1. **Write everything it can.** A spec with five solid pillars and one open question
    is useful. Nothing is not.
-2. **Mark the gap in the file itself**, where the answer belongs, stating what is
-   unresolved and what turns on it. Not a placeholder that reads like an answer.
-3. **Return the question**, phrased so the orchestrator can ask it without having to
+2. **Mark the gap in the file itself** with `[NEEDS CLARIFICATION: question]`, where the
+   answer belongs. Not a placeholder that reads like an answer.
+3. **Return the question**, phrased so the session can ask it without having to
    reconstruct the context.
 4. **Never invent past it.** Not a default, not the more common of two precedents,
    not "the obvious choice". A guess that looks like a decision is worse than a hole,
    because a hole gets filled and a guess gets built on.
 
-Questions funnel through the orchestrator, always. If sub-agents could ask directly,
-several would interleave questions from work the user cannot see, and each answer
-would arrive without the context that made it a question.
+Questions funnel through the session, always. If writers could ask directly, several
+would interleave questions from work the user cannot see, and each answer would arrive
+without the context that made it a question.
 
-### Sub-agents do not talk to each other
+### Resolving the markers
+
+Read every returned spec. Where a writer left `[NEEDS CLARIFICATION: question]`, its
+inputs did not say enough, and the resolution is the interview's tail:
+
+1. Ask each marker's question — same shape as step 4, one at a time, a reasoned
+   recommendation first.
+2. Log the answer under `## Decision log`, verbatim, like every other answer.
+3. **Replace the bracket expression — the brackets and everything inside them, nothing
+   outside them — with the logged answer.** That is the one declared exception to
+   one-author-per-file, and it is scoped to exactly that expression: an answer that
+   changes anything beyond it is a relaunch of the writer with the updated log, not a
+   patch.
+
+**Under `/libretto-attacca` a marker takes the recommended answer**, logged with the
+`(assumed)` suffix and naming what changes if it is wrong — the same rule as the
+questions that were never asked.
+
+### Writers do not talk to each other
 
 By design — no shared mutable state, no negotiation, no ordering to get wrong.
 
 The consequence is that a boundary drawn badly between two specs is not fixed by the
 two of them noticing. It surfaces as two returns describing overlapping ground, and
-**the orchestrator resolves it after the fact**: one decision, applied to both files,
+**the session resolves it after the fact**: one decision, applied to both files,
 recorded once.
 
-Both sub-agents were right about their own scope. The brief was wrong about the line
+Both writers were right about their own scope. `proposal.md` was wrong about the line
 between them, and that is a finding, not a failure.
 
 ### What comes back
 
-The path it wrote, and a short list of what it found that the brief did not know — a
-convention the brief missed, a constraint that contradicts it, a question only the
-user can settle.
+The path it wrote, and a short list of what it found that `proposal.md` did not settle —
+a convention it missed, a constraint that contradicts it, a question only the user can
+settle.
 
-**Read every one of those returns before accepting the set.** They are the
-interesting part: a sub-agent that found the brief wrong found something real. When
-two returns disagree about the same thing, that disagreement is a decision, and it is
-resolved here — once, then applied to both files. Never left as two specs each
-quietly assuming it won.
+**Read every one of those returns before accepting the set.** They are the interesting
+part: a writer that found the document wrong found something real. When two returns
+disagree about the same thing, that disagreement is a decision, and it is resolved here —
+once, then applied to both files. Never left as two specs each quietly assuming it won.
 
-**Silence is not success.** A sub-agent that died, returned nothing, or came back
-empty did not finish. Do not accept its spec because it failed to complain.
+**Silence is not success.** A writer that died, returned nothing, or came back empty did
+not finish. Do not accept its spec because it failed to complain. A returned spec with no
+markers and no findings is still read before it is accepted.
 
-If the brief turns out to be wrong on something structural, correct the brief and
-re-run the affected specs. Patching the files individually reproduces the drift the
-brief was there to prevent.
+If `proposal.md` turns out to be wrong on something structural, correct it and re-run the
+affected specs. Patching the files individually reproduces the drift a shared document
+was there to prevent.
 
 ## Step 3 — Write the six pillars
 
@@ -423,11 +415,12 @@ decision that should not be rediscovered from scratch.
 Atomic units. Each one independently assignable, each one small enough that a
 single failure does not take the rest with it.
 
-**This is not the checklist and it is not the plan.** It is the input phase 5 reasons
-about and the 5→6 cutter cuts against — both of which are free to arrive at different
-boxes, because they know how the change is being built and this pillar does not. A
-breakdown transcribed straight into checkboxes is what made the plan a task list until
-2026-08-17.
+**This is not the checklist and it is not the approach.** It is the input phase 5 reasons
+about and the checklist is cut against — both of which are free to arrive at different
+boxes, because they know how the change is being built and this pillar does not. **So it
+is a list, never boxes**: the checklist is the boxes under `## Checklist` and nothing else,
+and a breakdown transcribed straight into checkboxes is what made the plan a task list
+until 2026-08-17.
 
 ### Verification criteria
 
@@ -509,21 +502,23 @@ A path no spec claims is reported separately and more softly — not everything 
 a contract, and treating every unanchored file as an error trains people to ignore
 the warning.
 
-## The decision log — `decisions.md`
+## The decision log — `## Decision log`
 
-Beside the proposal: `.agents/changes/<change>/decisions.md`. It records what the user
-settled, in the user's words, and it is a file the writer subagents are given by path
-when a document gets drafted — a decision that lives only in the conversation cannot
-reach an agent that never had the conversation.
+A section of the change document, `proposal.md`. It records what the user settled, in the
+user's words, and it is what a fan-out writer is given by path — a decision that lives only
+in the conversation cannot reach an agent that never had the conversation, and it gets
+asked again next session.
 
 **The first write creates it.** Normally that is step 4's first answer; a phase 5 that
-opens on a change without one — resumed from before the log existed, or a phase 2 that
-had nothing to ask — creates it the same way. No empty file up front: a log with no
-entries would be a claim that there were no decisions, made before anyone knew.
+opens on a change without one — a phase 2 that had nothing to ask — creates it the same
+way. No empty heading up front: a log with no entries would be a claim that there were no
+decisions, made before anyone knew.
 
 The format, whole:
 
 ```
+## Decision log
+
 ### Session 2026-08-19
 - Q: discount on the base price, or on the already-discounted one? → A: base, never compounded
 - Q: new table, or a column on orders? → A: column — we do not want another migration (assumed)
@@ -535,14 +530,15 @@ records the ask in the words it was asked in. `(assumed)` marks an answer nobody
 attacca's, and any default taken because the user was not there. An assumed entry names
 what changes if it is wrong.
 
-**One writer, the orchestrator** — the same rule as `tasks.md`, for the same reason.
-Subagents read it by path and never append; their questions come back in their return
+**One writer, the session** — the same rule as the checklist, for the same reason.
+Writers read it by path and never append; their questions come back in their return
 value and are logged here by the session that asks them.
 
 **The log dies with the change.** At landing the folder goes, and the log goes with it.
-What survives is the copy the spec's author already made: each entry is written into the
-delta's *Prior decisions* as it is answered, attributed and dated, so landing needs no
-new mechanism and the capability spec carries the decisions forward.
+What survives is the copy already made: each entry is written into `## Prior decisions`
+as it is answered, attributed and dated, so landing needs no new mechanism and the
+capability spec carries the decisions forward. A change begun in the old layout keeps its
+log in the file it started in.
 
 ## Step 4 — Ask what cannot be settled here. As many as a wrong guess would cost.
 
@@ -560,7 +556,7 @@ remaining ones are not worth their time.
 One at a time is the point, not an inefficiency: each answer can redirect the next
 question, which is the difference between an interview and a form. A batched call asks
 everything the first draft thought of; an interview asks what the last answer made
-worth asking. Log each answer — verbatim, into `decisions.md` — before the next
+worth asking. Log each answer — verbatim, under `## Decision log` — before the next
 question goes out.
 
 Thinking the six pillars is what surfaces them — a boundary the request left open, a
@@ -595,15 +591,16 @@ on an answer, and the user met them as a form. The soft bound and the standing "
 more" option are what keep the sequence from becoming the serial ceremony this flow
 spends its length arguing against — the user can always collapse it to zero.
 
-**The answers go to `decisions.md` verbatim as they arrive, and into the spec** under
-prior decisions, next to what each one settled, attributed and dated. An answer that
+**The answers go under `## Decision log` verbatim as they arrive, and into the contract**
+under `## Prior decisions`, next to what each one settled, attributed and dated. An answer that
 lives only in the conversation gets asked again next session, and the second answer
 will not always match the first.
 
-**Phase 2 is the only phase that asks this way.** The 5→6 seam stops for the approach and the order, and
-what waits on what; it does not open a second tranche of questions. The contract is
-where an answer changes the most and costs the least to change, and asking twice
-before the first line of code is how a three-stop flow starts growing back.
+**Phase 2 is the only phase that interviews.** Phase 5 asks its one fork question, and the
+one stop before code asks whether the whole document is right; neither opens a second
+tranche of questions. The contract is where an answer changes the most and costs the
+least to change, and asking twice before the first line of code is how a one-stop flow
+starts growing back.
 
 Do not ask what the code can tell you. Read it.
 
@@ -611,46 +608,40 @@ The trivial lane asks nothing: step 0 answered *no spec needed*, so there is no
 contract to disagree about and nothing to ask about it.
 
 **Under `/libretto-attacca` the questions are not asked either — they are answered and
-marked.** For each one, take the option you would have recommended, log it in
-`decisions.md` with the `(assumed)` suffix, write it under prior decisions **marked as
+marked.** For each one, take the option you would have recommended, log it under
+`## Decision log` with the `(assumed)` suffix, write it under prior decisions **marked as
 assumed**, name what changes if it is wrong, and carry on. Never a
 default left silent, and never a guess written as though it were settled. The questions
 that would have been asked are the ones that must be findable afterwards, because nobody was
 there to answer them. The command carries why, and what it costs.
 
-## Step 4b — Hand the contract to its writer
+## Step 4b — Write it into the change document
 
-The interview is done and the brief carries its answers. **Launch one `spec-writer`** —
-the same agent the fan-out uses, with the same prompt contract: the brief's path, the
-log's path, the one spec path it may write, and the standing rules restated verbatim,
-because a sub-agent starts with none of them. Pick the model tier before the launch,
-exactly as the fan-out rule above demands — a single writer is a fan-out of one.
+The interview is done and its answers are logged.
+Write the contract into `proposal.md` itself — the file phase 1 or the queue captured, grown in place, never a new one beside it. When
+phase 1 came from a tracker and wrote no capture, create it, carrying `Tracker: <key>`.
 
-The session that argued the contract into shape cannot tell what it wrote down from
-what it merely decided — the same reason the 5→6 seam cuts tasks fresh. A writer that
-never had the conversation can only write what the brief and the log actually say, and
-what it cannot write it marks.
+After this phase the file holds, top to bottom:
 
-### Resolving the markers
+| Part | Where |
+|---|---|
+| `Tracker:` · `Targets:` | top, column 0, outside any fence. Exactly one `Targets:`, the primary capability's |
+| the ask, verbatim · the reading | the headings the capture already wrote, untouched |
+| the decision log | `## Decision log` |
+| the contract | the six pillars as level-2 headings: `## Outcomes` · `## Scope boundaries` · `## Constraints` · `## Prior decisions` · `## Task breakdown` · `## Verification criteria` |
 
-Read the returned spec. Where the writer left `[NEEDS CLARIFICATION: question]`, the
-inputs did not say enough, and the resolution is the interview's tail:
+Phase 5 adds `## Approach` and the `Durable decisions:` line; the 5→6 seam adds
+`## Checklist`, last. Nothing else is created for the change — one document, read in one
+place.
 
-1. Ask each marker's question — same shape as step 4, one at a time, a reasoned
-   recommendation first.
-2. Log the answer in `decisions.md`, verbatim, like every other answer.
-3. **Replace the bracket expression — the brackets and everything inside them, nothing
-   outside them — with the logged answer.** That is the one declared exception to
-   one-author-per-file, and it is scoped to exactly that expression: an answer that
-   changes anything beyond it is a relaunch of the writer with the updated log, not a
-   patch.
+**Level 2, because the parsers read nothing else.** `spec-drift` opens and closes a section
+on a `## ` heading only, so a pillar under `###` runs into its neighbour, and a box with no
+level-2 heading between it and `## Verification criteria` is read as a criterion — and
+failed by `--ears` for carrying no `shall`.
 
-**Under `/libretto-attacca` a marker takes the recommended answer**, logged with the
-`(assumed)` suffix and naming what changes if it is wrong — the same rule as the
-questions that were never asked.
-
-A returned spec with no markers and no findings is still read before it is accepted.
-Silence is not success, and the writer's return says explicitly when it found nothing.
+**Written here, by the session that held the interview.** The fresh eye moves from
+drafting to reading: once the checklist exists, `review-spec` hands the whole document to a
+reader that never had the conversation, before the one stop.
 
 ## Step 5 — Check it before handing it over
 
@@ -672,13 +663,19 @@ Fix them here. Every one of these is cheap now and expensive in phase 6.
 ├── specs/                        the living, consolidated specification
 │   └── bundle-products/
 │       └── spec.md               Governs: src/bundles/** src/pricing/*.ts
-└── changes/                      proposals in flight
-    └── add-relative-discounts/
-        ├── proposal.md           the ticket, the intent, the non-goals
-        ├── spec.md               Targets: bundle-products — the delta
-        ├── plan.md               the approach, and what it beat
-        └── tasks.md              the checklist
+└── changes/                      changes in flight
+    ├── add-relative-discounts/   one capability
+    │   └── proposal.md           Targets: bundle-products — the ask, the decision log,
+    │                             the contract, the approach, the checklist
+    └── add-bundle-gift-cards/    two capabilities
+        ├── proposal.md           Targets: bundle-products — everything above
+        └── spec-gift-cards.md    Targets: gift-cards — that capability's six pillars
 ```
+
+**The old layout is still read.** A change begun before the change document — a
+`spec.md` delta beside its proposal, a `plan.md`, a `tasks.md` — finishes in the layout it
+started in, and whatever it still lacks the session writes inline there. Nothing in
+flight is migrated.
 
 **One spec per capability, never per ticket.** This matters more than it looks. A
 capability spec accumulates and stays true for years; a spec named after a ticket
@@ -692,31 +689,26 @@ capability, and it gets its own directory.
 **Edits go in the change while the work is in flight.** Not into the capability
 spec directly — the capability spec is what is true now, and the change is a
 proposal until it lands. `Targets:` names the capability so a tool can tell that an
-in-flight delta *is* that spec moving.
+in-flight change *is* that spec moving.
 
-When it lands, phase 8 applies the delta onto the capability spec and the change
+When it lands, phase 8 applies the contract onto the capability spec and the change
 folder goes away. Exactly one current specification, always. See
 `skills/record-work/`.
 
-A change spanning several capabilities carries one delta per capability inside the
-same change folder, each with its own `Targets:`. One change, several amendments —
-not several changes racing each other.
+A change spanning several capabilities carries the primary contract in `proposal.md` and
+one `spec-<capability>.md` per extra capability inside the same change folder, each with
+its own `Targets:`. One change, several amendments — not several changes racing each
+other.
 
 The project's own layout is discovered, not assumed — see *If the project already has a
 convention* under step 2, where the same question is answered once for the whole skill.
 
 ## Output
 
-Report which specs were written, where, and anything still unresolved that phase 5
-onward will hit.
+Report what was written, where, and anything still unresolved that phase 5 onward will hit.
 
-Then stop, and wait for the go-ahead before the plan — unless the run is
-`/libretto-attacca`, where the go-ahead arrived with the invocation. The spec is still
-written, still committed, still reported; what is answered is the wait, never the writing.
-
-**Ask for it with `AskUserQuestion`, never as a sentence at the end of the report.** Carry
-on to the plan — recommended, and saying what will actually run next — change the contract
-first, or stop here. **And room to answer differently**, because the reason to reject a
-contract is rarely one of three things somebody guessed in advance.
-
-Same rule as every stop. The reason lives once, in `skills/record-work/`.
+**Then carry on to `write-plan`. This phase does not stop, and that is deliberate.** The
+contract is agreed once, together with the approach and the checklist it produced and a
+fresh reader's findings beside them — `review-spec` asks that stop. A stop here as well
+would ask the user to agree to a contract before seeing what building it costs, then ask
+again.

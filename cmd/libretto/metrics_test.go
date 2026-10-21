@@ -38,11 +38,18 @@ func fakeGit(added string, logs, diffs map[string]string) gitRunner {
 			if !strings.Contains(joined, "--diff-filter=AM") {
 				return "", fmt.Errorf("the churn query must exclude deletions: %q", joined)
 			}
-			// Keys are change names and stand for the current checklist, `tasks.md`. A key
-			// that names its file explicitly — `add-thing/plan.md` — fixes a change to the
-			// pre-rename layout, which is the only way to tell the two queries apart: a
-			// fake that answered both would let the legacy fallback carry every test and
-			// leave the path actually in use unproven.
+			// A hunk does not carry its section heading, so a change document read with
+			// git's default three lines of context cannot say which boxes are under
+			// `## Checklist`. The fake refuses that query rather than answer it with a
+			// whole-file fixture git would never have printed.
+			if strings.Contains(joined, "/proposal.md") && !strings.Contains(joined, "--unified=") {
+				return "", fmt.Errorf("the change document's query must ask for whole-file context: %q", joined)
+			}
+			// Keys are change names and stand for `tasks.md`. A key that names its file
+			// explicitly — `add-thing/plan.md`, `add-thing/proposal.md` — fixes a change to
+			// that layout, which is the only way to tell the queries apart: a fake that
+			// answered all of them would let one path carry every test and leave the
+			// others unproven.
 			for k, v := range diffs {
 				want := k + "/tasks.md"
 				if strings.Contains(k, "/") {
@@ -169,6 +176,158 @@ func TestMetricsFallsBackToLegacyPlan(t *testing.T) {
 	}
 	if m.checked != 1 || m.boxes != 2 {
 		t.Fatalf("wanted 1 of 2 boxes closed out of the legacy path, got %d of %d", m.checked, m.boxes)
+	}
+}
+
+const (
+	shaA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	shaB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	shaC = "cccccccccccccccccccccccccccccccccccccccc"
+)
+
+// A new-layout change keeps its checklist in proposal.md, and its folder may still carry a
+// tasks.md from before it moved. The two files get different numbers, so reading the wrong
+// one or adding them together both fail.
+func TestMetricsReadsChurnFromTheChangeDocument(t *testing.T) {
+	now := time.Now().Unix()
+	proposal := shaA + `
+
+diff --git a/.agents/changes/c/proposal.md b/.agents/changes/c/proposal.md
+--- /dev/null
++++ b/.agents/changes/c/proposal.md
+@@ -0,0 +1,4 @@
++Targets: cli
++## Checklist
++- [x] one
++- [ ] two
+` + shaB + `
+
+diff --git a/.agents/changes/c/proposal.md b/.agents/changes/c/proposal.md
+--- a/.agents/changes/c/proposal.md
++++ b/.agents/changes/c/proposal.md
+@@ -1,4 +1,4 @@
+ Targets: cli
+ ## Checklist
+-- [x] one
++- [ ] one
+ - [ ] two
+`
+	tasks := shaC + `
++- [x] a
++- [x] b
++- [x] c
++- [ ] d
+`
+	m, err := measureAt(fakeGit("",
+		map[string]string{"c": fmt.Sprintf("%d\n", now)},
+		map[string]string{"c/proposal.md": proposal, "c": tasks}), "c")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !m.planSeen {
+		t.Fatal("a change whose checklist lives in proposal.md must report churn, not a dash")
+	}
+	if m.checked != 1 || m.uncheck != 1 || m.boxes != 2 {
+		t.Fatalf("wanted 1 closed / 1 reopened / 2 boxes from proposal.md alone, got %d / %d / %d",
+			m.checked, m.uncheck, m.boxes)
+	}
+}
+
+// Every change has a proposal.md history, because the capture adds it. Taking a non-empty
+// diff as "found" would hide every old change's tasks.md or plan.md behind its prose, and
+// blank the churn of the whole landed history.
+func TestAProposalWithoutAChecklistDoesNotShadowTheOldLayout(t *testing.T) {
+	now := time.Now().Unix()
+	proposal := shaA + `
+
+diff --git a/.agents/changes/c/proposal.md b/.agents/changes/c/proposal.md
+--- /dev/null
++++ b/.agents/changes/c/proposal.md
+@@ -0,0 +1,5 @@
++Tracker: none
++> - [x] a box in the quoted ask
++## Task breakdown
++- [x] a box outside the checklist
++- [ ] another
+`
+	oldLayout := shaB + `
++- [x] one
++- [ ] two
++- [ ] three
+`
+	for _, tc := range []struct {
+		name    string
+		diffs   map[string]string
+		seen    bool
+		checked int
+		boxes   int
+	}{
+		{"tasks.md carries the churn", map[string]string{"c/proposal.md": proposal, "c": oldLayout}, true, 1, 3},
+		{"plan.md carries it when tasks.md has none", map[string]string{"c/proposal.md": proposal, "c/plan.md": oldLayout}, true, 1, 3},
+		{"no checklist anywhere is a dash", map[string]string{"c/proposal.md": proposal}, false, 0, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m, err := measureAt(fakeGit("", map[string]string{"c": fmt.Sprintf("%d\n", now)}, tc.diffs), "c")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if m.planSeen != tc.seen || m.checked != tc.checked || m.boxes != tc.boxes {
+				t.Fatalf("wanted seen=%v %d of %d closed, got seen=%v %d of %d",
+					tc.seen, tc.checked, tc.boxes, m.planSeen, m.checked, m.boxes)
+			}
+		})
+	}
+}
+
+// The box closed here sits twenty lines below its heading, further than git's default
+// context reaches, so only a whole-file diff can place it under `## Checklist`. The box
+// added in the last commit sits under `## Task breakdown` and is prose, not the checklist.
+func TestChangeDocumentChurnIsScopedToTheChecklist(t *testing.T) {
+	now := time.Now().Unix()
+	added := strings.Repeat("+filler\n", 20)
+	context := strings.Repeat(" filler\n", 20)
+	proposal := shaA + `
+
+diff --git a/.agents/changes/c/proposal.md b/.agents/changes/c/proposal.md
+--- /dev/null
++++ b/.agents/changes/c/proposal.md
+@@ -0,0 +1,24 @@
++## Checklist
+` + added + `+- [ ] far
++## Task breakdown
+` + shaB + `
+
+diff --git a/.agents/changes/c/proposal.md b/.agents/changes/c/proposal.md
+--- a/.agents/changes/c/proposal.md
++++ b/.agents/changes/c/proposal.md
+@@ -1,23 +1,23 @@
+ ## Checklist
+` + context + `-- [ ] far
++- [x] far
+ ## Task breakdown
+` + shaC + `
+
+diff --git a/.agents/changes/c/proposal.md b/.agents/changes/c/proposal.md
+--- a/.agents/changes/c/proposal.md
++++ b/.agents/changes/c/proposal.md
+@@ -1,23 +1,24 @@
+ ## Checklist
+` + context + ` - [x] far
+ ## Task breakdown
++- [x] a breakdown written as a box
+`
+	m, err := measureAt(fakeGit("",
+		map[string]string{"c": fmt.Sprintf("%d\n", now)},
+		map[string]string{"c/proposal.md": proposal}), "c")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !m.planSeen {
+		t.Fatal("wanted the change document read; the query must ask for --unified=")
+	}
+	if m.checked != 1 || m.uncheck != 0 || m.boxes != 1 {
+		t.Fatalf("wanted 1 closed / 0 reopened / 1 box, only the checklist's, got %d / %d / %d",
+			m.checked, m.uncheck, m.boxes)
 	}
 }
 
@@ -473,7 +632,7 @@ func TestTheReportExplainsItsColumns(t *testing.T) {
 		"calendar clock",               // span
 		"called done before they were", // reopen
 		"boxes the plan holds",         // closed's denominator
-		"no plan.md in its history",    // the — cell
+		"no checklist in its history",  // the — cell
 		"still on disk",                // state
 		"unreadable",                   // the state the error row prints
 		"touched the change",           // commits
@@ -481,6 +640,18 @@ func TestTheReportExplainsItsColumns(t *testing.T) {
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("the legend must say %q:\n%s", want, out.String())
+		}
+	}
+	// The dash names where a checklist would have been, on its own line, so a mention of
+	// a file anywhere else on the page cannot satisfy it.
+	for _, l := range strings.Split(out.String(), "\n") {
+		if !strings.Contains(l, "no checklist in its history") {
+			continue
+		}
+		for _, f := range []string{"proposal.md", "tasks.md", "plan.md"} {
+			if !strings.Contains(l, f) {
+				t.Errorf("the — line must name %s: %q", f, l)
+			}
 		}
 	}
 }

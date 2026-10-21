@@ -55,7 +55,8 @@ libretto models         # which model each agent runs on and how hard it thinks,
 libretto models set haiku review-lens-design review-lens-tests   # --all for every agent
 libretto models effort xhigh review-lens-security   # the depth, not the tier. Haiku has none
 
-libretto loop <change>  # one fresh session per open box in that change's plan.md,
+libretto loop <change>  # one fresh session per open box in that change's checklist —
+                        # `## Checklist` in proposal.md, else tasks.md, else plan.md —
                         # until every box is closed. Stops after two rounds that close
                         # nothing, and at --max (10). Never pushes.
 libretto loop <change> --dry-run --max 3
@@ -109,7 +110,9 @@ docs/                   FLOW.md (the flow) · DESIGN.md · PLAN.md · STATE.md �
 
 Not from a tracker. Phase 1 asks three sources in order:
 
-1. **a change already in flight** — unchecked boxes in `.agents/changes/*/plan.md`
+1. **a change already in flight** — unchecked boxes in a change's checklist: under
+   `## Checklist` in `.agents/changes/*/proposal.md`, or in `tasks.md` / `plan.md` for a
+   change begun in the old layout
 2. a tracker key or URL, if one was given
 3. **what the user said** — a legitimate input, not a fallback
 
@@ -128,8 +131,8 @@ one up when you are ready. **Queued is not in flight** — a captured idea never
 source 1, because abandoning an idea costs nothing and a queue that is expensive to add to
 is a queue nobody uses.
 
-**Mark the boxes as you go.** A plan that is 11/11 open while the work is nearly done is
-documentation pretending to be state — which happened while building this very feature.
+**Mark the boxes as you go.** A checklist that is 11/11 open while the work is nearly done
+is documentation pretending to be state — which happened while building this very feature.
 
 ## Specs
 
@@ -155,12 +158,14 @@ chances to change a promise that works today. A capability migrates when a delta
 it. **This is inside `--anchors` and not a seventh gate**, because the count "six" is
 written in ten places here and a number kept in ten places is a number that drifts.
 
-**A plan cannot be deleted taking its reasoning with it.** The landing commit deletes the
-change folder, and `plan.md` holds why the change was built the way it was. `--anchors`
-fails that commit unless some capability spec's *Prior decisions* section moved in it —
-that section, not the file, because the delta lands in the same commit by definition and
-"the spec was edited" would be green every time. A plan that retires nothing declares it:
-`Durable decisions: none`, written when the plan was, not when the gate complains.
+**A change cannot be deleted taking its reasoning with it.** The landing commit deletes the
+change folder, and the change document's `## Approach` holds why the change was built the
+way it was — `plan.md`, for a change begun in the old layout. `--anchors` fails that commit
+unless some capability spec's *Prior decisions* section moved in it — that section, not the
+file, because the delta lands in the same commit by definition and "the spec was edited"
+would be green every time. A change that retires nothing declares it at the top of
+`proposal.md` (or `plan.md`, in the old layout): `Durable decisions: none`, written when the
+approach was, not when the gate complains.
 
 A `Proof:` citation must name a **test that exists**. `--anchors` checks the test name,
 not just the file, because a file-level check passes an invented name — that happened

@@ -21,8 +21,7 @@ gate is not unattended, it is unverified.
 
 | At | Under this command |
 |---|---|
-| 2–3 · the contract stop | **answered** — the spec is written, committed and reported, and the flow carries on |
-| 5→6 · the order stop | **answered** — same |
+| before 6 · the stop on the change document | **answered** — the document is written, reviewed, committed and reported, and the flow carries on |
 | 8 · push and open the request | **answered yes**, both halves |
 | a failing gate, twice on one task | **stops** — and two stopped tasks stops the session, unchanged |
 | a missing or unauthenticated `jira`, `gh`, `glab` | **stops** — the input never arrived; there is nothing to assume |
@@ -33,24 +32,27 @@ and it is why "never push unasked" is intact rather than overridden — the aski
 at the prompt. **The consent covers this branch and this request and nothing past it.**
 
 **The request's description says which of its decisions a person made.** What the
-invocation answered — the two stops and the push — and every question the run assumed past.
+invocation answered — the one stop and the push — and every question the run assumed past.
 Without the first half a reviewer cannot tell an agreed contract from an assumed one, and
 that is the difference this command is entirely built out of.
 
 ## A question it cannot derive becomes an assumption, never a prompt
 
 When a phase hits something no reading of the code settles — phase 2's interview, a
-`[NEEDS CLARIFICATION]` marker a writer returned, phase 5's fork, anything phase 4 would
-have asked — it takes the option it would have recommended and writes it down in four
+`[NEEDS CLARIFICATION]` marker a fan-out writer returned, phase 5's fork, the stop before
+code, anything phase 4 would have asked — it takes the option it would have recommended and writes it down in four
 places:
 
-1. the change's `decisions.md`, as a `- Q: … → A: …` entry carrying the `(assumed)`
-   suffix — the log the writer subagents read, so an assumed answer reaches them the
-   same way a given one does
-2. the spec, under prior decisions, **marked as assumed** and naming what changes if it
-   is wrong
+1. the change document's `## Decision log`, as a `- Q: … → A: …` entry carrying the
+   `(assumed)` suffix — the log a fan-out writer reads, so an assumed answer reaches it
+   the same way a given one does
+2. the contract, under `## Prior decisions`, **marked as assumed** and naming what
+   changes if it is wrong
 3. the phase 7 report
 4. the request's description
+
+The stop is no exception: its entry says the invocation carried the document into phase 6,
+and which of the fresh reader's findings the run acted on.
 
 Never a default left silent, and never a guess dressed as a decision. The flow already
 does this after the plan, where an unsettled question becomes a finding; this moves the
@@ -75,22 +77,18 @@ or in conversation where there is none.
 ```
 Skill(skill="find-work")          1 · with a task given, that task; with none, home first —
                                       the oldest change with open boxes
-Skill(skill="write-spec")         2–3 · then carry on
-Skill(skill="review-spec")        3→5 · reads the contract, only when one was written.
-                                      **Here it matters more than in the attended flow**:
-                                      nobody is reading the spec at the stop, so this is
-                                      the only thing between an unfailable criterion and
-                                      a plan built on it. It still only reports — see
-                                      below for who acts on it
+Skill(skill="write-spec")         2–3 · the contract, inline; the phase never stops
 Skill(skill="write-plan")         5 · the fork takes the recommended approach, logged
-                                      (assumed); the drafting stays with plan-writer.
-                                      The phase never stopped anyway
-Skill(skill="write-tasks")        5→6 · one fresh cutter, then carry on. **What the
-                                      cutter says the spec and the plan failed to
-                                      answer is the one thing here nobody else will
-                                      read**: unattended, it becomes an assumption
-                                      recorded in the spec and the report, exactly
-                                      like a question this command cannot ask
+                                      (assumed); the phase never stops
+Skill(skill="write-tasks")        5→6 · the checklist, inline; the seam never stops
+Skill(skill="review-spec")        before 6 · one fresh reader over the whole document,
+                                      only when a contract was written. **Here it
+                                      matters more than in the attended flow**: nobody
+                                      is reading the document at the stop, so this is
+                                      the only thing between an unfailable criterion, or
+                                      a box nothing says how to build, and the code
+                                      built on it. It still only reports — see below
+                                      for who acts on it
 Skill(skill="build-and-check")    6
 Skill(skill="review-work")        6→7 · it already fixes rather than asks
 Skill(skill="present-work")       7 · naming what this command answered, and every
@@ -104,10 +102,11 @@ everything.
 
 ### Who acts on `review-spec`'s findings
 
-**The reviewer reports and never edits the spec — that rule does not bend here.** What is
-different is who is left holding the report. In the attended flow it is the phase-3 author
-at the stop; unattended there is no stop, so **this run is the phase-3 author** and amends
-its own spec before phase 5 reads it.
+**The reviewer reports and never edits the document — that rule does not bend here.** What
+is different is who is left holding the report. In the attended flow it is the user at the
+stop, with the session that wrote the document; unattended there is no stop, so **this run
+is the document's author** and acts on the findings before phase 6 — amending the
+contract, the approach or the checklist — and names each one it acted on.
 
 That is not the same as the reviewer fixing its own findings, and the distinction is the
 one that keeps the review worth running: a reviewer that edits what it reviews has no
@@ -115,7 +114,7 @@ independent reading left to report. Reviewer reports, author amends, and unatten
 are two roles held by one run rather than two.
 
 **A finding acted on is named in the phase 7 report and in the request**, exactly like an
-assumption — for the same reason. A contract quietly rewritten between review and plan is
+assumption — for the same reason. A contract quietly rewritten between review and code is
 a contract nobody agreed to.
 
 ## Never

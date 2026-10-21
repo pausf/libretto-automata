@@ -82,8 +82,10 @@ func TestReadmeWalksAFirstRun(t *testing.T) {
 	first := flat(section(t, repoFile(t, "README.md"), "## Your first run"))
 
 	// Not the wording — the stops. A walk that skips where the flow pauses is a walk
-	// that surprises the reader at the first pause.
-	for _, want := range []string{"/libretto-flow", "spec", "plan", "push"} {
+	// that surprises the reader at the first pause. This proves the vocabulary arrived, not
+	// that the walk draws one stop: a walk naming the change document beside two stops stays
+	// green, and the decision-node count in the flow diagram is what holds the number.
+	for _, want := range []string{"/libretto-flow", "change document", "push"} {
 		if !strings.Contains(first, want) {
 			t.Errorf("the first-run walk never mentions %q", want)
 		}
@@ -127,7 +129,7 @@ func TestMovedReasoningLandedInDocs(t *testing.T) {
 		//   README. That phrase says what the mode does, and what a command does stays in the
 		//   README by this capability's own prior decision — so anchoring on it forced the
 		//   fact out along with the argument. The anchor now sits on the reasoning instead.
-		{"the spec stop is the cheap place to disagree", "more expensive than this one"},
+		{"the stop before code is the cheap place to disagree", "more expensive than this one"},
 		{"phase 1's source order is the point", "gets abandoned"},
 		{"attacca will not answer a gate", "it would be unverified"},
 		{"an alias resolves per provider from the environment", "no request, no"},
@@ -411,9 +413,15 @@ func TestContributingIsADoorNotACopy(t *testing.T) {
 
 var mermaidFence = regexp.MustCompile("(?s)```mermaid(.*?)```")
 
+// decisionNode matches a Mermaid rhombus, `<id>{"label"}`, and captures the label. Counted
+// by syntax rather than by parsing, because the proof reads files as text: the label `5→6`
+// broke the ASCII rule in prose for a whole release, and prose cannot fail.
+var decisionNode = regexp.MustCompile(`\b[A-Za-z0-9_]+\{"([^"]*)"\}`)
+
 // Two diagrams live inside What you get — delivery and flow — because that section is
 // where a stranger decides whether to install. GitHub renders the fences as images; the
-// guard holds the shape (two fences, the stops named), never the drawing.
+// guard holds the shape (two fences, two decisions, the last one the push, ASCII labels),
+// never the drawing.
 func TestWhatYouGetCarriesTheDiagrams(t *testing.T) {
 	got := section(t, repoFile(t, "README.md"), "## What you get")
 
@@ -422,14 +430,44 @@ func TestWhatYouGetCarriesTheDiagrams(t *testing.T) {
 		t.Fatalf("What you get carries %d mermaid diagrams, want 2 — delivery and flow", len(diagrams))
 	}
 
-	stopsNamed := false
+	var flow [][]string
 	for _, d := range diagrams {
-		body := flat(d[1])
-		if strings.Contains(body, "spec") && strings.Contains(body, "plan") && strings.Contains(body, "push") {
-			stopsNamed = true
+		for _, r := range d[1] {
+			if r > 0x7f {
+				t.Errorf("a mermaid fence in What you get carries %q (U+%04X) — diagram labels are ASCII", r, r)
+			}
+		}
+		if nodes := decisionNode.FindAllStringSubmatch(d[1], -1); len(nodes) > 0 {
+			if flow != nil {
+				t.Fatal("both diagrams carry decision nodes — only the flow diagram stops")
+			}
+			flow = nodes
 		}
 	}
-	if !stopsNamed {
-		t.Error("neither diagram names the three stops — spec, plan and push")
+	if flow == nil {
+		t.Fatal("neither diagram carries a decision node — the flow diagram has to mark where it stops")
+	}
+	if len(flow) != 2 {
+		t.Errorf("the flow diagram carries %d decisions, want 2 — the stop on the change document, and the push", len(flow))
+	}
+	if last := flat(strings.ReplaceAll(flow[len(flow)-1][1], "<br/>", " ")); !strings.Contains(last, "push") {
+		t.Errorf("the last decision in the flow diagram is %q — it has to be the push", last)
+	}
+}
+
+// The method this flow borrows its proportional shape from is credited once, in docs/FLOW.md,
+// and named nowhere else: the flow stays "the Libretto flow", in its own vocabulary. The
+// acronym is case-sensitive and word-bounded so that "odd" and "ODDS" stay writable; the
+// spelled-out name is caught in any case, since nobody writes it by accident.
+func TestReadmeNamesNoMethodAcronym(t *testing.T) {
+	readme := flat(repoFile(t, "README.md"))
+
+	for _, banned := range []struct{ what, pattern string }{
+		{"the acronym ODD", `\bODD\b`},
+		{"the name Organic Driven Development", `(?i)\borganic[ -]driven[ -]development\b`},
+	} {
+		if found := regexp.MustCompile(banned.pattern).FindString(readme); found != "" {
+			t.Errorf("README.md carries %s (%q) — the flow is named in its own vocabulary; the credit lives in docs/FLOW.md", banned.what, found)
+		}
 	}
 }

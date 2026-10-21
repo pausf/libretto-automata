@@ -279,3 +279,28 @@ The payload spec's drifted stop-table row was carried only by a sentence in the 
 scope boundaries, so whether landing fixed it depended on the landing author reading
 that sentence. Fixed in this pass: task 9 now instructs the landing commit explicitly —
 merge the three-stops criterion, rewrite the drifted row.
+
+## 2026-10-21 · adopt-organic-driven-development · 6→7
+
+The cli delta promised old-layout loops behave "exactly as today" while the payload delta and
+decision 16 excluded fenced boxes in every reader; the fence fix to countBoxes followed the payload
+and left spec-cli.md contradicting the code. Fixed in this pass: Outcome 3 and the Constraint name
+the exception, L6 cites TestCountBoxesSkipsFences, and metrics' hunk-based old-layout churn is a
+named ceiling.
+
+## 2026-10-21 · adopt-organic-driven-development · 6→7
+
+record-work's contract changed (landing reads either layout, spec-drift --retired over proposal.md)
+and its metadata.version stayed at 1.4 while the other eight changed skills were bumped. Fixed in
+this pass: 1.5.
+
+## 2026-10-21 · adopt-organic-driven-development · 6→7
+
+present-work was rewritten for the one stop and bumped, but the payload delta's Scope · In did not
+name it. Fixed in this pass: the In list names present-work and why.
+
+## 2026-10-21 · adopt-organic-driven-development · 6→7
+
+The README's flow diagram had only its text guard as proof; the render-and-look step was recorded
+as skipped because mmdc was absent. Fixed in this pass: rendered through mermaid.ink (public
+repository, no install) and looked at — two decisions, the last the push, linear.
