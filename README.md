@@ -185,6 +185,7 @@ Three rules hold at **every** phase, not one of them:
 | `libretto` | the panel — needs a terminal |
 | `libretto status` | every item's state. Read-only, always. |
 | `libretto install` | link everything. Idempotent; non-zero exit if anything was skipped. |
+| `libretto init` | bootstrap `.agents/` at the repository root of a project with none. Never overwrites. |
 | `libretto uninstall` | show what this repo installed here — **changes nothing** |
 | `libretto uninstall --yes` | take it back out |
 | `libretto update` | install the newest version and relink — or pull, in a checkout |
