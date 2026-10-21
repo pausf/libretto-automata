@@ -393,6 +393,21 @@ func TestShort(t *testing.T) {
 	}
 }
 
+// `init` is typed once per project and on purpose; help is where somebody finds
+// it, so the line has to say what it bootstraps.
+func TestHelpNamesInit(t *testing.T) {
+	_, stderr, err := capture(t, func() error { usage(); return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stderr, "init") {
+		t.Fatal("help does not list init")
+	}
+	if !strings.Contains(stderr, "bootstrap the .agents/ layout") {
+		t.Errorf("the init line does not say what it bootstraps:\n%s", stderr)
+	}
+}
+
 func TestHelpNamesEveryDestination(t *testing.T) {
 	_, stderr, err := capture(t, func() error { usage(); return nil })
 	if err != nil {
