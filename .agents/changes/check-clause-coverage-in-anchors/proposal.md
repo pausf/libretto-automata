@@ -464,7 +464,7 @@ throwaway copy. Rollback: one revert; nothing migrates.
 
 Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its own.
 
-- [ ] **`--trace` lists joined criteria.** `joined_of`, `is_joined`, the fourth `--trace`
+- [x] **`--trace` lists joined criteria.** `joined_of`, `is_joined`, the fourth `--trace`
       section and its summary count, over capability specs and change documents; the six
       `is_joined` cases, the `joined_of` proven-and-unproven case and the
       throwaway-repository `--trace` case, with its summary count forced red once. Closes:
