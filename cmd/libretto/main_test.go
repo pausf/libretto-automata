@@ -408,6 +408,22 @@ func TestHelpNamesInit(t *testing.T) {
 	}
 }
 
+func TestHelpNamesQueue(t *testing.T) {
+	_, stderr, err := capture(t, func() error { usage(); return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(stderr, "\n") {
+		if f := strings.Fields(line); len(f) > 1 && f[1] == "queue" {
+			if !strings.Contains(line, "queued ideas") || !strings.Contains(line, "read-only") {
+				t.Errorf("the queue line does not say it lists queued ideas, read-only:\n%s", line)
+			}
+			return
+		}
+	}
+	t.Fatalf("help does not list queue:\n%s", stderr)
+}
+
 func TestHelpNamesEveryDestination(t *testing.T) {
 	_, stderr, err := capture(t, func() error { usage(); return nil })
 	if err != nil {

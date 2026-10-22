@@ -289,7 +289,9 @@ third-party items and their attribution.
 - **an unattended `libretto-next` or `libretto-review`**, and **a setting, profile or env
   var for the mode.** Consent is for one run, and consent that persists is consent nobody
   remembers giving.
-- **the Go binary knowing about the queue.** It is payload, not delivery.
+- **the Go binary *defining* the queue.** find-work's queue section is the definition;
+  `libretto queue` and the wiki implement it, and where they disagree the binary is the
+  bug.
 - **a cross-project retro.** The retro runs where the flow ran, on that project's ledger.
   Back the day one payload lesson shows up in two projects' ledgers.
 - **the retro applying a payload diff.** Propose only; the payload is the product and does
@@ -450,6 +452,15 @@ either walking the directory itself — the same single-owner rule, and the revi
 `libretto-next` breaking it on the run that landed the queue. The scan sits outside the
 Source 1 heading for a reason: nested under it, "run source 1 only" left
 `/libretto-status` unable to tell whether the queue was in scope.
+
+**Queued is three conditions, and find-work states all three**: a `Queued:` line at column
+0, no unmerged local branch carrying the change's name, and no box under the proposal's
+`## Checklist` — a box means the work started. Ties on one `Queued:` date go by change
+name, ascending, so `/libretto-next`'s recommended pick and the first line of
+`libretto queue` are the same change. The binary and the wiki implement that section;
+they never extend it, and where the two disagree the section is the rule. Neither
+`/libretto-status` nor `/libretto-next` calls the binary — they delegate to find-work and
+keep working on a machine with the skills and no binary.
 
 **Queued is reported, never blocking.** Home first exists so *started* work does not get
 abandoned; an idea costs nothing to abandon because nothing has been built on it. Four
@@ -866,6 +877,27 @@ finding, which is the sentence the `readme` capability was created to answer abo
   name it; where it is absent, refuse unchanged — and neither restates the rule nor runs
   the command. No third site gains a pointer: no other payload document creates or
   declines to create `.agents/changes/`. If wrong: each pointer is one sentence to remove.
+- **The queue-blind non-goal was reversed, not deleted silently.** Retired from
+  `add-queue-command`, 2026-10-22, attacca run. "The Go binary knowing about the queue"
+  became "the Go binary *defining* the queue": find-work's queue section is the
+  definition, `libretto queue` and the wiki implement it, and where they disagree the
+  binary is the bug. The original was already broken by the wiki's flow board, which read
+  `Queued:` lines from the day it landed and nobody reversed the sentence; this says so.
+- **A checklist box disqualifies a `Queued:` proposal.** Retired from `add-queue-command`,
+  assumed 2026-10-22 on review-spec's finding. Queued is three conditions — the `Queued:`
+  line at column 0, no unmerged branch taking the name, no box under `## Checklist` —
+  stated in find-work and applied by `queuedIdeas` (`cli`). If wrong, the clause leaves
+  both together.
+- **Ties on one `Queued:` date go by change name, ascending.** Retired from
+  `add-queue-command`, assumed 2026-10-22. *Capture-commit order* lost: a `git log` per
+  proposal, against a design that put the date in the file to avoid exactly that. If
+  wrong, the sentence and the binary change together.
+- **`/libretto-status` and `/libretto-next` never call `libretto queue`, and find-work
+  never runs it in place of its own scan.** Retired from `add-queue-command`, assumed
+  2026-10-22. *Status calling the binary where it is on PATH* lost: two paths to "what is
+  queued" is the thing find-work's single-owner rule exists to prevent, and status would
+  behave differently on a skills-only machine. If wrong, status calls the binary where it
+  is on PATH, with the skill's scan as the fallback.
 
 ## Task breakdown
 
@@ -1219,6 +1251,19 @@ finding, which is the sentence the `readme` capability was created to answer abo
   a question and this costs the work twice.
   **Proved as wiring only** — that the rule is still in the skill that owns it, not that a
   session obeyed it.
+  Proof: scripts/check-payload
+- **find-work's queue section shall state that a proposal holding a box under its
+  `## Checklist` is not queued.** Proved as wiring only.
+  Proof: scripts/check-payload
+- **find-work's queue section shall order queued changes that carry the same `Queued:`
+  date by change name, ascending.** Proved as wiring only.
+  Proof: scripts/check-payload
+- **find-work's queue section shall name `libretto queue` as an implementation of its
+  definition, and shall state that where the two disagree the section is the rule.**
+  Proved as wiring only.
+  Proof: scripts/check-payload
+- **`/libretto-status` and `/libretto-next` shall not invoke `libretto queue`.** Proved as
+  absence of the string.
   Proof: scripts/check-payload
 - **a vendored skill's namespaced reference is either shipped or answered.** `writing-plans`
   opens every plan it writes with a header demanding `superpowers:subagent-driven-development`

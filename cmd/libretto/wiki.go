@@ -825,15 +825,12 @@ type wikiFlight struct {
 	closed, open int
 }
 
-// wikiQueued is one captured idea, for the flow board's queue block.
-type wikiQueued struct {
-	name, date string
-}
-
 // readInFlight walks the changes directory and reads each change's checklist exactly as
 // the loop does: the file checklistPath picks, counted by readPlan. Zero open boxes is
-// landed-shape and never shows; queued proposals are counted, never listed here.
-func readInFlight(projectDir string) (flights []wikiFlight, queue []wikiQueued) {
+// landed-shape and never shows; queued proposals are counted, never listed here. The
+// queue is queuedIdeas filtered by branch, exactly what `libretto queue` prints. When git
+// cannot list branches the filter is skipped, as the command skips it.
+func readInFlight(projectDir string) (flights []wikiFlight, queued []queuedIdea) {
 	changes := filepath.Join(projectDir, ".agents", "changes")
 	entries, err := os.ReadDir(changes)
 	if err != nil {
@@ -843,26 +840,20 @@ func readInFlight(projectDir string) (flights []wikiFlight, queue []wikiQueued) 
 		if !e.IsDir() {
 			continue
 		}
-		dir := filepath.Join(changes, e.Name())
-		if b, err := os.ReadFile(filepath.Join(dir, "proposal.md")); err == nil {
-			for _, line := range strings.Split(string(b), "\n") {
-				if strings.HasPrefix(line, "Queued:") {
-					queue = append(queue, wikiQueued{name: e.Name(), date: strings.TrimSpace(strings.TrimPrefix(line, "Queued:"))})
-					break
-				}
-			}
-		}
 		if c, err := readPlan(checklistPath(projectDir, e.Name())); err == nil && c.open > 0 {
 			flights = append(flights, wikiFlight{name: e.Name(), closed: c.done, open: c.open})
 		}
 	}
-	sort.SliceStable(queue, func(i, j int) bool {
-		if queue[i].date != queue[j].date {
-			return queue[i].date < queue[j].date
-		}
-		return queue[i].name < queue[j].name
-	})
-	return flights, queue
+	// ponytail: one `git branch` per call and a render calls this three times; pass the
+	// branches down from the render if a repository's branch count ever makes that slow.
+	branches, _ := wikiGitBranches(projectDir)
+	queued, _ = splitDispatched(queuedIdeas(projectDir), branches)
+	return flights, queued
+}
+
+// wikiGitBranches: the unmerged local branches find-work's filter reads.
+var wikiGitBranches = func(projectDir string) ([]string, error) {
+	return unmergedBranches(execGit(projectDir))
 }
 
 // wikiGitDates: every commit date touching the spec, newest first — the

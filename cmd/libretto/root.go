@@ -123,7 +123,7 @@ func needsPayload(args []string) bool {
 		return true // the panel shows the tree's state
 	}
 	switch args[0] {
-	case "models", "update", "loop", "metrics", "land", "init":
+	case "models", "update", "loop", "metrics", "land", "init", "queue":
 		// `update` is what fixes a missing payload on an installed copy, so it cannot be
 		// gated on having one. In a checkout the payload is the tree and is always there.
 		//
@@ -138,6 +138,8 @@ func needsPayload(args []string) bool {
 		//
 		// `init` bootstraps the project's .agents/ layout and never reads the payload, so
 		// a fresh `go install` machine — the one init is for — must not be refused.
+		//
+		// `queue` reads the project's .agents/changes/, never the payload.
 		return false
 	default:
 		return true
