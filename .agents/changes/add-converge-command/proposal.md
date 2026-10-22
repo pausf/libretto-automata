@@ -69,14 +69,14 @@ work to the checklist, for plans that drifted from what got built. Prior art:
   one. If wrong, converge re-runs closed boxes' proofs and reports failures, still never
   unchecking.
 - Q: does converge commit? → A: **no.** It writes the checklist and stops, and its report
-  says the marks are not recorded until the checklist is committed (assumed). The request
-  names "no auto-commit" as a non-goal. If wrong, it makes one
-  `docs(<change>): converge the checklist` commit holding only the checklist file.
+  says the marks are not recorded until the checklist is committed (assumed). **Reversed
+  after review-spec — see the next session.**
 - Q: what if the working tree is dirty? → A: **converge stops before the reader, naming
   the files** (assumed). A proof run against uncommitted code proves nothing about what
   was recorded — `evidence`'s rule — and a dirty checklist file would mix converge's
   edits with somebody else's. If wrong, a dirty tree runs report-only: the reader runs,
-  nothing is closed and nothing is appended.
+  nothing is closed and nothing is appended. *Narrowed to tracked files after
+  review-spec.*
 - Q: which change, when none is named? → A: **the one `find-work`'s in-flight scan
   returns; if it returns several, one native question asking which; if none, say so and
   stop** (assumed). The scan is `find-work`'s, as `/libretto-status` delegates it. If wrong,
@@ -107,22 +107,82 @@ work to the checklist, for plans that drifted from what got built. Prior art:
   run a citation in a project that is not Go; the payload installs into projects of any
   language, and the session already knows how its project runs a test.
 
+### Session 2026-10-22, after review-spec (the run acting as author on the reviewer's findings)
+
+- Q: what counts as a passing citation? → A: **two kinds, two rules.** A test-named
+  citation, `<file> TestX`, is run with `-v` and passes only when the output carries
+  `--- PASS: TestX`; a name that does not exist prints no such line. A file-only citation —
+  `scripts/check-payload`, `skills/record-work/spec-drift --self-test` — passes when that
+  command exits 0 and prints no `FAIL` line. "Whatever its exit status" applies to the
+  test-named kind only (assumed). If wrong — another runner prints a different pass line —
+  the skill names the line per runner, still never trusting an exit status alone for a
+  named test.
+- Q: what is an uncovered criterion? → A: **one of the change's own criteria only** — the
+  `## Verification criteria` of `proposal.md` and of every `spec-<capability>.md` beside
+  it — that no box's `Closes:` names. Never a criterion of a targeted capability spec
+  (assumed). The capability spec is what is true already; its criteria belong to changes
+  that landed. If wrong, converge would also read the targeted specs and box every failing
+  promise there, which turns a checklist tool into a regression sweep.
+- Q: what does the reader read? → A: **the whole tree as it is now, the change folder, and
+  the capability specs the change's `Targets:` lines name. Never a diff range** (assumed).
+  Of `review-work`'s step-1 world, the contract and the folder apply; the diff range does
+  not, because drift is a property of the code as it stands, wherever it was written. If
+  wrong, the diff `<base>...HEAD` is added as a hint and the tree stays the subject.
+- Q: which of `find-work`'s scans does converge use? → A: **source 1 only — the open-box
+  scan and the unmerged branches. Never the queue scan**, because a queued capture has no
+  checklist to converge (assumed). If wrong, nothing changes in practice: a queued capture
+  holds no box and would be refused anyway.
+- Q: what makes the tree dirty? → A: **tracked modifications only:
+  `git status --porcelain --untracked-files=no` listing anything.** An untracked file — a
+  generated `wiki.html`, a scratch note — never stops converge (assumed). Untracked files
+  are not code any proof runs against unless something imports them, and stopping on one
+  this tree carries today would stop converge on every run. If wrong, untracked files under
+  `Governs:` paths also stop it.
+- Q: where does the converged mark go? → A: **on the box's last line**, listing every
+  citation that passed: `— converged <date>: <citation>, <citation> passed` (assumed). A
+  box wraps over several lines, and the mark on its last one is where a reader finishes
+  the box. If wrong, the mark goes on an indented line of its own beneath the box.
+- Q: how is a box mapped to its criteria? → A: **through the box's `Closes:` text,
+  matched against the contract's criteria.** Where the match is not unambiguous — no
+  criterion, or more than one candidate — the box stays open and is reported as
+  `unmapped`. An old-layout box with no `Closes:` stays open and is reported as `unmapped`
+  (assumed). Guessing a mapping is the reading a reader's verdict is not allowed to stand
+  in for. If wrong, the reader proposes a mapping and the session accepts it only when the
+  cited criterion's text is quoted exactly.
+- Q: does converge commit? → A: **yes — reversed.** payload's rule is that a marked box
+  that was never committed was never marked, and the checklist ships in the same commit
+  as the task that closed it. So converge ends by committing the checklist file alone, in
+  one `docs(<change>): converge the checklist` commit, staging nothing else. No push, no
+  branch. Nothing marked or appended: no commit (assumed). If wrong — the user wants to
+  read the edit first — converge leaves the checklist file staged and the report says the
+  marks are unrecorded until it is committed.
+- Q: does every criterion with a half no row pins get a second row? → A: **yes, where a
+  stable phrase exists; otherwise a "Ceiling named:" that names the unpinned half.** No
+  half is left silent (assumed). If wrong, the extra rows go and each ceiling widens.
+- Q: where does box 3's hand-run live? → A: **in a throwaway git repository made with
+  `mktemp -d`, never on this branch.** Its failing proof is a cited Go test that asserts
+  false, or a cited script that exits 1 (assumed). A fixture committed here would be a
+  change folder with open boxes that every phase 1 reports as work in flight. If wrong,
+  the fixture becomes a self-test case, which needs a runner this payload does not ship.
+
 ## Outcomes
 
 - `/libretto-converge [<change>]` reads one change's open boxes against the codebase and
-  ends with each open box in exactly one of three states — **confirmed open**, **closed
-  with observed proof**, or **reported as drifted** — and with one appended box per
-  criterion no box closes and whose proof does not pass.
+  ends with each open box in exactly one state — **confirmed open**, **closed with observed
+  proof**, **reported as drifted**, or **reported as unmapped** — and with one appended box
+  per criterion of the change's own that no box closes and whose proof does not pass.
 - A box is closed by converge only after the session ran every proof its criteria cite, in
-  the foreground, and read each one passing. The closed box carries where that evidence
-  is: the citation and the date.
+  the foreground, and read each one passing by the rule for its kind. The closed box's last
+  line carries where that evidence is: every citation that passed and the date.
 - A drifted box is untouched in the file and named in the report, with what the box says
   and what the code does instead.
-- The judgment is made by one fresh `converge-reader`, which never had the conversation and
-  cannot run anything; the checklist is written only by the session.
+- The judgment is made by one fresh `converge-reader`, which never had the conversation,
+  reads the tree as it is, and cannot run anything; the checklist is written only by the
+  session.
 - It works on both layouts: the `## Checklist` of `proposal.md`, and `tasks.md` or
   `plan.md` for a change begun before.
-- Nothing is committed; the report says so.
+- When it marked or appended anything, it ends with one commit holding the checklist file
+  alone. When it did neither, it commits nothing. It never pushes.
 
 ## Scope boundaries
 
@@ -130,7 +190,7 @@ work to the checklist, for plans that drifted from what got built. Prior art:
 
 - `commands/libretto-converge.md` — routes to the skill, describes none of it
 - `skills/converge/SKILL.md` — version 1.0: the preconditions, which change, the world
-  given to the reader, the proof runs, the writes, the report
+  given to the reader, the mapping, the proof runs, the writes, the commit, the report
 - `agents/converge-reader.md` — the reading, and its return shape
 - `scripts/check-payload` — `check_wiring` and `check_absent` rows pinning the criteria
   below
@@ -144,14 +204,20 @@ work to the checklist, for plans that drifted from what got built. Prior art:
 - **editing the contract or the approach** — every pillar, `## Approach`, the decision log,
   `Targets:`, `Durable decisions:`. converge writes to the checklist and nothing else.
 - **unchecking or re-running a closed box.**
-- **committing, pushing, branching.** It writes the checklist and stops.
+- **pushing, creating a branch, or staging anything but the checklist file.** Its one
+  commit holds that file alone.
+- **guessing a mapping.** A box whose `Closes:` matches no criterion unambiguously is
+  reported `unmapped`, never closed.
+- **the targeted capability specs' criteria as uncovered work.** Uncovered means the
+  change's own criteria.
+- **a diff range as the reader's input.** The tree as it is.
 - **a binary subcommand**, and any change under `cmd/` or `internal/` — including `loop`'s
   stall message and `recommend.go`. Each is a `cli` follow-up, named in the decision log.
 - **routing from `libretto-flow` or `libretto-attacca`.** A door, not a phase.
 - **boxing a contract gap** — an outcome or scope item no criterion covers. Reported.
-- **a second definition** of a box, of which file holds the checklist, of the reader's
-  world or of how a citation is run. `find-work`, `review-work` and `work-reviewer` own
-  those; converge points to them.
+- **a second definition** of a box, of which file holds the checklist, or of how a
+  citation is run. `find-work`, `review-work` and `work-reviewer` own those; converge
+  points to them.
 - **`docs/FLOW.md`.** It describes the eight phases; a side door is not one. One line
   there is free to add later.
 
@@ -178,7 +244,10 @@ work to the checklist, for plans that drifted from what got built. Prior art:
   give in `cmd/libretto/loop.go`.
 - A named test that does not exist passes under `go test -run`: measured 2026-10-22,
   `go test ./cmd/libretto/ -run '^TestDoesNotExistAnywhere$' -v` exits 0 printing
-  `PASS` and `[no tests to run]`. A run's exit status alone is not a pass.
+  `PASS` and `[no tests to run]`, and no `--- PASS:` line. A test-named citation's exit
+  status alone is not a pass.
+- This tree carries an untracked generated file today (`.agents/specs/wiki.html` on
+  `main`), which is why dirtiness reads tracked files only.
 
 ## Prior decisions
 
@@ -192,6 +261,17 @@ work to the checklist, for plans that drifted from what got built. Prior art:
   `converge-reader` has no shell, so it cannot run a proof, and the session closes a box
   only on runs it read itself, citations taken from the contract rather than the
   reader's quote. If wrong, the reader gains `Bash` and nothing else changes.
+- **A citation passes by the rule for its kind.** Assumed 2026-10-22, after review-spec. A
+  test-named citation passes only on a `--- PASS: <TestName>` line in `-v` output; a
+  file-only citation passes on exit 0 with no `FAIL` line. If wrong, the pass line is
+  named per runner.
+- **A box maps to criteria only through an unambiguous `Closes:` match.** Assumed
+  2026-10-22, after review-spec. Anything else is `unmapped`, open and reported. If wrong,
+  an exact quote from the reader is accepted as a mapping.
+- **The reader reads the tree as it is, never a diff range; uncovered means the change's
+  own criteria.** Assumed 2026-10-22, after review-spec. Drift is a property of the code
+  that exists, and a capability spec's criteria belong to changes already landed. If
+  wrong, the diff becomes a hint and the targeted specs stay out.
 - **Drift is reported, never rewritten.** Assumed 2026-10-22, attacca run. Rewriting a box
   to match the code is changing the change's promise without touching its contract. If
   wrong, an indented `Drift:` line beneath the box, the box itself untouched.
@@ -199,11 +279,14 @@ work to the checklist, for plans that drifted from what got built. Prior art:
   Assumed 2026-10-22, attacca run. A criterion that passes already is not a task, and an
   outcome with no criterion is a contract gap, reported. If wrong, nothing is appended and
   the report lists uncovered criteria.
-- **converge never commits, never unchecks, and stops on a dirty tree.** Assumed
-  2026-10-22, attacca run. No commit because the request names it a non-goal; no uncheck
-  because a closed box's regression is `metrics`' reopened count; a dirty tree because a
-  proof against unrecorded code proves nothing about what was recorded. If wrong, one
-  `docs(<change>): converge the checklist` commit at the end.
+- **converge commits the checklist file alone, never unchecks, and stops on tracked
+  modifications.** Assumed 2026-10-22, after review-spec, reversing the run's first
+  answer. One `docs(<change>): converge the checklist` commit when anything was marked or
+  appended, because a mark never committed was never marked; no push, no branch. No
+  uncheck, because a closed box's regression is `metrics`' reopened count. Tracked
+  modifications stop it, because a proof against unrecorded code proves nothing about
+  what was recorded; untracked files do not. If wrong, the checklist is left staged and
+  the report says it is unrecorded.
 - **Every criterion below is proved as wiring.** Assumed 2026-10-22, attacca run, the way
   every payload prose criterion is. **Ceiling named:** `scripts/check-payload` proves each
   mandate is *present* in its file, never that a session obeyed it; obedience is
@@ -212,15 +295,16 @@ work to the checklist, for plans that drifted from what got built. Prior art:
 
 ## Task breakdown
 
-1. The read-only converge: the command, the skill's preconditions (clean tree, which
-   change), the world handed to one `converge-reader`, the reader's return shape, and the
-   report — drift and all three states named, nothing written. The README line and the
-   regenerated index.
-2. Closing on observed proof: `spec-drift --anchors` first, each closable box's cited
-   proofs run by the session, the box marked with its evidence, a run that does not name
-   its test counted as not passed, no commit.
-3. Appending the uncovered: each criterion no box closes, its proof run, and one box
-   appended when it does not pass; a contract gap reported, never boxed.
+1. The read-only converge: the command, the skill's preconditions (no tracked
+   modification, which change), the world handed to one `converge-reader`, the reader's
+   return shape, and the report — drift and the reader's three verdicts named, nothing
+   written. The README line and the regenerated index.
+2. Closing on observed proof: `spec-drift --anchors` first, each closable box mapped
+   through its `Closes:` or reported `unmapped`, its cited proofs run by the session and
+   read by the rule for their kind, the mark on the box's last line, and the one commit of
+   the checklist file alone.
+3. Appending the uncovered: each of the change's own criteria no box closes, its proof run,
+   and one box appended when it does not pass; a contract gap reported, never boxed.
 
 ## Verification criteria
 
@@ -229,8 +313,11 @@ work to the checklist, for plans that drifted from what got built. Prior art:
   **Ceiling named:** proves the route is written, not that a host follows it.
   Proof: scripts/check-payload
 - The `converge` skill **shall** launch exactly one `converge-reader`, given by path the
-  world `review-work` assembles and none of the conversation. Pinned by `check_wiring` on
-  `exactly one .converge-reader.`. **Ceiling named:** the phrase, not the launch.
+  tree as it is now, the change folder and the capability specs its `Targets:` lines name,
+  never a diff range and none of the conversation. Pinned by `check_wiring` on
+  `exactly one .converge-reader.`, on `none of the conversation` and on
+  `never a diff range`. **Ceiling named:** the launch and the paths actually handed over
+  are behaviour no row sees.
   Proof: scripts/check-payload
 - The `converge-reader` agent **shall** declare exactly `Read, Grep, Glob, Skill` as its
   tools. Pinned by `check_wiring` on `^tools: Read, Grep, Glob, Skill$`, so a `Bash` added
@@ -241,15 +328,17 @@ work to the checklist, for plans that drifted from what got built. Prior art:
   drifted`. **Ceiling named:** the return shape is stated, not checked against a real
   return.
   Proof: scripts/check-payload
-- **If** the working tree holds uncommitted changes when converge starts, **then** the
-  `converge` skill **shall** stop before launching the reader and name the changed files.
-  Pinned by `check_wiring` on `a dirty tree stops converge before the reader`. **Ceiling
-  named:** the instruction, not its obedience.
+- **If** `git status --porcelain --untracked-files=no` lists any file when converge starts,
+  **then** the `converge` skill **shall** stop before launching the reader and name those
+  files. An untracked file never stops it. Pinned by `check_wiring` on
+  `a dirty tree stops converge before the reader` and on `--untracked-files=no`.
+  **Ceiling named:** naming the files is the instruction's, not observed.
   Proof: scripts/check-payload
-- **If** no change is named and `find-work`'s in-flight scan returns more than one, **then**
-  the `converge` skill **shall** ask which one with the native prompt and start nothing
-  until it is answered. Pinned by `check_wiring` on `ask which one`. **Ceiling named:** the
-  instruction, not a session asking.
+- **If** no change is named and `find-work`'s source-1 scan returns more than one change
+  with an open box, **then** the `converge` skill **shall** ask which one with the native
+  prompt. The queue scan is not run. Pinned by `check_wiring` on `ask which one` and on
+  `source 1 only, never the queue`. **Ceiling named:** that nothing starts before the
+  answer is behaviour no row sees.
   Proof: scripts/check-payload
 - The `converge` skill **shall** name `find-work` as the definition of a box and of which
   file holds the checklist. Pinned by `check_wiring` on `find-work. defines the box`.
@@ -260,8 +349,8 @@ work to the checklist, for plans that drifted from what got built. Prior art:
   Proof: scripts/check-payload
 - **When** the reader returns a box as drifted, the `converge` skill **shall** leave that
   box's text and state unchanged and report what it says beside what the code does
-  instead. Pinned by `check_wiring` on `drift is reported, never rewritten`. **Ceiling
-  named:** the instruction, not an untouched file.
+  instead. Pinned by `check_wiring` on `drift is reported, never rewritten` and on
+  `beside the reader.s file and line`. **Ceiling named:** an untouched file is behaviour.
   Proof: scripts/check-payload
 - **If** any proof cited by a closable box's criteria has not been run by the session in
   the foreground and read passing, **then** the `converge` skill **shall** leave that box
@@ -270,27 +359,45 @@ work to the checklist, for plans that drifted from what got built. Prior art:
   Proof: scripts/check-payload
 - Before running any proof, the `converge` skill **shall** run `spec-drift --anchors` and
   count a citation it reports unresolved as not passed. Pinned by `check_wiring` on
-  `spec-drift --anchors. before any proof`. **Ceiling named:** the order is written, not
-  observed.
+  `spec-drift --anchors. before any proof`. **Ceiling named:** the order and the counting
+  are written, not observed.
   Proof: scripts/check-payload
-- **If** a proof's output does not name the cited test as having run, **then** the
-  `converge` skill **shall** count that proof as not passed, whatever its exit status.
-  Pinned by `check_wiring` on `does not name the cited test`. **Ceiling named:** the rule,
-  not a session reading the output.
+- **If** the `-v` output of a test-named citation carries no `--- PASS: <TestName>` line
+  for that test, **then** the `converge` skill **shall** count it as not passed, whatever
+  its exit status. Pinned by `check_wiring` on `--- PASS: <TestName>` and on
+  `whatever its exit status`. **Ceiling named:** the rule, not a session reading the
+  output.
+  Proof: scripts/check-payload
+- **If** a file-only citation exits non-zero or prints a `FAIL` line, **then** the
+  `converge` skill **shall** count it as not passed. Pinned by `check_wiring` on
+  `exits 0 and prints no FAIL line`. **Ceiling named:** the rule, not a session reading
+  the output.
+  Proof: scripts/check-payload
+- **If** a box's `Closes:` text matches no criterion of the contract unambiguously, or the
+  box carries no `Closes:`, **then** the `converge` skill **shall** leave it open and
+  report it as `unmapped`. Pinned by `check_wiring` on `reported as .unmapped.`.
+  **Ceiling named:** whether a match was unambiguous is a reading no row sees.
   Proof: scripts/check-payload
 - **When** the session closes a box on observed proof, the `converge` skill **shall** have
-  it append the citation that passed and the date to that box's line, as
-  `— converged <date>: <citation> passed`. Pinned by `check_wiring` on
-  `converged <date>: <citation> passed`. **Ceiling named:** the format, not a written box.
+  it append `— converged <date>: <citation>, <citation> passed`, listing every citation
+  that passed, to the box's last line. Pinned by `check_wiring` on
+  `converged <date>: <citation>, <citation> passed` and on `the box.s last line`.
+  **Ceiling named:** the format and place, not a written box.
   Proof: scripts/check-payload
-- **Where** a contract criterion is closed by no box and its proof does not pass when the
-  session runs it, the `converge` skill **shall** append one open box naming that
-  criterion in `Closes:` after the checklist's last box. Pinned by `check_wiring` on
-  `appended after the checklist.s last box`. **Ceiling named:** the instruction, not an
-  appended box.
+- The `converge` skill **shall** count as uncovered only criteria under the
+  `## Verification criteria` of the change's `proposal.md` and of each
+  `spec-<capability>.md` beside it that no box's `Closes:` names. Pinned by `check_wiring`
+  on `uncovered means the change.s own criteria`. **Ceiling named:** the definition, not
+  a session applying it.
   Proof: scripts/check-payload
-- **Where** a contract criterion is closed by no box and its proof passes when the session
-  runs it, the `converge` skill **shall** append no box for it. Pinned by `check_wiring` on
+- **Where** an uncovered criterion's proof does not pass when the session runs it, the
+  `converge` skill **shall** append one open box marked `(converge <date>)` and naming
+  that criterion in `Closes:` after the checklist's last box. Pinned by `check_wiring` on
+  `appended after the checklist.s last box` and on `\(converge <date>\)`. **Ceiling
+  named:** an appended box is behaviour.
+  Proof: scripts/check-payload
+- **Where** an uncovered criterion's proof passes when the session runs it, the `converge`
+  skill **shall** append no box for it. Pinned by `check_wiring` on
   `passes already, so no box is appended`. **Ceiling named:** the instruction only.
   Proof: scripts/check-payload
 - The `converge` skill **shall** write to the checklist and nothing else. Pinned by
@@ -300,9 +407,18 @@ work to the checklist, for plans that drifted from what got built. Prior art:
 - The `converge` skill **shall** never uncheck a closed box. Pinned by `check_wiring` on
   `never unchecks a closed box`. **Ceiling named:** the instruction only.
   Proof: scripts/check-payload
-- The `converge` skill **shall** end without committing and say the marks are unrecorded
-  until the checklist is committed. Pinned by `check_wiring` on `unrecorded until the
-  checklist is committed`. **Ceiling named:** the sentence, not an empty `git log`.
+- **When** converge marked or appended any box, the `converge` skill **shall** end with one
+  `docs(<change>): converge the checklist` commit holding the checklist file alone. Pinned
+  by `check_wiring` on `docs\(<change>\): converge the checklist` and on
+  `stages nothing else`. **Ceiling named:** the commit's contents are behaviour, seen in
+  `git show` and not by the gate.
+  Proof: scripts/check-payload
+- **If** converge marked and appended nothing, **then** the `converge` skill **shall**
+  make no commit. Pinned by `check_wiring` on `nothing was marked or appended, no commit`.
+  **Ceiling named:** the instruction only.
+  Proof: scripts/check-payload
+- The `converge` skill **shall** never push or create a branch. Pinned by `check_wiring` on
+  `never pushes and never creates a branch`. **Ceiling named:** the instruction only.
   Proof: scripts/check-payload
 
 ## Approach
@@ -311,28 +427,40 @@ work to the checklist, for plans that drifted from what got built. Prior art:
 
 A side door into the flow, built like `/libretto-retro` and `/libretto-status`: a command
 that routes, a skill that holds the rule, and — like `review-work` — one fresh agent that
-reads and never writes. The `converge-reader` gets the change's world by path and returns,
-per open box, one of three verdicts plus the contract criteria no box closes. The session
-then does the only part that counts as evidence: it runs the cited proofs itself, after
-`spec-drift --anchors`, and writes the checklist — closing what passed, appending a box for
-each uncovered criterion that does not, and leaving every drifted box exactly as it was,
-named in the report. Nothing is committed.
+reads and never writes. The `converge-reader` reads the tree as it is and returns, per open
+box, one of three verdicts plus the change's own criteria no box closes. The session then
+does the only part that counts as evidence: it maps each closable box through its
+`Closes:`, runs the cited proofs itself after `spec-drift --anchors`, reads each by the
+rule for its kind, and writes the checklist — closing what passed, appending a box for
+each uncovered criterion that does not, leaving every drifted or unmapped box as it was
+and naming it in the report. When it wrote anything, it commits the checklist file alone.
 
 ### Technical context
 
 - Payload markdown, read by the host as a skill, an agent and a command. Installed by
   symlink; on OpenCode the agent is a derived file the linker writes, which needs nothing
   from this change.
-- **Reused, never redefined.** `find-work`'s source-1 scan finds the in-flight changes and
-  defines the box and which file holds the checklist — the CLI's `planLine`, and
-  `checklistPath`'s order: `proposal.md`'s `## Checklist` when it holds a box, else
-  `tasks.md`, else `plan.md`. `review-work`'s step 1 defines the reader's world: the
-  contract and its `Targets:` specs, the diff range `<base>...<branch>`, the change folder.
+- **Reused, never redefined.** `find-work`'s source 1 — its open-box scan and its unmerged
+  branches, never the queue scan — finds the in-flight changes and defines the box and
+  which file holds the checklist: the CLI's `planLine`, and `checklistPath`'s order,
+  `proposal.md`'s `## Checklist` when it holds a box, else `tasks.md`, else `plan.md`.
   `work-reviewer` shows how a citation is run. `write-tasks` owns *One writer* and what a
   box records.
+- **The reader's world is part of `review-work`'s, not all of it.** From `review-work`'s
+  step 1, the contract applies — `proposal.md`, every `spec-<capability>.md` beside it, or
+  an old-layout delta, and the capability specs their `Targets:` lines name — and so does
+  the change folder, for the approach. **The diff range does not**: the reader reads the
+  whole tree as it is now, because drift is a property of the code that exists, wherever
+  it was written.
+- **Uncovered means the change's own criteria**: the `## Verification criteria` of
+  `proposal.md` and of each `spec-<capability>.md` beside it — an old-layout change's
+  `spec.md` delta in their place. The targeted capability specs are read for context and
+  never contribute an uncovered criterion.
+- **Two kinds of citation.** Test-named, `<file> TestX`: run with `-v`, passed only on a
+  `--- PASS: TestX` line. File-only, `scripts/check-payload` or
+  `skills/record-work/spec-drift --self-test`: passed on exit 0 with no `FAIL` line.
 - `spec-drift --anchors` resolves every `Proof:` down to the test name, and fails on one
-  whose test is absent — the guard that matters, since a missing Go test passes
-  `go test -run` (measured, under *Constraints*).
+  whose test is absent.
 - `scripts/check-payload`: `check_wiring <file> <pattern> <what>` and `check_absent`, one
   line each, plus the generic checks under *Constraints*.
 - Blast radius: three new files (`commands/libretto-converge.md`, `skills/converge/SKILL.md`,
@@ -349,53 +477,70 @@ named in the report. Nothing is committed.
    one line of why — "`loop` drives a checklist; this re-derives one that stopped
    describing the code". Input: `$ARGUMENTS`, a change name or empty.
 2. **The skill**, `skills/converge/SKILL.md`, in this order:
-   1. **Preconditions.** `git status --porcelain`; anything listed means *a dirty tree stops
-      converge before the reader*, naming the files.
+   1. **Preconditions.** `git status --porcelain --untracked-files=no`; anything listed
+      means *a dirty tree stops converge before the reader*, naming the files. Untracked
+      files are not read.
    2. **Which change.** Named: that one, refused if its folder holds no checklist box.
-      Empty: `Skill(skill="find-work")` in reporting mode, source 1 only, as
-      `/libretto-status` invokes it. One in flight: that one. Several: *ask which one*,
-      one `AskUserQuestion` call — the host's native prompt, or in conversation where there
-      is none. None: say so in one line and stop. *`find-work` defines the box* and which
-      file holds the checklist; this skill restates neither.
+      Empty: `Skill(skill="find-work")`, *source 1 only, never the queue* — its open-box
+      scan and its unmerged branches; a queued capture has no checklist. One in flight:
+      that one. Several: *ask which one*, one `AskUserQuestion` call — the host's native
+      prompt, or in conversation where there is none — and start nothing until answered.
+      None: say so in one line and stop. *`find-work` defines the box* and which file
+      holds the checklist; this skill restates neither.
    3. **The reader.** Launch *exactly one `converge-reader`*, foreground, given by path the
-      world `review-work`'s step 1 assembles, plus the checklist file, and none of the
-      conversation. Silence is not a verdict: relaunch once, then stop — `review-work`'s
-      rule.
+      tree as it is now, the change folder and the capability specs its `Targets:` lines
+      name — *never a diff range*, and *none of the conversation*. Silence is not a
+      verdict: relaunch once, then stop — `review-work`'s rule.
    4. **The mechanical half.** Run `<skill-base>/../record-work/spec-drift --anchors`,
       redirected to a file with its exit read — *`spec-drift --anchors` before any proof*;
       any citation of this change it names as unresolved is not passed.
-   5. **Closable boxes.** For each, read the criteria it closes from the contract, take
-      their `Proof:` lines from there — not from the reader — and run each in the
-      foreground the way `work-reviewer` runs a citation, output to a file and read. A
-      proof whose output *does not name the cited test* as run is not passed, whatever
-      the exit. All passed: mark `[x]` and append
-      `— converged <date>: <citation> passed`. Otherwise the box stays open and the
-      report says which proof failed. *A reader's verdict never closes a box.*
+   5. **Closable boxes.** For each:
+      - **Map it.** Match the box's `Closes:` text against the contract's criteria. No
+        match, more than one candidate, or no `Closes:` at all — an old-layout box — and
+        the box stays open, *reported as `unmapped`*.
+      - **Run it.** Take each mapped criterion's `Proof:` line from the contract — not from
+        the reader — and run it in the foreground the way `work-reviewer` runs a citation,
+        output to a file and read. A test-named citation runs with `-v` and passes only
+        when its output carries `--- PASS: <TestName>` for that test, *whatever its exit
+        status*. A file-only citation passes when it *exits 0 and prints no FAIL line*.
+      - **Mark it.** Every citation passed: mark `[x]` and append, on *the box's last
+        line*, `— converged <date>: <citation>, <citation> passed`. Otherwise the box
+        stays open and the report names the citation that did not pass. *A reader's
+        verdict never closes a box.*
    6. **Drifted boxes.** *Drift is reported, never rewritten*: the box is not touched, and
-      the report carries the box's words beside the reader's file and line.
-   7. **Uncovered criteria.** For each, run its proof the same way. Not passed: one open
-      box *appended after the checklist's last box* —
+      the report carries the box's words *beside the reader's file and line*.
+   7. **Uncovered criteria.** *Uncovered means the change's own criteria* — the
+      `## Verification criteria` of `proposal.md` and of each `spec-<capability>.md`
+      beside it that no box's `Closes:` names. For each, run its proof by the same rules.
+      Not passed: one open box *appended after the checklist's last box* —
       `- [ ] **<criterion, in a phrase>** (converge <date>). Closes: <criterion> on
       <citation>. Waits on: nothing.` Passed: it *passes already, so no box is appended*,
       and the report says so. A contract gap the reader names is reported only.
    8. **The writes.** converge *writes to the checklist and nothing else*, and *never
       unchecks a closed box*.
-   9. **The report**: one line per open box with its state and evidence, the proofs run
-      with pass or fail, boxes closed, boxes appended, drift, contract gaps — and that the
-      marks are *unrecorded until the checklist is committed*. No commit.
+   9. **The commit.** Anything marked or appended: `git add` the checklist file alone and
+      commit it as *`docs(<change>): converge the checklist`* — it *stages nothing else*.
+      If *nothing was marked or appended, no commit*. It *never pushes and never creates a
+      branch*.
+   10. **The report**: one line per open box with its state — open, closed with its
+       citations, drifted, unmapped — the proofs run with pass or fail, boxes appended,
+       contract gaps, and the commit's hash or "no commit".
 3. **The agent**, `agents/converge-reader.md`: `tools: Read, Grep, Glob, Skill`; invokes
-   `evidence` first; reads the contract, the approach, the checklist and the code. Returns,
-   for every open box, *exactly one of open, closable or drifted*:
+   `evidence` first; reads the tree as it is, the change folder and the targeted capability
+   specs, and never a diff. Returns, for every open box, *exactly one of open, closable or
+   drifted*:
    - `open — <box head>: <what is missing, file or symbol>`
    - `closable — <box head>: <criteria it closes>; code at <file:line>`
    - `drifted — <box head>: says <…>; the code does <…> at <file:line>`
 
-   then `uncovered — <criterion head>: <its Proof: line as written>` for each criterion no
-   box closes, then `gap — <outcome or scope item>` for each outcome no criterion covers,
-   or the sentence **"nothing found"**. It never edits anything, never commits, never
-   judges style; a suspicion it cannot settle is returned marked unverified.
-4. **`scripts/check-payload`**: one row per criterion, after the existing payload rows, each
-   forced red on a throwaway copy of the file it pins.
+   then `uncovered — <criterion head>: <its Proof: line as written>` for each of **the
+   change's own criteria** no box's `Closes:` names — never a targeted capability spec's —
+   then `gap — <outcome or scope item>` for each outcome no criterion covers, or the
+   sentence **"nothing found"**. It never edits anything, never commits, never judges
+   style; a suspicion it cannot settle is returned marked unverified.
+4. **`scripts/check-payload`**: one row per pinned phrase named under *Verification
+   criteria*, after the existing payload rows, each forced red on a throwaway copy of the
+   file it pins.
 5. **`README.md`**: `/libretto-converge <change>` joins the door list with a comment
    "re-derive a drifted checklist against the code", and the file stays at 380 lines or
    fewer — a line folded elsewhere in the same section, never the ceiling raised.
@@ -410,10 +555,16 @@ named in the report. Nothing is committed.
 | reuse `work-reviewer` | its file fixes three questions about a finished diff; a per-box brief contradicts the agent it runs under |
 | reuse `spec-reviewer` | it reads a contract before code exists and reports what the document fails to answer — the opposite direction |
 | the reader runs the proofs | then a reader's report could close a box; the one writer must be the one that observed the pass |
+| the reader reads the diff range, as `work-reviewer` does | drift is in the code as it stands; a box can be satisfied, or contradicted, by code the branch never touched |
+| a test-named citation passes on exit 0 | a test that does not exist exits 0 (measured) |
+| the reader proposes the box-to-criterion mapping | a guessed mapping is the reading that is not allowed to close a box; `unmapped` is honest |
+| uncovered includes the targeted capability specs' criteria | turns converge into a regression sweep of everything already landed |
 | rewrite a drifted box to match the code | ratifies drift without the contract moving |
 | a `Drift:` line under a drifted box | an edit to a box whose meaning converge does not own; the report carries it. Kept as the fallback if report-only proves too easy to lose |
 | append a box for every uncovered criterion, passing or not | a box whose criterion is met is not a task (`write-tasks`) |
-| commit the checklist at the end | the request names auto-commit a non-goal |
+| leave the checklist uncommitted | a mark never committed was never marked — `write-tasks` and `payload` |
+| commit the checklist with whatever else is staged | a converge commit must be reviewable alone; it stages nothing else |
+| stop on untracked files too | this tree carries an untracked generated `wiki.html` today; converge would never run |
 | re-run closed boxes and uncheck failures | widens the ask from open boxes to regressions; `metrics` already counts reopened boxes |
 | no reader — the session reads the code inline | the session running converge is often the one whose plan drifted, and reading a whole codebase into the writer's context is what the reader is for |
 
@@ -421,11 +572,13 @@ named in the report. Nothing is committed.
 
 | Risk | What catches it |
 |---|---|
-| a cited Go test that does not exist passes `go test -run` and closes a box | `spec-drift --anchors` runs first and fails on an absent test name; and a run whose output does not name the test is not a pass. Both pinned by a criterion |
+| a cited Go test that does not exist passes `go test -run` and closes a box | `spec-drift --anchors` runs first and fails on an absent test name; and a test-named citation passes only on its `--- PASS:` line. Both pinned by a criterion |
+| a file-only citation exits 0 while reporting a failure | it must also print no `FAIL` line; pinned |
 | the reader calls "closable" what is half-built | it cannot close anything; the session's run of the cited proof decides |
+| a box's `Closes:` is vague, or an old-layout box has none | it is not mapped by guess: it stays open, reported `unmapped`, and the user sharpens the `Closes:` |
 | a proof that passes for the wrong reason closes a box | not caught here — the same weakness the proof has everywhere. `review-work` re-runs the proofs at 6→7 |
 | a drifted box stays open and the next `loop` session builds it as written, against the code | the report names every drifted box and says `loop` would rebuild it; resolving drift is the user's, at the contract. **Accepted**, with the `Drift:` line as the named replacement |
-| an old-layout `plan.md` box carries no `Closes:` | that box closes only on criteria the session finds in the contract; a box with none stays open and is reported as such |
+| the converge commit sweeps in something else the user staged | a staged file is a tracked modification, so the precondition stops converge before it begins; and the skill commits with the checklist path as the commit's only pathspec |
 | `README.md` crosses 380 lines | `TestReadmeStaysShort` fails the gate |
 | a `check_wiring` row green the moment it is written | each row forced red on a throwaway copy before it is believed — the discipline the existing rows record |
 
@@ -439,11 +592,13 @@ it will, the moment `commands/libretto-converge.md` exists — and green after, 
 `TestReadmeStaysShort` green beside it.
 
 **What would pass for the wrong reason:** every row here proves a sentence is present. None
-proves a session obeys it. Behaviour is checked once by hand during phase 6: a throwaway
-change with three boxes — one whose proof passes, one whose proof fails, one describing a
-function the code named differently — and one criterion no box closes, run through
-`/libretto-converge`, its report read against the expected four outcomes. Reported in
-phase 7 as observed, not gated.
+proves a session obeys it. Behaviour is checked once by hand during phase 6, **in a
+throwaway git repository made with `mktemp -d`, never on this branch**: a change folder
+with three boxes — one whose proof passes, one whose proof fails, one describing a function
+the code named differently — and one criterion no box closes, run through
+`/libretto-converge`, its report and its commit read against the expected outcomes. The
+failing proof is a cited Go test that asserts false, or a cited script that exits 1. The
+repository is discarded after; what was observed is reported in phase 7, not gated.
 
 Rollback: one revert; three new files go, three edited files return. Nothing migrates.
 
@@ -452,38 +607,44 @@ Rollback: one revert; three new files go, three edited files return. Nothing mig
 - **A new agent rather than a brief.** A fresh agent with its own file is three paragraphs
   more than an inline reading; it is what keeps the reader's verdict out of the writer's
   context, and what makes "no `Bash`" a declared, gated fact rather than a promise.
-- **`spec-drift --anchors` and an output check, both.** Either alone misses a case: anchors
-  does not run the test, and the output check is the session reading prose. Two cheap
-  guards on the one failure that would close a box falsely.
+- **`spec-drift --anchors` and a pass rule per citation kind, both.** Either alone misses a
+  case: anchors does not run the test, and the pass rule is the session reading output.
+  Two cheap guards on the one failure that would close a box falsely.
 
 ## Checklist
 
 Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its own.
 
 - [ ] **A read-only converge reports every open box's state.** The command, the skill's
-      preconditions, change selection, the reader launch and the report; the
-      `converge-reader` agent and its return shape; the README door-list line within 380
-      lines; `docs/PAYLOAD.md` regenerated; a `check_wiring` or `check_absent` row per
-      criterion it closes, each forced red once. Writes nothing to any checklist yet.
-      Closes: the command-routing criterion, the exactly-one-reader criterion, the
-      reader-tools criterion, the three-states criterion, the dirty-tree criterion, the
-      ask-which-one criterion, the find-work-defines-the-box criterion, the
-      no-restated-box-pattern criterion and the drift-is-reported criterion — all on
-      scripts/check-payload. Waits on: nothing.
-- [ ] **Converge closes a box only on proof the session observed.** In the skill:
-      `spec-drift --anchors` first, each closable box's cited proofs run from the contract,
-      the output-names-the-test rule, the `— converged <date>: <citation> passed` mark,
-      writes limited to the checklist, no uncheck, no commit and the closing sentence of
-      the report; one `check_wiring` row each, forced red once. Closes: the
-      reader-never-closes criterion, the anchors-first criterion, the
-      output-names-the-test criterion, the converged-mark criterion, the checklist-only
-      criterion, the never-uncheck criterion and the no-commit criterion — all on
+      preconditions on tracked modifications, change selection by `find-work`'s source 1,
+      the reader launch on the tree as it is and the report; the `converge-reader` agent
+      and its return shape; the README door-list line within 380 lines; `docs/PAYLOAD.md`
+      regenerated; every `check_wiring` and `check_absent` row its criteria name, each
+      forced red once. Writes and commits nothing yet. Closes: the command-routing
+      criterion, the exactly-one-reader criterion, the reader-tools criterion, the
+      three-verdicts criterion, the dirty-tree criterion, the ask-which-one criterion, the
+      find-work-defines-the-box criterion, the no-restated-box-pattern criterion and the
+      drift-is-reported criterion — all on scripts/check-payload. Waits on: nothing.
+- [ ] **Converge closes a box only on proof the session observed, and commits it.** In the
+      skill: `spec-drift --anchors` first; each closable box mapped through its `Closes:`
+      or reported `unmapped`; its cited proofs run from the contract and read by the rule
+      for their kind; the mark on the box's last line listing every citation; writes
+      limited to the checklist; no uncheck; the one commit of the checklist file alone,
+      none when nothing changed, no push and no branch. Every row its criteria name, each
+      forced red once. Closes: the reader-never-closes criterion, the anchors-first
+      criterion, the test-named-citation criterion, the file-only-citation criterion, the
+      unmapped criterion, the converged-mark criterion, the checklist-only criterion, the
+      never-uncheck criterion, the commit-the-checklist-alone criterion, the
+      no-commit-when-nothing-changed criterion and the never-push criterion — all on
       scripts/check-payload. Waits on: box 1.
-- [ ] **Converge appends a box for each uncovered criterion whose proof does not pass.**
-      In the skill: the reader's `uncovered` lines run like any proof, an open box
-      appended after the last box when it fails, nothing when it passes, contract gaps
-      reported; one `check_wiring` row each, forced red once. Then the one hand-run on a
-      throwaway change with a passing, a failing and a drifted box plus one uncovered
-      criterion, its report read against the four expected outcomes and carried to phase
-      7. Closes: the append-when-failing criterion and the no-box-when-passing criterion,
-      on scripts/check-payload. Waits on: box 2, which defines how a proof is run and read.
+- [ ] **Converge appends a box for each of the change's own uncovered criteria whose proof
+      does not pass.** In the skill: uncovered defined as the change's own criteria only;
+      the reader's `uncovered` lines run by the same rules; an open box marked
+      `(converge <date>)` appended after the last box when the proof fails, nothing when
+      it passes, contract gaps reported. Every row its criteria name, each forced red once.
+      Then the one hand-run in a throwaway `mktemp -d` git repository with a passing, a
+      failing and a drifted box plus one uncovered criterion, its report and commit read
+      against the expected outcomes and carried to phase 7. Closes: the uncovered-means-own
+      criterion, the append-when-failing criterion and the no-box-when-passing criterion —
+      all on scripts/check-payload. Waits on: box 2, which defines how a proof is mapped,
+      run, read and committed.
