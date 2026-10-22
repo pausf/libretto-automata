@@ -212,6 +212,9 @@ type session struct {
 	subtype    string
 	isError    *bool
 	text       string
+	// hostError is what the host reported as an error event, as reported. Only opencode
+	// has such an event; claude's failures arrive as its result.
+	hostError string
 }
 
 // claudeArgs passes the budget through as the host's own flag, exactly as typed: the host
@@ -243,7 +246,7 @@ func parseSession(out []byte) session {
 	if r.Result != nil {
 		text = *r.Result
 	}
-	return session{r.Cost, r.Duration, r.SessionID, r.Subtype, r.IsError, text}
+	return session{cost: r.Cost, durationMS: r.Duration, sessionID: r.SessionID, subtype: r.Subtype, isError: r.IsError, text: text}
 }
 
 // opencodeArgs names the command and never the message: `run` re-quotes a positional
@@ -260,12 +263,13 @@ func opencodeStdin(prompt string) string {
 // parseOpencode reads OpenCode's event stream, one JSON object per event. A Decoder and
 // never a line scanner: a tool_use event carries the tool's whole output, so a line has no
 // bound, and a fixed buffer would end the parse on an ordinary build round. A decode error
-// stops the walk and keeps what was read; output that yielded no text — including output
-// whose first value is not JSON — is kept whole as the text, the rule parseSession keeps
-// for claude.
+// stops the walk and keeps what was read; output that yielded neither text nor an error —
+// including output whose first value is not JSON — is kept whole as the text, the rule
+// parseSession keeps for claude. An error event's message is chosen the way run.ts prints
+// it: data.message when present, else the error's name.
 func parseOpencode(out []byte) session {
 	var s session
-	var texts []string
+	var texts, errs []string
 	d := json.NewDecoder(bytes.NewReader(out))
 	for {
 		var e struct {
@@ -274,6 +278,12 @@ func parseOpencode(out []byte) session {
 			Part      struct {
 				Text string `json:"text"`
 			} `json:"part"`
+			Error struct {
+				Name string `json:"name"`
+				Data struct {
+					Message string `json:"message"`
+				} `json:"data"`
+			} `json:"error"`
 		}
 		if err := d.Decode(&e); err != nil {
 			break
@@ -281,11 +291,19 @@ func parseOpencode(out []byte) session {
 		if s.sessionID == "" {
 			s.sessionID = e.SessionID
 		}
-		if e.Type == "text" {
+		switch e.Type {
+		case "text":
 			texts = append(texts, e.Part.Text)
+		case "error":
+			msg := e.Error.Data.Message
+			if msg == "" {
+				msg = e.Error.Name
+			}
+			errs = append(errs, msg)
 		}
 	}
-	if len(texts) == 0 {
+	s.hostError = strings.Join(errs, "\n")
+	if len(texts) == 0 && len(errs) == 0 {
 		s.text = string(out)
 		return s
 	}
@@ -392,6 +410,7 @@ type loopRecord struct {
 	Time       string   `json:"time"`
 	Change     string   `json:"change"`
 	Round      int      `json:"round"`
+	Tool       string   `json:"tool,omitempty"`
 	Closed     *int     `json:"closed,omitempty"`
 	Open       *int     `json:"open,omitempty"`
 	CostUSD    *float64 `json:"cost_usd,omitempty"`
@@ -445,15 +464,20 @@ func appendRecord(path string, r loopRecord) error {
 
 func newRecord(o loopOpts, round int, s session, runErr error) loopRecord {
 	r := loopRecord{
-		Change: o.change, Round: round,
+		Change: o.change, Round: round, Tool: string(o.tool),
 		CostUSD: s.cost, DurationMS: s.durationMS, SessionID: s.sessionID,
 		Subtype: s.subtype, IsError: s.isError,
 	}
 	if b, err := strconv.ParseFloat(o.budget, 64); err == nil {
 		r.BudgetUSD = &b
 	}
-	if runErr != nil {
+	// A non-zero exit keeps the exec error, as it does for claude; the host's own report
+	// fills the field only when the exit said nothing went wrong.
+	switch {
+	case runErr != nil:
 		r.Error = runErr.Error()
+	case s.hostError != "":
+		r.Error = s.hostError
 	}
 	return r
 }
@@ -557,6 +581,9 @@ func runLoop(w io.Writer, projectDir string, o loopOpts, run loopRunner) error {
 			if !strings.HasSuffix(s.text, "\n") {
 				fmt.Fprintln(w)
 			}
+		}
+		if s.hostError != "" {
+			fmt.Fprintf(w, "%s error: %s\n", o.tool, s.hostError)
 		}
 		if runErr != nil {
 			fmt.Fprintf(w, "     session exited with an error: %v\n", runErr)

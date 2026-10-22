@@ -592,7 +592,7 @@ non-goal, and the `init` paragraph's scope-flag sentence, with the replacement t
       Waits on box 1. Closes: TestParseOpencodeReadsTheSessionID,
       TestOpencodeTextReachesTheTerminal, TestOpencodeWithoutTextPrintsTheRawOutput,
       TestALongOpencodeEventDoesNotEndTheParse.
-- [ ] **Every record names its tool, an opencode round records no cost, and a host error
+- [x] **Every record names its tool, an opencode round records no cost, and a host error
       event is printed and recorded.** `loopRecord.Tool`, set in `newRecord`;
       `session.hostError` filled by `parseOpencode`, printed by `runLoop` after the text as
       `<tool> error: <message>`, and copied into `error` by `newRecord` only when `runErr`

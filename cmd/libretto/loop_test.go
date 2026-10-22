@@ -1340,3 +1340,91 @@ func TestALongOpencodeEventDoesNotEndTheParse(t *testing.T) {
 		t.Errorf("wanted the text after a 2 MiB event, got %d bytes starting %.60q", len(s.text), s.text)
 	}
 }
+
+// opencodeRunner closes one box and reports out the way a real opencode round would be read.
+func opencodeRunner(t *testing.T, plan, out string, err error) loopRunner {
+	t.Helper()
+	h, _ := sessionFor(target.OpencodeTool)
+	return func(string) (session, error) {
+		b, _ := os.ReadFile(plan)
+		if werr := os.WriteFile(plan, []byte(strings.Replace(string(b), "- [ ]", "- [x]", 1)), 0o644); werr != nil {
+			t.Fatal(werr)
+		}
+		return h.parse([]byte(out)), err
+	}
+}
+
+func TestTheRecordNamesTheTool(t *testing.T) {
+	for _, tool := range []target.Tool{target.ClaudeTool, target.OpencodeTool} {
+		t.Run(string(tool), func(t *testing.T) {
+			dir := t.TempDir()
+			plan := writeTasks(t, dir, "c", "- [ ] one\n")
+			log := logIn(t)
+			if err := runLoop(io.Discard, dir, loopOpts{change: "c", max: 5, log: log, tool: tool}, closingRunner(t, plan)); err != nil {
+				t.Fatal(err)
+			}
+			if got := readRecords(t, log)[0]["tool"]; got != string(tool) {
+				t.Fatalf("wanted tool %q on the record, got %v", tool, got)
+			}
+		})
+	}
+}
+
+// opencodeStream's step_finish carries a non-zero cost, so an implementation that summed
+// it would write one here.
+func TestAnOpencodeRoundRecordsNoCost(t *testing.T) {
+	dir := t.TempDir()
+	plan := writeTasks(t, dir, "c", "- [ ] one\n")
+	log := logIn(t)
+	if err := runLoop(io.Discard, dir, loopOpts{change: "c", max: 5, log: log, tool: target.OpencodeTool},
+		opencodeRunner(t, plan, opencodeStream, nil)); err != nil {
+		t.Fatal(err)
+	}
+	rec := readRecords(t, log)[0]
+	for _, k := range []string{"cost_usd", "duration_ms", "subtype", "is_error"} {
+		if v, ok := rec[k]; ok {
+			t.Errorf("an opencode round reports no %s of its own, yet the record carries %v", k, v)
+		}
+	}
+	if rec["session_id"] != "ses_42" {
+		t.Errorf("wanted the session id recorded, got %v", rec["session_id"])
+	}
+}
+
+func TestAnOpencodeErrorEventIsPrintedAndRecorded(t *testing.T) {
+	stream := `{"type":"text","timestamp":1,"sessionID":"ses_42","part":{"text":"started"}}` + "\n" +
+		`{"type":"error","timestamp":2,"sessionID":"ses_42","error":{"name":"UnknownError","data":{"message":"command not found: libretto-attacca"}}}` + "\n" +
+		`{"type":"error","timestamp":3,"sessionID":"ses_42","error":{"name":"ProviderAuthError"}}` + "\n"
+	const message = "command not found: libretto-attacca\nProviderAuthError"
+
+	t.Run("exit zero", func(t *testing.T) {
+		dir := t.TempDir()
+		plan := writeTasks(t, dir, "c", "- [ ] one\n")
+		log := logIn(t)
+		var out strings.Builder
+		if err := runLoop(&out, dir, loopOpts{change: "c", max: 5, log: log, tool: target.OpencodeTool},
+			opencodeRunner(t, plan, stream, nil)); err != nil {
+			t.Fatal(err)
+		}
+		text, printed := strings.Index(out.String(), "started\n"), strings.Index(out.String(), "opencode error: "+message+"\n")
+		if text < 0 || printed < text {
+			t.Fatalf("wanted the text, then `opencode error: <message>`:\n%s", out.String())
+		}
+		if got := readRecords(t, log)[0]["error"]; got != message {
+			t.Fatalf("wanted the reported message as error, got %v", got)
+		}
+	})
+
+	t.Run("exit non-zero", func(t *testing.T) {
+		dir := t.TempDir()
+		plan := writeTasks(t, dir, "c", "- [ ] one\n")
+		log := logIn(t)
+		if err := runLoop(io.Discard, dir, loopOpts{change: "c", max: 5, log: log, tool: target.OpencodeTool},
+			opencodeRunner(t, plan, stream, fmt.Errorf("exit status 1"))); err != nil {
+			t.Fatal(err)
+		}
+		if got := readRecords(t, log)[0]["error"]; got != "exit status 1" {
+			t.Fatalf("a non-zero exit keeps the exec error, got %v", got)
+		}
+	})
+}
