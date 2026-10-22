@@ -284,6 +284,8 @@ check_wiring skills/write-spec/SKILL.md  'never the corpus'             'phase 2
 check_wiring skills/write-spec/SKILL.md  'proposal\.md.*always the vocabulary' 'a fan-out writer is given proposal.md by path, its vocabulary always'
 check_wiring skills/write-spec/SKILL.md  'rebills the whole context'    'the fan-out of spec-<capability>.md writers states what a mid-phase model switch costs'
 check_wiring skills/record-work/SKILL.md 'opt-in and stays' 'the block hook snippet is documented as opt-in'
+check_wiring skills/record-work/SKILL.md '^\| \*\*joined criterion\*\* \|' 'record-work carries joined criteria as a row of its --trace table'
+check_wiring skills/review-spec/SKILL.md 'split the criterion or name its ceiling' 'review-spec reads joined criteria as a prompt to split or name a ceiling'
 check_wiring skills/build-and-check/SKILL.md 'judging the change means looking' 'phase 6 renders and looks at visual output'
 check_wiring skills/review-work/SKILL.md 'the phase field exactly .6→7.' 'the seam ledgers each finding as 6→7'
 check_wiring skills/write-spec/SKILL.md 'no hard cap, and the bias is toward asking' 'phase 2 questions are judgment, biased to ask'

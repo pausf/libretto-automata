@@ -478,7 +478,7 @@ Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its
       unconditional separator. Closes: the count-line criterion, the zero-case criterion
       and the exit-0 criterion, on skills/record-work/spec-drift --self-test. Waits on:
       box 1.
-- [ ] **The skills say what the section means.** The `record-work` `--trace` table row and
+- [x] **The skills say what the section means.** The `record-work` `--trace` table row and
       "four questions", version 1.6; the `review-spec` sentence, version 2.1; one
       `check_wiring` row each in `scripts/check-payload` — `^\| \*\*joined criterion\*\* \|`
       and `split the criterion or name its ceiling` — each forced red on a throwaway copy.

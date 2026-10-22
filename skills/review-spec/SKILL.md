@@ -4,7 +4,7 @@ description: "Trigger: a change document's checklist has just been written and c
 license: MIT
 metadata:
   author: pausf
-  version: "2.0"
+  version: "2.1"
 ---
 
 ## What this does
@@ -85,10 +85,14 @@ misses them. `record-work` ships the tool:
 <skill-base>/../record-work/spec-drift --ears
 ```
 
-`--trace` reports dead `Governs:` globs, criteria with no `Proof:` beneath them, and code
-no spec claims. `--ears` reports criteria that cannot be failed because they were written
-in prose rather than in one of the five EARS patterns — hard on a change delta, a warning
-on a capability spec that predates the syntax.
+`--trace` reports dead `Governs:` globs, criteria with no `Proof:` beneath them, code
+no spec claims, and joined criteria — two or more `shall` resting on one `Proof:` with no
+ceiling named. A joined criterion is a prompt to split the criterion or name its ceiling,
+never a finding on its own: whether the one test holds both promises is a reading.
+
+`--ears` reports criteria that cannot be failed because they were written in prose rather
+than in one of the five EARS patterns — hard on a change delta, a warning on a capability
+spec that predates the syntax.
 
 Read both before reading the spec — findings they already name do not need to be found
 again, and the ones they cannot name are the ones this skill is for.

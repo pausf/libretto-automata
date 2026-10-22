@@ -4,7 +4,7 @@ description: "Trigger: a task is finished and needs committing; writing a commit
 license: MIT
 metadata:
   author: pausf
-  version: "1.5"
+  version: "1.6"
 ---
 
 ## What this does
@@ -150,13 +150,14 @@ already exist. **Neither can see code that was never staged while a spec existed
 in any repository whose specs arrived after its code that is most of the repository. So
 the contract can be entirely intact by both checks and still govern a third of the tree.
 
-`--trace` reads the whole tracked tree and answers three questions:
+`--trace` reads the whole tracked tree and answers four questions:
 
 | | |
 |---|---|
 | **orphan code** | a tracked file no `Governs:` glob claims |
 | **dead ownership** | a `Governs:` glob matching no tracked file — a package that moved, and a spec still pointing where it was |
 | **unproven criterion** | a bullet under *Verification criteria* with no `Proof:` beneath it |
+| **joined criterion** | two or more `shall` resting on exactly one `Proof:`, with no ceiling named — in capability specs and change documents. One test rarely holds two promises; split it, cite a second proof, or write the ceiling into it. `--anchors` prints the count and never fails on it |
 
 **It always exits 0, and that is deliberate.** A first run on a real project reports
 dozens of orphans, because the honest answer is that most code was never specified. A
