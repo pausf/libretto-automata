@@ -587,7 +587,7 @@ non-goal, and the `init` paragraph's scope-flag sentence, with the replacement t
       TestTheMissingChecklistIsReportedBeforeTheMissingOpencode,
       TestDryRunNeedsNoOpencodeOnPath, TestOpencodeArgsRunTheAttaccaCommand,
       TestOpencodeArgumentsArriveOnStdinVerbatim, TestOpencodeArgsGrantNoPermissions.
-- [ ] **OpenCode's event stream is read: session id, text, raw fallback, no line bound.**
+- [x] **OpenCode's event stream is read: session id, text, raw fallback, no line bound.**
       `parseOpencode` with a `json.Decoder`, set as opencode's parser in `sessionFor`.
       Waits on box 1. Closes: TestParseOpencodeReadsTheSessionID,
       TestOpencodeTextReachesTheTerminal, TestOpencodeWithoutTextPrintsTheRawOutput,

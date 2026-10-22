@@ -1270,3 +1270,73 @@ func TestOpencodeArgsGrantNoPermissions(t *testing.T) {
 		}
 	}
 }
+
+// opencodeStream is OpenCode's `run --format json` output as run.ts writes it: one
+// JSON.stringify({type, timestamp, sessionID, ...data}) per line.
+const opencodeStream = `{"type":"step_start","timestamp":1,"sessionID":"ses_42","part":{"type":"step-start"}}
+{"type":"text","timestamp":2,"sessionID":"ses_42","part":{"type":"text","text":"read the checklist"}}
+{"type":"tool_use","timestamp":3,"sessionID":"ses_42","part":{"type":"tool","tool":"bash","state":{"output":"ok"}}}
+{"type":"text","timestamp":4,"sessionID":"ses_42","part":{"type":"text","text":"closed the first box"}}
+{"type":"step_finish","timestamp":5,"sessionID":"ses_42","part":{"type":"step-finish","cost":0.25}}
+`
+
+func TestParseOpencodeReadsTheSessionID(t *testing.T) {
+	if got := parseOpencode([]byte(opencodeStream)).sessionID; got != "ses_42" {
+		t.Fatalf("wanted the session id the events carry, got %q", got)
+	}
+}
+
+// Through sessionFor's parser and runLoop, so the text reaching stdout is what the loop
+// prints for a real opencode round, not what parseOpencode returns in isolation.
+func TestOpencodeTextReachesTheTerminal(t *testing.T) {
+	dir := t.TempDir()
+	plan := writeTasks(t, dir, "c", "- [ ] one\n")
+	h, _ := sessionFor(target.OpencodeTool)
+	run := func(string) (session, error) {
+		if err := os.WriteFile(plan, []byte("- [x] one\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return h.parse([]byte(opencodeStream)), nil
+	}
+	var out strings.Builder
+	if err := runLoop(&out, dir, loopOpts{change: "c", max: 5, tool: target.OpencodeTool}, run); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "read the checklist\nclosed the first box\n") {
+		t.Fatalf("wanted every text event, in order, on the terminal:\n%s", out.String())
+	}
+	if strings.Contains(out.String(), `"type"`) {
+		t.Errorf("the events were printed raw rather than read:\n%s", out.String())
+	}
+}
+
+// A session never reaches the terminal as nothing — the rule parseSession keeps for claude.
+func TestOpencodeWithoutTextPrintsTheRawOutput(t *testing.T) {
+	for name, out := range map[string]string{
+		"no text event": `{"type":"step_start","timestamp":1,"sessionID":"ses_42","part":{}}` + "\n" +
+			`{"type":"step_finish","timestamp":2,"sessionID":"ses_42","part":{"cost":0.25}}` + "\n",
+		"not JSON": "Error: unknown command libretto-attacca\n" +
+			`{"type":"text","timestamp":1,"sessionID":"ses_42","part":{"text":"late"}}` + "\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got := parseOpencode([]byte(out)).text; got != out {
+				t.Fatalf("wanted the raw output unchanged:\n got %q\nwant %q", got, out)
+			}
+		})
+	}
+}
+
+// A tool_use event carries the tool's whole output, so a line has no bound. A line scanner
+// with a fixed buffer would end the parse on exactly the common case of a build round.
+func TestALongOpencodeEventDoesNotEndTheParse(t *testing.T) {
+	long := strings.Repeat("x", 2<<20)
+	out := `{"type":"tool_use","timestamp":1,"sessionID":"ses_42","part":{"state":{"output":"` + long + `"}}}` + "\n" +
+		`{"type":"text","timestamp":2,"sessionID":"ses_42","part":{"text":"after the long one"}}` + "\n"
+	s := parseOpencode([]byte(out))
+	if s.sessionID != "ses_42" {
+		t.Errorf("wanted the session id past a 2 MiB event, got %q", s.sessionID)
+	}
+	if s.text != "after the long one" {
+		t.Errorf("wanted the text after a 2 MiB event, got %d bytes starting %.60q", len(s.text), s.text)
+	}
+}

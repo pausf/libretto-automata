@@ -257,6 +257,42 @@ func opencodeStdin(prompt string) string {
 	return strings.TrimPrefix(prompt, attaccaRoute)
 }
 
+// parseOpencode reads OpenCode's event stream, one JSON object per event. A Decoder and
+// never a line scanner: a tool_use event carries the tool's whole output, so a line has no
+// bound, and a fixed buffer would end the parse on an ordinary build round. A decode error
+// stops the walk and keeps what was read; output that yielded no text — including output
+// whose first value is not JSON — is kept whole as the text, the rule parseSession keeps
+// for claude.
+func parseOpencode(out []byte) session {
+	var s session
+	var texts []string
+	d := json.NewDecoder(bytes.NewReader(out))
+	for {
+		var e struct {
+			Type      string `json:"type"`
+			SessionID string `json:"sessionID"`
+			Part      struct {
+				Text string `json:"text"`
+			} `json:"part"`
+		}
+		if err := d.Decode(&e); err != nil {
+			break
+		}
+		if s.sessionID == "" {
+			s.sessionID = e.SessionID
+		}
+		if e.Type == "text" {
+			texts = append(texts, e.Part.Text)
+		}
+	}
+	if len(texts) == 0 {
+		s.text = string(out)
+		return s
+	}
+	s.text = strings.Join(texts, "\n")
+	return s
+}
+
 // hostSession is one tool's way of running a round: the executable, what it is handed,
 // and how its output is read.
 type hostSession struct {
@@ -277,7 +313,7 @@ func sessionFor(tool target.Tool) (hostSession, bool) {
 			name:  "opencode",
 			args:  func(string, string) []string { return opencodeArgs() },
 			stdin: opencodeStdin,
-			parse: func(out []byte) session { return session{text: string(out)} },
+			parse: parseOpencode,
 		}, true
 	}
 	return hostSession{}, false
