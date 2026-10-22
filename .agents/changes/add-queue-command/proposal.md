@@ -431,7 +431,7 @@ Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its
       TestQueueWithoutAChangesDirSaysSo, TestQueueEmptyIsAStateNotAnError,
       TestQueueAllDispatchedSaysNothingQueuedThenNamesThem, TestQueueWritesNothing,
       TestQueueRefusesArguments, TestQueueNeedsNoPayload, TestHelpNamesQueue. Waits on: nothing.
-- [ ] **The wiki reads the same filtered queue.** The `wikiGitBranches` seam;
+- [x] **The wiki reads the same filtered queue.** The `wikiGitBranches` seam;
       `readInFlight` filters through `splitDispatched`; every existing wiki test unchanged.
       Closes: TestWikiQueueDropsAChangeItsBranchAlreadyTook, TestWikiQueueMatchesTheCommand.
       Waits on: box 1.

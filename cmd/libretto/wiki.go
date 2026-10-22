@@ -828,7 +828,8 @@ type wikiFlight struct {
 // readInFlight walks the changes directory and reads each change's checklist exactly as
 // the loop does: the file checklistPath picks, counted by readPlan. Zero open boxes is
 // landed-shape and never shows; queued proposals are counted, never listed here. The
-// queue is queuedIdeas, the same scan `libretto queue` prints.
+// queue is queuedIdeas filtered by branch, exactly what `libretto queue` prints. When git
+// cannot list branches the filter is skipped, as the command skips it.
 func readInFlight(projectDir string) (flights []wikiFlight, queued []queuedIdea) {
 	changes := filepath.Join(projectDir, ".agents", "changes")
 	entries, err := os.ReadDir(changes)
@@ -843,7 +844,16 @@ func readInFlight(projectDir string) (flights []wikiFlight, queued []queuedIdea)
 			flights = append(flights, wikiFlight{name: e.Name(), closed: c.done, open: c.open})
 		}
 	}
-	return flights, queuedIdeas(projectDir)
+	// ponytail: one `git branch` per call and a render calls this three times; pass the
+	// branches down from the render if a repository's branch count ever makes that slow.
+	branches, _ := wikiGitBranches(projectDir)
+	queued, _ = splitDispatched(queuedIdeas(projectDir), branches)
+	return flights, queued
+}
+
+// wikiGitBranches: the unmerged local branches find-work's filter reads.
+var wikiGitBranches = func(projectDir string) ([]string, error) {
+	return unmergedBranches(execGit(projectDir))
 }
 
 // wikiGitDates: every commit date touching the spec, newest first — the

@@ -1408,3 +1408,86 @@ func TestWikiHomeLinksTheFlowBoard(t *testing.T) {
 		t.Fatal("a boardless home still links #flow")
 	}
 }
+
+// injectWikiBranches swaps the branch seam; restored on cleanup.
+func injectWikiBranches(t *testing.T, branches []string, err error) {
+	t.Helper()
+	prev := wikiGitBranches
+	t.Cleanup(func() { wikiGitBranches = prev })
+	wikiGitBranches = func(string) ([]string, error) { return branches, err }
+}
+
+// flowQueueNames is the flow board's queue block, names in the order the page shows them.
+func flowQueueNames(t *testing.T, page string) []string {
+	t.Helper()
+	start := strings.Index(page, `<div class="queue">`)
+	if start < 0 {
+		return nil
+	}
+	block := page[start:]
+	block = block[:strings.Index(block, "</div>")]
+	var names []string
+	for _, m := range regexp.MustCompile(`<p class="qrow"><span>([^<]*)</span>`).FindAllStringSubmatch(block, -1) {
+		names = append(names, m[1])
+	}
+	return names
+}
+
+func TestWikiQueueDropsAChangeItsBranchAlreadyTook(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	writeProposal(t, dir, "in-flight", "# in-flight\n\n## Checklist\n\n- [x] one\n- [ ] two\n")
+	writeProposal(t, dir, "kept", "Queued: 2026-08-01\n")
+	writeProposal(t, dir, "taken", "Queued: 2026-08-02\n")
+
+	// Without the branch both are queued: a fixture that never listed taken cannot pass below.
+	injectWikiBranches(t, nil, nil)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	if !strings.Contains(got, "2 queued") || strings.Join(flowQueueNames(t, got), ",") != "kept,taken" {
+		t.Fatalf("with no branches, want both queued; strip and board:\n%v", flowQueueNames(t, got))
+	}
+
+	injectWikiBranches(t, []string{"main-work", "feat/taken"}, nil)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got = wikiHTML(t, specs)
+	if !strings.Contains(got, "1 queued") || strings.Contains(got, "2 queued") {
+		t.Error("the in-flight strip still counts the change feat/taken took")
+	}
+	if names := flowQueueNames(t, got); strings.Join(names, ",") != "kept" {
+		t.Errorf("flow board queue = %v, want kept alone", names)
+	}
+}
+
+func TestWikiQueueMatchesTheCommand(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	writeProposal(t, dir, "zeta", "Queued: 2026-08-01\n")
+	writeProposal(t, dir, "alpha", "Queued: 2026-08-01\n")
+	writeProposal(t, dir, "older", "Queued: 2026-07-30\n")
+	writeProposal(t, dir, "dispatched", "Queued: 2026-07-01\n")
+	writeProposal(t, dir, "started", "Queued: 2026-07-02\n\n## Checklist\n\n- [ ] begun\n")
+	branches := []string{"fix/dispatched", "wip/zeta"}
+
+	injectWikiBranches(t, branches, nil)
+	if _, err := runWiki(t, dir, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	board := flowQueueNames(t, wikiHTML(t, specs))
+
+	var want []string
+	kept, _ := splitDispatched(queuedIdeas(dir), branches)
+	for _, i := range kept {
+		want = append(want, i.name)
+	}
+	if len(want) != 3 {
+		t.Fatalf("fixture drifted: queuedIdeas kept %v, want three", want)
+	}
+	if strings.Join(board, ",") != strings.Join(want, ",") {
+		t.Errorf("flow board queue = %v, queuedIdeas = %v", board, want)
+	}
+}
