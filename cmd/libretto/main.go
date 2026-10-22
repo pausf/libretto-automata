@@ -211,7 +211,7 @@ func run(args []string) error {
 	case "models":
 		return models(root, tg, args[1:])
 	case "loop":
-		return loop(projectDir, args[1:])
+		return loopWith(projectDir, args[1:], func() string { return loopLogPath(execGit(projectDir)) })
 	case "metrics":
 		return metrics(os.Stdout, args[1:], execGit(projectDir), transcriptProjects())
 	case "land":

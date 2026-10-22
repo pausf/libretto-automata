@@ -139,6 +139,7 @@ is inspectable after the fact and `metrics` can consume it.
   covers the whole file, because a malformed line has no change to filter by (assumed). If
   wrong, malformed lines vanish under every filter, which is the silent skip the count
   exists to prevent.
+- Q: a func field makes loopOpts uncomparable (TestParseLoopArgs) and a new loop() signature edits four existing call sites — which seam? → A: loop(projectDir, args) stays and delegates to loopWith(projectDir, args, resolver); main.go calls loopWith; loopOpts carries the resolved path as a string. No existing test line moves (assumed, builder's question at box 1; if wrong, the four call sites take a third argument)
 
 ## Outcomes
 
@@ -520,7 +521,7 @@ Rollback: one revert. Nothing migrates; a log left in `.git/libretto/` is inert.
 
 Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its own.
 
-- [ ] **The loop records every round.** `claudeArgs` with `--output-format json`,
+- [x] **The loop records every round.** `claudeArgs` with `--output-format json`,
       `parseSession`, the result text printed, the late-resolved `loopLogPath`, one record
       per round with every field but `budget_usd`, `stopped` on the last including a
       vanished checklist, both warnings, nothing under `--dry-run`, every existing loop
