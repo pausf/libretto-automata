@@ -77,9 +77,10 @@ Phase 3 is the dangerous code. It does not ship without the tests above green.
 - [ ] **5.1 · `cmd/libretto` subcommands** — `install`, `update`, `status`, `doctor`,
       `prune`. Stdlib `flag`; no CLI framework for five verbs.
       *Done:* each runs headless and exits with the code the spec requires.
-- [ ] **5.2 · `--json`** — for `status` and `doctor`. Stdout is JSON and nothing
-      else.
-      *Done:* golden-file test; `libretto status --json | jq` parses.
+- [x] **5.2 · `--json`** — for `status`, `doctor`, `metrics` and `queue`. Stdout is
+      JSON and nothing else.
+      *Done:* tests decode the output and assert keys (no golden files — whitespace is
+      not promised); `libretto status --json | jq` parses.
 - [ ] **5.3 · TTY detection** — no TTY means plain text, no ANSI, no panel. No
       subcommand and no TTY means usage plus non-zero exit.
       *Done:* piped output contains no escape codes, asserted by test.
