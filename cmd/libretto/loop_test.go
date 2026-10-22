@@ -544,7 +544,7 @@ const hostJSON = `{"type":"result","subtype":"success","is_error":false,"duratio
 	`"num_turns":3,"result":"closed the first box","session_id":"abc-123","total_cost_usd":0.1234}`
 
 func TestEverySessionIsAskedForItsJSONResult(t *testing.T) {
-	args := claudeArgs("the prompt")
+	args := claudeArgs("the prompt", "")
 	pair := func(k, v string) bool {
 		for i := 0; i+1 < len(args); i++ {
 			if args[i] == k && args[i+1] == v {
@@ -946,5 +946,100 @@ func TestDryRunWritesNoRecord(t *testing.T) {
 	}
 	if _, err := os.Stat(log); !os.IsNotExist(err) {
 		t.Errorf("--dry-run must write no record, stat says %v", err)
+	}
+}
+
+func TestClaudeArgsCarryTheBudgetOnlyWhenGiven(t *testing.T) {
+	with := claudeArgs("p", "2.50")
+	found := false
+	for i := 0; i+1 < len(with); i++ {
+		if with[i] == "--max-budget-usd" && with[i+1] == "2.50" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("wanted --max-budget-usd 2.50 exactly as typed, got %q", with)
+	}
+	for _, a := range claudeArgs("p", "") {
+		if a == "--max-budget-usd" {
+			t.Errorf("no budget given, yet the args carry one: %q", claudeArgs("p", ""))
+		}
+	}
+}
+
+func TestParseLoopArgsRefusesABadBudget(t *testing.T) {
+	for _, v := range []string{"1e2", "0x1", "+3", "-1", "inf", ".5", "0", "0.00", "1.", "2,50", ""} {
+		t.Run(v, func(t *testing.T) {
+			_, err := parseLoopArgs([]string{"c", "--max-budget-usd", v})
+			if err == nil || !strings.Contains(err.Error(), "--max-budget-usd") {
+				t.Fatalf("wanted %q refused naming --max-budget-usd, got %v", v, err)
+			}
+		})
+	}
+	t.Run("missing value", func(t *testing.T) {
+		_, err := parseLoopArgs([]string{"c", "--max-budget-usd"})
+		if err == nil || !strings.Contains(err.Error(), "--max-budget-usd") {
+			t.Fatalf("wanted a missing value refused naming --max-budget-usd, got %v", err)
+		}
+	})
+	for _, v := range []string{"2.50", "0.1", "3"} {
+		got, err := parseLoopArgs([]string{"c", "--max-budget-usd", v})
+		if err != nil || got.budget != v {
+			t.Errorf("wanted %q accepted as typed, got %q, %v", v, got.budget, err)
+		}
+	}
+}
+
+func TestTheHeaderStatesTheWorstCaseSpend(t *testing.T) {
+	dir := t.TempDir()
+	writeTasks(t, dir, "c", "- [ ] one\n")
+	var out strings.Builder
+	if err := runLoop(&out, dir, loopOpts{change: "c", max: 3, budget: "0.1", dryRun: true}, textOnly(func(string) error {
+		t.Fatal("--dry-run must not start a session")
+		return nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"0.1", "0.30"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("the header must state %q:\n%s", want, out.String())
+		}
+	}
+
+	var none strings.Builder
+	if err := runLoop(&none, dir, loopOpts{change: "c", max: 3, dryRun: true}, textOnly(func(string) error { return nil })); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(none.String(), "worst case") {
+		t.Errorf("no budget, no worst case:\n%s", none.String())
+	}
+}
+
+func TestTheRecordCarriesTheBudgetThatApplied(t *testing.T) {
+	for _, tc := range []struct {
+		name, budget string
+		want         any
+	}{
+		{"set", "2.50", json.Number("2.5")},
+		{"unset", "", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			plan := writeTasks(t, dir, "c", "- [ ] one\n")
+			log := logIn(t)
+			if err := runLoop(io.Discard, dir, loopOpts{change: "c", max: 5, budget: tc.budget, log: log}, closingRunner(t, plan)); err != nil {
+				t.Fatal(err)
+			}
+			v, ok := readRecords(t, log)[0]["budget_usd"]
+			if tc.want == nil {
+				if ok {
+					t.Fatalf("no budget set, yet the record carries budget_usd %v", v)
+				}
+				return
+			}
+			if v != tc.want {
+				t.Fatalf("wanted budget_usd %v, got %v", tc.want, v)
+			}
+		})
 	}
 }

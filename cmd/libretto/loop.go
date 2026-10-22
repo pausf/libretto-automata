@@ -141,7 +141,13 @@ type loopOpts struct {
 	max    int
 	dryRun bool
 	log    string
+	budget string
 }
+
+// budgetValue is the only spelling of a budget that reaches the host. ParseFloat alone
+// accepts 1e2, 0x1p-2, +3 and inf, which would then reach `claude` as typed with meanings
+// nobody checked.
+var budgetValue = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
 
 func parseLoopArgs(args []string) (loopOpts, error) {
 	o := loopOpts{max: 10}
@@ -159,6 +165,15 @@ func parseLoopArgs(args []string) (loopOpts, error) {
 				return o, fmt.Errorf("--max wants a positive number, got %q", args[i])
 			}
 			o.max = n
+		case a == "--max-budget-usd":
+			if i+1 >= len(args) {
+				return o, fmt.Errorf("--max-budget-usd needs an amount in dollars")
+			}
+			i++
+			if f, err := strconv.ParseFloat(args[i], 64); !budgetValue.MatchString(args[i]) || err != nil || f == 0 {
+				return o, fmt.Errorf("--max-budget-usd wants a plain decimal above zero, like 2.50, got %q", args[i])
+			}
+			o.budget = args[i]
 		case strings.HasPrefix(a, "-"):
 			return o, fmt.Errorf("unknown flag %q", a)
 		case o.change != "":
@@ -188,8 +203,14 @@ type session struct {
 	text       string
 }
 
-func claudeArgs(prompt string) []string {
-	return []string{"-p", prompt, "--output-format", "json"}
+// claudeArgs passes the budget through as the host's own flag, exactly as typed: the host
+// enforces it per session, and one session is one round.
+func claudeArgs(prompt, budget string) []string {
+	args := []string{"-p", prompt, "--output-format", "json"}
+	if budget != "" {
+		args = append(args, "--max-budget-usd", budget)
+	}
+	return args
 }
 
 // parseSession reads the host's one JSON result object. Output that is not one — an older
@@ -209,9 +230,9 @@ func parseSession(out []byte) session {
 	return session{r.Cost, r.Duration, r.SessionID, r.Subtype, r.IsError, r.Result}
 }
 
-func execClaude(prompt string) (session, error) {
+func execClaude(prompt, budget string) (session, error) {
 	var out bytes.Buffer
-	c := exec.Command("claude", claudeArgs(prompt)...)
+	c := exec.Command("claude", claudeArgs(prompt, budget)...)
 	c.Stdout = &out
 	c.Stderr = os.Stderr
 	err := c.Run()
@@ -255,7 +276,7 @@ func loopWith(projectDir string, args []string, logPath func() string) error {
 		}
 		o.log = logPath()
 	}
-	return runLoop(os.Stdout, projectDir, o, execClaude)
+	return runLoop(os.Stdout, projectDir, o, func(p string) (session, error) { return execClaude(p, o.budget) })
 }
 
 // loopRecord is one line of the run log. Every optional field is absent rather than zero
@@ -271,6 +292,7 @@ type loopRecord struct {
 	SessionID  string   `json:"session_id,omitempty"`
 	Subtype    string   `json:"subtype,omitempty"`
 	IsError    *bool    `json:"is_error,omitempty"`
+	BudgetUSD  *float64 `json:"budget_usd,omitempty"`
 	Error      string   `json:"error,omitempty"`
 	Stopped    string   `json:"stopped,omitempty"`
 }
@@ -314,11 +336,14 @@ func appendRecord(path string, r loopRecord) error {
 	return f.Close()
 }
 
-func newRecord(change string, round int, s session, runErr error) loopRecord {
+func newRecord(o loopOpts, round int, s session, runErr error) loopRecord {
 	r := loopRecord{
-		Change: change, Round: round,
+		Change: o.change, Round: round,
 		CostUSD: s.cost, DurationMS: s.durationMS, SessionID: s.sessionID,
 		Subtype: s.subtype, IsError: s.isError,
+	}
+	if b, err := strconv.ParseFloat(o.budget, 64); err == nil {
+		r.BudgetUSD = &b
 	}
 	if runErr != nil {
 		r.Error = runErr.Error()
@@ -394,6 +419,9 @@ func runLoop(w io.Writer, projectDir string, o loopOpts, run loopRunner) error {
 
 	fmt.Fprintf(w, "\n  %s — %d open, %d done, at most %d iteration(s)\n\n",
 		o.change, before.open, before.done, o.max)
+	if b, err := strconv.ParseFloat(o.budget, 64); err == nil {
+		fmt.Fprintf(w, "  budget %s USD per round · worst case %.2f USD for the run\n\n", o.budget, b*float64(o.max))
+	}
 
 	log := &runLog{path: o.log, w: w}
 	stuck := 0
@@ -422,7 +450,7 @@ func runLoop(w io.Writer, projectDir string, o loopOpts, run loopRunner) error {
 		if runErr != nil {
 			fmt.Fprintf(w, "     session exited with an error: %v\n", runErr)
 		}
-		rec := newRecord(o.change, i, s, runErr)
+		rec := newRecord(o, i, s, runErr)
 
 		after, err := readPlan(checklist)
 		if err != nil {

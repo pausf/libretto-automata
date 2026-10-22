@@ -534,7 +534,7 @@ Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its
       TestAVanishedChecklistIsStillRecorded, TestTheRunLogLeavesGitStatusClean,
       TestAnUnlocatableLogWarnsAndCarriesOn, TestAnUnwritableLogDoesNotStopTheLoop,
       TestDryRunWritesNoRecord. Waits on: nothing.
-- [ ] **The loop takes a per-round budget.** `--max-budget-usd` validated as a plain
+- [x] **The loop takes a per-round budget.** `--max-budget-usd` validated as a plain
       decimal and passed through as typed, the `%.2f` worst-case header line, `budget_usd`
       in the record, the help line in `main.go`. Closes:
       TestClaudeArgsCarryTheBudgetOnlyWhenGiven, TestParseLoopArgsRefusesABadBudget,
