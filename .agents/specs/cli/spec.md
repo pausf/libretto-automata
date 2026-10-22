@@ -24,6 +24,10 @@ plain command.
 | `models effort <level> <agent>…` | write that effort level into each named agent; `--all` for every one |
 | `version`, `help` | say so |
 
+`status`, `doctor`, `metrics` and `queue` also answer with `--json`: one JSON object on
+stdout in place of the text report, with exit codes, stderr and the release notice
+unchanged — see *`--json` — the read-only reports, machine-readable*.
+
 ### Finding the payload
 
 ```bash
@@ -380,7 +384,8 @@ so help that hardcodes one lies to everyone using another.
 
 **In:** argument parsing, dispatch, output formatting, exit codes, environment
 variables, clone discovery and bootstrap, the rebuild destination, the release line, the
-prerequisite report, and `init`'s bootstrap of a project's `.agents/` layout.
+prerequisite report, `init`'s bootstrap of a project's `.agents/` layout, and the
+`--json` shapes of `status`, `doctor`, `metrics` and `queue`.
 
 **Out:**
 
@@ -440,14 +445,31 @@ prerequisite report, and `init`'s bootstrap of a project's `.agents/` layout.
   `payload`'s.
 - **`queue` editing, deleting, reordering or picking up a queued idea.** `/libretto-next`
   picks up; the files are edited by hand. The payload's non-goals on that stand.
-- **`queue` taking any argument** — no name or date filter, no `--json`. Machine-readable
-  output for the read-only commands is `add-json-output`'s, and a filter is a later change.
+- **`queue` taking any argument but `--json`** — no name or date filter. A filter is a
+  later change.
 - **`queue` reading remote branches, or resolving a base branch.** Local branches unmerged
   into `HEAD` are find-work's filter as the skill runs it; see *Prior decisions* for the
   ceiling.
 - **`queue` listing changes in flight, or reading a tracker.** That is source 1 and
   `/libretto-status`; the command lists the queue and nothing else.
 - **a panel row for `queue`**, for the reason `init` has none.
+- **`--json` on `models`, `land`, `version`, `prune`, `uninstall`, `wiki`, `init`, `loop`
+  or `preview`.** Returns when a consumer names one; the shared helper makes each one box,
+  with its own shape.
+- **JSON errors on stderr.** Errors stay `main`'s plain line; returns if a consumer cannot
+  use the exit code.
+- **a global `--json`, a `--format` flag, or JSON Lines streaming.** One flag, four
+  commands, one document each.
+- **a published JSON Schema file.** The shapes live in this spec; a schema file is a second
+  copy of them.
+- **prose in the JSON**: `doctor`'s remedies and prerequisite notes, `metrics`' legend,
+  ceiling, footer totals and token percentage, `status`'s tally. Each is an additive field
+  later.
+- **golden files for the JSON.** Tests decode the output and assert keys; a golden file
+  pins whitespace the contract does not promise.
+- **`status` and `doctor` validating their arguments.** They read `--json` and ignore the
+  rest, as they always have. Returns as its own change if a typo printing text into a
+  parser bites somebody.
 - **configuration files. There are none, deliberately** — nothing on disk changes what a
   command does, and the environment-variable table below is the whole of what is
   configurable.
@@ -581,6 +603,25 @@ wiki reads the same scan, `queuedIdeas`, through the same filter, so the binary 
 answer to "what is queued". **Its ceiling, marked `ponytail:` in `readInFlight`:** the
 wiki asks git for branches once per `readInFlight` call and a render calls it three times;
 the day a repository's branch count makes that slow, the render passes the branches down.
+
+**`--json` is stdlib `encoding/json` and changes stdout only.** No dependency, as every
+other JSON reader in this binary. Text output is byte-identical with or without the
+gathered-report refactor behind it; exit codes, stderr lines and the release notice are
+what they are without the flag; `main` still prints the error. `status` and `doctor`
+print to `os.Stdout`, `metrics` and `queue` to an injected `io.Writer`, and the JSON path
+follows whichever the command already uses.
+
+**`doctor` prints nothing until its release check has answered.** It gathers the scan,
+the release check and the prerequisites before rendering either output, so the problems
+list that used to appear at once now waits on the live check — up to the five-second
+ceiling on a slow or unreachable remote. Named as a cost, not hidden: one gathered report
+read by both renderers is what keeps the text and the JSON from disagreeing, and printing
+the problems first would need the text path to keep its own order of work.
+
+**No test reaches the network for a release.** `doctor`'s check is chosen through the
+package variable `releaseSource` — the `noticeSource` pattern — whose default asks a
+checkout's remote or the module proxy, and `TestMain` stubs it for the whole package; a
+test wanting an answer sets its own stub.
 
 **Nothing in the test suite writes to a real payload home, and nothing runs a real `go install`.**
 `LIBRETTO_ROOT` is the second half of what `CLAUDE_HOME` does for targets, and `resolveRoot` takes
@@ -914,8 +955,62 @@ equivalent. It goes when `libretto install` has been verified against a real
   `add-queue-command`, assumed 2026-10-22. No `.agents/changes/` prints `no .agents/changes/
   here — nothing is queued`, which points at `init`; nothing left after the filter prints
   `nothing is queued`, then the dispatched line when anything was dropped. Exit 0 either way.
-- **`queue` takes no arguments and is exempt from the missing-payload stop.** Retired from
-  `add-queue-command`, assumed 2026-10-22: it reads the project, never the payload.
+- **`queue` takes no argument but `--json` and is exempt from the missing-payload stop.**
+  Retired from `add-queue-command`, assumed 2026-10-22: it reads the project, never the
+  payload. `--json` was admitted by `add-json-output` the same day, by amending the refusal
+  criterion in place rather than writing a second one beside it — two criteria would have
+  promised both that `--json` is refused and that it is read.
+- **One gathered report per command, rendered twice.** Retired from `add-json-output`,
+  assumed 2026-10-22: each of `status`, `doctor`, `metrics` and `queue` derives its facts
+  once into a report struct, and the text renderer and the JSON encoder both read it. *B —
+  a second function per command deriving the JSON from the same inputs* lost: a second
+  derivation is a second source of truth, and the first fix to one side drifts the other
+  with nothing to notice. *C — `json` tags on the internal types* (`link.Entry`,
+  `changeMetrics`, `loopTally`, `queuedIdea`) lost: their fields are unexported, they carry
+  bytes and paths no consumer needs, and every refactor of an internal type would become a
+  contract change. So the JSON structs are separate, small, exported-field types mapped from
+  the report — the mapping is the contract's boundary — and **no internal type carries a
+  `json` tag.** **Ceiling:** a text renderer may still compute a display value from the
+  report — a span, a percentage — but never a fact the report does not hold. A block added
+  to the text later (the queued drift trend for `metrics`) lands in the report and gets its
+  JSON key in the same change; whether it was mapped is review's to see, not a gate's.
+- **Every JSON document carries `"schema": 1`.** Retired from `add-json-output`, assumed
+  2026-10-22: while the tool is `0.x` the binary's version moves on every merge and says
+  nothing about the shape, so a consumer gets one integer to check. An added key never bumps
+  it; a removed, renamed or retyped key does, and is a promise removed — `!` on the commit.
+  *Keying on `libretto version`* lost for that reason.
+- **An unknown value is an absent key; a known zero is present; a known-empty list is
+  `[]`.** Retired from `add-json-output`, assumed 2026-10-22, extending the run log's *cost
+  absent when unreported, never zero*. *`null` for unknowns* lost: two conventions in one
+  binary is one too many. In the types: a key that may be unknown is a pointer or slice with
+  `omitempty`; one always known is a plain value without it — `omitempty` on a plain `int`
+  turns a known `0` into an absent key, which is the bug the rule exists to catch.
+- **`--json` changes stdout only, and errors stay plain lines on stderr.** Retired from
+  `add-json-output`, assumed 2026-10-22: the exit code already carries the verdict, and a
+  second error format would have to be kept in step with `main`'s. A report that never
+  completed writes nothing to stdout. The one error inside a report is `metrics`' unreadable
+  run log, which exits 0 and becomes `loop.error`.
+- **The JSON carries the report's data, never its prose, and nothing derivable from the
+  rest; keys are snake_case, indented two spaces, HTML escaping off.** Retired from
+  `add-json-output`, assumed 2026-10-22: the shapes start small because adding a key is free
+  and removing one is a broken promise; snake_case is the run log's convention; whitespace
+  is not promised; a reading must arrive as written, not as `<`.
+- **`--json` is a per-command flag after the command name**, so `libretto --json status`
+  stays an unknown command. Retired from `add-json-output`, assumed 2026-10-22: only four
+  commands honour it, and a global flag would need every other command to refuse it.
+- **`status` and `doctor` read `--json` and ignore every other argument, as they always
+  have.** Retired from `add-json-output`, assumed 2026-10-22 after review-spec, **reversing
+  the first session's answer** that both would refuse any other argument: refusing would
+  move an exit code on a path unrelated to JSON, and "exit codes unchanged on every path"
+  then holds with no exception. If a typo printing text into a parser bites somebody, a
+  refusal lands as its own change.
+- **`doctor`'s release check sits behind the `releaseSource` seam, and the suite stubs
+  it.** Retired from `add-json-output`, assumed 2026-10-22 on the `noticeSource` precedent:
+  `doctor` called `dist.Latest` with no seam, so
+  `TestDoctorExitsNonZeroWhenSomethingNeedsAttention` reached the module proxy from
+  `go test` (measured). The check now returns facts — running, latest, error — and the text
+  line and the JSON `release` object are both rendered from one `releaseCheck`, observed
+  through one stub in `TestReleaseLineIsRenderedFromTheCheck`.
 
 ## Task breakdown
 
@@ -932,7 +1027,7 @@ equivalent. It goes when `libretto install` has been verified against a real
 - [x] the version fallback through build info
 - [x] the rebuild over the running executable
 - [x] `doctor`'s release line, and the panel's cached notice
-- [ ] 5.2 `--json` for `status` and `doctor`
+- [x] 5.2 `--json` for `status`, `doctor`, `metrics` and `queue`
 - [ ] 5.3 the panel path under a real TTY
 - [ ] `doctor`: target directory missing or unwritable
 - [ ] `doctor`: repo state — uncommitted changes, behind the remote *(the release half of
@@ -1499,7 +1594,7 @@ log. What the host reports is recorded verbatim and never interpreted.
 - one change may be named, by full name or unambiguous prefix — a name is typed from
   memory of how it starts. Exact wins even when it prefixes a sibling, an ambiguous
   prefix is refused naming the candidates, and an unknown name and an unknown flag keep
-  their refusals.
+  their refusals. `--json` is the one flag it reads, before or after the name.
   Proof: cmd/libretto/metrics_test.go TestAPrefixSelectsAChangeUnlessAmbiguous
   Proof: cmd/libretto/metrics_test.go TestMetricsFiltersToOneChangeAndRefusesAnUnknownOne
 - it reads the project's git history, so it is not gated on the payload
@@ -2278,10 +2373,325 @@ same scan, so the two always list the same changes.
   Proof: cmd/libretto/queue_test.go TestQueueAllDispatchedSaysNothingQueuedThenNamesThem
 - **The command shall leave every file under the project byte-identical.**
   Proof: cmd/libretto/queue_test.go TestQueueWritesNothing
-- **If the command is given any argument, then it shall exit non-zero naming the argument,
-  and shall print no queue.**
+- **If the command is given any argument other than `--json`, then it shall exit non-zero
+  naming the argument, and shall print no queue.**
   Proof: cmd/libretto/queue_test.go TestQueueRefusesArguments
 - **The missing-payload stop shall not apply to `queue`.**
   Proof: cmd/libretto/queue_test.go TestQueueNeedsNoPayload
 - **The help text shall carry a `queue` line saying it lists queued ideas, read-only.**
   Proof: cmd/libretto/main_test.go TestHelpNamesQueue
+
+### `--json` — the read-only reports, machine-readable
+
+`libretto status --json`, `doctor --json`, `metrics --json` and `queue --json` each write
+one JSON object to stdout and nothing else, so a script reads the same facts the text
+report shows a human. Each object carries `"schema": 1`. Errors, warnings and the release
+notice stay on stderr exactly as they are, and exit codes do not move — `doctor` still
+exits non-zero when something needs attention, after its complete report. Without
+`--json` every command's output is unchanged.
+
+The flag goes after the command name, anywhere among its arguments; `libretto --json
+status` is an unknown command. `status` and `doctor` ignore every other argument, as they
+always have; `metrics` takes it beside a `<change>` in either order; `queue` refuses
+anything else. The help text names the flag and the four commands.
+
+**The four shapes are the contract.** Every key below is a promise. A key marked *omitted
+when* is absent — never `0`, `""` or `null` — in that state: an unknown value is an absent
+key, a known zero is present, a known-empty list is `[]`. Keys are snake_case; the
+document is indented two spaces with one trailing newline, and whitespace is not part of
+the contract; HTML escaping is off, so `<`, `>` and `&` arrive as written; no escape byte
+appears, TTY or not. Adding a key never bumps `schema`; removing, renaming or retyping one
+does, and is a promise removed. The JSON carries the report's data, never its prose, and
+nothing a consumer can compute from the rest.
+
+#### `status --json`
+
+    {
+      "schema": 1,
+      "target": { "name": "claude", "root": "/Users/u/.claude", "configured": true },
+      "items": [
+        { "kind": "skills", "name": "evidence", "state": "linked" },
+        { "kind": "agents", "name": "spec-reviewer", "state": "wrong target" }
+      ]
+    }
+
+| Key | Meaning |
+|---|---|
+| `target.name` | the target's name as the text header prints it: `claude`, `project`, `codex`, `opencode` |
+| `target.root` | its root directory; *omitted when* the target has none (a project target with no directory) |
+| `target.configured` | whether the root exists on disk; the text prints `not configured` for `false` |
+| `items` | every scanned entry in the scan's order; `[]` when there is nothing to link |
+| `kind` | `skills`, `agents` or `commands` |
+| `state` | `linked`, `missing`, `wrong target`, `conflict` or `stale`, spelled as `link.State` spells them |
+
+#### `doctor --json`
+
+    {
+      "schema": 1,
+      "target": { "name": "claude", "root": "/Users/u/.claude", "configured": true },
+      "problems": [
+        { "kind": "skills", "name": "alpha", "state": "missing" }
+      ],
+      "release": {
+        "mode": "installed",
+        "payload_root": "/Users/u/.local/share/libretto/current",
+        "running": "v0.5.2",
+        "latest": "v0.6.0",
+        "newer": true
+      },
+      "prerequisites": [
+        { "name": "jira", "found": false },
+        { "name": "rg", "found": true }
+      ]
+    }
+
+| Key | Meaning |
+|---|---|
+| `target` | the same object as `status` |
+| `problems` | every entry whose state needs attention, same item shape as `status`; `[]` when the text says `no problems` |
+| `release.mode` | `checkout` or `installed` |
+| `release.payload_root` | the payload root the text names after the mode |
+| `release.running` | the version the binary reports, always present |
+| `release.latest` | the newest release the check found; *omitted when* the check failed or the remote has no releases |
+| `release.newer` | `true` when `latest` ranks above `running`, `false` when they are equal; *omitted when* there is no `latest` or the two do not rank (a `dev` build, or a running version ahead of the remote) |
+| `release.error` | the failed check's first line; *omitted when* the check answered |
+| `prerequisites` | one object per prerequisite in the text's order, `name` and `found` |
+
+#### `metrics --json`
+
+    {
+      "schema": 1,
+      "changes": [
+        {
+          "name": "add-converge-command", "state": "landed",
+          "commits": 9, "first": "2026-10-21T18:02:11Z", "last": "2026-10-22T09:40:03Z",
+          "closed": 3, "boxes": 3, "reopened": 0, "corrections": 1
+        },
+        { "name": "broken-one", "state": "unreadable", "corrections": 0 }
+      ],
+      "corrections": { "by_phase": { "build-and-check": 4, "6→7": 2 }, "outside_changes": 1 },
+      "tokens": {
+        "attributed":   { "input": 1, "output": 2, "cache_write": 3, "cache_read": 4 },
+        "unattributed": { "input": 1, "output": 2, "cache_write": 3, "cache_read": 4 },
+        "entries": 8944, "unattributed_entries": 312,
+        "change": {
+          "name": "add-converge-command",
+          "totals":   { "input": 1, "output": 2, "cache_write": 3, "cache_read": 4 },
+          "by_phase": { "write-spec": { "input": 1, "output": 2, "cache_write": 3, "cache_read": 4 } },
+          "no_phase": { "input": 1, "output": 2, "cache_write": 3, "cache_read": 4 }
+        }
+      },
+      "loop": {
+        "changes": [
+          { "name": "add-converge-command", "rounds": 3, "net_closed": 3, "cost_usd": 4.12, "unpriced": 0 }
+        ],
+        "skipped": 0
+      }
+    }
+
+| Key | Meaning |
+|---|---|
+| `changes` | one object per row of the table, in its order, narrowed by a `<change>` exactly as the table is; `[]` when git has seen no change — and then `corrections`, `tokens` and `loop` are still present whenever their sources exist, while the text prints only its no-changes line |
+| `name`, `state` | always; `state` is `landed`, `in flight` or `unreadable`, the table's spelling |
+| `commits`, `first`, `last` | *omitted when* `unreadable`. Times are RFC 3339 in UTC, from the commit times `measure` reads; the span is `last − first` and is not repeated |
+| `closed`, `boxes`, `reopened` | boxes closed now, the denominator, and reopened; *omitted when* the change has no checklist in its history (the text's `—`) or is `unreadable` |
+| `corrections` on a change | *omitted when* there is no `.agents/lessons.md`; `0` included when there is |
+| top-level `corrections` | *omitted when* there is no ledger. `by_phase` keyed as the ledger spells each phase, `{}` for an empty ledger; `outside_changes` is the orphan count |
+| `tokens` | *omitted when* no transcripts are configured or none exist for this repository. `attributed`, `unattributed`, `entries` and `unattributed_entries` are corpus-wide whatever the filter, as the text's are |
+| `tokens.change` | *omitted when* no `<change>` was given. `totals` and `by_phase` *omitted when* no session was attributed to that change, leaving `name` alone; `no_phase` *omitted when* every attributed entry named a phase |
+| `loop` | *omitted when* no run-log file exists, and only then |
+| `loop.changes` | per change in name order, following the filter; `[]` when the log holds none for the filter, holds no record, or holds only malformed lines. `cost_usd` *omitted when* none of that change's rounds carried a cost |
+| `loop.skipped` | malformed lines, `0` included |
+| `loop.error` | present, in place of `changes` and `skipped`, only when the log exists and cannot be read |
+
+The legend and the ceiling are prose for a human reading the table and are not in the
+JSON; this table is their machine-readable counterpart.
+
+#### `queue --json`
+
+    {
+      "schema": 1,
+      "queued": [
+        { "name": "report-drift-trend-in-metrics", "date": "2026-08-21",
+          "reading": "Derive per-capability drift events from git history." }
+      ],
+      "dispatched": [
+        { "name": "add-json-output", "branch": "feat/add-json-output" }
+      ]
+    }
+
+| Key | Meaning |
+|---|---|
+| `queued` | oldest date first, ties by name, as the text; `[]` when nothing is queued or no `.agents/changes/` exists |
+| `reading` | *omitted when* the proposal has no `## Reading` |
+| `dispatched` | changes an unmerged branch already took, `[]` when none; *omitted when* git could not list branches, or when no `.agents/changes/` exists and git was never asked — either way nobody knows which are dispatched |
+
+#### Criteria
+
+The shared criteria run one row per command.
+
+- **When `status`, `doctor`, `metrics` or `queue` runs with `--json`, the command shall
+  write exactly one JSON object to stdout followed by one newline.**
+  Proof: cmd/libretto/json_test.go TestJSONIsOneObjectOnStdout
+- **The JSON object each command writes shall carry a top-level `schema` key whose value
+  is the integer 1.**
+  Proof: cmd/libretto/json_test.go TestJSONCarriesSchemaOne
+- **Where `--json` is given, the command shall exit with the same code it exits with on
+  the same state without `--json`.**
+  Proof: cmd/libretto/json_test.go TestJSONDoesNotChangeTheExitCode
+- **If a command run with `--json` fails before its report is complete, then it shall
+  write nothing to stdout.**
+  Proof: cmd/libretto/json_test.go TestJSONFailureWritesNothingToStdout
+- **If a command fails, then the error it returns under `--json` shall equal the error it
+  returns without `--json`.**
+  Proof: cmd/libretto/json_test.go TestJSONErrorsMatchTheTextErrors
+- **The JSON a command writes shall contain no escape byte (0x1b).**
+  Proof: cmd/libretto/json_test.go TestJSONHasNoEscapeCodes
+- **While a newer release is cached, the stdout of `status --json` shall parse as one JSON
+  object.**
+  Proof: cmd/libretto/notice_test.go TestJSONStdoutParsesWithANoticePending
+- **The help text shall carry a `--json` line naming `status`, `doctor`, `metrics` and
+  `queue`.**
+  Proof: cmd/libretto/main_test.go TestHelpNamesJSON
+
+`status`
+
+- **When `status --json` runs, the object shall carry `target` with the target's `name`,
+  its `root` and `configured`.**
+  Proof: cmd/libretto/json_test.go TestStatusJSONNamesTheTarget
+- **If the target has no root, then `target` shall omit `root`.**
+  Proof: cmd/libretto/json_test.go TestStatusJSONOmitsAnUnknownRoot
+- **When `status --json` runs, `items` shall list one object per scanned entry, carrying
+  `kind`, `name` and `state`, in the scan's order.**
+  Proof: cmd/libretto/json_test.go TestStatusJSONListsEveryItem
+- **The `state` of every item shall be spelled exactly as the text report spells it.**
+  Proof: cmd/libretto/json_test.go TestStatusJSONStatesMatchTheText
+- **While the payload holds nothing to link, `items` shall be an empty array.**
+  Proof: cmd/libretto/json_test.go TestStatusJSONEmptyIsAnEmptyArray
+
+`doctor`
+
+- **When `doctor --json` runs, `problems` shall list exactly the entries whose state needs
+  attention, each carrying `kind`, `name` and `state`.**
+  Proof: cmd/libretto/json_test.go TestDoctorJSONListsOnlyProblems
+- **When `doctor --json` runs, `release.mode` shall be `checkout` for a payload root
+  holding `.git` and `installed` otherwise.**
+  Proof: cmd/libretto/json_test.go TestDoctorJSONNamesTheMode
+- **The `release` object shall carry `running`, the version the binary reports.**
+  Proof: cmd/libretto/json_test.go TestDoctorJSONCarriesTheRunningVersion
+- **When the release check answers with a release, `release.latest` shall carry it.**
+  Proof: cmd/libretto/json_test.go TestDoctorJSONCarriesTheLatestRelease
+- **Where `latest` and `running` rank, `release.newer` shall be true when `latest` ranks
+  above `running` and false when they are equal.**
+  Proof: cmd/libretto/json_test.go TestDoctorJSONRanksWhatRanks
+- **If `latest` is absent or the two versions do not rank, then `release` shall omit
+  `newer`.**
+  Proof: cmd/libretto/json_test.go TestDoctorJSONOmitsAnUnrankableComparison
+- **If the release check fails, then `release` shall carry `error`, the failure's first
+  line, in place of `latest`.**
+  Proof: cmd/libretto/json_test.go TestDoctorJSONReportsAFailedCheck
+- **When `doctor --json` runs, `prerequisites` shall list one object per prerequisite,
+  carrying `name` and `found`, in the text's order.**
+  Proof: cmd/libretto/json_test.go TestDoctorJSONListsPrerequisites
+- **When one stubbed release check feeds both outputs, the release text line and the
+  `release` object shall agree: for latest `v9.9.9` against running `v0.1.0` the line
+  names `v9.9.9` while the object carries `latest` `v9.9.9` and `newer` true, and for an
+  unrankable pair the line carries no newer-release wording while the object omits
+  `newer`.**
+  Proof: cmd/libretto/doctor_test.go TestReleaseLineIsRenderedFromTheCheck
+
+`metrics`
+
+- **When `metrics --json` runs, `changes` shall list one object per row of the table, in
+  the table's order.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONListsTheTableRows
+- **For every readable change, `commits` in the JSON shall equal the table's commits
+  column on the same history.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONAgreesWithTheTable
+- **Every readable change object shall carry `first` and `last` as RFC 3339 times in
+  UTC.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONCarriesTimesInUTC
+- **Where a change has a checklist in its history, its object shall carry `closed`,
+  `boxes` and `reopened`, zero included.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONKeepsAKnownZero
+- **If a change has no checklist in its history, then its object shall omit `closed`,
+  `boxes` and `reopened`.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONOmitsChurnWithoutAChecklist
+- **If a change's history cannot be read, then its object shall carry no key beyond
+  `name`, `state` set to `unreadable`, and `corrections`.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONUnreadableRowCarriesOnlyWhatIsKnown
+- **While `.agents/lessons.md` exists, every change object shall carry `corrections`, zero
+  included.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONCorrectionsZeroIsPresent
+- **If no `.agents/lessons.md` exists, then the report shall carry no `corrections` key
+  at any level.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONAbsentLedgerOmitsCorrections
+- **While the ledger exists, the top-level `corrections` shall carry `by_phase`, keyed by
+  each phase as the ledger spells it, and `outside_changes`.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONCorrectionsByPhase
+- **If no session transcripts are configured or found for the repository, then the
+  report shall omit `tokens`.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONOmitsTokensWithoutTranscripts
+- **When transcripts are found, `tokens` shall carry `attributed`, `unattributed`,
+  `entries` and `unattributed_entries` computed over every change git has seen, whatever
+  the filter.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONTokensAreCorpusWide
+- **Where a `<change>` filter names a change sessions were attributed to, `tokens.change`
+  shall carry its `name`, `totals` and `by_phase`.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONTokensForOneChange
+- **If the filtered change has no attributed session, then `tokens.change` shall carry its
+  `name` alone.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONUnattributedChangeCarriesItsNameAlone
+- **Where an attributed entry of the filtered change names no phase, `tokens.change`
+  shall carry those entries' sum as `no_phase`.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONNoPhaseIsNeverDistributed
+- **If no run-log file exists, then the report shall omit `loop`.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONOmitsLoopWithoutARunLog
+- **If the run-log file exists and holds no loop record, then `loop` shall be
+  `{changes: [], skipped: N}`, with N the count of its malformed lines.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONAnEmptyRunLogIsKnown
+- **When the run log exists, `loop.changes` shall list one object per change it records,
+  following the filter, in name order, carrying `name`, `rounds`, `net_closed` and
+  `unpriced`.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONLoopRows
+- **If none of a change's recorded rounds carried a cost, then its loop object shall omit
+  `cost_usd`.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONUnpricedOmitsCost
+- **When the run log exists, `loop` shall carry `skipped`, the count of lines that are not
+  loop records, zero included.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONCountsSkippedLines
+- **If the run log exists and cannot be read, then `loop` shall carry `error` in place of
+  `changes` and `skipped`.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONUnreadableRunLogNamesTheError
+- **While git has seen no change, `changes` shall be an empty array.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONEmptyHistoryIsAnEmptyArray
+- **While git has seen no change, the JSON report shall still carry each of
+  `corrections`, `tokens` and `loop` whose source exists.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONEmptyHistoryKeepsTheOtherBlocks
+- **While git has seen no change, the text report shall print only its no-changes line.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsTextWithNoHistoryIsUnchanged
+- **When `metrics` is given `--json` and a change name, the command shall accept them in
+  either order.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONFlagAndChangeInEitherOrder
+
+`queue` — its refusal of every argument other than `--json` is the criterion under
+*`queue` — the queued ideas, read-only*, proven by `TestQueueRefusesArguments`.
+
+- **When `queue --json` runs, `queued` shall list one object per queued change, carrying
+  `name`, `date` and `reading`, in the text's order.**
+  Proof: cmd/libretto/queue_test.go TestQueueJSONListsOldestFirst
+- **If a queued proposal has no `## Reading`, then its object shall omit `reading`.**
+  Proof: cmd/libretto/queue_test.go TestQueueJSONOmitsAMissingReading
+- **A `reading` carrying `<`, `>` or `&` shall reach the JSON unescaped.**
+  Proof: cmd/libretto/queue_test.go TestQueueJSONKeepsReadingTextVerbatim
+- **When git lists branches, `dispatched` shall list each change a branch took, carrying
+  `name` and `branch`, as an empty array when there is none.**
+  Proof: cmd/libretto/queue_test.go TestQueueJSONNamesDispatchedChanges
+- **If git cannot list branches, then the report shall omit `dispatched`.**
+  Proof: cmd/libretto/queue_test.go TestQueueJSONUnreadableBranchesOmitsDispatched
+- **While no `.agents/changes/` exists at the repository root, `queued` shall be an empty
+  array.**
+  Proof: cmd/libretto/queue_test.go TestQueueJSONWithoutAChangesDirIsEmpty
+- **While no `.agents/changes/` exists at the repository root, the report shall omit
+  `dispatched`.**
+  Proof: cmd/libretto/queue_test.go TestQueueJSONWithoutAChangesDirIsEmpty

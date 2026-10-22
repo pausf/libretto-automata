@@ -81,24 +81,68 @@ func releaseNotice(root, running string) string {
 // waiting for a diagnosis, and going through the cache would both write a file and swallow
 // the very error this line exists to report.
 func releaseLine(running string, ask func(context.Context) (string, error)) string {
+	return checkRelease(running, ask).line()
+}
+
+// releaseCheck is what one live check found: the facts, before any sentence. `doctor`
+// renders its text line and its JSON object from the same one, so the two cannot disagree.
+type releaseCheck struct {
+	running, latest string
+	err             error
+}
+
+func checkRelease(running string, ask func(context.Context) (string, error)) releaseCheck {
 	ctx, cancel := context.WithTimeout(context.Background(), checkTimeout)
 	defer cancel()
 
 	latest, err := ask(ctx)
+	return releaseCheck{running: running, latest: latest, err: err}
+}
+
+// newer ranks the two versions, and says when it cannot: no latest, a failed check, or a
+// pair that does not rank. The same switch the line uses, so "available" and newer=true
+// are one decision.
+func (c releaseCheck) newer() (newer, ranked bool) {
 	switch {
-	case err != nil:
-		return "could not check for a newer release — " + firstLine(err.Error())
-	case latest == "":
+	case c.err != nil || c.latest == "":
+		return false, false
+	case repo.IsNewer(c.latest, c.running):
+		return true, true
+	case c.running == c.latest:
+		return false, true
+	default:
+		return false, false
+	}
+}
+
+func (c releaseCheck) line() string {
+	newer, ranked := c.newer()
+	switch {
+	case c.err != nil:
+		return "could not check for a newer release — " + firstLine(c.err.Error())
+	case c.latest == "":
 		return "the remote has no releases to offer"
-	case repo.IsNewer(latest, running):
-		return fmt.Sprintf("%s → %s available · run `%s update`", running, latest, invokedAs())
-	case running == latest:
-		return "up to date at " + running
+	case newer:
+		return fmt.Sprintf("%s → %s available · run `%s update`", c.running, c.latest, invokedAs())
+	case ranked:
+		return "up to date at " + c.running
 	default:
 		// Either ahead of the remote, or a version that will not parse. Both get the
 		// facts and no ranking: telling somebody running `dev` that they are out of date
 		// is a guess presented as a fact.
-		return fmt.Sprintf("running %s · the latest release is %s", running, latest)
+		return fmt.Sprintf("running %s · the latest release is %s", c.running, c.latest)
+	}
+}
+
+// releaseSource picks what `doctor` asks for the newest release: a checkout asks its
+// remote's tags, an installed copy asks the module proxy. A variable so the suite can
+// answer it without the network, the way noticeSource is.
+var releaseSource = func(root string) func(context.Context) (string, error) {
+	if isRepo(root) {
+		return repo.Shell{Root: root}.LatestTag
+	}
+	return func(ctx context.Context) (string, error) {
+		return dist.Latest(ctx, defaultClient(), dist.DefaultProxy, moduleImportPath())
 	}
 }
 

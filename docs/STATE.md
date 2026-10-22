@@ -105,7 +105,7 @@ test:
 
 ## What is pending
 
-Eleven open boxes, in the specs that own them. In the order they are worth doing:
+Ten open boxes, in the specs that own them. In the order they are worth doing:
 
 | Where | What | Why now |
 |---|---|---|
@@ -116,9 +116,11 @@ Eleven open boxes, in the specs that own them. In the order they are worth doing
 | repo-sync | a fake `Git` and the flow's own tests | the interface exists precisely to make this testable, and nothing uses it that way yet |
 | panel | `6.6` target-strip golden files | behaviour is tested (`TestStripRowsReportTheirOwnState`); the rendering is not pinned. No `testdata/` exists |
 | panel | `6.7` `teatest` end-to-end flow | `panelrun_test.go` drives a real `tea.Program` by hand and covers the glue. `teatest` is not a dependency. **Decide whether this box still means anything** before adding one |
-| cli | `5.2` `--json` for `status` and `doctor` | nothing consumes it yet. Lowest value on this list |
 | cli | `5.3` the panel path under a real TTY | needs a pty; `COLUMNS` already makes layout checkable in a pipe |
 | payload | an independent verifier, never run by whoever wrote the code | worth having after the flow has been run once, not before |
+
+**`cli/5.2` was closed by `add-json-output`**: `--json` on `status`, `doctor`,
+`metrics` and `queue`, the shapes in the cli spec.
 
 **`panel/6.5` was closed in this pass.** The confirmation exists, in the model
 rather than as a Huh form, with four tests behind it

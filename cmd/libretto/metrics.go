@@ -372,65 +372,33 @@ func metrics(w io.Writer, args []string, git gitRunner, projects string) error {
 }
 
 func metricsWith(w io.Writer, args []string, git gitRunner, projects, loopLog string) error {
-	var only string
-	for _, a := range args {
-		if strings.HasPrefix(a, "-") {
-			return fmt.Errorf("unknown flag %q — `%s metrics [<change>]`", a, invokedAs())
-		}
-		if only != "" {
-			return fmt.Errorf("one change at a time, got %q and %q", only, a)
-		}
-		only = a
+	asJSON, args := jsonFlag(args)
+	r, err := gatherMetrics(args, git, projects, loopLog)
+	if err != nil {
+		return err
+	}
+	if asJSON {
+		return writeJSON(w, metricsDocOf(r))
 	}
 
-	// Everything below is asked of the repository root, never of the cwd. git pathspecs
-	// and os.Stat are both cwd-relative, so run from a subdirectory this reported "no
-	// changes in this repository's history yet" — a plausible answer that was false.
-	root, err := git("rev-parse", "--show-toplevel")
-	if err != nil {
-		return fmt.Errorf("not a git repository, or git is unavailable: %w", err)
-	}
-	root = strings.TrimSpace(root)
-
-	names, err := changeNames(git, root)
-	if err != nil {
-		return fmt.Errorf("not a git repository, or git is unavailable: %w", err)
-	}
-	// Kept before the filter narrows it. The token block attributes against every change
-	// git has seen, so its totals stay corpus-wide however the table is scoped.
-	allNames := names
-	if only != "" {
-		matches := filterName(names, only)
-		if len(matches) == 0 {
-			return fmt.Errorf("git has never seen a change called %q", only)
-		}
-		if len(matches) > 1 {
-			return fmt.Errorf("%q is ambiguous: %s", only, strings.Join(matches, ", "))
-		}
-		names = matches
-		// A prefix resolves to one name here, so the token block reports what the table
-		// reports rather than the letters that were typed.
-		only = matches[0]
-	}
-	if len(names) == 0 {
+	if len(r.rows) == 0 {
 		fmt.Fprintf(w, "\n  no changes in this repository's history yet\n\n")
 		return nil
 	}
 
-	corrCounts, byPhase, orphans, ledgerSeen := corrections(root)
-
 	fmt.Fprintf(w, "\n  %-34s %7s %8s %7s %7s %7s  %s\n", "change", "commits", "span", "closed", "reopen", "corr", "state")
 	var totalCommits, totalReopen int
 	var spans []changeMetrics
-	for _, n := range names {
-		m, err := measure(git, root, n)
-		if err != nil {
+	for _, row := range r.rows {
+		corr := corrCell(r.ledger.seen, r.ledger.counts[row.name])
+		if row.err != nil {
 			// Never skip silently. The footer counts names, so a skipped row makes the
 			// total disagree with what is above it — and a report that says twelve while
 			// showing ten is worse than one that admits it could not read two.
-			fmt.Fprintf(w, "  %-34s %7s %8s %7s %7s %7s  unreadable\n", trunc(n, 34), "?", "?", "?", "?", corrCell(ledgerSeen, corrCounts[n]))
+			fmt.Fprintf(w, "  %-34s %7s %8s %7s %7s %7s  unreadable\n", trunc(row.name, 34), "?", "?", "?", "?", corr)
 			continue
 		}
+		m := row.m
 		state := "in flight"
 		if m.landed {
 			state = "landed"
@@ -441,21 +409,101 @@ func metricsWith(w io.Writer, args []string, git gitRunner, projects, loopLog st
 		}
 		fmt.Fprintf(w, "  %-34s %7d %8s %7s %7s %7s  %s\n",
 			trunc(m.name, 34), m.commits, humanSpan(m.span()),
-			planCell(m.planSeen, m.checked-m.uncheck, m.boxes), churn, corrCell(ledgerSeen, corrCounts[n]), state)
+			planCell(m.planSeen, m.checked-m.uncheck, m.boxes), churn, corr, state)
 		totalCommits += m.commits
 		totalReopen += m.uncheck
 		spans = append(spans, m)
 	}
 	fmt.Fprintf(w, "\n  %d change(s), %d commit(s), %s of wall clock, %d box(es) reopened\n",
-		len(names), totalCommits, humanSpan(mergedSpan(spans)), totalReopen)
-	if orphans > 0 {
-		fmt.Fprintf(w, "  %d correction(s) outside any change\n", orphans)
+		len(r.rows), totalCommits, humanSpan(mergedSpan(spans)), totalReopen)
+	if r.ledger.orphans > 0 {
+		fmt.Fprintf(w, "  %d correction(s) outside any change\n", r.ledger.orphans)
 	}
-	phaseBreakdown(w, byPhase, ledgerSeen)
-	tokenBlock(w, projects, root, allNames, only)
-	loopBlock(w, loopLog, only)
+	phaseBreakdown(w, r.ledger.byPhase, r.ledger.seen)
+	tokenBlock(w, r.tokens)
+	loopBlock(w, r.loop)
 	fmt.Fprintf(w, "\n%s\n\n%s\n\n", flowLegend, flowCeiling)
 	return nil
+}
+
+// metricsReport is everything one metrics run read, gathered once. The table, the blocks
+// under it and the JSON document all render from it, so a block cannot exist in one
+// rendering and be computed differently, or not at all, in the other.
+//
+// The ledger, the tokens and the loop are read even when git has seen no change: none of
+// them depends on a change folder, and the JSON reports whichever exist. The text still
+// prints only its no-changes line.
+type metricsReport struct {
+	rows   []metricsRow
+	ledger ledgerReport
+	tokens tokenReport
+	loop   loopReport
+}
+
+// metricsRow is one change: measured, or err when git would not answer for it.
+type metricsRow struct {
+	name string
+	m    changeMetrics
+	err  error
+}
+
+type ledgerReport struct {
+	counts, byPhase map[string]int
+	orphans         int
+	seen            bool
+}
+
+func gatherMetrics(args []string, git gitRunner, projects, loopLog string) (metricsReport, error) {
+	var r metricsReport
+	var only string
+	for _, a := range args {
+		if strings.HasPrefix(a, "-") {
+			return r, fmt.Errorf("unknown flag %q — `%s metrics [<change>]`", a, invokedAs())
+		}
+		if only != "" {
+			return r, fmt.Errorf("one change at a time, got %q and %q", only, a)
+		}
+		only = a
+	}
+
+	// Everything below is asked of the repository root, never of the cwd. git pathspecs
+	// and os.Stat are both cwd-relative, so run from a subdirectory this reported "no
+	// changes in this repository's history yet" — a plausible answer that was false.
+	root, err := git("rev-parse", "--show-toplevel")
+	if err != nil {
+		return r, fmt.Errorf("not a git repository, or git is unavailable: %w", err)
+	}
+	root = strings.TrimSpace(root)
+
+	names, err := changeNames(git, root)
+	if err != nil {
+		return r, fmt.Errorf("not a git repository, or git is unavailable: %w", err)
+	}
+	// Kept before the filter narrows it. The token block attributes against every change
+	// git has seen, so its totals stay corpus-wide however the table is scoped.
+	allNames := names
+	if only != "" {
+		matches := filterName(names, only)
+		if len(matches) == 0 {
+			return r, fmt.Errorf("git has never seen a change called %q", only)
+		}
+		if len(matches) > 1 {
+			return r, fmt.Errorf("%q is ambiguous: %s", only, strings.Join(matches, ", "))
+		}
+		names = matches
+		// A prefix resolves to one name here, so the token block reports what the table
+		// reports rather than the letters that were typed.
+		only = matches[0]
+	}
+
+	for _, n := range names {
+		m, err := measure(git, root, n)
+		r.rows = append(r.rows, metricsRow{name: n, m: m, err: err})
+	}
+	r.ledger.counts, r.ledger.byPhase, r.ledger.orphans, r.ledger.seen = corrections(root)
+	r.tokens = gatherTokens(projects, root, allNames, only)
+	r.loop = gatherLoop(loopLog, only)
+	return r, nil
 }
 
 // phaseBreakdown prints where corrections surfaced, one row per phase value the
@@ -496,39 +544,51 @@ type loopTally struct {
 	priced                bool
 }
 
-// loopBlock prints what the loop's run log says each change's rounds did and cost. It
-// opens the log for reading only: the loop is its one writer.
+// loopReport is what the run log held. exists is false only when there is no file; err
+// is set when there is one and it cannot be opened. names follows the filter; rows and
+// skipped never do.
+type loopReport struct {
+	exists  bool
+	err     error
+	only    string
+	rows    map[string]*loopTally
+	names   []string
+	skipped int
+}
+
+// gatherLoop reads the loop's run log. It opens the log for reading only: the loop is
+// its one writer.
 //
 // The skipped count is taken before the filter, always. A malformed line names no change,
 // so filtering it would make it vanish under every filter — the silent skip the count
 // exists to prevent.
-func loopBlock(w io.Writer, path, only string) {
+func gatherLoop(path, only string) loopReport {
+	r := loopReport{only: only}
 	f, err := os.Open(path)
 	if path == "" || errors.Is(err, os.ErrNotExist) {
-		fmt.Fprintf(w, "\n  no loop runs are recorded in this repository\n")
-		return
+		return r
 	}
+	r.exists = true
 	if err != nil {
-		fmt.Fprintf(w, "\n  run log unreadable: %v\n", err)
-		return
+		r.err = err
+		return r
 	}
 	defer f.Close()
 
-	rows := map[string]*loopTally{}
-	skipped := 0
+	r.rows = map[string]*loopTally{}
 	// bufio.Reader, not Scanner: the transcript reader's rule, no line-length cap.
-	r := bufio.NewReader(f)
+	br := bufio.NewReader(f)
 	for {
-		line, err := r.ReadString('\n')
+		line, err := br.ReadString('\n')
 		if t := strings.TrimSpace(line); t != "" {
 			var rec loopRecord
 			if json.Unmarshal([]byte(t), &rec) != nil || rec.Change == "" {
-				skipped++
+				r.skipped++
 			} else {
-				row := rows[rec.Change]
+				row := r.rows[rec.Change]
 				if row == nil {
 					row = &loopTally{}
-					rows[rec.Change] = row
+					r.rows[rec.Change] = row
 				}
 				row.rounds++
 				if rec.Closed != nil {
@@ -547,23 +607,36 @@ func loopBlock(w io.Writer, path, only string) {
 		}
 	}
 
-	names := make([]string, 0, len(rows))
-	for n := range rows {
+	r.names = make([]string, 0, len(r.rows))
+	for n := range r.rows {
 		if only == "" || n == only {
-			names = append(names, n)
+			r.names = append(r.names, n)
 		}
 	}
-	sort.Strings(names)
+	sort.Strings(r.names)
+	return r
+}
+
+// loopBlock prints what the loop's run log says each change's rounds did and cost.
+func loopBlock(w io.Writer, r loopReport) {
+	if !r.exists {
+		fmt.Fprintf(w, "\n  no loop runs are recorded in this repository\n")
+		return
+	}
+	if r.err != nil {
+		fmt.Fprintf(w, "\n  run log unreadable: %v\n", r.err)
+		return
+	}
 
 	switch {
-	case len(rows) == 0 && only == "":
+	case len(r.rows) == 0 && r.only == "":
 		fmt.Fprintf(w, "\n  no loop runs are recorded in this repository\n")
-	case len(names) == 0 && only != "":
-		fmt.Fprintf(w, "\n  no loop rounds recorded for %s\n", only)
-	case len(names) > 0:
+	case len(r.names) == 0 && r.only != "":
+		fmt.Fprintf(w, "\n  no loop rounds recorded for %s\n", r.only)
+	case len(r.names) > 0:
 		fmt.Fprintf(w, "\n  %-34s %7s %10s %12s %9s\n", "loop", "rounds", "net closed", "host est. $", "unpriced")
-		for _, n := range names {
-			row := rows[n]
+		for _, n := range r.names {
+			row := r.rows[n]
 			cost := "—"
 			if row.priced {
 				cost = fmt.Sprintf("%.2f", row.cost)
@@ -572,43 +645,93 @@ func loopBlock(w io.Writer, path, only string) {
 		}
 		fmt.Fprintf(w, "  cost is the host's reported estimate in dollars, summed as reported — never priced here\n")
 	}
-	if skipped > 0 {
-		fmt.Fprintf(w, "  %d run log line(s) skipped — not a loop record\n", skipped)
+	if r.skipped > 0 {
+		fmt.Fprintf(w, "  %d run log line(s) skipped — not a loop record\n", r.skipped)
 	}
 }
 
-// tokenBlock prints what the session transcripts say this repository's work cost.
-//
-// allNames rather than the filtered set, always: the corpus totals must not move when a
-// change filter is applied, or "attributed + unattributed = corpus" stops being readable
-// off the output and the unattributed row stops meaning anything.
-func tokenBlock(w io.Writer, projects, root string, allNames []string, only string) {
-	if projects == "" {
+// tokenReport is what the session transcripts say this repository's work cost.
+// configured is false when no transcript root was given, found when none exists for this
+// repository; either way nothing below them was read.
+type tokenReport struct {
+	configured, found        bool
+	attributed, unattributed usageTotals
+	entries, offEntries      int
+	only                     string
+	attributedHere           bool
+	total, noPhase           usageTotals
+	byPhase                  map[string]usageTotals
+	noPhaseSeen              bool
+}
+
+// gatherTokens takes allNames rather than the filtered set, always: the corpus totals must
+// not move when a change filter is applied, or "attributed + unattributed = corpus" stops
+// being readable off the output and the unattributed row stops meaning anything.
+func gatherTokens(projects, root string, allNames []string, only string) tokenReport {
+	r := tokenReport{configured: projects != "", only: only}
+	if !r.configured {
+		return r
+	}
+	es, found := readUsage(projects, root)
+	r.found = found
+	if !found {
+		return r
+	}
+
+	byChange, unattributed := attribute(es, allNames)
+	for _, t := range byChange {
+		r.attributed = r.attributed.plus(t)
+	}
+	r.unattributed = unattributed
+	r.entries = len(es)
+	for _, e := range es {
+		if attributeBranch(e.branch, allNames) == "" {
+			r.offEntries++
+		}
+	}
+
+	if only == "" {
+		return r
+	}
+	// Presence in the map, never a zero total. A change can be attributed and cost
+	// nothing — a <synthetic> entry does exactly that — and rendering it like a change
+	// no session reached would collapse the two states outcome 3 exists to separate.
+	r.total, r.attributedHere = byChange[only]
+	if !r.attributedHere {
+		return r
+	}
+	r.byPhase = map[string]usageTotals{}
+	for _, e := range es {
+		if attributeBranch(e.branch, allNames) != only {
+			continue
+		}
+		t := usageTotals{e.in, e.out, e.cacheW, e.cacheR}
+		if e.skill == "" {
+			// Never distributed across the phases that did name a skill: 4,216 of 8,944
+			// entries carry no attributionSkill, and sharing them out would invent the number.
+			r.noPhase, r.noPhaseSeen = r.noPhase.plus(t), true
+			continue
+		}
+		r.byPhase[e.skill] = r.byPhase[e.skill].plus(t)
+	}
+	return r
+}
+
+// tokenBlock prints the token report.
+func tokenBlock(w io.Writer, r tokenReport) {
+	if !r.configured {
 		fmt.Fprintf(w, "\n  no session transcripts configured — token cost not measured\n")
 		return
 	}
-	es, found := readUsage(projects, root)
-	if !found {
+	if !r.found {
 		fmt.Fprintf(w, "\n  no session transcripts for this repository — token cost not measured\n")
 		return
 	}
 
-	byChange, unattributed := attribute(es, allNames)
-	var attributed usageTotals
-	for _, t := range byChange {
-		attributed = attributed.plus(t)
-	}
-
 	fmt.Fprintf(w, "\n  %-16s %14s %14s %14s %16s\n", "tokens", "input", "output", "cache-w", "cache-r")
-	tokenRow(w, "attributed", attributed, true)
-	tokenRow(w, "unattributed", unattributed, true)
-	if n := len(es); n > 0 {
-		var off int
-		for _, e := range es {
-			if attributeBranch(e.branch, allNames) == "" {
-				off++
-			}
-		}
+	tokenRow(w, "attributed", r.attributed, true)
+	tokenRow(w, "unattributed", r.unattributed, true)
+	if n, off := r.entries, r.offEntries; n > 0 {
 		// Integer division truncates, so one miss in two hundred reads as 0% — the
 		// opposite of what a number the ceiling calls an error bar is for. Anything
 		// under one percent says so rather than rounding itself away.
@@ -619,46 +742,25 @@ func tokenBlock(w io.Writer, projects, root string, allNames []string, only stri
 		fmt.Fprintf(w, "\n  %s of session entries could not be attributed to a change\n", pct)
 	}
 
-	if only == "" {
+	if r.only == "" {
 		return
 	}
-
-	// Presence in the map, never a zero total. A change can be attributed and cost
-	// nothing — a <synthetic> entry does exactly that — and rendering it like a change
-	// no session reached would collapse the two states outcome 3 exists to separate.
-	t, attributedHere := byChange[only]
 	fmt.Fprintf(w, "\n  %-16s %14s %14s %14s %16s\n", "by change", "input", "output", "cache-w", "cache-r")
-	tokenRow(w, trunc(only, 16), t, attributedHere)
+	tokenRow(w, trunc(r.only, 16), r.total, r.attributedHere)
 
-	if !attributedHere {
+	if !r.attributedHere {
 		return
 	}
 	fmt.Fprintf(w, "\n  %-16s %14s %14s %14s %16s\n", "by phase", "input", "output", "cache-w", "cache-r")
-	byPhase := map[string]usageTotals{}
-	var noPhase usageTotals
-	var noPhaseSeen bool
-	for _, e := range es {
-		if attributeBranch(e.branch, allNames) != only {
-			continue
-		}
-		t := usageTotals{e.in, e.out, e.cacheW, e.cacheR}
-		if e.skill == "" {
-			noPhase, noPhaseSeen = noPhase.plus(t), true
-			continue
-		}
-		byPhase[e.skill] = byPhase[e.skill].plus(t)
-	}
-	phases := make([]string, 0, len(byPhase))
-	for p := range byPhase {
+	phases := make([]string, 0, len(r.byPhase))
+	for p := range r.byPhase {
 		phases = append(phases, p)
 	}
 	sort.Strings(phases)
 	for _, p := range phases {
-		tokenRow(w, trunc(p, 16), byPhase[p], true)
+		tokenRow(w, trunc(p, 16), r.byPhase[p], true)
 	}
-	// Never distributed across the phases that did name a skill: 4,216 of 8,944 entries
-	// carry no attributionSkill, and sharing them out would invent the number.
-	tokenRow(w, "unattributed", noPhase, noPhaseSeen)
+	tokenRow(w, "unattributed", r.noPhase, r.noPhaseSeen)
 }
 
 func tokenRow(w io.Writer, label string, t usageTotals, real bool) {

@@ -332,13 +332,28 @@ func TestQueueRefusesArguments(t *testing.T) {
 	root := t.TempDir()
 	writeProposal(t, root, "an-idea", "Queued: 2026-08-01\n")
 
-	out, _, err := runQueue(t, root, queueGit(root, "", nil, nil), "--json")
-	if err == nil || !strings.Contains(err.Error(), "--json") {
-		t.Errorf("err = %v, want a refusal naming --json", err)
+	for _, arg := range []string{"--jsno", "an-idea", "--yes"} {
+		t.Run(arg, func(t *testing.T) {
+			out, _, err := runQueue(t, root, queueGit(root, "", nil, nil), arg)
+			if err == nil || !strings.Contains(err.Error(), arg) {
+				t.Errorf("err = %v, want a refusal naming %s", err, arg)
+			}
+			if out != "" {
+				t.Errorf("a refused run printed a queue:\n%s", out)
+			}
+		})
 	}
-	if out != "" {
-		t.Errorf("a refused run printed a queue:\n%s", out)
-	}
+
+	// --json is the one argument it reads.
+	t.Run("--json", func(t *testing.T) {
+		out, _, err := runQueue(t, root, queueGit(root, "", nil, nil), "--json")
+		if err != nil {
+			t.Fatalf("--json was refused: %v", err)
+		}
+		if !strings.Contains(out, "an-idea") {
+			t.Errorf("--json printed no queue:\n%s", out)
+		}
+	})
 }
 
 // Proven through run, as init proves its own: a payload root holding nothing and a cwd
@@ -356,5 +371,128 @@ func TestQueueNeedsNoPayload(t *testing.T) {
 	}
 	if !strings.Contains(out, "nothing is queued") {
 		t.Errorf("stdout = %q, want queue's own empty state", out)
+	}
+}
+
+// ── --json ───────────────────────────────────────────────────────────────────
+
+func queueJSON(t *testing.T, cwd string, git gitRunner) map[string]any {
+	t.Helper()
+	out, _, err := runQueue(t, cwd, git, "--json")
+	if err != nil {
+		t.Fatalf("queue --json: %v", err)
+	}
+	return decodeObject(t, out)
+}
+
+func TestQueueJSONListsOldestFirst(t *testing.T) {
+	root := t.TempDir()
+	writeProposal(t, root, "a-later", "# a-later\n\nQueued: 2026-09-02\n\n## Reading\n\nThe later idea. It has more.\n")
+	writeProposal(t, root, "z-earlier", "# z-earlier\n\nQueued: 2026-08-01\n\n## Reading\n\nThe earlier\nidea. Second sentence.\n")
+	writeProposal(t, root, "b-tie", "Queued: 2026-08-01\n\n## Reading\n\nTied.\n")
+
+	queued := arrayAt(t, queueJSON(t, root, queueGit(root, "", nil, nil)), "queued")
+	want := []map[string]any{
+		{"name": "b-tie", "date": "2026-08-01", "reading": "Tied."},
+		{"name": "z-earlier", "date": "2026-08-01", "reading": "The earlier idea."},
+		{"name": "a-later", "date": "2026-09-02", "reading": "The later idea."},
+	}
+	if len(queued) != len(want) {
+		t.Fatalf("queued = %#v, want %d ideas", queued, len(want))
+	}
+	for i, w := range want {
+		got, _ := queued[i].(map[string]any)
+		if len(got) != len(w) || got["name"] != w["name"] || got["date"] != w["date"] || got["reading"] != w["reading"] {
+			t.Errorf("queued[%d] = %#v, want %#v", i, got, w)
+		}
+	}
+}
+
+func TestQueueJSONOmitsAMissingReading(t *testing.T) {
+	root := t.TempDir()
+	writeProposal(t, root, "bare", "# bare\n\nQueued: 2026-08-01\n\nJust an idea, no reading.\n")
+
+	queued := arrayAt(t, queueJSON(t, root, queueGit(root, "", nil, nil)), "queued")
+	if len(queued) != 1 {
+		t.Fatalf("queued = %#v, want bare alone", queued)
+	}
+	got := queued[0].(map[string]any)
+	if _, ok := got["reading"]; ok {
+		t.Errorf("queued[0] = %#v, want no reading key", got)
+	}
+	if got["name"] != "bare" || got["date"] != "2026-08-01" {
+		t.Errorf("queued[0] = %#v, want bare on 2026-08-01", got)
+	}
+}
+
+func TestQueueJSONKeepsReadingTextVerbatim(t *testing.T) {
+	root := t.TempDir()
+	writeProposal(t, root, "html", "Queued: 2026-08-01\n\n## Reading\n\nKeep <b> & </b> as written.\n")
+
+	out, _, err := runQueue(t, root, queueGit(root, "", nil, nil), "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "Keep <b> & </b> as written.") {
+		t.Errorf("the reading did not reach stdout as written:\n%s", out)
+	}
+	queued := arrayAt(t, decodeObject(t, out), "queued")
+	if got := queued[0].(map[string]any)["reading"]; got != "Keep <b> & </b> as written." {
+		t.Errorf("reading = %#v", got)
+	}
+}
+
+func TestQueueJSONNamesDispatchedChanges(t *testing.T) {
+	root := t.TempDir()
+	writeProposal(t, root, "an-idea", "Queued: 2026-08-01\n")
+	writeProposal(t, root, "kept", "Queued: 2026-08-02\n")
+
+	doc := queueJSON(t, root, queueGit(root, "main-work\nfeat/an-idea\n", nil, nil))
+	dispatched := arrayAt(t, doc, "dispatched")
+	if len(dispatched) != 1 {
+		t.Fatalf("dispatched = %#v, want an-idea alone", dispatched)
+	}
+	if got := dispatched[0].(map[string]any); got["name"] != "an-idea" || got["branch"] != "feat/an-idea" || len(got) != 2 {
+		t.Errorf("dispatched[0] = %#v, want an-idea on feat/an-idea", got)
+	}
+	if queued := arrayAt(t, doc, "queued"); len(queued) != 1 || queued[0].(map[string]any)["name"] != "kept" {
+		t.Errorf("queued = %#v, want kept alone", queued)
+	}
+
+	// Branches read, none of them took anything: a known-empty list.
+	if d := arrayAt(t, queueJSON(t, root, queueGit(root, "main-work\n", nil, nil)), "dispatched"); len(d) != 0 {
+		t.Errorf("dispatched = %#v, want []", d)
+	}
+}
+
+func TestQueueJSONUnreadableBranchesOmitsDispatched(t *testing.T) {
+	root := t.TempDir()
+	writeProposal(t, root, "an-idea", "Queued: 2026-08-01\n")
+
+	out, stderr, err := runQueue(t, root, queueGit(root, "feat/an-idea\n", errors.New("exit status 128"), nil), "--json")
+	if err != nil {
+		t.Fatalf("unreadable branches is not an error: %v", err)
+	}
+	doc := decodeObject(t, out)
+	if _, ok := doc["dispatched"]; ok {
+		t.Errorf("doc = %#v, want no dispatched key when git could not list branches", doc)
+	}
+	if queued := arrayAt(t, doc, "queued"); len(queued) != 1 {
+		t.Errorf("queued = %#v, want an-idea unfiltered", queued)
+	}
+	if got := lines(stderr); stderr == "" || len(got) != 1 {
+		t.Errorf("stderr = %q, want the same one line as without --json", stderr)
+	}
+}
+
+func TestQueueJSONWithoutAChangesDirIsEmpty(t *testing.T) {
+	root := t.TempDir()
+
+	doc := queueJSON(t, root, queueGit(root, "feat/anything\n", nil, nil))
+	if queued := arrayAt(t, doc, "queued"); len(queued) != 0 {
+		t.Errorf("queued = %#v, want []", queued)
+	}
+	if _, ok := doc["dispatched"]; ok {
+		t.Errorf("doc = %#v, want no dispatched key: git was never asked", doc)
 	}
 }

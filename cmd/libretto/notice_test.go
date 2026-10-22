@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -16,6 +19,13 @@ import (
 // prevent for links. A test that wants the notice opts in with stubNotice.
 func TestMain(m *testing.M) {
 	noticeSource = func(root, running string) string { return "" }
+	// doctor checks live, so it gets the same treatment: an answer that never leaves the
+	// process. A test that wants a release sets its own with stubRelease.
+	releaseSource = func(string) func(context.Context) (string, error) {
+		return func(context.Context) (string, error) {
+			return "", errors.New("the release check is stubbed under go test")
+		}
+	}
 	os.Exit(m.Run())
 }
 
@@ -178,4 +188,25 @@ func captureStd(t *testing.T, fn func()) (stdout, stderr string) {
 	}()
 
 	return <-outC, <-errC
+}
+
+// The notice was put on stderr so stdout stays parseable; under --json that promise is
+// the whole contract, so this runs the real dispatch with a notice pending.
+func TestJSONStdoutParsesWithANoticePending(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	stubNotice(t, func(root, running string) string { return "v0.1.0 → v0.2.0 available" })
+
+	out, errOut := captureStd(t, func() {
+		if err := runIn(f.Repo, []string{"status", "--json"}); err != nil {
+			t.Errorf("status --json: %v", err)
+		}
+	})
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(out), &doc); err != nil {
+		t.Errorf("stdout does not parse with a notice pending: %v\n%s", err, out)
+	}
+	if !strings.Contains(errOut, "available") {
+		t.Errorf("stderr = %q, want the notice; without it the test proves nothing", errOut)
+	}
 }
