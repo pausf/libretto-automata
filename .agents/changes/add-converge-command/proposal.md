@@ -637,7 +637,7 @@ Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its
       never-uncheck criterion, the commit-the-checklist-alone criterion, the
       no-commit-when-nothing-changed criterion and the never-push criterion — all on
       scripts/check-payload. Waits on: box 1.
-- [ ] **Converge appends a box for each of the change's own uncovered criteria whose proof
+- [x] **Converge appends a box for each of the change's own uncovered criteria whose proof
       does not pass.** In the skill: uncovered defined as the change's own criteria only;
       the reader's `uncovered` lines run by the same rules; an open box marked
       `(converge <date>)` appended after the last box when the proof fails, nothing when

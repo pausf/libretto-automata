@@ -1,6 +1,6 @@
 ---
 name: converge
-description: "Trigger: a checklist stopped describing the code; open boxes that may already be built, or built otherwise; 'converge', 're-derive the boxes', 'the plan drifted'. Launches one fresh converge-reader over the tree as it is, runs the cited proofs itself, closes only what it watched pass, reports every other open box as open, drifted or unmapped, and commits the checklist alone. A side door, not a phase."
+description: "Trigger: a checklist stopped describing the code; open boxes that may already be built, or built otherwise; 'converge', 're-derive the boxes', 'the plan drifted'. Launches one fresh converge-reader over the tree as it is, runs the cited proofs itself, closes only what it watched pass, reports every other open box as open, drifted or unmapped, appends a box for each of the change's own uncovered criteria whose proof fails, and commits the checklist alone. A side door, not a phase."
 license: MIT
 metadata:
   author: pausf
@@ -130,16 +130,43 @@ contract moving: an edit to what the change promises, made by the back door. Res
 is the user's, at the contract. Say so in the report, and say that `loop` would build a
 drifted box as written, against the code.
 
-## Step 6 — The writes
+## Step 6 — Uncovered criteria
 
-converge writes to the checklist and nothing else. Not the contract, not `## Approach`, not
-the decision log, `Targets:` or `Durable decisions:` — every pillar stays as it was.
+Here **uncovered means the change's own criteria**: those under `## Verification criteria`
+in `proposal.md` and in each `spec-<capability>.md` beside it — an old-layout change's delta
+in their place — that no box's `Closes:` names. Never a criterion of a capability spec the
+change targets: that spec is what is true already, and its criteria belong to changes that
+landed. Counting them would turn a checklist tool into a regression sweep.
+
+For each `uncovered` line the reader returned, check it against that definition, then run
+the criterion's `Proof:` line from the contract by the rules of Step 3 and Step 4.
+
+- **Not passed**: one open box, appended after the checklist's last box, in this shape —
+
+  ```
+  - [ ] **<criterion, in a phrase>** (converge <date>). Closes: <criterion> on <citation>. Waits on: nothing.
+  ```
+
+  One box per criterion, marked `(converge <date>)` so the next reader knows where it came
+  from.
+- **Passed**: the criterion passes already, so no box is appended — a task whose criterion
+  is met is not a task — and the report says so.
+
+A `gap` the reader names — an outcome or a scope item no criterion covers — is reported,
+never boxed. A box names the criterion that closes it, and a box with none is a box nobody
+can close; writing the missing criterion is editing the contract, and that is phase 2's.
+
+## Step 7 — The writes
+
+converge writes to the checklist and nothing else: the marks of Step 4 and the boxes Step 6
+appends. Not the contract, not `## Approach`, not the decision log, `Targets:` or
+`Durable decisions:` — every pillar stays as it was.
 
 It never unchecks a closed box, and never re-runs one. The ask is about open boxes; a
 closed box whose proof fails today is a regression, and `libretto metrics` already counts a
 reopened box as the sign of one.
 
-## Step 7 — The commit
+## Step 8 — The commit
 
 A mark never committed was never marked. Anything marked or appended: stage the checklist
 file alone and commit it, with that file as the only pathspec.
@@ -158,7 +185,7 @@ If nothing was marked or appended, no commit.
 converge never pushes and never creates a branch: the push is the user's, asked at
 `record-work`.
 
-## Step 8 — The report
+## Step 9 — The report
 
 One line per open box, in checklist order, in exactly one state:
 
@@ -167,11 +194,11 @@ One line per open box, in checklist order, in exactly one state:
 - **drifted** — the box's words beside the reader's file and line
 - **unmapped** — with what its `Closes:` failed to match
 
-Then the proofs run, one line each, pass or fail. Then, as the reader returned them:
+Then the proofs run, one line each, pass or fail. Then:
 
-- each `uncovered` criterion, with its `Proof:` line
-- each `gap` — an outcome or scope item no criterion covers — reported, never boxed:
-  writing the missing criterion is editing the contract, and that is phase 2's
+- each uncovered criterion, with its proof's result and the box appended for it, or
+  "passes already"
+- each `gap`, reported as a contract gap for phase 2
 - anything the reader marked **unverified**, as a question, never as a verdict
 
 Or the reader's explicit **"nothing found"**, relayed as a statement, not an absence.

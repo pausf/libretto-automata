@@ -476,6 +476,10 @@ check_wiring skills/converge/SKILL.md 'docs\(<change>\): converge the checklist'
 check_wiring skills/converge/SKILL.md 'stages nothing else'               'the converge commit holds the checklist file alone'
 check_wiring skills/converge/SKILL.md 'nothing was marked or appended, no commit' 'converge makes no commit when nothing changed'
 check_wiring skills/converge/SKILL.md 'never pushes and never creates a branch' 'converge never pushes and never creates a branch'
+check_wiring skills/converge/SKILL.md 'uncovered means the change.s own criteria' 'converge counts only the change'"'"'s own criteria as uncovered'
+check_wiring skills/converge/SKILL.md 'appended after the checklist.s last box' 'an uncovered criterion whose proof fails gets a box after the last one'
+check_wiring skills/converge/SKILL.md '\(converge <date>\)'              'an appended box is marked (converge <date>)'
+check_wiring skills/converge/SKILL.md 'passes already, so no box is appended' 'an uncovered criterion whose proof passes gets no box'
 
 printf '\n── skills never point at an executable that is not installed ──\n'
 # `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
