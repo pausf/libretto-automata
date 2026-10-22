@@ -720,7 +720,7 @@ revert). Rollback is one revert per box; nothing is written to disk or migrated.
 
 Executed by `build-and-check`. Box 1 comes first; boxes 2, 3 and 4 each wait only on it.
 
-- [ ] **`status --json`, end to end, with the shared helper.** `json.go` with `jsonFlag`
+- [x] **`status --json`, end to end, with the shared helper.** `json.go` with `jsonFlag`
       and `writeJSON`; `run` passes `args[1:]` to `status`; `status` reads `--json` and
       ignores other arguments as today, gathers once, renders text unchanged or the
       `status` shape; the help line;

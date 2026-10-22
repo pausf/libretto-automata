@@ -446,3 +446,22 @@ func TestHelpNamesTheLoopBudget(t *testing.T) {
 		t.Errorf("the loop help does not name --max-budget-usd:\n%s", stderr)
 	}
 }
+
+func TestHelpNamesJSON(t *testing.T) {
+	_, stderr, err := capture(t, func() error { usage(); return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(stderr, "\n") {
+		if !strings.Contains(line, "--json") {
+			continue
+		}
+		for _, cmd := range []string{"status", "doctor", "metrics", "queue"} {
+			if !strings.Contains(line, cmd) {
+				t.Errorf("the --json line does not name %s:\n%s", cmd, line)
+			}
+		}
+		return
+	}
+	t.Fatalf("help has no --json line:\n%s", stderr)
+}

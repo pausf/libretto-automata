@@ -195,7 +195,7 @@ func run(args []string) error {
 
 	switch args[0] {
 	case "status":
-		return status(root, tg)
+		return status(root, tg, args[1:]...)
 	case "preview":
 		return preview(root, tg)
 	case "install":
@@ -729,28 +729,39 @@ func indexOf(menu []ui.MenuItem, label string) int {
 }
 
 // status reports every item's state in every target. Read-only, per SPEC R4.
-func status(root string, tg target.Target) error {
-	{
-		where := "not configured"
-		if configured(tg) {
-			where = tg.Root()
-		}
-		fmt.Printf("%s  %s\n", tg.Name(), where)
+//
+// The scan is gathered once and both renderings read it. Arguments other than --json
+// are ignored, as they always were.
+func status(root string, tg target.Target, args ...string) error {
+	asJSON, _ := jsonFlag(args)
+	entries, err := link.Scan(root, tg)
 
-		entries, err := link.Scan(root, tg)
+	if asJSON {
 		if err != nil {
 			return err
 		}
-		if len(entries) == 0 {
-			fmt.Println("  nothing to link")
-			return nil
-		}
-
-		for _, e := range entries {
-			fmt.Printf("  %-12s %s/%s\n", e.State, e.Kind, e.Name)
-		}
-		fmt.Printf("  %s\n", summarise(link.Tally(entries)))
+		return writeJSON(os.Stdout, statusDoc{Schema: jsonSchema, Target: targetOf(tg), Items: itemsOf(entries)})
 	}
+
+	// The header comes before the error, as it always has.
+	where := "not configured"
+	if configured(tg) {
+		where = tg.Root()
+	}
+	fmt.Printf("%s  %s\n", tg.Name(), where)
+
+	if err != nil {
+		return err
+	}
+	if len(entries) == 0 {
+		fmt.Println("  nothing to link")
+		return nil
+	}
+
+	for _, e := range entries {
+		fmt.Printf("  %-12s %s/%s\n", e.State, e.Kind, e.Name)
+	}
+	fmt.Printf("  %s\n", summarise(link.Tally(entries)))
 	return nil
 }
 
@@ -1364,6 +1375,7 @@ func usage() {
   --opencode            OpenCode, all three · agents generated, not linked
   --global, -g          the tool's machine-wide root (the default)
   --project, -p         the tool's directory inside this one; combines with any tool
+  --json                with status, doctor, metrics, queue: one JSON object on stdout
 
   LIBRETTO_ASCII=safe   swap quadrant glyphs for half blocks
   LIBRETTO_THEME=dark|light  force a palette instead of detecting
