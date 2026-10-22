@@ -60,6 +60,7 @@ libretto loop <change>  # one fresh session per open box in that change's checkl
                         # until every box is closed. Stops after two rounds that close
                         # nothing, and at --max (10). Never pushes.
 libretto loop <change> --dry-run --max 3
+libretto loop <change> --opencode   # drive OpenCode instead of Claude Code; codex cannot run the flow
 libretto metrics        # what every change cost — commits, span, boxes closed and
                         # reopened — derived from git, instrumented nowhere. Read-only.
 libretto metrics <change>

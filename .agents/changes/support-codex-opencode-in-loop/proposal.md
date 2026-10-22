@@ -600,5 +600,5 @@ non-goal, and the `init` paragraph's scope-flag sentence, with the replacement t
       `error` event carries `data.message`. Waits on box 2. Closes:
       TestTheRecordNamesTheTool, TestAnOpencodeRoundRecordsNoCost,
       TestAnOpencodeErrorEventIsPrintedAndRecorded.
-- [ ] **The help line and the `AGENTS.md` command block name `--opencode` for `loop`.**
+- [x] **The help line and the `AGENTS.md` command block name `--opencode` for `loop`.**
       Waits on box 1. Closes: TestHelpNamesTheLoopTool.

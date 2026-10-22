@@ -1366,6 +1366,7 @@ func usage() {
   %[2]s loop <change>   one fresh session per open box, until the plan is done
   %[2]s loop <change> --max 3 --dry-run   raise the cap; print the prompt, run nothing
   %[2]s loop <change> --max-budget-usd 2.50   the host's dollar cap on each round
+  %[2]s loop <change> --opencode   drive OpenCode instead of Claude Code; codex cannot run the flow
   %[2]s metrics        what every change cost, derived from git, read-only
   %[2]s metrics <change>   just that one
   %[2]s land [<change>]   verify the staged landing commit, read-only; non-zero on a missing part
