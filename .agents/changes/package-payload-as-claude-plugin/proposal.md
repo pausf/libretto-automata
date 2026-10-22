@@ -118,7 +118,8 @@ symlinking CLI which keeps covering the other tools.
   `LICENSE-ponytail`, `LICENSE-caveman`), which permits redistribution with the notice. The
   plugin root is the repository root, so the copy Claude Code caches carries `licenses/`
   and `THIRD-PARTY.md` beside the skills — the notice travels with the copy by
-  construction, and a test pins it. The plugin lists them as `libretto:ponytail`, beside a
+  construction. A test pins the repository tree under `./`; the cached copy is observed in
+  box 2, never tested. The plugin lists them as `libretto:ponytail`, beside a
   user's own `ponytail:ponytail`; `THIRD-PARTY.md`'s *Naming* paragraph already says both
   can exist. If wrong — a vendored skill should not ship in the plugin — it has to leave
   `skills/`, because a manifest `skills` list adds to the default scan and never subtracts
@@ -150,6 +151,55 @@ symlinking CLI which keeps covering the other tools.
   `install` links as today — lost: `install` would keep creating the duplicate `doctor`
   then complains about, and the stale-link failure is silent until somebody reads `doctor`.
 
+### Session 2026-10-22, after review-spec (the run acting as author on the reviewer's findings)
+
+- Q: what does "set" mean for `CLAUDE_CODE_PLUGIN_CACHE_DIR`? → A: **non-empty. Empty or
+  unset falls through to `<claude root>/plugins`** (assumed). An exported empty variable is
+  how a shell clears one, and treating it as a root would read `installed_plugins.json` from
+  the working directory. If wrong, an empty value means "no plugins root" and the CLI never
+  defers.
+- Q: which Claude root does a `--project` run derive the plugins root from? → A: **the
+  global one, for both scopes; a project run never looks under `<cwd>/.claude/plugins`**
+  (assumed). Claude Code keeps one plugins root per user (code.claude.com/docs/en/plugins/loading,
+  *Find plugins on disk*), and a project's `.claude/` holds none. If wrong, a project run also
+  reads `<cwd>/.claude/plugins`, which nothing writes.
+- Q: does every install of the plugin make the CLI defer? → A: **only a `user`-scope install.
+  A `project` or `local` install suppresses no links; `doctor` names it in one informational
+  line and exits 0 on that alone** (assumed). `installed_plugins.json` records each install's
+  `scope` (measured on this machine: every install here is `"scope": "user"`). A project
+  install serves one repository; deferring the global links for it would strip the payload
+  from every other project. If wrong, any scope defers and the informational line goes.
+- Q: what does the licence criterion actually prove? → A: **the repository tree under the
+  entry's source `./`, never Claude Code's cache copy — its ceiling, named in the criterion**
+  (assumed). The cache copy is observed by box 2, not tested. If wrong, a test would have to
+  install the plugin, which needs the `claude` binary the gates refuse.
+- Q: which standing cli paragraph does the exit-0 skip amend? → A: **"Exit codes carry
+  meaning. Non-zero whenever something was not linked or needs attention", amended in place;
+  `spec-cli.md` carries the full replacement** (assumed): a Claude target skipped because the
+  user-scope plugin serves it is neither "not linked" nor "needs attention", and exits 0. If
+  wrong, the skip exits non-zero and the panel reports a failure on every plugin user's run.
+- Q: how does `doctor --json` show a link served twice? → A: **in `problems`, with `state:
+  "served twice"` — a doctor-only problem state documented beside the `link.State` spellings
+  — so `problems` is non-empty whenever `doctor` exits non-zero for it** (assumed). If wrong,
+  `link.State` gains a sixth value and `status --json` carries it too.
+- Q: does `status --json` print the plugin line? → A: **no; stdout stays exactly one JSON
+  object, with no plugin key, as already scoped out** (assumed). If wrong, an additive
+  `plugin` key.
+- Q: how is `update` proven to defer? → A: **`TestUpdateRelinksNothingForClaudeWhileThePluginIsInstalled`
+  drives `update`'s release route with the real relink closure built in `update.go` — the
+  production `install` path — never an injected `relink`** (assumed). A spy relink would pass
+  whether or not `update` reaches the deferral. If wrong, the test is a spy and the deferral
+  in `update` is review's to see.
+- Q: how can "the README says they are alternatives" be failed? → A: **it pins the anchor
+  phrase "never both", declared as a named exception to the readme's no-pinned-wording
+  boundary, the way outcome 4's relocated arguments are** (assumed). If wrong, the criterion
+  is dropped.
+- Q: are the Updating lines proven? → A: **yes — `TestReadmeUpdatingNamesThePluginRoute`**
+  (assumed). If wrong, they are untested prose.
+- Q: what text replaces readme Outcome 2 and its criterion? → A: **`spec-readme.md` carries
+  both in full, and landing applies them** (assumed). If wrong, landing writes them from
+  intent, which is what the reviewer flagged.
+
 ## Outcomes
 
 **The repository is a Claude Code marketplace holding one plugin, and the plugin is the
@@ -173,8 +223,9 @@ What a user does:
 the repository states it, and `release.yml` does not change.
 
 **`internal/dist` answers one more "where is the payload": whether Claude Code has it as
-this plugin.** It reads the install record and reports installed, not installed, or could
-not tell — and it never writes. `cli` decides what that means for each command
+this plugin, and at which scopes.** It reads the install record and reports a `user`-scope
+install, any `project` or `local` installs, or could not tell — and it never writes. Only a
+`user`-scope install makes the CLI defer. `cli` decides what that means for each command
 (`spec-cli.md`).
 
 **The vendored skills and their licences travel inside the plugin**, because the plugin
@@ -254,6 +305,14 @@ it is wrong in the decision log above:
 - **ASSUMED — the detection reads `installed_plugins.json` under the plugins root and never
   `settings.json`**; `CLAUDE_CODE_PLUGIN_CACHE_DIR` relocates the root.
 - **ASSUMED — an unreadable record is "could not tell"**, never a refusal.
+- **ASSUMED, after review-spec — `CLAUDE_CODE_PLUGIN_CACHE_DIR` counts only when non-empty.**
+- **ASSUMED, after review-spec — the plugins root comes from the global Claude root for both
+  scopes.**
+- **ASSUMED, after review-spec — `ClaudePlugin` separates a `user`-scope install from
+  `project` and `local` ones**, because only the first serves what the links serve.
+- **ASSUMED, after review-spec — the licence test checks the repository tree, not the cache
+  copy.** **Ceiling named:** that the cached copy carries `licenses/` is observed in box 2,
+  never tested.
 - **ASSUMED — "a second way in" is a boundary about the binary.** Amended in *Scope
   boundaries* at landing: the per-platform-binary list stays out; the payload's Claude Code
   plugin is in, and it brings no binary.
@@ -290,15 +349,21 @@ it is wrong in the decision log above:
   Proof: internal/dist/plugin_test.go TestPluginCarriesNoVersion
 - **The plugin manifest shall declare no `skills`, `agents` or `commands` key.**
   Proof: internal/dist/plugin_test.go TestPluginManifestDeclaresNoComponentPaths
-- **Every file `THIRD-PARTY.md` links under `licenses/` shall exist under the directory the
-  marketplace entry's source names.**
+- **Every file `THIRD-PARTY.md` links under `licenses/` shall exist in the repository tree
+  under the marketplace entry's source `./`** — ceiling named: this reads the repository,
+  never Claude Code's cache copy, which box 2 observes.
   Proof: internal/dist/plugin_test.go TestPluginRootCarriesTheVendoredLicences
-- **Where `CLAUDE_CODE_PLUGIN_CACHE_DIR` is set, `PluginsRoot` shall return its value;
-  otherwise it returns `<claude root>/plugins`.**
+- **Where `CLAUDE_CODE_PLUGIN_CACHE_DIR` is non-empty, `PluginsRoot` shall return its value.**
   Proof: internal/dist/plugin_test.go TestPluginsRootHonoursTheCacheDirVariable
-- **When the install record lists `libretto@libretto-automata`, `ClaudePlugin` shall report
-  the plugin installed.**
+- **If `CLAUDE_CODE_PLUGIN_CACHE_DIR` is empty or unset, then `PluginsRoot` shall return
+  `<claude root>/plugins`.**
+  Proof: internal/dist/plugin_test.go TestPluginsRootTreatsAnEmptyCacheDirAsUnset
+- **When the install record lists `libretto@libretto-automata` with a `user`-scope install,
+  `ClaudePlugin` shall report a user-scope install.**
   Proof: internal/dist/plugin_test.go TestClaudePluginReadsTheInstallRecord
+- **When the install record lists `libretto@libretto-automata` only at `project` or `local`
+  scope, `ClaudePlugin` shall report no user-scope install and name each such scope.**
+  Proof: internal/dist/plugin_test.go TestClaudePluginSeparatesProjectAndLocalInstalls
 - **If no install record exists, then `ClaudePlugin` shall report the plugin not installed,
   with no error.**
   Proof: internal/dist/plugin_test.go TestClaudePluginWithNoRecordIsNotInstalled
@@ -375,22 +440,33 @@ key" be a test at all.
 
 **Detection.** In `internal/dist/plugin.go`:
 
-- `PluginsRoot(claudeRoot string) string` — `CLAUDE_CODE_PLUGIN_CACHE_DIR` if set,
-  otherwise `filepath.Join(claudeRoot, "plugins")`. The caller passes the Claude target's
-  `Root()`.
-- `ClaudePlugin(pluginsRoot string) (bool, error)` — reads `installed_plugins.json`,
-  decodes its `plugins` object, answers whether the key `libretto@libretto-automata` holds
-  a non-empty array. A missing file is `false, nil`; unreadable or undecodable is
-  `false, err` with the path in the message. One constant holds the id.
+- `PluginsRoot(claudeRoot string) string` — `CLAUDE_CODE_PLUGIN_CACHE_DIR` when it is
+  non-empty, otherwise `filepath.Join(claudeRoot, "plugins")`; an empty value is unset. The
+  caller always passes the **global** Claude target's `Root()` — `target.Global().Root()` —
+  for both scopes: a `--project` `install` or `doctor` never looks under
+  `<cwd>/.claude/plugins`, because Claude Code keeps one plugins root per user.
+- `ClaudePlugin(pluginsRoot string) (Installs, error)` — reads `installed_plugins.json`,
+  decodes its `plugins` object, and for the key `libretto@libretto-automata` returns
+  `Installs{User bool; Other []Install}`: whether any entry has `"scope": "user"`, and every
+  `project` or `local` entry with its scope and project path. A missing file is the zero
+  value and no error; unreadable or undecodable is the zero value and an error with the path
+  in the message. One constant holds the id. **Only `User` makes the CLI defer**; `Other` is
+  what `doctor` names in its informational line.
 
 **The rule, applied in `cmd/libretto`** (`spec-cli.md` carries the promises): the Claude
-tool's install path asks first and, on `true`, prints one line naming the plugin and
-saying nothing was linked, and returns success without planning; on an error it links as
-today. `update` reaches the same path. `doctor` asks the same question, stops counting a
-missing Claude item as attention while the plugin is installed, reports each linked Claude
-item as served twice with `libretto uninstall --yes` as the remedy, and names an
-unreadable record. `status` prints one line above its Claude items. Codex and OpenCode
-never ask.
+tool's install path asks first and, on a user-scope install, prints one line naming the
+plugin and saying nothing was linked, and returns success without planning; on an error, or
+on project and local installs only, it links as today. The cli spec's standing exit-code
+paragraph is amended in place to say a skip for the user-scope plugin is neither "not
+linked" nor "needs attention". `update` reaches the same path because its release route's
+`relink` closure in `update.go` calls the production `install`; its test drives that real
+closure, never an injected one. `doctor` asks the same question, stops counting a missing
+Claude item as attention while the user-scope plugin is installed, reports each linked
+Claude item as served twice with `libretto uninstall --yes` as the remedy — in text, and in
+`doctor --json` as a `problems` entry with the doctor-only state `served twice` — names
+project and local installs in one informational line that does not affect the exit code,
+and names an unreadable record. `status` prints one line above its Claude items, in text
+only: under `--json` stdout stays one object. Codex and OpenCode never ask.
 
 ### The alternatives it beat
 
@@ -413,17 +489,22 @@ never ask.
 | executable bits lost in the cache copy — `skills/record-work/spec-drift` is run by path | box 2 runs `spec-drift --self-test` from the loaded plugin's path; the cache-copy case shares the risk above |
 | a developer's local-directory marketplace loads the checkout in place, and `make build` puts `bin/libretto` on the Bash tool's `PATH` | accepted. The GitHub install has no `bin/` (it is ignored), and the local case runs the developer's own binary |
 | `CLAUDE.md` at the plugin root: the docs say `claude plugin validate` warns about it | measured: the validate run on this worktree did not warn. `--strict` is not a gate here, so a warning would cost nothing |
+| a project-scope install of the plugin strips links every other project needs | only a `user`-scope install defers, pinned by `TestProjectOrLocalPluginInstallDoesNotSuppressLinks` |
 | a user has another tool's plugin named `libretto` | the id check is the full `libretto@libretto-automata`, pinned by `TestClaudePluginIgnoresAnotherMarketplacesLibretto` |
 | Claude Code changes the record's shape | the decode fails, which is "could not tell": install links as before and `doctor` names the file. No mitigation beyond that — the record is the vendor's |
 
 ### Validation and rollback
 
 The six gates. New tests in `internal/dist/plugin_test.go` and `cmd/libretto/plugin_test.go`;
-`readme_test.go` gains two. **Two have to be forced red before they are believed:**
+`readme_test.go` gains three. **Two have to be forced red before they are believed:**
 `TestPluginCarriesNoVersion` — add a `version` to `plugin.json` and watch it fail, since a
 test that decodes into the wrong type passes on any file;
 `TestInstallLinksNothingForClaudeWhileThePluginIsInstalled` — remove the record from the
 fixture and watch links appear, since an install that links nothing for any reason passes it.
+And `TestUpdateRelinksNothingForClaudeWhileThePluginIsInstalled` drives `update`'s release
+route with the **real** relink closure from `update.go` — the production `install` path —
+with `latest`, `install` and `dirFor` stubbed; an injected `relink` would pass whether or not
+`update` reaches the deferral.
 
 Box 2 is evidence no gate can produce: a real Claude Code session. Its result goes into the
 decision log, measured, before the CLI boxes start.
@@ -447,7 +528,8 @@ box 4 waits on box 3; box 5 waits on box 1; box 6 waits on all.
       decoding both as shipped; `claude plugin validate .` run locally and its output read.
       Closes: TestPluginManifestNamesLibretto, TestMarketplaceIsNamedAfterTheRepository,
       TestMarketplaceListsThePluginAtTheRoot, TestPluginCarriesNoVersion,
-      TestPluginManifestDeclaresNoComponentPaths, TestPluginRootCarriesTheVendoredLicences.
+      TestPluginManifestDeclaresNoComponentPaths, TestPluginRootCarriesTheVendoredLicences
+      (the repository tree under `./`; the cache copy is box 2's).
 - [ ] **Observe a plugin-only session — evidence, no code.** In a Claude Code whose config
       carries no libretto links — `CLAUDE_CONFIG_DIR` pointed at an empty directory and
       authenticated, or a person on a second account; **never by unlinking the real
@@ -455,33 +537,49 @@ box 4 waits on box 3; box 5 waits on box 1; box 6 waits on all.
       `/libretto-flow` invoked bare; a command's `Skill(skill="find-work")` reaching
       `libretto:find-work`; `spec-writer` launched by its bare name; `claude -p
       '/libretto-attacca …'` resolving; `skills/record-work/spec-drift --self-test` run from
-      the loaded plugin's path. Each result goes into the decision log as measured. **A run
+      the loaded plugin's path; and, once the manifests are installable from a marketplace in
+      that isolated config, that the cached copy carries `licenses/` and `THIRD-PARTY.md`.
+      Each result goes into the decision log as measured. **A run
       that cannot get an isolated authenticated session stops on this box rather than
       assuming it.** Closes: no criterion — it is the evidence the approach rests on, and a
       failure stops the change.
-- [ ] **`install` and `update` defer to the plugin for the Claude tool, end to end.**
-      `internal/dist/plugin.go` with `PluginsRoot` and `ClaudePlugin`; the Claude install
-      path asking it; `cmd/libretto/plugin_test.go`. Closes:
-      TestPluginsRootHonoursTheCacheDirVariable, TestClaudePluginReadsTheInstallRecord,
+- [ ] **`install` and `update` defer to the user-scope plugin for the Claude tool, end to
+      end.** `internal/dist/plugin.go` with `PluginsRoot` and `ClaudePlugin`; the Claude
+      install path asking it under the global plugins root in both scopes;
+      `cmd/libretto/plugin_test.go`, whose `update` test drives the real relink closure.
+      Closes: TestPluginsRootHonoursTheCacheDirVariable,
+      TestPluginsRootTreatsAnEmptyCacheDirAsUnset, TestClaudePluginReadsTheInstallRecord,
+      TestClaudePluginSeparatesProjectAndLocalInstalls,
       TestClaudePluginWithNoRecordIsNotInstalled,
       TestClaudePluginIgnoresAnotherMarketplacesLibretto,
       TestClaudePluginReportsAnUnreadableRecord, TestClaudePluginWritesNothing,
       TestInstallLinksNothingForClaudeWhileThePluginIsInstalled,
       TestInstallNamesThePluginWhenItSkipsClaude, TestInstallSkippingForThePluginExitsZero,
+      TestProjectScopeInstallReadsTheGlobalRecord,
+      TestProjectOrLocalPluginInstallDoesNotSuppressLinks,
       TestPluginDoesNotChangeCodexOrOpencode, TestUnreadableRecordLinksAsBefore,
       TestUpdateRelinksNothingForClaudeWhileThePluginIsInstalled.
-- [ ] **`doctor` and `status` report the plugin.** Closes:
-      TestDoctorReportsLinksThePluginAlsoServes,
+- [ ] **`doctor` and `status` report the plugin.** `served twice` in text and as a
+      doctor-only `problems` state in `doctor --json`, documented beside the `link.State`
+      spellings; the informational line for project and local installs; `status`'s line in
+      text only. Closes: TestDoctorReportsLinksThePluginAlsoServes,
       TestDoctorDoesNotAskForLinksThePluginServes, TestDoctorExitsNonZeroOnADuplicate,
-      TestDoctorNamesAnUnreadableRecord, TestStatusNamesThePlugin.
+      TestDoctorJSONListsServedTwice, TestProjectScopeDoctorReadsTheGlobalRecord,
+      TestDoctorNamesAProjectOrLocalPluginInstall,
+      TestDoctorExitsZeroOnAProjectOrLocalPluginInstallAlone,
+      TestDoctorNamesAnUnreadableRecord, TestStatusNamesThePlugin,
+      TestStatusJSONOmitsThePluginLine.
 - [ ] **The README's plugin route.** Install gains the two `/plugin` lines, the "one or the
       other" sentence and how to update; *From a checkout instead* moves to `docs/DESIGN.md`
       with a one-line pointer left, so the README stays at its 380 ceiling;
-      `readme_test.go` gains its two tests. Closes: TestInstallNamesThePluginRoute,
+      `readme_test.go` gains its three tests. Closes: TestInstallNamesThePluginRoute,
       TestReadmeSaysPluginAndLinksAreAlternatives, TestInstallSectionIsStepsOnly,
-      TestReadmeStaysShort.
+      TestReadmeUpdatingNamesThePluginRoute, TestReadmeStaysShort.
 - [ ] **Land.** Apply this contract onto `.agents/specs/distribution/spec.md` — `Governs:`
       gains `.claude-plugin/**`, the "second way in" boundary is amended, the prior decisions
       move into *Prior decisions* — and `spec-cli.md`, `spec-readme.md` onto theirs;
+      in `cli` the standing exit-code paragraph replaced in place with `spec-cli.md`'s text
+      and `served twice` added beside the `link.State` spellings; in `readme` Outcome 2, its
+      criterion and the wording boundary replaced with `spec-readme.md`'s text;
       `docs/SPEC.md`'s distribution row; delete this folder; the six gates. Closes: every
       criterion above, re-run on the landing tree.
