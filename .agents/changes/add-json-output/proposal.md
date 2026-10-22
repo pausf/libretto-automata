@@ -732,7 +732,7 @@ Executed by `build-and-check`. Box 1 comes first; boxes 2, 3 and 4 each wait onl
       TestStatusJSONNamesTheTarget, TestStatusJSONOmitsAnUnknownRoot,
       TestStatusJSONListsEveryItem, TestStatusJSONStatesMatchTheText,
       TestStatusJSONEmptyIsAnEmptyArray. Waits on: nothing.
-- [ ] **`doctor --json`, end to end.** `checkRelease` and `releaseLine(releaseCheck)` in
+- [x] **`doctor --json`, end to end.** `checkRelease` and `releaseLine(releaseCheck)` in
       `version.go`, existing doctor tests adjusted only in how they call it, never in what
       they assert; `releaseSource` stubbed in `TestMain`; `doctor` reads `--json` and
       ignores other arguments as today, gathers once, renders text unchanged or the

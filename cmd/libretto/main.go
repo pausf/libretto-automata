@@ -22,7 +22,6 @@ import (
 	"github.com/muesli/termenv"
 
 	"github.com/pausf/libretto-automata/internal/agentmodel"
-	"github.com/pausf/libretto-automata/internal/dist"
 	"github.com/pausf/libretto-automata/internal/link"
 	"github.com/pausf/libretto-automata/internal/repo"
 	"github.com/pausf/libretto-automata/internal/target"
@@ -201,7 +200,7 @@ func run(args []string) error {
 	case "install":
 		return install(root, tg)
 	case "doctor":
-		return doctor(root, tg)
+		return doctor(root, tg, args[1:]...)
 	case "prune":
 		return prune(root, tg, args[1:])
 	case "uninstall":
@@ -1011,59 +1010,65 @@ func short(rev string) string {
 // Two sections with different authority: link problems are this tool's business
 // and set the exit code; prerequisites are informational, because the flow works
 // without the optional ones and saying otherwise would be a lie.
-func doctor(root string, tg target.Target) error {
-	problems := 0
+func doctor(root string, tg target.Target, args ...string) error {
+	asJSON, _ := jsonFlag(args)
 
-	{
-		fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
-
-		entries, err := link.Scan(root, tg)
-		if err != nil {
-			return err
+	entries, err := link.Scan(root, tg)
+	if err != nil {
+		if !asJSON {
+			fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
 		}
-
-		clean := true
-		for _, e := range entries {
-			if !e.State.NeedsAttention() {
-				continue
-			}
-			clean = false
-			problems++
-			fmt.Printf("  %-12s %s/%s  %s\n", e.State, e.Kind, e.Name, remedy(e.State))
-		}
-		if clean {
-			fmt.Println("  no problems")
+		return err
+	}
+	var problems []link.Entry
+	for _, e := range entries {
+		if e.State.NeedsAttention() {
+			problems = append(problems, e)
 		}
 	}
 
 	// Live, not cached: the user typed a diagnostic and can afford the wait. It never
 	// sets the exit code — being a release behind is news, and an unreachable remote is
 	// not this tool's fault.
-	//
-	// The mode is named because "up to date" means something different in each. A checkout
-	// three commits past a tag is up to date with its remote and behind the release.
-	fmt.Println("\nrelease")
-	if isRepo(root) {
-		fmt.Println("  mode     a checkout at " + root)
-		fmt.Println("  " + releaseLine(version, repo.Shell{Root: root}.LatestTag))
-	} else {
-		fmt.Println("  mode     an installed release at " + root)
-		fmt.Println("  " + releaseLine(version, func(ctx context.Context) (string, error) {
-			return dist.Latest(ctx, defaultClient(), dist.DefaultProxy, moduleImportPath())
-		}))
-	}
+	check := checkRelease(version, releaseSource(root))
+	prereqs := prerequisites()
 
-	fmt.Println("\nprerequisites")
-	for _, p := range prerequisites() {
-		mark := "—"
-		if p.Found {
-			mark = "ok"
+	if asJSON {
+		if err := writeJSON(os.Stdout, doctorDocOf(tg, problems, root, check, prereqs)); err != nil {
+			return err
 		}
-		fmt.Printf("  %-4s %-22s %s\n", mark, p.Name, p.Note)
+	} else {
+		fmt.Printf("%s  %s\n", tg.Name(), tg.Root())
+		for _, e := range problems {
+			fmt.Printf("  %-12s %s/%s  %s\n", e.State, e.Kind, e.Name, remedy(e.State))
+		}
+		if len(problems) == 0 {
+			fmt.Println("  no problems")
+		}
+
+		// The mode is named because "up to date" means something different in each. A
+		// checkout three commits past a tag is up to date with its remote and behind the
+		// release.
+		fmt.Println("\nrelease")
+		if isRepo(root) {
+			fmt.Println("  mode     a checkout at " + root)
+		} else {
+			fmt.Println("  mode     an installed release at " + root)
+		}
+		fmt.Println("  " + check.line())
+
+		fmt.Println("\nprerequisites")
+		for _, p := range prereqs {
+			mark := "—"
+			if p.Found {
+				mark = "ok"
+			}
+			fmt.Printf("  %-4s %-22s %s\n", mark, p.Name, p.Note)
+		}
 	}
 
-	if problems > 0 {
-		return fmt.Errorf("%d item(s) need attention", problems)
+	if len(problems) > 0 {
+		return fmt.Errorf("%d item(s) need attention", len(problems))
 	}
 	return nil
 }

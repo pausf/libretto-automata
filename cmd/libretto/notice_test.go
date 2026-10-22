@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"strings"
@@ -17,6 +19,13 @@ import (
 // prevent for links. A test that wants the notice opts in with stubNotice.
 func TestMain(m *testing.M) {
 	noticeSource = func(root, running string) string { return "" }
+	// doctor checks live, so it gets the same treatment: an answer that never leaves the
+	// process. A test that wants a release sets its own with stubRelease.
+	releaseSource = func(string) func(context.Context) (string, error) {
+		return func(context.Context) (string, error) {
+			return "", errors.New("the release check is stubbed under go test")
+		}
+	}
 	os.Exit(m.Run())
 }
 

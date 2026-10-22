@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,11 +14,13 @@ import (
 
 // The shared criteria run one row per command that reads --json. Each row builds two
 // states — one the command reports on, one it fails on — and hands back a runner bound to
-// that state, so a test can run the same state with and without the flag.
+// that state, so a test can run the same state with and without the flag. more holds any
+// other state whose exit code is worth comparing.
 type jsonRow struct {
 	name    string
 	ok      func(t *testing.T) jsonRunner
 	failing func(t *testing.T) jsonRunner
+	more    map[string]func(t *testing.T) jsonRunner
 }
 
 // jsonRunner runs the command once, with extra arguments after its name, and returns what
@@ -25,32 +28,49 @@ type jsonRow struct {
 type jsonRunner func(extra ...string) (stdout string, err error)
 
 var jsonRows = []jsonRow{
-	{"status", statusReporting, statusFailing},
+	{name: "status", ok: unlinkedPayload("status"), failing: unreadablePayload("status")},
+	{
+		name: "doctor", ok: linkedPayload("doctor"), failing: unreadablePayload("doctor"),
+		more: map[string]func(*testing.T) jsonRunner{"needs attention": unlinkedPayload("doctor")},
+	},
 }
 
-// statusReporting is a payload with one item of each kind and a target to scan.
-func statusReporting(t *testing.T) jsonRunner {
-	f := newFixture(t)
-	f.skill(t, "alpha")
-	f.agentItem(t, "beta")
-	f.command(t, "gamma")
-	return statusRunner(t, f)
-}
-
-// statusFailing is a payload whose skills/ is a file: the payload is present, so the
-// command gets as far as scanning, and the scan cannot read the directory it expects.
-func statusFailing(t *testing.T) jsonRunner {
-	f := newFixture(t)
-	f.agentItem(t, "beta")
-	if err := os.WriteFile(filepath.Join(f.Repo, "skills"), []byte("not a directory"), 0o644); err != nil {
-		t.Fatal(err)
+// unlinkedPayload is a payload with one item of each kind, none of them linked.
+func unlinkedPayload(cmd string) func(*testing.T) jsonRunner {
+	return func(t *testing.T) jsonRunner {
+		f := newFixture(t)
+		f.skill(t, "alpha")
+		f.agentItem(t, "beta")
+		f.command(t, "gamma")
+		return payloadRunner(t, f, cmd)
 	}
-	return statusRunner(t, f)
 }
 
-func statusRunner(t *testing.T, f fixture) jsonRunner {
+// linkedPayload is a payload whose one item is linked: nothing needs attention.
+func linkedPayload(cmd string) func(*testing.T) jsonRunner {
+	return func(t *testing.T) jsonRunner {
+		f := newFixture(t)
+		f.link(t, f.skill(t, "alpha"), f.dest("skills", "alpha"))
+		return payloadRunner(t, f, cmd)
+	}
+}
+
+// unreadablePayload is a payload whose skills/ is a file: the payload is present, so the
+// command gets as far as scanning, and the scan cannot read the directory it expects.
+func unreadablePayload(cmd string) func(*testing.T) jsonRunner {
+	return func(t *testing.T) jsonRunner {
+		f := newFixture(t)
+		f.agentItem(t, "beta")
+		if err := os.WriteFile(filepath.Join(f.Repo, "skills"), []byte("not a directory"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return payloadRunner(t, f, cmd)
+	}
+}
+
+func payloadRunner(t *testing.T, f fixture, cmd string) jsonRunner {
 	return func(extra ...string) (string, error) {
-		out, _, err := capture(t, func() error { return runIn(f.Repo, append([]string{"status"}, extra...)) })
+		out, _, err := capture(t, func() error { return runIn(f.Repo, append([]string{cmd}, extra...)) })
 		return out, err
 	}
 }
@@ -106,7 +126,11 @@ func TestJSONCarriesSchemaOne(t *testing.T) {
 
 func TestJSONDoesNotChangeTheExitCode(t *testing.T) {
 	for _, row := range jsonRows {
-		for state, build := range map[string]func(*testing.T) jsonRunner{"reporting": row.ok, "failing": row.failing} {
+		states := map[string]func(*testing.T) jsonRunner{"reporting": row.ok, "failing": row.failing}
+		for name, build := range row.more {
+			states[name] = build
+		}
+		for state, build := range states {
 			t.Run(row.name+"/"+state, func(t *testing.T) {
 				r := build(t)
 				_, textErr := r()
@@ -309,5 +333,189 @@ func TestStatusJSONEmptyIsAnEmptyArray(t *testing.T) {
 	}
 	if items := arrayAt(t, decodeObject(t, out), "items"); len(items) != 0 {
 		t.Errorf("items = %#v, want []", items)
+	}
+}
+
+// ── doctor ───────────────────────────────────────────────────────────────────
+
+// doctorJSON runs doctor --json directly and decodes what it wrote. The exit code is
+// doctor's verdict, not this helper's, so a non-nil error is returned rather than fatal.
+func doctorJSON(t *testing.T, repo string, tg target.Target) (map[string]any, error) {
+	t.Helper()
+	out, _, err := capture(t, func() error { return doctor(repo, tg, "--json") })
+	return decodeObject(t, out), err
+}
+
+func TestDoctorJSONListsOnlyProblems(t *testing.T) {
+	f := newFixture(t)
+	f.link(t, f.skill(t, "linked-one"), f.dest("skills", "linked-one"))
+	f.skill(t, "missing-one")
+	f.skill(t, "conflict-one")
+	f.putReal(t, "skills", "conflict-one", "not ours")
+	staleLink(t, f, "stale-one")
+
+	entries, err := link.Scan(f.Repo, f.global())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var want []link.Entry
+	for _, e := range entries {
+		if e.State.NeedsAttention() {
+			want = append(want, e)
+		}
+	}
+
+	doc, _ := doctorJSON(t, f.Repo, f.global())
+	problems := arrayAt(t, doc, "problems")
+	if len(problems) != len(want) {
+		t.Fatalf("problems = %#v, want %d entries", problems, len(want))
+	}
+	for i, e := range want {
+		got, _ := problems[i].(map[string]any)
+		if got["kind"] != string(e.Kind) || got["name"] != e.Name || got["state"] != string(e.State) || len(got) != 3 {
+			t.Errorf("problems[%d] = %#v, want %s/%s %s and nothing else", i, got, e.Kind, e.Name, e.State)
+		}
+		if got["name"] == "linked-one" {
+			t.Errorf("a linked item was listed as a problem: %#v", got)
+		}
+	}
+
+	// Nothing wrong is a known-empty list, not an absent one.
+	clean := newFixture(t)
+	clean.link(t, clean.skill(t, "alpha"), clean.dest("skills", "alpha"))
+	doc, err = doctorJSON(t, clean.Repo, clean.global())
+	if err != nil {
+		t.Fatalf("a clean target failed: %v", err)
+	}
+	if p := arrayAt(t, doc, "problems"); len(p) != 0 {
+		t.Errorf("problems = %#v, want []", p)
+	}
+}
+
+func TestDoctorJSONNamesTheMode(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	doc, _ := doctorJSON(t, f.Repo, f.global())
+	rel := objectAt(t, doc, "release")
+	if rel["mode"] != "installed" || rel["payload_root"] != f.Repo {
+		t.Errorf("release = %#v, want installed at %s", rel, f.Repo)
+	}
+
+	if err := os.Mkdir(filepath.Join(f.Repo, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	doc, _ = doctorJSON(t, f.Repo, f.global())
+	if rel := objectAt(t, doc, "release"); rel["mode"] != "checkout" || rel["payload_root"] != f.Repo {
+		t.Errorf("release = %#v, want checkout at %s", rel, f.Repo)
+	}
+}
+
+func TestDoctorJSONCarriesTheRunningVersion(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	withVersion(t, "v0.4.2")
+
+	doc, _ := doctorJSON(t, f.Repo, f.global())
+	if got := objectAt(t, doc, "release")["running"]; got != "v0.4.2" {
+		t.Errorf("running = %#v, want v0.4.2", got)
+	}
+
+	// Present even when the check failed — the running version never depended on it.
+	stubRelease(t, "", errors.New("no route to host"))
+	doc, _ = doctorJSON(t, f.Repo, f.global())
+	if got := objectAt(t, doc, "release")["running"]; got != "v0.4.2" {
+		t.Errorf("running after a failed check = %#v, want v0.4.2", got)
+	}
+}
+
+func TestDoctorJSONCarriesTheLatestRelease(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	stubRelease(t, "v9.9.9", nil)
+
+	doc, _ := doctorJSON(t, f.Repo, f.global())
+	if got := objectAt(t, doc, "release")["latest"]; got != "v9.9.9" {
+		t.Errorf("latest = %#v, want v9.9.9", got)
+	}
+}
+
+func TestDoctorJSONRanksWhatRanks(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	withVersion(t, "v0.1.0")
+
+	for latest, want := range map[string]bool{"v9.9.9": true, "v0.1.0": false} {
+		stubRelease(t, latest, nil)
+		doc, _ := doctorJSON(t, f.Repo, f.global())
+		if got, ok := objectAt(t, doc, "release")["newer"].(bool); !ok || got != want {
+			t.Errorf("latest %s against v0.1.0: newer = %#v, want %v", latest, objectAt(t, doc, "release")["newer"], want)
+		}
+	}
+}
+
+func TestDoctorJSONOmitsAnUnrankableComparison(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	cases := []struct{ name, running, latest string }{
+		{"a dev build", "dev", "v0.3.0"},
+		{"ahead of the remote", "v1.0.0", "v0.3.0"},
+		{"no releases", "v0.1.0", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			withVersion(t, c.running)
+			stubRelease(t, c.latest, nil)
+			doc, _ := doctorJSON(t, f.Repo, f.global())
+			rel := objectAt(t, doc, "release")
+			if _, ok := rel["newer"]; ok {
+				t.Errorf("release = %#v, want no newer key", rel)
+			}
+			if _, ok := rel["latest"]; ok != (c.latest != "") {
+				t.Errorf("release = %#v, latest present = %v, want %v", rel, ok, c.latest != "")
+			}
+		})
+	}
+}
+
+func TestDoctorJSONReportsAFailedCheck(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+	stubRelease(t, "", errors.New("no route to host\nhint: check the network"))
+
+	doc, _ := doctorJSON(t, f.Repo, f.global())
+	rel := objectAt(t, doc, "release")
+	if rel["error"] != "no route to host" {
+		t.Errorf("error = %#v, want the failure's first line", rel["error"])
+	}
+	for _, key := range []string{"latest", "newer"} {
+		if _, ok := rel[key]; ok {
+			t.Errorf("a failed check carries %s: %#v", key, rel)
+		}
+	}
+
+	stubRelease(t, "v0.3.0", nil)
+	doc, _ = doctorJSON(t, f.Repo, f.global())
+	if _, ok := objectAt(t, doc, "release")["error"]; ok {
+		t.Errorf("a check that answered carries error: %#v", objectAt(t, doc, "release"))
+	}
+}
+
+func TestDoctorJSONListsPrerequisites(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	want := prerequisites()
+	doc, _ := doctorJSON(t, f.Repo, f.global())
+	got := arrayAt(t, doc, "prerequisites")
+	if len(got) != len(want) {
+		t.Fatalf("prerequisites = %#v, want %d", got, len(want))
+	}
+	for i, p := range want {
+		obj, _ := got[i].(map[string]any)
+		if obj["name"] != p.Name || obj["found"] != p.Found || len(obj) != 2 {
+			t.Errorf("prerequisites[%d] = %#v, want name %q found %v and nothing else", i, obj, p.Name, p.Found)
+		}
 	}
 }

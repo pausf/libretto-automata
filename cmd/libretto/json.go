@@ -75,3 +75,48 @@ func itemsOf(entries []link.Entry) []itemJSON {
 	}
 	return items
 }
+
+// releaseJSON is what doctor's release check found. Latest is empty, and so omitted, when
+// the check failed or the remote has nothing; Newer is nil when the two do not rank.
+type releaseJSON struct {
+	Mode        string `json:"mode"`
+	PayloadRoot string `json:"payload_root"`
+	Running     string `json:"running"`
+	Latest      string `json:"latest,omitempty"`
+	Newer       *bool  `json:"newer,omitempty"`
+	Error       string `json:"error,omitempty"`
+}
+
+type prereqJSON struct {
+	Name  string `json:"name"`
+	Found bool   `json:"found"`
+}
+
+type doctorDoc struct {
+	Schema        int          `json:"schema"`
+	Target        targetJSON   `json:"target"`
+	Problems      []itemJSON   `json:"problems"`
+	Release       releaseJSON  `json:"release"`
+	Prerequisites []prereqJSON `json:"prerequisites"`
+}
+
+func doctorDocOf(tg target.Target, problems []link.Entry, root string, c releaseCheck, prereqs []Prereq) doctorDoc {
+	rel := releaseJSON{Mode: "installed", PayloadRoot: root, Running: c.running}
+	if isRepo(root) {
+		rel.Mode = "checkout"
+	}
+	if c.err != nil {
+		rel.Error = firstLine(c.err.Error())
+	} else {
+		rel.Latest = c.latest
+	}
+	if newer, ranked := c.newer(); ranked {
+		rel.Newer = &newer
+	}
+
+	ps := make([]prereqJSON, 0, len(prereqs))
+	for _, p := range prereqs {
+		ps = append(ps, prereqJSON{Name: p.Name, Found: p.Found})
+	}
+	return doctorDoc{Schema: jsonSchema, Target: targetOf(tg), Problems: itemsOf(problems), Release: rel, Prerequisites: ps}
+}

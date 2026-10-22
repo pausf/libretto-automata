@@ -81,3 +81,66 @@ func TestDoctorNamesTheModeItIsIn(t *testing.T) {
 		t.Errorf("line = %q still names a command that does not exist", got)
 	}
 }
+
+// One stubbed check feeds both renderings, so the line and the object cannot disagree
+// about what the check found.
+func TestReleaseLineIsRenderedFromTheCheck(t *testing.T) {
+	f := newFixture(t)
+	f.skill(t, "alpha")
+
+	releaseText := func() string {
+		out, _, _ := capture(t, func() error { return doctor(f.Repo, f.global()) })
+		for _, line := range strings.Split(out, "\n") {
+			if strings.Contains(line, "the latest release") || strings.Contains(line, "available") ||
+				strings.Contains(line, "up to date") || strings.Contains(line, "could not check") ||
+				strings.Contains(line, "no releases") {
+				return line
+			}
+		}
+		t.Fatalf("doctor printed no release line:\n%s", out)
+		return ""
+	}
+
+	withVersion(t, "v0.1.0")
+	stubRelease(t, "v9.9.9", nil)
+	line := releaseText()
+	doc, _ := doctorJSON(t, f.Repo, f.global())
+	rel := objectAt(t, doc, "release")
+	if !strings.Contains(line, "v9.9.9") || !strings.Contains(line, "available") {
+		t.Errorf("line = %q, want it to name v9.9.9 as available", line)
+	}
+	if rel["latest"] != "v9.9.9" || rel["newer"] != true {
+		t.Errorf("release = %#v, want latest v9.9.9 and newer true", rel)
+	}
+
+	withVersion(t, "dev")
+	stubRelease(t, "v0.3.0", nil)
+	line = releaseText()
+	doc, _ = doctorJSON(t, f.Repo, f.global())
+	rel = objectAt(t, doc, "release")
+	if strings.Contains(line, "available") {
+		t.Errorf("line = %q ranks an unrankable pair", line)
+	}
+	if _, ok := rel["newer"]; ok {
+		t.Errorf("release = %#v, want no newer for an unrankable pair", rel)
+	}
+}
+
+// stubRelease answers doctor's release check for one test. TestMain stubs it for the
+// package, so doctor never reaches a remote from `go test`.
+func stubRelease(t *testing.T, latest string, err error) {
+	t.Helper()
+	prev := releaseSource
+	releaseSource = func(string) func(context.Context) (string, error) {
+		return func(context.Context) (string, error) { return latest, err }
+	}
+	t.Cleanup(func() { releaseSource = prev })
+}
+
+// withVersion sets the version the binary reports for one test.
+func withVersion(t *testing.T, v string) {
+	t.Helper()
+	prev := version
+	version = v
+	t.Cleanup(func() { version = prev })
+}
