@@ -1011,6 +1011,33 @@ equivalent. It goes when `libretto install` has been verified against a real
   `go test` (measured). The check now returns facts — running, latest, error — and the text
   line and the JSON `release` object are both rendered from one `releaseCheck`, observed
   through one stub in `TestReleaseLineIsRenderedFromTheCheck`.
+- **Spec drift is not measured in `metrics`.** Retired from `report-drift-trend-in-metrics`, assumed 2026-10-22; decided as
+  option C by the orchestrator under the user's standing authorisation, on a measurement of
+  this repository at `dd6683d` (565 commits, 498 non-merge, 70 first-parent; 14 capability
+  specs, all with `Governs:`).
+  **The definition prototyped:** a *drift event* is a commit touching a capability's
+  `spec.md` after one or more earlier commits touched paths its `Governs:` globs claim —
+  read as `spec-drift`'s `governs_of` reads them and matched as its `matches_any` matches,
+  where `*` crosses `/` — without touching that spec; paths under the specs directory and
+  `.agents/changes/` are never code, and a commit touching a change folder whose `Targets:`
+  names the capability counts as the spec moving. **The numbers:** at commit granularity,
+  47 events, **37 of whose catch-up commits were landing commits** — the flow applying a
+  delta after its code, by design. At landing granularity (a first-parent commit, a merge
+  read against its first parent, counting from the first landing that touches the spec),
+  **13 events, all read, 1 related** to the code before it (`readme`, PR #72 after #63).
+  The fallback — `spec-drift`'s default-mode warning replayed per landing — flagged **27 of
+  120** capability-landings (`cli` 10, `readme` 12, `review-project` 2, `payload` 2,
+  `link-state` 1); of **10 hand-checked, 0** changed a promise without its spec: **6 were
+  `Governs:` overlaps** (a path whose semantic owner is another capability whose spec moved
+  in the same landing), 3 were edits inside an existing contract, 1 arguable.
+  **Why nothing ships:** a metric that is mostly noise teaches people to ignore it, and the
+  replay cost 25 tests and a Go mirror of bash globbing to report it. **B** — a `--history`
+  mode in `spec-drift` exec'd by `metrics` — and **A** — a Go replay inside `metrics` with
+  a `spec_drift` JSON key — both lost to **C**, ship nothing. **What would reopen it:** a
+  corpus where the replay's hand-checked precision is high — most warned landings turning
+  out to be promises moved without their spec — or a way to tie a spec edit to the code it
+  answers (a commit trailer, a delta naming its landing), which the flow does not write
+  today.
 
 ## Task breakdown
 
