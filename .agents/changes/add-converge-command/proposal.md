@@ -615,7 +615,7 @@ Rollback: one revert; three new files go, three edited files return. Nothing mig
 
 Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its own.
 
-- [ ] **A read-only converge reports every open box's state.** The command, the skill's
+- [x] **A read-only converge reports every open box's state.** The command, the skill's
       preconditions on tracked modifications, change selection by `find-work`'s source 1,
       the reader launch on the tree as it is and the report; the `converge-reader` agent
       and its return shape; the README door-list line within 380 lines; `docs/PAYLOAD.md`

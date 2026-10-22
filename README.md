@@ -143,11 +143,11 @@ Nothing else to learn to start. The rest is knowing which door to use:
 
 ```bash
 /libretto-status              # what is in flight and what is queued — changes nothing
-/libretto-flow                # find the work and take it through the phases
-/libretto-flow EUCAR-1234     # …starting from a ticket
+/libretto-flow [EUCAR-1234]   # find the work, or start from a ticket, and take it through the phases
 /libretto-queue               # capture ideas, one after another, and build none of them
 /libretto-next                # take the oldest queued idea into the flow
 /libretto-review <pr-url>     # review a PR/MR in a workspace that restores itself
+/libretto-converge <change>   # re-derive a drifted checklist against the code
 /libretto-retro               # spend the lessons ledger — fix what the flow got corrected on
 /libretto-attacca             # the same flow, without stopping — straight to a pushed PR
 ```

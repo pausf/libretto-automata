@@ -443,6 +443,24 @@ else
   while IFS= read -r h; do fail "spec-writer named outside write-spec's fan-out: $h"; done <<< "$sw_hits"
 fi
 
+# converge: a side door that re-derives a drifted checklist. One fresh reader judges, the
+# session runs every proof it closes on, and nothing the reader says is evidence — so the
+# reader is declared shell-less, and a Bash added later fails here rather than in a review.
+check_wiring commands/libretto-converge.md 'Skill\(skill="converge"\)'   'libretto-converge routes to the converge skill'
+check_wiring skills/converge/SKILL.md 'exactly one .converge-reader.'     'converge launches exactly one converge-reader'
+check_wiring skills/converge/SKILL.md 'none of the conversation'          'the converge reader is given paths and none of the conversation'
+check_wiring skills/converge/SKILL.md 'never a diff range'                'the converge reader reads the tree as it is, never a diff range'
+check_wiring agents/converge-reader.md '^tools: Read, Grep, Glob, Skill$' 'converge-reader declares exactly Read, Grep, Glob, Skill'
+check_wiring agents/converge-reader.md 'exactly one of open, closable or drifted' 'converge-reader returns every open box as one of three verdicts'
+check_wiring skills/converge/SKILL.md 'a dirty tree stops converge before the reader' 'tracked modifications stop converge before the reader'
+check_wiring skills/converge/SKILL.md '--untracked-files=no'              'converge reads dirtiness off tracked files only'
+check_wiring skills/converge/SKILL.md 'ask which one'                     'converge asks which change when several are in flight'
+check_wiring skills/converge/SKILL.md 'source 1 only, never the queue'    'converge runs find-work source 1 and never the queue scan'
+check_wiring skills/converge/SKILL.md 'find-work. defines the box'        'converge points to find-work for the box and the checklist file'
+check_absent skills/converge/SKILL.md '\^\\s\*\[-\*\]\\s\+\\\[\( \|x\|X\)\\\]' 'converge does not restate the box pattern'
+check_wiring skills/converge/SKILL.md 'drift is reported, never rewritten' 'converge leaves a drifted box untouched'
+check_wiring skills/converge/SKILL.md 'beside the reader.s file and line' 'converge reports a drifted box beside what the code does'
+
 printf '\n── skills never point at an executable that is not installed ──\n'
 # `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
 # telling the user to run scripts/foo is broken for everyone who installed it:
