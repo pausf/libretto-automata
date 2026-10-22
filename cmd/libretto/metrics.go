@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// Flow metrics, derived and never recorded.
+// Flow metrics, derived from git — the loop's run log is the one thing recorded, by the binary.
 //
 // The obvious build is instrumentation: each phase writes a timestamp somewhere, and
 // the report reads them back. That buys precision and costs a new artifact in every
