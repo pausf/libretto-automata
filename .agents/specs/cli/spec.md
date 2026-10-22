@@ -431,9 +431,24 @@ prerequisite report, `init`'s bootstrap of a project's `.agents/` layout, and th
 - **stopping the loop on the first budget hit**, or reading back anything the host
   reports. Stuck detection already bounds a run of budget-cut rounds.
 - **reading the run log anywhere but `metrics`** — no `status` line, no panel row.
-- **a budget or a cost for `codex` and `opencode`.** `--max-budget-usd` and the JSON
-  result are `claude`'s; `support-codex-opencode-in-loop` decides what a budget means for
-  a tool without them.
+- **codex in the loop.** `--codex` is refused, never driven; see *Prior decisions* for
+  the evidence and for what brings it back.
+- **a `--tool` flag on `loop`.** The tool axis already answers the question, and a second
+  spelling of it would be two answers to one question.
+- **a budget or a cost for `opencode`, by any mechanism** — a wall-time kill, a token
+  count, a loop-side sum, a figure read back from `opencode export` or `opencode stats`.
+  `--max-budget-usd` and the JSON result are `claude`'s; `opencode run` has no per-session
+  budget to pass an amount to, and its stream omits every other session's cost. See
+  *Prior decisions*.
+- **permission flags for either tool, and any model, agent or variant choice.** The user's
+  own configuration governs both tools; the loop grants nothing and chooses nothing.
+- **`--project` meaning anything to `loop`.** `scopeFlags` strips it and the loop ignores
+  it.
+- **checking that the payload is installed into the chosen tool** before the first round,
+  for either tool. A missing command surfaces as the session's own error and as two rounds
+  that closed nothing.
+- **`metrics` reading `tool`**, and any tool column in its report. An opencode round
+  already counts as unpriced.
 - **rotating, pruning or migrating the run log.** A record is a few hundred bytes; rotation
   is a later change with its own ceiling.
 - **a checkpoint written by the loop.** Each session commits its box, and the checklist is
@@ -579,7 +594,7 @@ and `CHANGE_ROOTS` in `spec-drift`, minus the `.agents/` pair it bootstraps; the
 the authority and a divergence is a bug in the Go copy. It needs no payload and joins the
 `needsPayload` exemptions beside `land` — a machine with nothing installed is exactly the
 machine a fresh project is bootstrapped on. Scope flags are stripped by `scopeFlags` before
-dispatch and mean nothing to it, the same as `metrics` and `loop`.
+dispatch and mean nothing to it, the same as `metrics`; `loop` alone reads the tool flag.
 
 **The run log is written only by `loop`, and only outside the project tree.** Its path is
 `<git-common-dir>/libretto/loop.jsonl`, located with one `git rev-parse
@@ -590,6 +605,19 @@ in a `t.TempDir()` path and never touches this repository's `.git` — the one e
 `make test-short`. Records are appended with one `Write` on an `O_APPEND` descriptor, and
 two loops in two worktrees writing at once is accepted untested. `metrics` opens the log
 for reading and never creates it. Stdlib only, and `loop` keeps needing no payload.
+
+**No test starts a real tool.** Every session is a `loopRunner` the test injects; argument
+lists, stdin and parsing are pure functions tested directly, so no test reaches
+`~/.config/opencode` or runs `opencode` or `claude`. `claudeArgs`, `parseSession` and
+`loopPrompt`'s text do not change in behaviour for a second tool — the tests that pin
+them are the proof the claude path did not move. `TestParseLoopArgs` compares `loopOpts`
+with `!=`, so every field it gains stays comparable. An OpenCode event line has no length
+bound — a `tool_use` event carries the tool's whole output — so its parser walks the
+output with a `json.Decoder`, never a line scanner with a fixed buffer. The vendor facts
+the loop rests on were read off **opencode 1.17.15** — its `--help`, and `sst/opencode` at
+tag `v1.17.15` (`packages/opencode/src/cli/cmd/run.ts`, `packages/schema/src/v1/session.ts`)
+— and off **codex-cli 0.148.0-alpha.9**; a later release can move them, and the paths are
+written so the next reader re-checks rather than re-guesses.
 
 **`queue` is read-only and implements find-work's definition; it never extends it.** No
 file written, no git mutation: its two git invocations are `rev-parse --show-toplevel` and
@@ -912,6 +940,96 @@ equivalent. It goes when `libretto install` has been verified against a real
   keep their signatures and delegate, and `main.go` calls the `With` forms. A resolver in
   `loopOpts` would have made it uncomparable for `TestParseLoopArgs`, and a new parameter
   would have edited four `loop` and twenty-eight `metrics` call sites.
+- **The loop's tool is the existing tool axis, never a `--tool` flag.** Retired from
+  `support-codex-opencode-in-loop`, assumed 2026-10-22, attacca run. `scopeFlags` already
+  stripped `--claude`, `--codex` and `--opencode` from every subcommand's arguments, so
+  before this `loop c --opencode` silently drove `claude` — the flag was accepted and
+  thrown away. Reading the axis fixes that rather than adding a second spelling; `--tool`
+  lost because `loop c --codex --tool opencode` is two answers to one question, the error
+  the axis rule exists to report. If wrong (`--tool` was wanted): it becomes an alias that
+  errors when it disagrees with the axis, and the axis still decides.
+- **Codex is refused by the loop, on evidence.** Retired from
+  `support-codex-opencode-in-loop`, 2026-10-22 — the scope assumed, the facts measured.
+  Codex has no headless route to a command: `codex exec --help` (codex-cli
+  0.148.0-alpha.9) offers no command or slash-command option, its top-level list has no
+  prompts or commands subcommand, and `codex debug prompt-input`, with `CODEX_HOME` in a
+  scratch directory, rendered `/libretto-attacca` as literal user text while it listed the
+  project's `.agents/skills/` by name. And agents cannot be installed into Codex —
+  `targets` gives it skills only, its custom prompts are deprecated — so the flow's fresh
+  reviewers have nothing to launch. A codex prompt naming `$find-work` and
+  `$build-and-check` lost: it restates attacca's rules inside the loop, which `loopPrompt`
+  exists never to do. The refusal is code, not an absence — left out of the switch,
+  `--codex` would fall through to `claude`, the silent mis-drive above. **What brings it
+  back:** the payload shipping the attacca route as a skill Codex lists, or Codex
+  installing commands; then the refusal becomes a runner, and this entry says which.
+- **OpenCode runs `opencode run --command libretto-attacca --format json`, with the loop's
+  task text on stdin.** Retired from `support-codex-opencode-in-loop`, measured
+  2026-10-22. `run` wraps a positional argument holding a space in double quotes and
+  escapes the quotes inside it, and `resolveRunInput` returns piped stdin unchanged when no
+  message was given — so stdin is the one route on which OpenCode sees the text `claude`
+  sees. Whitespace-split positional words lost because every newline collapses to a space;
+  `--format default` lost because it carries no session id to match a round to OpenCode's
+  own record of it.
+- **`--max-budget-usd` is refused under `--opencode`.** Retired from
+  `support-codex-opencode-in-loop`, assumed 2026-10-22; the absence measured.
+  `opencode run --help` lists no option naming a budget, a cost or a spend limit, and the
+  loop prices nothing itself, so there is nothing to pass the amount to. If wrong: the
+  loop-wide cap named above as the replacement — which for opencode would first have to
+  decide its cost.
+- **An opencode round records no cost, though OpenCode reports one per step.** Retired
+  from `support-codex-opencode-in-loop`, assumed 2026-10-22. `StepFinishPart` carries
+  `cost` and `tokens` (`packages/schema/src/v1/session.ts`), but `run` emits only its own
+  session's parts — `if (part.sessionID !== sessionID) continue` — so a subagent's
+  `step_finish`, the 6→7 reviewer's among them, never reaches the stream. A sum would be a
+  figure built here and short by exactly that spend, and *the host's figure or absent*
+  allows neither. `duration_ms`, `subtype` and `is_error` are omitted for the same reason.
+  Reading the cost back with `opencode export <id>` lost: a second call per round, of an
+  unobserved shape, for a number the loop may not construct. **Ceiling:** the day `run`
+  emits a session total, or the children's steps, it is recorded verbatim as `cost_usd`;
+  a partial figure, if ever wanted, goes in a field that is not `cost_usd`, so `metrics`
+  never adds it to the host totals.
+- **No permission flag for either tool.** Retired from `support-codex-opencode-in-loop`,
+  assumed 2026-10-22: parity with `claude`, to which the loop passes none. Without
+  `--auto`, `opencode run` answers every `permission.asked` with `reject` and denies
+  `question`, `plan_enter` and `plan_exit`; a round so blocked closes no box, and stuck
+  detection stops the loop after two. The fix is the user's opencode configuration, never
+  a flag here.
+- **Every record carries `tool`; a record without it means `claude`, and so does a header
+  without ` · via`.** Retired from `support-codex-opencode-in-loop`, assumed 2026-10-22.
+  One log is shared by every worktree and now by two tools, and an unpriced claude round
+  has to stay distinguishable from an opencode round unpriced by design. Older records are
+  not rewritten. If wrong: the field goes, and the two kinds of unpriced round become
+  indistinguishable in `metrics`.
+- **The tool's session is chosen through one pure seam, `sessionFor(tool)`.** Retired
+  from `support-codex-opencode-in-loop`, assumed 2026-10-22 after review-spec. It is the
+  only place an executable name is paired with its argument builder, stdin and parser, and
+  `loopWith` builds its runner from it alone, so the pairing is tested rather than trusted:
+  a criterion on `claudeArgs` could not see which executable ran. **Ceiling:** that the
+  runner sets the session's `Stdin` from `opencodeStdin` is observed by no test, since
+  none starts `opencode`; an injected command factory whose `exec.Cmd` a test reads back
+  is the replacement if it ever bites.
+- **A host `error` event is printed as `opencode error: <message>` after the text, and
+  recorded in `error` only when the exec error is absent.** Retired from
+  `support-codex-opencode-in-loop`, assumed 2026-10-22 after review-spec. The message is
+  `error.data.message` when present and `error.name` otherwise, several joined with a
+  newline — the rule `run.ts` itself applies to print them, so nothing is interpreted
+  here. On a non-zero exit `error` keeps the exec error, as it does for `claude`. If
+  wrong: the record keeps the exec error alone, and an event on a zero exit is visible on
+  the terminal only.
+- **What OpenCode was observed to do, 2026-10-22.** Retired from
+  `support-codex-opencode-in-loop`, so the next reader re-checks rather than re-guesses.
+  `opencode run --help` (1.17.15): `--command` "the command to run, use message for args",
+  `--format` "default (formatted) or json (raw JSON events)", `--auto` "auto-approve
+  permissions that are not explicitly denied (dangerous!)", no budget. From `run.ts` at tag
+  `v1.17.15`: one event per line as `{ type, timestamp, sessionID, ...data }`, the types
+  `tool_use`, `step_start`, `step_finish`, `text`, `reasoning` and `error`; `--command`
+  calls `session.command` with the message as its arguments; exit 1 on argument errors,
+  `exitCode = 1` when the command call errors, a `session.error` arrives or the event loop
+  throws, otherwise 0 once the session goes idle. Isolated under scratch `XDG_*`
+  directories, `opencode debug config` resolved a symlinked
+  `.opencode/commands/libretto-attacca.md` as the command `libretto-attacca`, `$ARGUMENTS`
+  intact. **Never observed:** a real OpenCode event stream end to end, and codex's exit
+  codes and usage events — no billed session was run for either tool.
 - **The binary may read the queue; find-work still defines it.** Retired from
   `add-queue-command`, 2026-10-22, attacca run. It reverses `payload`'s "the Go binary
   knowing about the queue", which the wiki had already broken without saying so. The
@@ -1067,6 +1185,7 @@ equivalent. It goes when `libretto install` has been verified against a real
 - [x] the `wiki` panel row — project scope only, absent without specs
 - [x] `init` — the `.agents/` layout bootstrapped at the repository root, never over anything
 - [x] `loop --max-budget-usd` and the per-round run log, read back by `metrics`
+- [x] `loop --opencode`, and `--codex` refused with the reason
 - [x] `queue` — find-work's queue, read-only, and the wiki reading the same scan
 
 ## Verification criteria
@@ -1406,14 +1525,107 @@ A missing payload:
   asked, and an omission reads as an oversight to whatever is on the other end.
   Proof: cmd/libretto/loop_test.go TestTheLoopPromptRoutesAndNeverAuthorises
 
+#### Which tool runs a round
+
+The tool is the axis every subcommand already parses — `--claude`, the default, or
+`--opencode` — and `loop` is the one command that reads it after `scopeFlags` strips it.
+There is no `--tool`. Each round hands the chosen tool the installed `/libretto-attacca`
+command with the loop's task text as its arguments: `claude -p` takes the whole prompt;
+`opencode run --command libretto-attacca --format json` takes the arguments on stdin,
+because `run` re-quotes a positional argument holding a space and passes piped stdin
+through verbatim. `--codex` is refused: Codex installs skills only, and every round is
+routed to a command Codex cannot run. The executable is paired with its argument builder,
+its stdin and its parser in one place, `sessionFor`, and the loop builds its runner from
+that alone.
+
+- **When `run` receives `loop <change> --opencode --dry-run`, the loop shall print a header
+  naming `opencode`.** Proved through `run`, because `scopeFlags` strips the flag before
+  dispatch and a test of `loopWith` alone would prove nothing about that.
+  Proof: cmd/libretto/loop_test.go TestTheToolFlagReachesTheLoop
+- **Where `loopOpts` carries a tool, the loop header shall end its first line with
+  ` · via <tool>`.**
+  Proof: cmd/libretto/loop_test.go TestTheHeaderNamesTheTool
+- **Where `loopOpts` carries no tool, the loop header shall carry no ` · via` suffix** —
+  the same reading the record gives an absent `tool`, claude, so a `runLoop` call without
+  a tool prints the header it always printed.
+  Proof: cmd/libretto/loop_test.go TestAnEmptyToolPrintsTheHeaderItAlwaysPrinted
+- **`sessionFor("claude")` shall return the executable `claude` and an argument builder
+  whose output equals `claudeArgs` for the same prompt and budget.** `loopWith` builds its
+  runner from `sessionFor`, so a swapped wiring fails here.
+  Proof: cmd/libretto/loop_test.go TestLoopDrivesClaudeWhenNoOtherToolIsNamed
+- **`sessionFor("opencode")` shall return the executable `opencode` and an argument
+  builder whose output equals `opencodeArgs`.**
+  Proof: cmd/libretto/loop_test.go TestLoopDrivesClaudeWhenNoOtherToolIsNamed
+- **If the tool is `codex`, then `loop` shall return an error containing `codex` and
+  `/libretto-attacca` for a change that does not exist, with or without `--dry-run`,
+  while PATH is empty and without resolving the run log path.** The refusal comes before
+  the checklist because no checklist makes codex able to run it.
+  Proof: cmd/libretto/loop_test.go TestLoopRefusesCodexAndSaysWhy
+- **If `--max-budget-usd` is given while the tool is `opencode`, then `loop` shall return
+  an error containing `--max-budget-usd` and `opencode` before reading the checklist.**
+  Proof: cmd/libretto/loop_test.go TestOpencodeRefusesABudgetItCannotEnforce
+- **If the tool is `opencode` and `opencode` is not on PATH, then `loop` shall return an
+  error containing `opencode is not on PATH` and `install OpenCode, or use --dry-run to
+  see what would run`.**
+  Proof: cmd/libretto/loop_test.go TestTheMissingToolIsNamed
+- **If the tool is `claude` and `claude` is not on PATH, then `loop` shall return the
+  error `claude is not on PATH — the loop relaunches it once per task`, a newline, seven
+  spaces, and `install Claude Code, or use --dry-run to see what would run`.** Each tool's
+  install line names its own install.
+  Proof: cmd/libretto/loop_test.go TestTheMissingClaudeMessageIsUnchanged
+- **If the tool is `opencode` and the change has no checklist, then `loop` shall return
+  the `no checklist at` error while PATH is empty.** The missing plan is still reported
+  before the missing dependency.
+  Proof: cmd/libretto/loop_test.go TestTheMissingChecklistIsReportedBeforeTheMissingOpencode
+- **While `--dry-run` is set and the tool is `opencode`, `loop` shall succeed with an empty
+  PATH.**
+  Proof: cmd/libretto/loop_test.go TestDryRunNeedsNoOpencodeOnPath
+- **The loop help shall name `--opencode` on a `loop` line.**
+  Proof: cmd/libretto/main_test.go TestHelpNamesTheLoopTool
+
+#### What OpenCode is handed, and what it reports
+
+- **The opencode argument list shall be exactly `run`, `--command`, `libretto-attacca`,
+  `--format`, `json`, in that order.** No positional message, no budget, no model.
+  Proof: cmd/libretto/loop_test.go TestOpencodeArgsRunTheAttaccaCommand
+- **`opencodeStdin` shall return the loop prompt with its leading `/libretto-attacca `
+  removed, byte for byte** — newlines and the double quotes around the change name
+  included. Ceiling, named: this proves the pure function only; that the runner sets the
+  session's `Stdin` from it is unobserved, because no test starts `opencode`.
+  Proof: cmd/libretto/loop_test.go TestOpencodeArgumentsArriveOnStdinVerbatim
+- **The opencode argument list shall contain none of `--auto`, `--yolo` and
+  `--dangerously-skip-permissions`.**
+  Proof: cmd/libretto/loop_test.go TestOpencodeArgsGrantNoPermissions
+- **When the session's output is OpenCode's JSON event stream, the opencode parser shall
+  return the `sessionID` its events carry as the session id.**
+  Proof: cmd/libretto/loop_test.go TestParseOpencodeReadsTheSessionID
+- **When the stream carries `text` events, the loop shall print their `part.text`, in the
+  order they arrived, to stdout.**
+  Proof: cmd/libretto/loop_test.go TestOpencodeTextReachesTheTerminal
+- **If the output carries neither a `text` nor an `error` event, or its first line does
+  not parse as JSON, then the loop shall print the raw output unchanged.** A session never
+  reaches the terminal as nothing — the rule `parseSession` keeps for `claude`.
+  Proof: cmd/libretto/loop_test.go TestOpencodeWithoutTextPrintsTheRawOutput
+- **When the stream carries an `error` event, the loop shall print `opencode error: `
+  followed by its message after the session's text**, the message being the event's
+  `error.data.message` when present and its `error.name` otherwise, several joined with a
+  newline.
+  Proof: cmd/libretto/loop_test.go TestAnOpencodeErrorEventIsPrintedAndRecorded
+- **If an event in the stream is longer than 1 MiB, then the opencode parser shall still
+  return the session id and the text of the events after it.**
+  Proof: cmd/libretto/loop_test.go TestALongOpencodeEventDoesNotEndTheParse
+
 #### The per-round budget and the run log
 
-A round is one `claude -p` session, so the host's own per-session `--max-budget-usd` is
-exactly a per-round budget: the loop passes it through and the host enforces it. Every
-session is asked for its JSON result, and every round that runs leaves one JSON line in
-`<git-common-dir>/libretto/loop.jsonl` — inside git's own directory, so nothing is
-tracked, `git status` shows nothing new, and every worktree of the repository shares one
-log. What the host reports is recorded verbatim and never interpreted.
+A round is one session of the chosen tool, and every round that runs, under either tool,
+leaves one JSON line in `<git-common-dir>/libretto/loop.jsonl` — inside git's own
+directory, so nothing is tracked, `git status` shows nothing new, and every worktree of the
+repository shares one log. What the host reports is recorded verbatim and never
+interpreted. Under `claude` a round is one `claude -p` session, so the host's own
+per-session `--max-budget-usd` is exactly a per-round budget: the loop passes it through
+and the host enforces it, and every session is asked for its JSON result. `opencode run`
+has no per-session budget, so the flag is refused under `--opencode`, and its stream
+carries no cost the loop may record.
 
 - **When the loop starts a session, the `claude` argument list it builds shall carry
   `-p <prompt>` and `--output-format json`.**
@@ -1433,13 +1645,14 @@ log. What the host reports is recorded verbatim and never interpreted.
   Proof: cmd/libretto/loop_test.go TestTheHeaderStatesTheWorstCaseSpend
 - **The loop help shall name `--max-budget-usd`.**
   Proof: cmd/libretto/main_test.go TestHelpNamesTheLoopBudget
-- **When the session's output is the host's JSON result object, the session parser shall
-  return its `total_cost_usd`, `duration_ms`, `session_id`, `subtype`, `is_error` and
-  `result`; if the output is not JSON or carries no `total_cost_usd`, then the parser
+- **When a `claude` session's output is the host's JSON result object, the session
+  parser shall return its `total_cost_usd`, `duration_ms`, `session_id`, `subtype`,
+  `is_error` and `result`; if the output is not JSON or carries no `total_cost_usd`, then the parser
   shall report the cost as unknown, never as zero.**
   Proof: cmd/libretto/loop_test.go TestParseSessionResultReadsTheHostsCost
-- **When a session ends, the loop shall print the `result` text of its JSON to stdout; if
-  the output does not parse as JSON, then the loop shall print it unchanged.** JSON that
+- **When a `claude` session ends, the loop shall print the `result` text of its JSON to
+  stdout; if the output does not parse as JSON, then the loop shall print it unchanged.**
+  JSON that
   carries no `result` field — a bare `null`, `{}` — is not the host's report either, and
   its raw output is what gets printed, so a session never reaches the terminal as nothing.
   Proof: cmd/libretto/loop_test.go TestTheSessionsTextStillReachesTheTerminal
@@ -1465,8 +1678,21 @@ log. What the host reports is recorded verbatim and never interpreted.
   is set, the record shall omit `budget_usd`.**
   Proof: cmd/libretto/loop_test.go TestTheRecordCarriesTheBudgetThatApplied
 - **If the session exited non-zero, then the record shall carry the exec error's message
-  as `error`; when it exited zero, the record shall omit `error`.**
+  as `error`; when it exited zero and the host reported no `error` event, the record shall
+  omit `error`.**
   Proof: cmd/libretto/loop_test.go TestTheRecordCarriesTheExecErrorOnlyOnFailure
+- **If an OpenCode stream carries an `error` event and the session exited zero, then the
+  round's record shall carry that message as `error`, as reported.** On a non-zero exit
+  `error` keeps the exec error, as it does for `claude`.
+  Proof: cmd/libretto/loop_test.go TestAnOpencodeErrorEventIsPrintedAndRecorded
+- **While the tool is `opencode`, each record shall omit `cost_usd`, `duration_ms`,
+  `subtype` and `is_error`, even when the stream's `step_finish` events carry a `cost`.**
+  The fixture carries a non-zero `part.cost`, or an implementation that summed it would
+  pass.
+  Proof: cmd/libretto/loop_test.go TestAnOpencodeRoundRecordsNoCost
+- **Each record the loop writes shall carry `tool` set to the tool that ran the round.**
+  A record without one was written before the field existed, and means `claude`.
+  Proof: cmd/libretto/loop_test.go TestTheRecordNamesTheTool
 - **When the loop stops because every box closed, two rounds closed nothing, the cap was
   reached, or the checklist could not be read, the last record it wrote shall carry
   `stopped` set to `done`, `stuck`, `cap` or `error` respectively, and no earlier record

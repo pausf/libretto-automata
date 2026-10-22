@@ -447,6 +447,21 @@ func TestHelpNamesTheLoopBudget(t *testing.T) {
 	}
 }
 
+// The flag is the existing tool axis, so it has to be said on a loop line: elsewhere in the
+// help it names a destination, and nothing there tells a reader the loop reads it too.
+func TestHelpNamesTheLoopTool(t *testing.T) {
+	_, stderr, err := capture(t, func() error { usage(); return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(stderr, "\n") {
+		if strings.Contains(line, " loop <change>") && strings.Contains(line, "--opencode") {
+			return
+		}
+	}
+	t.Errorf("no loop line in the help names --opencode:\n%s", stderr)
+}
+
 func TestHelpNamesJSON(t *testing.T) {
 	_, stderr, err := capture(t, func() error { usage(); return nil })
 	if err != nil {
