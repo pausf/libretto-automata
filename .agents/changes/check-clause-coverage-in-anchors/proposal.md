@@ -92,13 +92,45 @@ spec-kit `/speckit.analyze` cross-artifact coverage.
   above. C — build nothing and record the measurement as a *Prior decision* — lost because
   the structural check found three live gaps in one run for the cost of one awk function.
 
+### Session 2026-10-22, after review-spec (the run acting as author on the reviewer's findings)
+
+- Q: does `joined_of` list a criterion with no `Proof:`? → A: no. It prints only criteria
+  carrying at least one `Proof:`. A zero-proof criterion is already `--trace`'s *unproven
+  criterion*, and listing it twice is noise (assumed). The `joined_of` criterion now says
+  so and its self-test fixture holds an unproven criterion. If wrong, `joined_of` prints
+  `0<TAB>text` too, and `is_joined` still rejects it because its count is not 1.
+- Q: what exactly do the two wiring rows pin? → A: for `record-work`, the joined row of
+  its `--trace` table, pattern `^\| \*\*joined criterion\*\* \|`, so prose that only
+  mentions the word cannot satisfy it. For `review-spec`, the prompt wording, pattern
+  `split the criterion or name its ceiling` (assumed). Both criteria now say "Proved as
+  wiring only" and name the ceiling, the way `payload` states that limit elsewhere. If
+  wrong, each row widens to the word `joined` alone and the ceiling grows to match.
+- Q: is the zero case promised? → A: yes. While no criterion is joined, `--anchors` prints
+  no joined line, and its output is byte-identical to the three existing sections composed
+  as `anchors_and_ears` composes them today. The self-test compares `--anchors` against
+  `anchors; ears; retired` called directly in the same fixture (assumed). The old script
+  cannot run inside the self-test, so the composition is the stand-in for "today". If
+  wrong, the comparison becomes a golden string, which goes stale every time a section's
+  wording changes.
+- Q: is the `--trace` summary count proved? → A: yes, its own criterion and a self-test case
+  over a fixture with two joined criteria, asserting `, 2 joined criterion(a)` exactly. A
+  missing count or a wrong one fails it (assumed). If wrong, the count leaves the summary
+  line and only the section remains.
+- Q: does the existing `payload` criterion "the whole tree is traceable, not only what is
+  staged" get a sibling or an amendment? → A: an amendment, at landing. Its list of what
+  `--trace` names gains a fourth item, joined criteria. The replacement text is stated
+  under *Approach* and the landing has its own box (assumed). A parallel criterion would
+  be two sentences describing one map, and the one nobody edited would drift. If wrong,
+  the old criterion stays as it is and the `--trace` criterion here lands beside it.
+
 ## Outcomes
 
 - `spec-drift --trace` lists every *joined* criterion — two or more `shall`, exactly one
   `Proof:` line, no mention of a ceiling — from capability specs and change documents,
   each with the file that holds it, and counts them in its summary line.
 - `spec-drift --anchors` prints one line counting joined criteria in change documents and
-  in capability specs, and its exit status is decided exactly as before.
+  in capability specs, and its exit status is decided exactly as before. With nothing
+  joined, its output is byte-identical to today's.
 - An author answers a joined criterion by splitting it, citing a second proof, or naming its
   ceiling — and the line goes away.
 - `record-work` and `review-spec` describe the new `--trace` section where they already
@@ -117,6 +149,10 @@ spec-kit `/speckit.analyze` cross-artifact coverage.
 - `skills/review-spec/SKILL.md`: the sentence naming what `--trace` reports, version
   2.0 → 2.1
 - `scripts/check-payload`: two `check_wiring` rows
+- `.agents/specs/payload/spec.md`, at landing: the existing criterion "the whole tree is
+  traceable, not only what is staged" is **amended, not paralleled**. Its list of what
+  `--trace` names gains joined criteria, replaced with the text under *Approach*. No
+  second criterion about the map is added beside it.
 
 **Out:**
 
@@ -212,24 +248,41 @@ spec-kit `/speckit.analyze` cross-artifact coverage.
   on one proof, two markers with "Ceiling named:", two markers on two proofs, one marker, a
   bolded pair, and `marshalling` beside one real marker.
   Proof: skills/record-work/spec-drift --self-test
-- **Where** a change document holds `## Verification criteria` then `## Checklist`,
-  `joined_of` **shall** report each criterion's `Proof:` count and none of the boxes.
+- **Where** a change document holds `## Verification criteria`, holding one criterion with
+  a `Proof:` and one without, then `## Checklist`, `joined_of` **shall** print one line,
+  carrying the proven criterion's `Proof:` count. It prints nothing for the unproven
+  criterion, which is `--trace`'s *unproven criterion* already, and nothing for the boxes.
   Proof: skills/record-work/spec-drift --self-test
 - **When** `spec-drift --trace` runs in a repository whose capability spec and change
   document each hold one joined criterion, it **shall** list both under the joined-criteria
   section, each with its file.
   Proof: skills/record-work/spec-drift --self-test
+- **When** `spec-drift --trace` runs in a repository holding exactly two joined criteria,
+  its summary line **shall** end in `, 2 joined criterion(a)`. The self-test asserts that
+  exact text, so a missing count and a wrong one both fail it.
+  Proof: skills/record-work/spec-drift --self-test
 - **When** `spec-drift --anchors` runs in a repository holding a joined criterion whose
   citation resolves, it **shall** print exactly one line counting joined criteria in change
   documents and in capability specs.
   Proof: skills/record-work/spec-drift --self-test
+- **While** no criterion in the repository is joined, `spec-drift --anchors` **shall**
+  print no joined line, and its output is byte-identical to `anchors`, `ears` and `retired`
+  run directly in the same repository with the separators `anchors_and_ears` prints between
+  them today. That composition stands in for the version before this change, which the
+  self-test cannot run.
+  Proof: skills/record-work/spec-drift --self-test
 - **If** joined criteria are the only finding, **then** `spec-drift --anchors` **shall**
   exit 0.
   Proof: skills/record-work/spec-drift --self-test
-- The `record-work` skill **shall** name joined criteria as a row of its `--trace` table.
+- The `record-work` skill **shall** carry joined criteria as a row of its `--trace` table,
+  pinned by a `check_wiring` row on the pattern `^\| \*\*joined criterion\*\* \|`. Proved
+  as wiring only. **Ceiling named:** the row proves the table names joined criteria. It
+  does not prove the row's description matches what `is_joined` does, which is a reading.
   Proof: scripts/check-payload
-- The `review-spec` skill **shall** name joined criteria among what `--trace` reports, as a
-  prompt to split the criterion or name its ceiling.
+- The `review-spec` skill **shall** state that `--trace` lists joined criteria as a prompt
+  to "split the criterion or name its ceiling", pinned by a `check_wiring` row on the
+  pattern `split the criterion or name its ceiling`. Proved as wiring only. **Ceiling
+  named:** the row proves the wording is present, not that a reviewer acts on it.
   Proof: scripts/check-payload
 
 ## Approach
@@ -307,8 +360,9 @@ cannot hold. No change document in flight today holds a criterion with a `Proof:
 1. **`joined_of <file>`** — awk over `defenced`, the criterion grammar `criteria_of` uses:
    a column-0 `- ` opens a criterion, indented lines fold into it until the first
    `Proof:`, every `Proof:` line beneath it before the next column-0 bullet or level-2
-   heading increments its count. Prints `<count><TAB><text>` per criterion with at least
-   one `Proof:` — an unproven one is `--trace`'s existing question.
+   heading increments its count. Prints `<count><TAB><text>` only for a criterion with at
+   least one `Proof:`. A criterion with none prints nothing here, because it is already
+   `--trace`'s *unproven criterion*, and listing it twice is noise.
 2. **`is_joined <text> <count>`** — true when `count` is 1, the text with `*`, `_` and
    backticks stripped holds two or more ` shall ` (counted by awk `gsub`), and
    `tolower(text)` holds no `ceiling`. Called by the gate and the self-test both, as
@@ -316,21 +370,48 @@ cannot hold. No change document in flight today holds a criterion with a `Proof:
 3. **`joined count`** — over `change_files` and `spec_files`, counts each scope; prints
    nothing when both are zero, else one line:
    `  N joined criterion(a) — X in change documents, Y in capability specs: two or more shall on one Proof:. spec-drift --trace lists them; split each, cite a second proof, or name its ceiling`.
-   Returns 0 always. `anchors_and_ears` calls it after `retired`, without `|| rc=1`.
+   Returns 0 always. `anchors_and_ears` calls it after `retired`, without `|| rc=1`. The
+   separating blank line is printed by `joined` itself, and only with its line. So with
+   nothing joined, `--anchors` writes exactly the bytes `anchors`, `ears` and `retired`
+   write today, with today's separators, and not one byte more.
 4. **`--trace`** gains a fourth section, `── criteria resting several shall on one proof ──`,
    over `spec_files` and `change_files`, one `joined  <file>` line and a `%.70s` head per
-   criterion, `none` when empty; the summary line gains `, %d joined criterion(a)`.
-5. **The self-test** gains: six `is_joined` cases; a `joined_of` case over a criteria
-   section followed by a checklist; and one throwaway repository holding a capability spec
-   and a change document with one joined criterion each, citing a `t_test.go` holding
-   `func TestX`, run once under `--trace` (both files named) and once under `--anchors`
-   (exit 0, the count line present, `1 in change documents, 1 in capability specs`).
+   criterion, `none` when empty; the summary line gains `, %d joined criterion(a)` as its
+   last field.
+5. **The self-test** gains:
+   - six `is_joined` cases
+   - a `joined_of` case over a criteria section holding one proven criterion and one
+     unproven criterion, followed by a checklist. Exactly one line comes back, carrying the
+     proven criterion's count
+   - one throwaway repository holding a capability spec and a change document with one
+     joined criterion each, citing a `t_test.go` holding `func TestX`. It runs once under
+     `--trace`, asserting both files are named and the summary line ends in
+     `, 2 joined criterion(a)`, and once under `--anchors`, asserting exit 0, the count
+     line present and `1 in change documents, 1 in capability specs`
+   - one throwaway repository with the same files, both criteria split so nothing is
+     joined. It asserts that `--anchors` output holds no `joined` line and equals,
+     byte for byte, `anchors; printf '\n'; ears; printf '\n'; retired` run in the same
+     repository
 6. **The skills.** `record-work`'s `--trace` table gains the row *joined criterion* and its
    "three questions" becomes four; `review-spec`'s sentence naming what `--trace` reports
-   gains joined criteria, as a prompt to split or name a ceiling — never a finding on its
-   own. `check-payload` gains a `check_wiring` row for each.
+   gains joined criteria, as a prompt to "split the criterion or name its ceiling", never a
+   finding on its own. `check-payload` gains one `check_wiring` row for each:
+   `skills/record-work/SKILL.md` on `^\| \*\*joined criterion\*\* \|`, the table-row
+   shape, so prose that only mentions the word cannot satisfy it. And
+   `skills/review-spec/SKILL.md` on `split the criterion or name its ceiling`.
 7. **The header comment** of `spec-drift` lists the count under `--anchors` and the section
    under `--trace`.
+8. **At landing**, the existing `payload` criterion "the whole tree is traceable, not only
+   what is staged" is amended in place. Its sentence beginning "`--trace` reads the tracked
+   tree" is replaced, whole, by:
+
+   > `--trace` reads the tracked tree and names orphan code, a `Governs:` glob matching
+   > nothing, a criterion under *Verification criteria* with no `Proof:` beneath it, and a
+   > joined criterion — two or more `shall` resting on one `Proof:` with no ceiling named.
+
+   The rest of that criterion and its `--self-test` citation stay as they are. This
+   change's own `--trace` criteria land beside it as the proof of the fourth item, not as
+   a second description of the map.
 
 ### The alternatives it beat
 
@@ -364,6 +445,11 @@ keeps its expected value. Two must be forced red before they are believed:
   that assertion fail.
 - `two shall on one proof is joined` passes if `is_joined` answers yes to everything.
   Change its threshold to one and watch `one shall is not joined` fail.
+- the zero case passes if `joined` prints nothing at all, so it is forced red the other
+  way: make `joined` print its separator unconditionally and watch the byte comparison
+  fail.
+- the `--trace` count case: hard-code the count to 0 and watch the `, 2 joined
+  criterion(a)` assertion fail.
 
 `scripts/check-payload`'s two rows are forced red by deleting the sentence each pins from a
 throwaway copy. Rollback: one revert; nothing migrates.
@@ -380,18 +466,28 @@ Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its
 
 - [ ] **`--trace` lists joined criteria.** `joined_of`, `is_joined`, the fourth `--trace`
       section and its summary count, over capability specs and change documents; the six
-      `is_joined` cases, the `joined_of` checklist case and the throwaway-repository
-      `--trace` case in the self-test. Closes: the `is_joined` criterion, the `joined_of`
-      criterion, the `--trace` criterion — all on skills/record-work/spec-drift --self-test.
-      Waits on: nothing.
+      `is_joined` cases, the `joined_of` proven-and-unproven case and the
+      throwaway-repository `--trace` case, with its summary count forced red once. Closes:
+      the `is_joined` criterion, the `joined_of` criterion, the `--trace` listing criterion,
+      the `--trace` summary-count criterion — all on skills/record-work/spec-drift
+      --self-test. Waits on: nothing.
 - [ ] **`--anchors` counts them and stays green.** `joined count`, called from
       `anchors_and_ears` after `retired` and outside `rc`; the header comment; the
       `--anchors` case in the same throwaway repository, forced red once by removing the
-      call. Closes: the count-line criterion and the exit-0 criterion, on
-      skills/record-work/spec-drift --self-test. Waits on: box 1.
+      call; the zero-case repository, compared byte for byte, forced red once by an
+      unconditional separator. Closes: the count-line criterion, the zero-case criterion
+      and the exit-0 criterion, on skills/record-work/spec-drift --self-test. Waits on:
+      box 1.
 - [ ] **The skills say what the section means.** The `record-work` `--trace` table row and
       "four questions", version 1.6; the `review-spec` sentence, version 2.1; one
-      `check_wiring` row each in `scripts/check-payload`, each forced red on a throwaway
-      copy. Closes: the `record-work` criterion and the `review-spec` criterion, on
+      `check_wiring` row each in `scripts/check-payload` — `^\| \*\*joined criterion\*\* \|`
+      and `split the criterion or name its ceiling` — each forced red on a throwaway copy.
+      Closes: the `record-work` criterion and the `review-spec` criterion, on
       scripts/check-payload. Waits on: box 1, so neither skill names a section that does
       not exist. Independent of box 2.
+- [ ] **At landing: the map's criterion names its fourth item.** In
+      `.agents/specs/payload/spec.md`, the criterion "the whole tree is traceable, not only
+      what is staged" gets its `--trace` sentence replaced by the text in *Approach*, step 8.
+      It is amended in place, with no parallel criterion, and lands in the same commit as
+      this delta and the *Prior decisions*. Closes: that criterion's amended list, on its
+      existing skills/record-work/spec-drift --self-test citation. Waits on: boxes 1–3.
