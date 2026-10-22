@@ -1,7 +1,6 @@
 # add-loop-budget-and-run-log
 
 Tracker: none
-Queued: 2026-08-21
 
 ## The ask, verbatim
 
