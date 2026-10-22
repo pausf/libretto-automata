@@ -85,7 +85,8 @@ Machine-readable output for the read-only commands, already listed as pending in
 - Q: what may `status` and `doctor` be given besides `--json`? → A: **nothing — any other
   argument exits non-zero naming it** (assumed). Today both ignore arguments silently, so
   `status --jsno` would print text into a consumer's parser; `metrics` and `queue` already
-  refuse. If wrong, unknown arguments go back to being ignored.
+  refuse. If wrong, unknown arguments go back to being ignored. **Reversed after
+  review-spec — see the next session.**
 - Q: what goes into each shape? → A: **the data the text report shows, never its prose,
   and nothing a consumer can compute from the rest** (assumed). Out: `doctor`'s remedy
   text and prerequisite notes, `status`'s tally, `metrics`' footer totals, the token
@@ -109,6 +110,44 @@ Machine-readable output for the read-only commands, already listed as pending in
   `link.Entry`, `changeMetrics`, `loopTally` — lost: their fields are unexported, carry
   bytes and paths no consumer needs (`Generated`, `RepoPath`), and a tag on an internal
   type makes every refactor of it a contract change.
+
+### Session 2026-10-22, after review-spec (the run acting as author on the reviewer's findings)
+
+- Q: how does `queue`'s existing refusal criterion move? → A: **amended in place at
+  landing.** The cli spec's "If the command is given any argument, then it … exit
+  non-zero naming the argument" becomes "any argument other than `--json`", its wording
+  otherwise unchanged. `TestQueueRefusesArguments` keeps refusing every other argument and
+  gains a row accepting `--json` (assumed). A second criterion beside the old one would
+  leave the spec promising both that `--json` is refused and that it is read. If wrong,
+  the old criterion is retired and a new one written in its place, with the same test.
+- Q: do `status` and `doctor` still refuse arguments other than `--json`? → A: **no —
+  reversed. They keep ignoring every other argument, as today; only `--json` is read**
+  (assumed). Refusing would change an exit code on a path that has nothing to do with
+  JSON, and "exit codes and text unchanged on every path" then holds with no exception.
+  If wrong, a refusal criterion and test come back, in a change of their own.
+- Q: what does `metrics --json` carry when git has seen no change? → A: **gather computes
+  the ledger, the tokens and the loop anyway; the JSON carries `changes: []` plus
+  whichever of `corrections`, `tokens` and `loop` exist; the text still prints only the
+  no-changes line, byte-identical** (assumed). Those blocks do not depend on a change
+  having been seen — a run log or a ledger can exist before any change folder — and
+  omitting them would report as unknown what was read. If wrong, the JSON carries
+  `changes: []` alone, as the text does.
+- Q: when is `loop` omitted? → A: **only when no run-log file exists.** A log that exists
+  with no records, or with only malformed lines, gives `loop: {changes: [], skipped: N}`
+  (assumed). The file existing is a known fact; the text's "no loop runs are recorded"
+  covers both cases because a human does not need the difference, and a consumer does.
+  If wrong, `loop` is omitted whenever it holds no record, and `skipped` is lost with it.
+- Q: what does `queue --json` carry without a `.agents/changes/`? → A: **`queued: []` and
+  no `dispatched` key**, because the command returns before git is asked for branches,
+  so which changes are dispatched is unknown (assumed) — the absent-means-unknown rule
+  applied. If wrong, `dispatched: []` is written there and git is asked first.
+- Q: how is "the release line is built from the same facts" observed? → A: **one stubbed
+  check feeds both outputs.** With latest `v9.9.9` against running `v0.1.0`, the text line
+  names `v9.9.9` and the JSON carries `latest: "v9.9.9"` and `newer: true`; with the stub
+  changed to an unrankable pair, the text line carries no newer-release wording and the
+  JSON omits `newer`. `TestReleaseLineIsRenderedFromTheCheck` asserts both outputs from
+  the same stub (assumed). If wrong, two separate tests, and the shared derivation is
+  review's to see.
 
 ## Outcomes
 
@@ -210,7 +249,9 @@ when* is absent — never zero — in that state.
     }
 
 - `changes` — one object per row of the table, in its order; `[]` when git has seen no
-  change. A `<change>` argument narrows it exactly as it narrows the table.
+  change, and then `corrections`, `tokens` and `loop` are still present whenever they
+  exist — the text prints only its no-changes line. A `<change>` argument narrows it
+  exactly as it narrows the table.
 - `name`, `state` (`landed`, `in flight`, `unreadable` — the table's spelling) — always.
 - `commits`, `first`, `last` — *omitted when* `unreadable`. Times are RFC 3339 in UTC,
   from the commit times `measure` already reads; the span is `last − first` and is not
@@ -227,8 +268,9 @@ when* is absent — never zero — in that state.
 - `tokens.change` — *omitted when* no `<change>` was given. `totals` and `by_phase` —
   *omitted when* no session was attributed to that change, leaving `name` alone.
   `no_phase` — *omitted when* every attributed entry named a phase.
-- `loop` — *omitted when* there is no run log. `changes` — per change in name order,
-  following the filter; `[]` when it holds none for the filter. `cost_usd` — *omitted
+- `loop` — *omitted when* no run-log file exists, and only then. `changes` — per change in
+  name order, following the filter; `[]` when the log holds none for the filter, holds no
+  record, or holds only malformed lines. `cost_usd` — *omitted
   when* none of that change's rounds carried a cost. `skipped` — malformed lines, `0`
   included. `loop.error` — present, in place of `changes` and `skipped`, only when the log
   exists and cannot be read.
@@ -252,14 +294,15 @@ when* is absent — never zero — in that state.
   or no `.agents/changes/` exists.
 - `reading` — *omitted when* the proposal has no `## Reading`.
 - `dispatched` — changes an unmerged branch already took, `[]` when none; *omitted when*
-  git could not list branches, because then nobody knows which are dispatched.
+  git could not list branches, or when no `.agents/changes/` exists and git was never
+  asked — either way nobody knows which are dispatched.
 
 ## Scope boundaries
 
 In:
 
 - `--json` on `status`, `doctor`, `metrics` and `queue`, with the four shapes above
-- `status` and `doctor` refusing any argument other than `--json`
+- `queue`'s refusal criterion amended in place to accept `--json`
 - one help line naming the flag and the four commands
 - the refactor each needs so text and JSON read one gathered report
 
@@ -277,8 +320,12 @@ Out, each named so it cannot arrive quietly:
   ceiling, footer totals and token percentage, `status`'s tally. Each is additive later.
 - **golden files.** Tests decode and assert.
 - **README changes** — `readme`'s capability, untouched.
-- **any change to the text output, exit codes, the release notice, or `needsPayload`.**
-  `status` and `doctor` still need the payload; `metrics` and `queue` still do not.
+- **any change to the text output, exit codes, the release notice, or `needsPayload`, on
+  any path.** `status` and `doctor` still need the payload; `metrics` and `queue` still
+  do not.
+- **`status` and `doctor` validating their arguments.** They read `--json` and ignore the
+  rest, as they ignore everything today. Returns as its own change if a typo printing
+  text into a parser bites somebody.
 - **the drift trend** `report-drift-trend-in-metrics` queues for `metrics` — when it
   lands, its block gets a JSON key under this change's rules, in that change.
 
@@ -327,8 +374,23 @@ names what changes if it is wrong.
   but never a fact the report does not hold.
 - **`--json` is a per-command flag after the command name.** Assumed. If wrong,
   `scopeFlags` strips it globally.
-- **`status` and `doctor` refuse arguments other than `--json`.** Assumed, matching
-  `metrics` and `queue`. If wrong, they ignore them again.
+- **`status` and `doctor` read `--json` and ignore every other argument, as today.**
+  Assumed after review-spec, reversing the first session's refusal: refusing would move
+  an exit code on a path unrelated to JSON. If wrong, a refusal lands as its own change.
+- **`queue`'s refusal criterion is amended in place, never duplicated.** Assumed after
+  review-spec: "any argument" becomes "any argument other than `--json`", and
+  `TestQueueRefusesArguments` gains a `--json` row. If wrong, the old criterion is retired
+  and replaced, with the same test.
+- **With no change in git's history, `metrics --json` still carries the ledger, tokens and
+  loop it read.** Assumed after review-spec; the text keeps its single no-changes line.
+  If wrong, the JSON carries `changes: []` alone.
+- **`loop` is absent only when no run-log file exists.** Assumed after review-spec: an
+  existing log with no records, or only malformed lines, is `{changes: [], skipped: N}`.
+  If wrong, an empty log omits `loop` and its `skipped` count.
+- **`queue --json` without a `.agents/changes/` omits `dispatched`**, since git was never
+  asked. Assumed after review-spec. If wrong, `dispatched: []` and git asked first.
+- **The release text and the release JSON come from one `releaseCheck`, observed through
+  one stub.** Assumed after review-spec. If wrong, two separate tests.
 - **`queue` is in scope; `models` and every other read-only command are out.** Assumed;
   the cli spec already assigned `queue` here. If wrong, a box is added or dropped.
 - **`doctor`'s release check is injected, and the suite stubs it.** Assumed, the
@@ -338,13 +400,14 @@ names what changes if it is wrong.
 
 - a shared helper: detect `--json` among a command's arguments, and one encoder with
   indent and HTML escaping off
-- `status`: gather target and entries once; text and JSON from it; refuse other arguments
+- `status`: gather target and entries once; text and JSON from it; other arguments
+  ignored as today
 - `doctor`: the release check returning facts rather than a sentence, behind a seam; the
-  report gathered once; text and JSON from it; refuse other arguments
-- `queue`: kept and dropped ideas gathered once, with whether branches were readable;
-  text and JSON from it
-- `metrics`: rows, ledger, token totals and loop tallies gathered once into one report;
-  every text block rendered from it; JSON from it
+  report gathered once; text and JSON from it; other arguments ignored as today
+- `queue`: kept and dropped ideas gathered once, with whether branches were asked and
+  read; text and JSON from it; the refusal accepting `--json`
+- `metrics`: rows, ledger, token totals and loop tallies gathered once into one report,
+  with or without any change in history; every text block rendered from it; JSON from it
 - the help line
 
 ## Verification criteria
@@ -371,9 +434,6 @@ Shared — each test runs one row per command, and each command's box adds its r
 - **While a newer release is cached, the stdout of `status --json` shall parse as one JSON
   object.**
   Proof: cmd/libretto/notice_test.go TestJSONStdoutParsesWithANoticePending
-- **If `status` or `doctor` is given an argument other than `--json`, then the command
-  shall exit non-zero naming that argument.**
-  Proof: cmd/libretto/json_test.go TestStatusAndDoctorRefuseOtherArguments
 - **The help text shall carry a `--json` line naming `status`, `doctor`, `metrics` and
   `queue`.**
   Proof: cmd/libretto/main_test.go TestHelpNamesJSON
@@ -417,8 +477,11 @@ Shared — each test runs one row per command, and each command's box adds its r
 - **When `doctor --json` runs, `prerequisites` shall list one object per prerequisite,
   carrying `name` and `found`, in the text's order.**
   Proof: cmd/libretto/json_test.go TestDoctorJSONListsPrerequisites
-- **The text line `doctor` prints for the release shall be built from the same release
-  facts the JSON carries.**
+- **When one stubbed release check feeds both outputs, the release text line and the
+  `release` object shall agree: for latest `v9.9.9` against running `v0.1.0` the line
+  names `v9.9.9` while the object carries `latest` `v9.9.9` and `newer` true, and for an
+  unrankable pair the line carries no newer-release wording while the object omits
+  `newer`.**
   Proof: cmd/libretto/doctor_test.go TestReleaseLineIsRenderedFromTheCheck
 
 `metrics`
@@ -466,8 +529,11 @@ Shared — each test runs one row per command, and each command's box adds its r
 - **Where an attributed entry of the filtered change names no phase, `tokens.change`
   shall carry those entries' sum as `no_phase`.**
   Proof: cmd/libretto/metrics_test.go TestMetricsJSONNoPhaseIsNeverDistributed
-- **If no run log exists, then the report shall omit `loop`.**
+- **If no run-log file exists, then the report shall omit `loop`.**
   Proof: cmd/libretto/metrics_test.go TestMetricsJSONOmitsLoopWithoutARunLog
+- **If the run-log file exists and holds no loop record, then `loop` shall be
+  `{changes: [], skipped: N}`, with N the count of its malformed lines.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONAnEmptyRunLogIsKnown
 - **When the run log exists, `loop.changes` shall list one object per change it records,
   following the filter, in name order, carrying `name`, `rounds`, `net_closed` and
   `unpriced`.**
@@ -483,6 +549,11 @@ Shared — each test runs one row per command, and each command's box adds its r
   Proof: cmd/libretto/metrics_test.go TestMetricsJSONUnreadableRunLogNamesTheError
 - **While git has seen no change, `changes` shall be an empty array.**
   Proof: cmd/libretto/metrics_test.go TestMetricsJSONEmptyHistoryIsAnEmptyArray
+- **While git has seen no change, the JSON report shall still carry each of
+  `corrections`, `tokens` and `loop` whose source exists.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsJSONEmptyHistoryKeepsTheOtherBlocks
+- **While git has seen no change, the text report shall print only its no-changes line.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsTextWithNoHistoryIsUnchanged
 - **When `metrics` is given `--json` and a change name, the command shall accept them in
   either order.**
   Proof: cmd/libretto/metrics_test.go TestMetricsJSONFlagAndChangeInEitherOrder
@@ -504,6 +575,13 @@ Shared — each test runs one row per command, and each command's box adds its r
 - **While no `.agents/changes/` exists at the repository root, `queued` shall be an empty
   array.**
   Proof: cmd/libretto/queue_test.go TestQueueJSONWithoutAChangesDirIsEmpty
+- **While no `.agents/changes/` exists at the repository root, the report shall omit
+  `dispatched`.**
+  Proof: cmd/libretto/queue_test.go TestQueueJSONWithoutAChangesDirIsEmpty
+- **If `queue` is given any argument other than `--json`, then it shall exit non-zero
+  naming the argument.** This is the cli spec's existing refusal criterion, amended in
+  place at landing; its test gains a row accepting `--json`.
+  Proof: cmd/libretto/queue_test.go TestQueueRefusesArguments
 
 ## Approach
 
@@ -534,7 +612,11 @@ boxes, one per command; the first carries the helper.
   `json_test.go` (new), `doctor_test.go`, `metrics_test.go`, `queue_test.go`,
   `main_test.go`, `notice_test.go`. No `internal/` package changes.
 - At landing (phase 8): the cli spec's Task breakdown box `5.2` ticks and gains `metrics`
-  and `queue`; the queue non-goal loses "no `--json`"; the criteria above land under a new
+  and `queue`; the queue non-goal loses "no `--json`"; in the same edit, the queue
+  criterion "If the command is given any argument, then it shall exit non-zero naming the
+  argument, and shall print no queue." is replaced in place by "If the command is given
+  any argument other than `--json`, then it shall exit non-zero naming the argument, and
+  shall print no queue.", keeping its `TestQueueRefusesArguments` citation; the criteria above land under a new
   `### --json — the read-only reports, machine-readable` section; `docs/PLAN.md` 5.2 ticks;
   the `docs/STATE.md` row for `5.2` goes.
 
@@ -551,8 +633,8 @@ boxes, one per command; the first carries the helper.
    `omitempty` on a plain `int` is the bug this rule exists to catch: it turns a known `0`
    into an absent key. A known-empty list is initialised to a non-nil empty slice so it
    encodes as `[]`, never `null`.
-3. **`status`** — `run` passes `args[1:]`; `status` calls `jsonFlag`, refuses anything
-   left over, then `link.Scan` once. Text: unchanged lines. JSON: `statusDoc{Schema,
+3. **`status`** — `run` passes `args[1:]`; `status` calls `jsonFlag` and ignores
+   whatever is left over, as it ignores every argument today, then `link.Scan` once. Text: unchanged lines. JSON: `statusDoc{Schema,
    Target, Items}` built from the same `entries`; `Target.Root` empty means omitted.
 4. **`doctor`** — `releaseLine` becomes two functions: `checkRelease(running, ask)
    releaseCheck` returning `{running, latest string; err error}`, and `releaseLine(c
@@ -563,16 +645,25 @@ boxes, one per command; the first carries the helper.
    `repo.IsNewer(latest, running)` when true, `false` when `running == latest`, absent
    otherwise — the same switch `releaseLine` uses. The scan, the release check and
    `prerequisites()` are gathered once; text and JSON render from them; the returned error
-   for problems is unchanged and comes after the JSON is written.
-5. **`queue`** — gather `kept`, `dropped` and `branchesRead bool`; text renders as today;
-   JSON maps `queuedIdea` to `{name, date, reading}` and `dispatchedIdea` to `{name,
-   branch}`, with `dispatched` nil (omitted) when the branches were unreadable. The
-   argument refusal accepts `--json` and still refuses anything else.
+   for problems is unchanged and comes after the JSON is written. Arguments other than
+   `--json` are ignored, as today. `TestReleaseLineIsRenderedFromTheCheck` sets one stub —
+   `v9.9.9` against a running `v0.1.0`, then an unrankable pair — and asserts the text line
+   and the JSON `release` object from that same stub.
+5. **`queue`** — gather `kept`, `dropped` and `branchesRead bool`, false both when git
+   failed and when no `.agents/changes/` exists, because the command returns before
+   asking; text renders as today; JSON maps `queuedIdea` to `{name, date, reading}` and
+   `dispatchedIdea` to `{name, branch}`, with `dispatched` nil (omitted) whenever
+   `branchesRead` is false. The argument refusal accepts `--json` and still refuses
+   anything else; `TestQueueRefusesArguments` gains the `--json` row.
 6. **`metrics`** — `metricsWith` grows a gather step, `gatherMetrics(...) (metricsReport,
    error)`, holding: the rows (`changeMetrics` or an unreadable marker), the ledger
    (`corrections()` results and `seen`), the token figures (`readUsage`, `attribute`, the
    per-phase split now inside `tokenBlock`), and the loop tallies (the parsing now inside
-   `loopBlock`, plus `skipped`, plus an open error). `phaseBreakdown`, `tokenBlock` and
+   `loopBlock`, plus `skipped`, plus whether the file exists, plus an open error). The
+   gather runs the ledger, token and loop steps even when git has seen no change; the text
+   renderer checks for no rows first and prints only its no-changes line, exactly as now,
+   while the JSON carries `changes: []` and whichever blocks exist. `loop` is omitted only
+   when the file does not exist. `phaseBreakdown`, `tokenBlock` and
    `loopBlock` become renderers over the report's parts and print exactly what they print
    now. The JSON doc maps from the same parts. `--json` is taken out of the arguments
    before the existing unknown-flag check, so `--json` and `<change>` work in either
@@ -630,8 +721,9 @@ revert). Rollback is one revert per box; nothing is written to disk or migrated.
 Executed by `build-and-check`. Box 1 comes first; boxes 2, 3 and 4 each wait only on it.
 
 - [ ] **`status --json`, end to end, with the shared helper.** `json.go` with `jsonFlag`
-      and `writeJSON`; `run` passes `args[1:]` to `status`; `status` refuses other
-      arguments, gathers once, renders text unchanged or the `status` shape; the help line;
+      and `writeJSON`; `run` passes `args[1:]` to `status`; `status` reads `--json` and
+      ignores other arguments as today, gathers once, renders text unchanged or the
+      `status` shape; the help line;
       `json_test.go` with the shared tables holding the `status` row. Closes:
       TestJSONIsOneObjectOnStdout, TestJSONCarriesSchemaOne,
       TestJSONDoesNotChangeTheExitCode, TestJSONFailureWritesNothingToStdout,
@@ -639,30 +731,33 @@ Executed by `build-and-check`. Box 1 comes first; boxes 2, 3 and 4 each wait onl
       row), TestJSONStdoutParsesWithANoticePending, TestHelpNamesJSON,
       TestStatusJSONNamesTheTarget, TestStatusJSONOmitsAnUnknownRoot,
       TestStatusJSONListsEveryItem, TestStatusJSONStatesMatchTheText,
-      TestStatusJSONEmptyIsAnEmptyArray, and the `status` half of
-      TestStatusAndDoctorRefuseOtherArguments. Waits on: nothing.
+      TestStatusJSONEmptyIsAnEmptyArray. Waits on: nothing.
 - [ ] **`doctor --json`, end to end.** `checkRelease` and `releaseLine(releaseCheck)` in
       `version.go`, existing doctor tests adjusted only in how they call it, never in what
-      they assert; `releaseSource` stubbed in `TestMain`; `doctor` refuses other arguments,
-      gathers once, renders text unchanged or the `doctor` shape; the `doctor` rows of the
-      shared tables. Closes: TestDoctorJSONListsOnlyProblems, TestDoctorJSONNamesTheMode,
+      they assert; `releaseSource` stubbed in `TestMain`; `doctor` reads `--json` and
+      ignores other arguments as today, gathers once, renders text unchanged or the
+      `doctor` shape; `TestReleaseLineIsRenderedFromTheCheck` asserting text and JSON from
+      one stub; the `doctor` rows of the shared tables. Closes: TestDoctorJSONListsOnlyProblems, TestDoctorJSONNamesTheMode,
       TestDoctorJSONCarriesTheRunningVersion, TestDoctorJSONCarriesTheLatestRelease,
       TestDoctorJSONRanksWhatRanks, TestDoctorJSONOmitsAnUnrankableComparison,
       TestDoctorJSONReportsAFailedCheck, TestDoctorJSONListsPrerequisites,
-      TestReleaseLineIsRenderedFromTheCheck, the `doctor` half of
-      TestStatusAndDoctorRefuseOtherArguments, and the shared criteria's `doctor` rows.
+      TestReleaseLineIsRenderedFromTheCheck, and the shared criteria's `doctor` rows.
       Waits on: box 1.
 - [ ] **`queue --json`, end to end.** `queue` accepts `--json` and still refuses any other
-      argument; kept, dropped and whether branches were read gathered once; text unchanged
-      or the `queue` shape; the `queue` rows of the shared tables. Closes:
+      argument, with `TestQueueRefusesArguments` gaining the `--json` row; kept, dropped
+      and whether branches were asked and read gathered once; text unchanged or the
+      `queue` shape; the `queue` rows of the shared tables. Closes:
       TestQueueJSONListsOldestFirst, TestQueueJSONOmitsAMissingReading,
       TestQueueJSONKeepsReadingTextVerbatim, TestQueueJSONNamesDispatchedChanges,
       TestQueueJSONUnreadableBranchesOmitsDispatched,
-      TestQueueJSONWithoutAChangesDirIsEmpty, and the shared criteria's `queue` rows.
+      TestQueueJSONWithoutAChangesDirIsEmpty (both the empty `queued` and the absent
+      `dispatched`), the amended refusal through TestQueueRefusesArguments, and the shared
+      criteria's `queue` rows.
       Waits on: box 1.
 - [ ] **`metrics --json`, end to end.** `gatherMetrics` returning one report holding rows,
-      ledger, tokens and loop tallies; `phaseBreakdown`, `tokenBlock` and `loopBlock`
-      rendering from it byte-identically; `--json` taken out before the unknown-flag
+      ledger, tokens and loop tallies — computed even with no change in history, and with
+      whether the run-log file exists; `phaseBreakdown`, `tokenBlock` and `loopBlock`
+      rendering from it byte-identically, the no-history text still one line; `--json` taken out before the unknown-flag
       check; the `metrics` shape; the `metrics` rows of the shared tables. Closes:
       TestMetricsJSONListsTheTableRows, TestMetricsJSONAgreesWithTheTable,
       TestMetricsJSONCarriesTimesInUTC, TestMetricsJSONKeepsAKnownZero,
@@ -673,7 +768,10 @@ Executed by `build-and-check`. Box 1 comes first; boxes 2, 3 and 4 each wait onl
       TestMetricsJSONTokensAreCorpusWide, TestMetricsJSONTokensForOneChange,
       TestMetricsJSONUnattributedChangeCarriesItsNameAlone,
       TestMetricsJSONNoPhaseIsNeverDistributed, TestMetricsJSONOmitsLoopWithoutARunLog,
-      TestMetricsJSONLoopRows, TestMetricsJSONUnpricedOmitsCost,
-      TestMetricsJSONCountsSkippedLines, TestMetricsJSONUnreadableRunLogNamesTheError,
-      TestMetricsJSONEmptyHistoryIsAnEmptyArray, TestMetricsJSONFlagAndChangeInEitherOrder,
+      TestMetricsJSONAnEmptyRunLogIsKnown, TestMetricsJSONLoopRows,
+      TestMetricsJSONUnpricedOmitsCost, TestMetricsJSONCountsSkippedLines,
+      TestMetricsJSONUnreadableRunLogNamesTheError,
+      TestMetricsJSONEmptyHistoryIsAnEmptyArray,
+      TestMetricsJSONEmptyHistoryKeepsTheOtherBlocks,
+      TestMetricsTextWithNoHistoryIsUnchanged, TestMetricsJSONFlagAndChangeInEitherOrder,
       and the shared criteria's `metrics` rows. Waits on: box 1.
