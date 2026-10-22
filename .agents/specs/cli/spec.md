@@ -438,6 +438,16 @@ prerequisite report, and `init`'s bootstrap of a project's `.agents/` layout.
 - **the payload half of bootstrap.** The non-goal that keeps skills from creating
   `changes/` implicitly, and the pointers to `init` at its two refusal sites, are
   `payload`'s.
+- **`queue` editing, deleting, reordering or picking up a queued idea.** `/libretto-next`
+  picks up; the files are edited by hand. The payload's non-goals on that stand.
+- **`queue` taking any argument** — no name or date filter, no `--json`. Machine-readable
+  output for the read-only commands is `add-json-output`'s, and a filter is a later change.
+- **`queue` reading remote branches, or resolving a base branch.** Local branches unmerged
+  into `HEAD` are find-work's filter as the skill runs it; see *Prior decisions* for the
+  ceiling.
+- **`queue` listing changes in flight, or reading a tracker.** That is source 1 and
+  `/libretto-status`; the command lists the queue and nothing else.
+- **a panel row for `queue`**, for the reason `init` has none.
 - **configuration files. There are none, deliberately** — nothing on disk changes what a
   command does, and the environment-variable table below is the whole of what is
   configurable.
@@ -558,6 +568,19 @@ in a `t.TempDir()` path and never touches this repository's `.git` — the one e
 `make test-short`. Records are appended with one `Write` on an `O_APPEND` descriptor, and
 two loops in two worktrees writing at once is accepted untested. `metrics` opens the log
 for reading and never creates it. Stdlib only, and `loop` keeps needing no payload.
+
+**`queue` is read-only and implements find-work's definition; it never extends it.** No
+file written, no git mutation: its two git invocations are `rev-parse --show-toplevel` and
+`branch --format=%(refname:short) --no-merged HEAD`, both through the `gitRunner` seam
+`metrics`, `land` and `init` use, so tests drive it with fixed output, point at
+`t.TempDir()`, and never read this repository's changes. Stdlib only. It reads
+`.agents/changes/` at the repository root — the cwd only when git cannot answer — and joins
+the `needsPayload` exemptions beside `init`. A line counts only when it starts with the
+`Queued:` prefix at column 0, so a quoted mention inside an ask never queues a change. The
+wiki reads the same scan, `queuedIdeas`, through the same filter, so the binary holds one
+answer to "what is queued". **Its ceiling, marked `ponytail:` in `readInFlight`:** the
+wiki asks git for branches once per `readInFlight` call and a render calls it three times;
+the day a repository's branch count makes that slow, the render passes the branches down.
 
 **Nothing in the test suite writes to a real payload home, and nothing runs a real `go install`.**
 `LIBRETTO_ROOT` is the second half of what `CLAUDE_HOME` does for targets, and `resolveRoot` takes
@@ -848,6 +871,51 @@ equivalent. It goes when `libretto install` has been verified against a real
   keep their signatures and delegate, and `main.go` calls the `With` forms. A resolver in
   `loopOpts` would have made it uncomparable for `TestParseLoopArgs`, and a new parameter
   would have edited four `loop` and twenty-eight `metrics` call sites.
+- **The binary may read the queue; find-work still defines it.** Retired from
+  `add-queue-command`, 2026-10-22, attacca run. It reverses `payload`'s "the Go binary
+  knowing about the queue", which the wiki had already broken without saying so. The
+  binary implementing a rule the skill owns is delivery; the binary deciding what counts as
+  queued would not be.
+- **Queued is three conditions, applied in one place, `queuedIdeas`, for both the wiki and
+  `queue`.** Retired from `add-queue-command`, assumed 2026-10-22 on review-spec's finding:
+  a `Queued:` line at column 0, no unmerged local branch taking the name, and no box under
+  `## Checklist` — a box means the work started. find-work states the same three. *B —
+  `queue` filtering on top of the wiki's own scan, the wiki untouched* lost: two
+  definitions of "queued" in one binary, and the wiki kept counting dispatched changes. *C
+  — `queue` running find-work's `rg` line* lost: it puts `rg` on the binary's runtime path,
+  and the filter would still be written in Go. If the checklist clause is wrong, it leaves
+  all three places together; if the wiki should not filter, it keeps an unfiltered count
+  and the binary holds two definitions.
+- **The branch filter is find-work's, applied by the binary**: local branches unmerged
+  into `HEAD`, one leading `feat/` `fix/` `docs/` `chore/` `refactor/` removed, the name
+  matched whole. Retired from `add-queue-command`, assumed 2026-10-22. **Ceiling:** `HEAD`
+  stands in for the base branch; run from a branch behind the base, a landed change can be
+  dropped as dispatched rather than shown — which drops, never invents. *Resolving the base
+  branch* lost: one more lookup with its own failure modes, for a case `HEAD` gets right
+  whenever the command runs on the base. The day that misleads, a base is resolved from
+  `refs/remotes/origin/HEAD` with `main` as fallback, in one function. **Local branches
+  only**: a change dispatched from another machine and not fetched still shows as queued,
+  exactly as in find-work; if wrong, both add remote branches together.
+- **Ties on one `Queued:` date go by change name, ascending.** Retired from
+  `add-queue-command`, assumed 2026-10-22 — already the wiki's order. *Capture-commit
+  order* lost: a `git log` per proposal, against a design that put the date in the file to
+  avoid exactly that. If wrong, the skill and the binary move together.
+- **`queue` reads the repository root, the cwd only when git fails.** Retired from
+  `add-queue-command`, assumed 2026-10-22. *The cwd, as the wiki reads it* lost: it is the
+  bug `metrics` recorded, a subdirectory run reporting an empty queue.
+- **Unreadable branches list the queue unfiltered, with one stderr line, exit 0.** Retired
+  from `add-queue-command`, assumed 2026-10-22 — find-work's fail-safe direction: keep the
+  idea.
+- **A dropped change is named on a closing line with its branch, on stdout; only the
+  unreadable-branches line is stderr.** Retired from `add-queue-command`, assumed
+  2026-10-22: an idea that vanishes from a list without a word reads as lost, and the
+  closing line is information, not an error.
+- **The empty states are told apart, and measured after the filter.** Retired from
+  `add-queue-command`, assumed 2026-10-22. No `.agents/changes/` prints `no .agents/changes/
+  here — nothing is queued`, which points at `init`; nothing left after the filter prints
+  `nothing is queued`, then the dispatched line when anything was dropped. Exit 0 either way.
+- **`queue` takes no arguments and is exempt from the missing-payload stop.** Retired from
+  `add-queue-command`, assumed 2026-10-22: it reads the project, never the payload.
 
 ## Task breakdown
 
@@ -877,6 +945,7 @@ equivalent. It goes when `libretto install` has been verified against a real
 - [x] the `wiki` panel row — project scope only, absent without specs
 - [x] `init` — the `.agents/` layout bootstrapped at the repository root, never over anything
 - [x] `loop --max-budget-usd` and the per-round run log, read back by `metrics`
+- [x] `queue` — find-work's queue, read-only, and the wiki reading the same scan
 
 ## Verification criteria
 
@@ -1853,7 +1922,8 @@ never a second authority and never a gate.
   holds boxes outside the section.
   Proof: cmd/libretto/wiki_test.go TestWikiInFlightReadsTheChangeDocument
 - **Where a change's `proposal.md` carries a `Queued:` line and no box under `## Checklist`,
-  the wiki shall count it in the queue and shall not name it in the in-flight strip.**
+  and no unmerged local branch carries its name, the wiki shall count it in the queue and
+  shall not name it in the in-flight strip.**
   Proof: cmd/libretto/wiki_test.go TestWikiInFlightReadsTheChangeDocument
 - **The in-flight strip shall count boxes with the loop's definition: a `* [ ]` line and a
   `- [X]` line in a `tasks.md` shall count as one open box and one closed box.** It matched
@@ -1931,6 +2001,12 @@ The flow itself gets a page, from the ledgers, absent when they are.
   and a queue alone shall still summon the article, which is where the queue
   lives on its own.
   Proof: cmd/libretto/wiki_test.go TestWikiFlowBoardListsTheQueue
+- **If an unmerged local branch carries a queued change's name, then the wiki shall
+  neither list that change in the flow board's queue nor count it in the in-flight strip.**
+  Proof: cmd/libretto/wiki_test.go TestWikiQueueDropsAChangeItsBranchAlreadyTook
+- **The wiki's flow-board queue shall list the same change names, in the same order, as
+  `queuedIdeas` returns for the same changes directory and branch list.**
+  Proof: cmd/libretto/wiki_test.go TestWikiQueueMatchesTheCommand
 - **Where the flow article exists, the home shall link `#flow`; where it does
   not, no such link.**
   Proof: cmd/libretto/wiki_test.go TestWikiHomeLinksTheFlowBoard
@@ -2145,3 +2221,67 @@ exits zero.
   Proof: cmd/libretto/init_test.go TestInitNeverWritesThroughASymlink
 - **`help` shall list `init` with a line saying what it bootstraps.**
   Proof: cmd/libretto/main_test.go TestHelpNamesInit
+
+### `queue` — the queued ideas, read-only
+
+`libretto queue` prints the project's queued ideas, one per line — the `Queued:` date, the
+change name, and the first sentence of its `## Reading` — oldest date first, ties by name.
+Queued is find-work's definition, and the binary implements it rather than owning it
+(see `payload`): a `Queued:` line at column 0, no unmerged local branch carrying the name,
+and no box under the proposal's `## Checklist`. A change an unmerged branch carries is
+left out and named, with that branch, on a closing line on stdout — an idea that vanishes
+without a word reads as lost. The wiki's in-flight strip and flow-board queue read the
+same scan, so the two always list the same changes.
+
+- **When `libretto queue` runs, it shall print one line per queued change carrying its
+  `Queued:` date, its name and the first sentence of its `## Reading`, ordered by date,
+  oldest first.**
+  Proof: cmd/libretto/queue_test.go TestQueueListsOldestFirst
+- **Where two queued changes carry the same `Queued:` date, the command shall order them
+  by change name, ascending.**
+  Proof: cmd/libretto/queue_test.go TestQueueBreaksDateTiesByName
+- **Where a queued proposal has no `## Reading`, its line shall carry the date and the name
+  only.**
+  Proof: cmd/libretto/queue_test.go TestQueueWithoutAReadingPrintsTheNameAlone
+- **If a proposal mentions `Queued:` anywhere but at the start of a line, then the command
+  shall not list that change.**
+  Proof: cmd/libretto/queue_test.go TestQueueReadsOnlyALineStartingWithQueued
+- **If a proposal carrying a `Queued:` line holds a box under its `## Checklist`, then the
+  command shall not list that change.**
+  Proof: cmd/libretto/queue_test.go TestQueueSkipsAProposalWithAChecklistBox
+- **If an unmerged local branch's name, with one leading `feat/`, `fix/`, `docs/`,
+  `chore/` or `refactor/` removed, equals a queued change's name, then the command shall
+  leave that change out of the list and shall name it, with the branch, on a closing
+  line written to stdout.**
+  Proof: cmd/libretto/queue_test.go TestQueueDropsAChangeItsBranchAlreadyTook
+- **If a branch matches a queued change's name only in part, or only after removing a
+  prefix outside that list, then the command shall keep the change in the list.**
+  Proof: cmd/libretto/queue_test.go TestQueueKeepsAChangeOnAPartialOrForeignMatch
+- **The command shall ask git for branches with exactly
+  `branch --format=%(refname:short) --no-merged HEAD`.**
+  Proof: cmd/libretto/queue_test.go TestQueueAsksGitForUnmergedLocalBranches
+- **If git cannot list branches, then the command shall list every queued change
+  unfiltered, shall say so in one line on stderr, and shall exit 0.**
+  Proof: cmd/libretto/queue_test.go TestQueueUnreadableBranchesListsUnfiltered
+- **When run from a subdirectory of a repository, the command shall read the
+  `.agents/changes/` at the repository root.**
+  Proof: cmd/libretto/queue_test.go TestQueueReadsTheRepositoryRoot
+- **While no `.agents/changes/` exists at the repository root, the command shall print
+  `no .agents/changes/ here — nothing is queued` and shall exit 0.**
+  Proof: cmd/libretto/queue_test.go TestQueueWithoutAChangesDirSaysSo
+- **While `.agents/changes/` exists and no change in it is queued after the branch filter,
+  the command shall print `nothing is queued` and shall exit 0.**
+  Proof: cmd/libretto/queue_test.go TestQueueEmptyIsAStateNotAnError
+- **If every queued change is dispatched by a branch, then the command shall print
+  `nothing is queued` followed by the closing line naming each dispatched change with its
+  branch, both on stdout.**
+  Proof: cmd/libretto/queue_test.go TestQueueAllDispatchedSaysNothingQueuedThenNamesThem
+- **The command shall leave every file under the project byte-identical.**
+  Proof: cmd/libretto/queue_test.go TestQueueWritesNothing
+- **If the command is given any argument, then it shall exit non-zero naming the argument,
+  and shall print no queue.**
+  Proof: cmd/libretto/queue_test.go TestQueueRefusesArguments
+- **The missing-payload stop shall not apply to `queue`.**
+  Proof: cmd/libretto/queue_test.go TestQueueNeedsNoPayload
+- **The help text shall carry a `queue` line saying it lists queued ideas, read-only.**
+  Proof: cmd/libretto/main_test.go TestHelpNamesQueue
