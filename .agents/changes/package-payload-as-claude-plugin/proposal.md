@@ -531,6 +531,7 @@ box 4 waits on box 3; box 5 waits on box 1; box 6 waits on all.
       TestPluginManifestDeclaresNoComponentPaths, TestPluginRootCarriesTheVendoredLicences
       (the repository tree under `./`; the cache copy is box 2's).
 - [ ] **Observe a plugin-only session — evidence, no code.** In a Claude Code whose config
+  **Stopped 2026-10-22:** an isolated config (`CLAUDE_CONFIG_DIR=$(mktemp -d)`) answers "Not logged in · Please run /login", and copying credentials into it is out of bounds. To resume: the user runs `! CLAUDE_CONFIG_DIR=<dir> claude /login` once, then this box runs the observations in that config with `--plugin-dir` pointing at this worktree. Boxes 3–5 wait on it by design.
       carries no libretto links — `CLAUDE_CONFIG_DIR` pointed at an empty directory and
       authenticated, or a person on a second account; **never by unlinking the real
       `~/.claude`** — load the checkout with `claude --plugin-dir <checkout>` and observe:
