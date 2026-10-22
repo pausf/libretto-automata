@@ -471,7 +471,7 @@ Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its
       the `is_joined` criterion, the `joined_of` criterion, the `--trace` listing criterion,
       the `--trace` summary-count criterion — all on skills/record-work/spec-drift
       --self-test. Waits on: nothing.
-- [ ] **`--anchors` counts them and stays green.** `joined count`, called from
+- [x] **`--anchors` counts them and stays green.** `joined count`, called from
       `anchors_and_ears` after `retired` and outside `rc`; the header comment; the
       `--anchors` case in the same throwaway repository, forced red once by removing the
       call; the zero-case repository, compared byte for byte, forced red once by an

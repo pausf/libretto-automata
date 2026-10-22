@@ -46,7 +46,10 @@
 #                · --retired  no plan or contract proposal.md is deleted taking its decisions with it
 #              Each runs alone under its own flag; --anchors is what CI gates on, so
 #              the count "six gates" — written in ten places here — does not move.
-#   --trace    the whole tree: orphan code, dead ownership, unproven criteria
+#              After them, one line counting joined criteria — two or more `shall` on
+#              one Proof:, no ceiling named — which never changes the exit status.
+#   --trace    the whole tree: orphan code, dead ownership, unproven criteria,
+#              joined criteria
 #   --block    default's checks, but a warning exits 1 — for a hook you opted into
 #
 # Default mode always exits 0. It warns; blocking in someone else's project gets
@@ -573,6 +576,32 @@ joined_of() {
   '
 }
 
+# joined_in <files> — how many joined criteria those files hold.
+joined_in() {
+  local f n crit count=0
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    while IFS=$'\t' read -r n crit; do
+      [ -n "$crit" ] || continue
+      is_joined "$crit" "$n" && count=$((count + 1))
+    done <<< "$(joined_of "$f")"
+  done <<< "$1"
+  printf '%d\n' "$count"
+}
+
+# joined — --anchors' soft line: one count, never a status. The blank line before it is
+# printed here and only with it, so with nothing joined --anchors writes exactly what its
+# three sections wrote before this existed. The list lives in --trace.
+joined() {
+  local hard soft
+  hard=$(joined_in "$(change_files)")
+  soft=$(joined_in "$(spec_files)")
+  [ $((hard + soft)) -eq 0 ] && return 0
+  printf '\n  %d joined criterion(a) — %d in change documents, %d in capability specs: two or more shall on one Proof:. spec-drift --trace lists them; split each, cite a second proof, or name its ceiling\n' \
+    "$((hard + soft))" "$hard" "$soft"
+  return 0
+}
+
 trace() {
   git rev-parse --git-dir >/dev/null 2>&1 || {
     printf 'spec-drift: --trace needs a git repository\n' >&2; return 0; }
@@ -888,9 +917,17 @@ also none' "$(criteria_without_proof "$tmp")"
   rm -f "$tmp"
 
   # --trace over a real repository: one joined criterion in a capability spec, one in a
-  # change document.
-  joinrepo() { # joinrepo — prints the path of a repository holding two joined criteria
-    local d
+  # change document. `split` gives each `shall` its own bullet and Proof:, so nothing is
+  # joined and the rest of the repository is the same.
+  joinrepo() { # joinrepo [joined|split] — prints the path of the repository it built
+    local d spec_crit change_crit
+    if [ "${1:-joined}" = split ]; then
+      spec_crit='- When it runs, it **shall** start.\n  Proof: t_test.go TestX\n- When it runs, it **shall** stop.\n  Proof: t_test.go TestX\n'
+      change_crit='- When it runs, it **shall** open.\n  Proof: t_test.go TestX\n- When it runs, it **shall** close.\n  Proof: t_test.go TestX\n'
+    else
+      spec_crit='- When it runs, it **shall** start and it **shall** stop.\n  Proof: t_test.go TestX\n'
+      change_crit='- When it runs, it **shall** open and it **shall** close.\n  Proof: t_test.go TestX\n'
+    fi
     d=$(mktemp -d) || return 99
     (
       cd "$d" || exit 99
@@ -899,9 +936,9 @@ also none' "$(criteria_without_proof "$tmp")"
       git config user.email t@t; git config user.name t
       mkdir -p .agents/specs/thing .agents/changes/a-change
       printf 'func TestX(t *testing.T) {}\n' > t_test.go
-      printf '# Thing\n\nGoverns: t_test.go\n\n## Verification criteria\n\n- When it runs, it **shall** start and it **shall** stop.\n  Proof: t_test.go TestX\n' \
+      printf "# Thing\n\nGoverns: t_test.go\n\n## Verification criteria\n\n$spec_crit" \
         > .agents/specs/thing/spec.md
-      printf '# Proposal\n\nTargets: thing\n\n## Verification criteria\n\n- When it runs, it **shall** open and it **shall** close.\n  Proof: t_test.go TestX\n\n## Checklist\n\n- [ ] the box\n' \
+      printf "# Proposal\n\nTargets: thing\n\n## Verification criteria\n\n$change_crit\n## Checklist\n\n- [ ] the box\n" \
         > .agents/changes/a-change/proposal.md
       git add -A && git commit -qm base
     ) >/dev/null 2>&1 || { rm -rf "$d"; return 99; }
@@ -918,6 +955,27 @@ also none' "$(criteria_without_proof "$tmp")"
     (*', 2 joined criterion(a)') want '--trace counts two joined criteria' yes yes ;;
     (*)                          want '--trace counts two joined criteria' yes "no: $jsum" ;;
   esac
+
+  # --anchors over the same repository: one count line, both scopes, and a joined
+  # criterion is never a reason to fail.
+  jout=$(cd "$jd" && "$SELF" --anchors 2>&1); jrc=$?
+  want '--anchors stays green on joined criteria' 0 "$jrc"
+  want '--anchors prints one joined count line'   1 \
+    "$(printf '%s\n' "$jout" | rg -c 'joined criterion' || echo 0)"
+  want '--anchors counts each scope'              yes \
+    "$(printf '%s\n' "$jout" | rg -F '2 joined criterion(a) — 1 in change documents, 1 in capability specs' >/dev/null && echo yes || echo no)"
+  rm -rf "$jd"
+
+  # With nothing joined, --anchors writes exactly what its three sections write, with the
+  # separators anchors_and_ears printed before this change. The trailing `x` keeps `$( )`
+  # from eating a trailing newline, which is exactly the byte an unconditional separator adds.
+  jd=$(joinrepo split)
+  jout=$(cd "$jd" && "$SELF" --anchors 2>&1; printf x)
+  jwant=$(cd "$jd" && { anchors; printf '\n'; ears; printf '\n'; retired; } 2>&1; printf x)
+  want 'nothing joined prints no joined line' no \
+    "$(printf '%s\n' "$jout" | rg 'joined' >/dev/null && echo yes || echo no)"
+  want 'nothing joined is byte-identical to the three sections' yes \
+    "$([ "$jout" = "$jwant" ] && echo yes || echo no)"
   rm -rf "$jd"
 
   # Orphan and dead-claim detection. --trace on this repository reports 0 dead claims, so
@@ -984,6 +1042,7 @@ anchors_and_ears() {
   ears || rc=1
   printf '\n'
   retired || rc=1
+  joined
   return $rc
 }
 
