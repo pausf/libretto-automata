@@ -625,7 +625,7 @@ Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its
       three-verdicts criterion, the dirty-tree criterion, the ask-which-one criterion, the
       find-work-defines-the-box criterion, the no-restated-box-pattern criterion and the
       drift-is-reported criterion — all on scripts/check-payload. Waits on: nothing.
-- [ ] **Converge closes a box only on proof the session observed, and commits it.** In the
+- [x] **Converge closes a box only on proof the session observed, and commits it.** In the
       skill: `spec-drift --anchors` first; each closable box mapped through its `Closes:`
       or reported `unmapped`; its cited proofs run from the contract and read by the rule
       for their kind; the mark on the box's last line listing every citation; writes

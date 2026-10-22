@@ -1,6 +1,6 @@
 ---
 name: converge
-description: "Trigger: a checklist stopped describing the code; open boxes that may already be built, or built otherwise; 'converge', 're-derive the boxes', 'the plan drifted'. Launches one fresh converge-reader over the tree as it is, then reports every open box as open, closable or drifted. A side door, not a phase."
+description: "Trigger: a checklist stopped describing the code; open boxes that may already be built, or built otherwise; 'converge', 're-derive the boxes', 'the plan drifted'. Launches one fresh converge-reader over the tree as it is, runs the cited proofs itself, closes only what it watched pass, reports every other open box as open, drifted or unmapped, and commits the checklist alone. A side door, not a phase."
 license: MIT
 metadata:
   author: pausf
@@ -76,7 +76,50 @@ corroboration.
 change. Say so and launch it again — once. A reader that cannot finish twice is a stopped
 item, per `skills/evidence/`.
 
-## Step 3 — Drifted boxes
+## Step 3 — The anchors, before any proof
+
+Run **`spec-drift --anchors` before any proof** — the script beside the sibling
+`record-work` skill, at `<skill-base>/../record-work/spec-drift` from this skill's announced
+base:
+
+```
+<skill-base>/../record-work/spec-drift --anchors > /tmp/converge-anchors.out 2>&1; echo "exit=$?"
+```
+
+Read the file. Any citation of this change it names as unresolved — a file that is gone, a
+test name that does not exist — is not passed, and is not run.
+
+This comes first because the run that follows cannot see it: a test name that does not exist
+exits 0 under `go test -run`. The anchors catch the name; the pass rule below catches the run.
+
+## Step 4 — Closable boxes
+
+A box the reader returned closable is a box worth running, nothing more. For each:
+
+1. **Map it.** Match the box's `Closes:` text against the contract's criteria — the
+   `## Verification criteria` of `proposal.md` and of each `spec-<capability>.md` beside it,
+   or an old-layout change's delta. Each criterion it names must match exactly one. No
+   match, more than one candidate, or no `Closes:` at all — as an old-layout box may have —
+   and the box stays open, reported as `unmapped`. A mapping is never guessed, and the
+   reader's opinion of one is not a mapping: the user sharpens the `Closes:`.
+2. **Run it.** Take each mapped criterion's `Proof:` line from the contract itself — never
+   from the reader's quote of it — and run it in the foreground the way `work-reviewer`
+   runs a citation: output to a file, the exit read, the file read. Two kinds, two rules:
+   - **test-named**, `<file> TestX` — run with `-v`. It passes only when the output
+     carries `--- PASS: <TestName>` for that test, whatever its exit status. A name that
+     does not exist prints `PASS` and no such line.
+   - **file-only**, a command with no test name — it passes when it runs to the end,
+     exits 0 and prints no FAIL line.
+3. **Mark it.** Every citation of every mapped criterion passed: turn its `[ ]` into `[x]`
+   and append, on the box's last line, `— converged <date>: <citation>, <citation> passed`,
+   naming each one that passed. A box wraps over several lines, and its last one is where a
+   reader finishes it. Anything short of that and the box stays open; the report names the
+   citation that did not pass and what it printed.
+
+The reader cannot run anything, and a reader's verdict never closes a box. The checklist has
+one writer, and the writer is the one that must have watched the pass.
+
+## Step 5 — Drifted boxes
 
 A drifted box is not touched — not its text, not its state, not a note beneath it:
 **drift is reported, never rewritten.** The report carries the box's own words
@@ -87,15 +130,44 @@ contract moving: an edit to what the change promises, made by the back door. Res
 is the user's, at the contract. Say so in the report, and say that `loop` would build a
 drifted box as written, against the code.
 
-## Step 4 — The report
+## Step 6 — The writes
 
-This version reads and reports; it writes nothing and commits nothing.
+converge writes to the checklist and nothing else. Not the contract, not `## Approach`, not
+the decision log, `Targets:` or `Durable decisions:` — every pillar stays as it was.
 
-One line per open box, in checklist order, in one of the states the reader returned —
-**open**, **closable**, **drifted** — each with the reader's file or symbol. A closable box
-is reported as closable and stays open: **the reader's verdict closes nothing.**
+It never unchecks a closed box, and never re-runs one. The ask is about open boxes; a
+closed box whose proof fails today is a regression, and `libretto metrics` already counts a
+reopened box as the sign of one.
 
-Then, as the reader returned them:
+## Step 7 — The commit
+
+A mark never committed was never marked. Anything marked or appended: stage the checklist
+file alone and commit it, with that file as the only pathspec.
+
+```
+git add -- <checklist>
+git commit -m 'docs(<change>): converge the checklist' -- <checklist>
+```
+
+The commit is `docs(<change>): converge the checklist` and it stages nothing else — a
+converge commit is reviewed alone. Step 0 already stopped on anything staged, because a
+staged file is a tracked modification.
+
+If nothing was marked or appended, no commit.
+
+converge never pushes and never creates a branch: the push is the user's, asked at
+`record-work`.
+
+## Step 8 — The report
+
+One line per open box, in checklist order, in exactly one state:
+
+- **open** — with what the reader found missing, or the citation that did not pass
+- **closed** — with every citation that passed
+- **drifted** — the box's words beside the reader's file and line
+- **unmapped** — with what its `Closes:` failed to match
+
+Then the proofs run, one line each, pass or fail. Then, as the reader returned them:
 
 - each `uncovered` criterion, with its `Proof:` line
 - each `gap` — an outcome or scope item no criterion covers — reported, never boxed:
@@ -103,3 +175,5 @@ Then, as the reader returned them:
 - anything the reader marked **unverified**, as a question, never as a verdict
 
 Or the reader's explicit **"nothing found"**, relayed as a statement, not an absence.
+
+Last, the commit's hash, or "no commit".

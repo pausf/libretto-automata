@@ -460,6 +460,22 @@ check_wiring skills/converge/SKILL.md 'find-work. defines the box'        'conve
 check_absent skills/converge/SKILL.md '\^\\s\*\[-\*\]\\s\+\\\[\( \|x\|X\)\\\]' 'converge does not restate the box pattern'
 check_wiring skills/converge/SKILL.md 'drift is reported, never rewritten' 'converge leaves a drifted box untouched'
 check_wiring skills/converge/SKILL.md 'beside the reader.s file and line' 'converge reports a drifted box beside what the code does'
+# A test name that does not exist exits 0 under `go test -run` (measured), so a named
+# citation passes on its own --- PASS: line and never on an exit status.
+check_wiring skills/converge/SKILL.md 'a reader.s verdict never closes a box' 'converge closes a box only on proof the session ran and read'
+check_wiring skills/converge/SKILL.md 'spec-drift --anchors. before any proof' 'converge runs spec-drift --anchors before any proof'
+check_wiring skills/converge/SKILL.md '--- PASS: <TestName>'              'a test-named citation passes only on its --- PASS: line'
+check_wiring skills/converge/SKILL.md 'whatever its exit status'          'a test-named citation is never passed on its exit status'
+check_wiring skills/converge/SKILL.md 'exits 0 and prints no FAIL line'   'a file-only citation passes on exit 0 with no FAIL line'
+check_wiring skills/converge/SKILL.md 'reported as .unmapped.'            'a box with no unambiguous Closes: match stays open, reported unmapped'
+check_wiring skills/converge/SKILL.md 'converged <date>: <citation>, <citation> passed' 'a converged box carries every citation that passed and the date'
+check_wiring skills/converge/SKILL.md 'the box.s last line'               'the converged mark goes on the box'"'"'s last line'
+check_wiring skills/converge/SKILL.md 'writes to the checklist and nothing else' 'converge writes to the checklist and nothing else'
+check_wiring skills/converge/SKILL.md 'never unchecks a closed box'       'converge never unchecks a closed box'
+check_wiring skills/converge/SKILL.md 'docs\(<change>\): converge the checklist' 'converge commits as docs(<change>): converge the checklist'
+check_wiring skills/converge/SKILL.md 'stages nothing else'               'the converge commit holds the checklist file alone'
+check_wiring skills/converge/SKILL.md 'nothing was marked or appended, no commit' 'converge makes no commit when nothing changed'
+check_wiring skills/converge/SKILL.md 'never pushes and never creates a branch' 'converge never pushes and never creates a branch'
 
 printf '\n── skills never point at an executable that is not installed ──\n'
 # `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
