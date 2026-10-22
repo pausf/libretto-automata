@@ -754,7 +754,7 @@ Executed by `build-and-check`. Box 1 comes first; boxes 2, 3 and 4 each wait onl
       `dispatched`), the amended refusal through TestQueueRefusesArguments, and the shared
       criteria's `queue` rows.
       Waits on: box 1.
-- [ ] **`metrics --json`, end to end.** `gatherMetrics` returning one report holding rows,
+- [x] **`metrics --json`, end to end.** `gatherMetrics` returning one report holding rows,
       ledger, tokens and loop tallies — computed even with no change in history, and with
       whether the run-log file exists; `phaseBreakdown`, `tokenBlock` and `loopBlock`
       rendering from it byte-identically, the no-history text still one line; `--json` taken out before the unknown-flag

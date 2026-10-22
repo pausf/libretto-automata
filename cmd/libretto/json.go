@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io"
+	"time"
 
 	"github.com/pausf/libretto-automata/internal/link"
 	"github.com/pausf/libretto-automata/internal/target"
@@ -151,6 +152,150 @@ func queueDocOf(r queueReport) queueDoc {
 			d = append(d, dispatchedJSON{Name: i.name, Branch: i.branch})
 		}
 		doc.Dispatched = &d
+	}
+	return doc
+}
+
+// changeJSON is one row of the metrics table. A pointer is a value that may be unknown:
+// nil is omitted, a set pointer to zero is a known zero and stays present.
+type changeJSON struct {
+	Name        string `json:"name"`
+	State       string `json:"state"`
+	Commits     *int   `json:"commits,omitempty"`
+	First       string `json:"first,omitempty"`
+	Last        string `json:"last,omitempty"`
+	Closed      *int   `json:"closed,omitempty"`
+	Boxes       *int   `json:"boxes,omitempty"`
+	Reopened    *int   `json:"reopened,omitempty"`
+	Corrections *int   `json:"corrections,omitempty"`
+}
+
+type correctionsJSON struct {
+	ByPhase        map[string]int `json:"by_phase"`
+	OutsideChanges int            `json:"outside_changes"`
+}
+
+type usageJSON struct {
+	Input      int64 `json:"input"`
+	Output     int64 `json:"output"`
+	CacheWrite int64 `json:"cache_write"`
+	CacheRead  int64 `json:"cache_read"`
+}
+
+// tokenChangeJSON's ByPhase is a pointer for the same reason dispatched is: a change no
+// session reached has no phases to report, which is not the same as an empty set.
+type tokenChangeJSON struct {
+	Name    string                `json:"name"`
+	Totals  *usageJSON            `json:"totals,omitempty"`
+	ByPhase *map[string]usageJSON `json:"by_phase,omitempty"`
+	NoPhase *usageJSON            `json:"no_phase,omitempty"`
+}
+
+type tokensJSON struct {
+	Attributed          usageJSON        `json:"attributed"`
+	Unattributed        usageJSON        `json:"unattributed"`
+	Entries             int              `json:"entries"`
+	UnattributedEntries int              `json:"unattributed_entries"`
+	Change              *tokenChangeJSON `json:"change,omitempty"`
+}
+
+type loopRowJSON struct {
+	Name      string   `json:"name"`
+	Rounds    int      `json:"rounds"`
+	NetClosed int      `json:"net_closed"`
+	CostUSD   *float64 `json:"cost_usd,omitempty"`
+	Unpriced  int      `json:"unpriced"`
+}
+
+// loopJSON carries either the rows and the skipped count, or the error that kept the log
+// from being read — never both.
+type loopJSON struct {
+	Changes *[]loopRowJSON `json:"changes,omitempty"`
+	Skipped *int           `json:"skipped,omitempty"`
+	Error   string         `json:"error,omitempty"`
+}
+
+type metricsDoc struct {
+	Schema      int              `json:"schema"`
+	Changes     []changeJSON     `json:"changes"`
+	Corrections *correctionsJSON `json:"corrections,omitempty"`
+	Tokens      *tokensJSON      `json:"tokens,omitempty"`
+	Loop        *loopJSON        `json:"loop,omitempty"`
+}
+
+func usageJSONOf(t usageTotals) usageJSON {
+	return usageJSON{Input: t.in, Output: t.out, CacheWrite: t.cacheW, CacheRead: t.cacheR}
+}
+
+func intPtr(n int) *int { return &n }
+
+func metricsDocOf(r metricsReport) metricsDoc {
+	doc := metricsDoc{Schema: jsonSchema, Changes: make([]changeJSON, 0, len(r.rows))}
+
+	for _, row := range r.rows {
+		c := changeJSON{Name: row.name, State: "unreadable"}
+		if r.ledger.seen {
+			c.Corrections = intPtr(r.ledger.counts[row.name])
+		}
+		if row.err == nil {
+			m := row.m
+			c.State = "in flight"
+			if m.landed {
+				c.State = "landed"
+			}
+			c.Commits = intPtr(m.commits)
+			c.First = m.first.UTC().Format(time.RFC3339)
+			c.Last = m.last.UTC().Format(time.RFC3339)
+			if m.planSeen {
+				c.Closed, c.Boxes, c.Reopened = intPtr(m.checked-m.uncheck), intPtr(m.boxes), intPtr(m.uncheck)
+			}
+		}
+		doc.Changes = append(doc.Changes, c)
+	}
+
+	if r.ledger.seen {
+		doc.Corrections = &correctionsJSON{ByPhase: r.ledger.byPhase, OutsideChanges: r.ledger.orphans}
+	}
+
+	if t := r.tokens; t.found {
+		tok := &tokensJSON{
+			Attributed: usageJSONOf(t.attributed), Unattributed: usageJSONOf(t.unattributed),
+			Entries: t.entries, UnattributedEntries: t.offEntries,
+		}
+		if t.only != "" {
+			tok.Change = &tokenChangeJSON{Name: t.only}
+			if t.attributedHere {
+				total := usageJSONOf(t.total)
+				byPhase := make(map[string]usageJSON, len(t.byPhase))
+				for p, u := range t.byPhase {
+					byPhase[p] = usageJSONOf(u)
+				}
+				tok.Change.Totals, tok.Change.ByPhase = &total, &byPhase
+				if t.noPhaseSeen {
+					noPhase := usageJSONOf(t.noPhase)
+					tok.Change.NoPhase = &noPhase
+				}
+			}
+		}
+		doc.Tokens = tok
+	}
+
+	if l := r.loop; l.exists {
+		if l.err != nil {
+			doc.Loop = &loopJSON{Error: l.err.Error()}
+		} else {
+			rows := make([]loopRowJSON, 0, len(l.names))
+			for _, n := range l.names {
+				t := l.rows[n]
+				row := loopRowJSON{Name: n, Rounds: t.rounds, NetClosed: t.net, Unpriced: t.unpriced}
+				if t.priced {
+					cost := t.cost
+					row.CostUSD = &cost
+				}
+				rows = append(rows, row)
+			}
+			doc.Loop = &loopJSON{Changes: &rows, Skipped: intPtr(l.skipped)}
+		}
 	}
 	return doc
 }

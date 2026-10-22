@@ -34,6 +34,19 @@ var jsonRows = []jsonRow{
 		more: map[string]func(*testing.T) jsonRunner{"needs attention": unlinkedPayload("doctor")},
 	},
 	{name: "queue", ok: queueRunner(), failing: queueRunner("bogus")},
+	{name: "metrics", ok: metricsRunner(), failing: metricsRunner("nope")},
+}
+
+// metricsRunner is a history of two changes, run with lead before any extra argument. A
+// change git never saw is refused before anything is written.
+func metricsRunner(lead ...string) func(*testing.T) jsonRunner {
+	return func(t *testing.T) jsonRunner {
+		return func(extra ...string) (string, error) {
+			var out strings.Builder
+			err := metricsWith(&out, append(append([]string{}, lead...), extra...), twoChangeGit(1700000000), "", "")
+			return out.String(), err
+		}
+	}
 }
 
 // queueRunner is a project with one queued idea, run with lead before any extra argument.

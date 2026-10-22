@@ -1294,3 +1294,477 @@ func TestMetricsNeverWritesTheRunLog(t *testing.T) {
 		t.Errorf("metrics changed the run log: mtime %s, want %s", fi.ModTime(), old)
 	}
 }
+
+// ── --json ───────────────────────────────────────────────────────────────────
+
+// metricsJSON runs metrics --json against fixed sources and decodes what it wrote.
+func metricsJSON(t *testing.T, args []string, git gitRunner, projects, log string) map[string]any {
+	t.Helper()
+	var out strings.Builder
+	if err := metricsWith(&out, append([]string{"--json"}, args...), git, projects, log); err != nil {
+		t.Fatalf("metrics --json: %v", err)
+	}
+	return decodeObject(t, out.String())
+}
+
+func metricsText(t *testing.T, args []string, git gitRunner, projects, log string) string {
+	t.Helper()
+	var out strings.Builder
+	if err := metricsWith(&out, args, git, projects, log); err != nil {
+		t.Fatalf("metrics: %v", err)
+	}
+	return out.String()
+}
+
+// changeObject returns the object for one change in the report's changes array.
+func changeObject(t *testing.T, doc map[string]any, name string) map[string]any {
+	t.Helper()
+	for _, c := range arrayAt(t, doc, "changes") {
+		if obj, _ := c.(map[string]any); obj["name"] == name {
+			return obj
+		}
+	}
+	t.Fatalf("no change %q in %#v", name, doc["changes"])
+	return nil
+}
+
+// threeChangeGit holds a, an unreadable b (listed, no log) and c, with a checklist on c.
+func threeChangeGit(now int64) gitRunner {
+	return fakeGit(".agents/changes/a/proposal.md\n.agents/changes/b/proposal.md\n.agents/changes/c/proposal.md\n",
+		map[string]string{
+			"a": fmt.Sprintf("%d\n%d\n%d\n", now, now-60, now-3600),
+			"c": fmt.Sprintf("%d\n", now),
+		},
+		map[string]string{"c": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n+- [x] one\n+- [ ] two\n"})
+}
+
+func TestMetricsJSONListsTheTableRows(t *testing.T) {
+	g := threeChangeGit(time.Now().Unix())
+	text := metricsText(t, nil, g, "", "")
+	changes := arrayAt(t, metricsJSON(t, nil, g, "", ""), "changes")
+
+	var textRows []string
+	for _, l := range strings.Split(text, "\n") {
+		for _, n := range []string{"a", "b", "c"} {
+			if strings.HasPrefix(strings.TrimSpace(l), n+" ") {
+				textRows = append(textRows, l)
+			}
+		}
+	}
+	if len(changes) != len(textRows) {
+		t.Fatalf("changes = %d, table rows = %d:\n%s", len(changes), len(textRows), text)
+	}
+	for i, row := range textRows {
+		obj := changes[i].(map[string]any)
+		if !strings.HasPrefix(strings.TrimSpace(row), obj["name"].(string)+" ") {
+			t.Errorf("changes[%d] = %v, table row %d = %q", i, obj["name"], i, row)
+		}
+		if !strings.HasSuffix(row, "  "+obj["state"].(string)) {
+			t.Errorf("changes[%d] state = %v, table row = %q", i, obj["state"], row)
+		}
+	}
+}
+
+func TestMetricsJSONAgreesWithTheTable(t *testing.T) {
+	g := threeChangeGit(time.Now().Unix())
+	text := metricsText(t, nil, g, "", "")
+	doc := metricsJSON(t, nil, g, "", "")
+	for _, n := range []string{"a", "c"} {
+		col := strings.Fields(rowFor(t, text, n))[1]
+		if got := fmt.Sprint(changeObject(t, doc, n)["commits"]); got != col {
+			t.Errorf("%s: commits = %s, table says %s", n, got, col)
+		}
+	}
+}
+
+func TestMetricsJSONCarriesTimesInUTC(t *testing.T) {
+	first, last := int64(1700000000), int64(1700090000)
+	g := fakeGit(".agents/changes/a/proposal.md\n", map[string]string{"a": fmt.Sprintf("%d\n%d\n", last, first)}, nil)
+	t.Setenv("TZ", "America/Los_Angeles")
+
+	obj := changeObject(t, metricsJSON(t, nil, g, "", ""), "a")
+	for key, want := range map[string]int64{"first": first, "last": last} {
+		s, _ := obj[key].(string)
+		got, err := time.Parse(time.RFC3339, s)
+		if err != nil {
+			t.Fatalf("%s = %q, not RFC 3339: %v", key, s, err)
+		}
+		if !strings.HasSuffix(s, "Z") || got.Unix() != want {
+			t.Errorf("%s = %q, want %s", key, s, time.Unix(want, 0).UTC().Format(time.RFC3339))
+		}
+	}
+}
+
+func TestMetricsJSONKeepsAKnownZero(t *testing.T) {
+	g := fakeGit(".agents/changes/c/proposal.md\n",
+		map[string]string{"c": fmt.Sprintf("%d\n", time.Now().Unix())},
+		map[string]string{"c": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n+- [ ] one\n"})
+
+	obj := changeObject(t, metricsJSON(t, nil, g, "", ""), "c")
+	for key, want := range map[string]float64{"closed": 0, "boxes": 1, "reopened": 0} {
+		got, ok := obj[key].(float64)
+		if !ok || got != want {
+			t.Errorf("%s = %#v, want %v present", key, obj[key], want)
+		}
+	}
+}
+
+func TestMetricsJSONOmitsChurnWithoutAChecklist(t *testing.T) {
+	g := fakeGit(".agents/changes/c/proposal.md\n", map[string]string{"c": fmt.Sprintf("%d\n", time.Now().Unix())}, nil)
+
+	obj := changeObject(t, metricsJSON(t, nil, g, "", ""), "c")
+	for _, key := range []string{"closed", "boxes", "reopened"} {
+		if _, ok := obj[key]; ok {
+			t.Errorf("a change with no checklist carries %s: %#v", key, obj)
+		}
+	}
+	if obj["commits"] != float64(1) {
+		t.Errorf("commits = %#v, want 1 — the row is readable", obj["commits"])
+	}
+}
+
+func TestMetricsJSONUnreadableRowCarriesOnlyWhatIsKnown(t *testing.T) {
+	now := time.Now().Unix()
+	for _, ledger := range []bool{false, true} {
+		g := threeChangeGit(now)
+		want := map[string]bool{"name": true, "state": true}
+		if ledger {
+			g = gitAtRoot(ledgerAt(t, "## 2026-08-13 · a · write-spec\n"), g)
+			want["corrections"] = true
+		}
+		obj := changeObject(t, metricsJSON(t, nil, g, "", ""), "b")
+		if obj["state"] != "unreadable" {
+			t.Errorf("ledger=%v: state = %#v, want unreadable", ledger, obj["state"])
+		}
+		for key := range obj {
+			if !want[key] {
+				t.Errorf("ledger=%v: an unreadable row carries %s: %#v", ledger, key, obj)
+			}
+		}
+		if len(obj) != len(want) {
+			t.Errorf("ledger=%v: keys = %#v, want exactly %v", ledger, obj, want)
+		}
+	}
+}
+
+func TestMetricsJSONCorrectionsZeroIsPresent(t *testing.T) {
+	root := ledgerAt(t, "## 2026-08-13 · a · write-spec\n## 2026-08-14 · a · record-work\n")
+	doc := metricsJSON(t, nil, gitAtRoot(root, threeChangeGit(time.Now().Unix())), "", "")
+
+	for name, want := range map[string]float64{"a": 2, "b": 0, "c": 0} {
+		got, ok := changeObject(t, doc, name)["corrections"].(float64)
+		if !ok || got != want {
+			t.Errorf("%s: corrections = %#v, want %v present", name, changeObject(t, doc, name)["corrections"], want)
+		}
+	}
+}
+
+func TestMetricsJSONAbsentLedgerOmitsCorrections(t *testing.T) {
+	doc := metricsJSON(t, nil, gitAtRoot(t.TempDir(), threeChangeGit(time.Now().Unix())), "", "")
+	if _, ok := doc["corrections"]; ok {
+		t.Errorf("a report with no ledger carries corrections: %#v", doc["corrections"])
+	}
+	for _, c := range arrayAt(t, doc, "changes") {
+		if _, ok := c.(map[string]any)["corrections"]; ok {
+			t.Errorf("a change carries corrections with no ledger: %#v", c)
+		}
+	}
+}
+
+func TestMetricsJSONCorrectionsByPhase(t *testing.T) {
+	root := ledgerAt(t, `## 2026-08-13 · a · build-and-check
+## 2026-08-13 · c · build-and-check
+## 2026-08-13 · a · 6→7
+## 2026-08-14 · - · record-work
+`)
+	corr := objectAt(t, metricsJSON(t, nil, gitAtRoot(root, threeChangeGit(time.Now().Unix())), "", ""), "corrections")
+	byPhase := objectAt(t, corr, "by_phase")
+	want := map[string]float64{"build-and-check": 2, "6→7": 1, "record-work": 1}
+	if len(byPhase) != len(want) {
+		t.Errorf("by_phase = %#v, want %v", byPhase, want)
+	}
+	for k, v := range want {
+		if byPhase[k] != v {
+			t.Errorf("by_phase[%s] = %#v, want %v", k, byPhase[k], v)
+		}
+	}
+	if corr["outside_changes"] != float64(1) {
+		t.Errorf("outside_changes = %#v, want 1", corr["outside_changes"])
+	}
+
+	// An empty ledger is known and empty.
+	empty := ledgerAt(t, "")
+	corr = objectAt(t, metricsJSON(t, nil, gitAtRoot(empty, threeChangeGit(time.Now().Unix())), "", ""), "corrections")
+	if bp := objectAt(t, corr, "by_phase"); len(bp) != 0 || corr["outside_changes"] != float64(0) {
+		t.Errorf("an empty ledger = %#v, want by_phase {} and outside_changes 0", corr)
+	}
+}
+
+func TestMetricsJSONOmitsTokensWithoutTranscripts(t *testing.T) {
+	otherRepo := transcriptRoot(t, "/elsewhere", map[string][]string{"a.jsonl": {assistantLine("feat/alpha", "", 1, 1, 1, 1)}})
+	for name, projects := range map[string]string{"none configured": "", "none for this repository": otherRepo} {
+		doc := metricsJSON(t, nil, twoChangeGit(time.Now().Unix()), projects, "")
+		if _, ok := doc["tokens"]; ok {
+			t.Errorf("%s: tokens = %#v, want no key", name, doc["tokens"])
+		}
+	}
+}
+
+// tokenFixture is three entries: alpha at two phases and one with none, and one on main.
+func tokenFixture(t *testing.T) string {
+	return transcriptRoot(t, "/repo", map[string][]string{
+		"a.jsonl": {
+			assistantLine("feat/alpha", "write-spec", 1, 10, 100, 1000),
+			assistantLine("feat/alpha", "build-and-check", 2, 20, 200, 2000),
+			assistantLine("feat/alpha", "", 4, 40, 400, 4000),
+			assistantLine("main", "write-spec", 8, 80, 800, 8000),
+		},
+	})
+}
+
+func usageOf(t *testing.T, obj map[string]any, key string) [4]float64 {
+	t.Helper()
+	u := objectAt(t, obj, key)
+	if len(u) != 4 {
+		t.Errorf("%s = %#v, want exactly four numbers", key, u)
+	}
+	return [4]float64{u["input"].(float64), u["output"].(float64), u["cache_write"].(float64), u["cache_read"].(float64)}
+}
+
+func TestMetricsJSONTokensAreCorpusWide(t *testing.T) {
+	projects := tokenFixture(t)
+	now := time.Now().Unix()
+	all := objectAt(t, metricsJSON(t, nil, twoChangeGit(now), projects, ""), "tokens")
+	one := objectAt(t, metricsJSON(t, []string{"beta"}, twoChangeGit(now), projects, ""), "tokens")
+
+	if got := usageOf(t, all, "attributed"); got != [4]float64{7, 70, 700, 7000} {
+		t.Errorf("attributed = %v", got)
+	}
+	if got := usageOf(t, all, "unattributed"); got != [4]float64{8, 80, 800, 8000} {
+		t.Errorf("unattributed = %v", got)
+	}
+	if all["entries"] != float64(4) || all["unattributed_entries"] != float64(1) {
+		t.Errorf("entries = %#v, unattributed_entries = %#v, want 4 and 1", all["entries"], all["unattributed_entries"])
+	}
+	for _, key := range []string{"attributed", "unattributed"} {
+		if usageOf(t, all, key) != usageOf(t, one, key) {
+			t.Errorf("%s moved under a filter: %v vs %v", key, all[key], one[key])
+		}
+	}
+	for _, key := range []string{"entries", "unattributed_entries"} {
+		if all[key] != one[key] {
+			t.Errorf("%s moved under a filter: %v vs %v", key, all[key], one[key])
+		}
+	}
+	if _, ok := all["change"]; ok {
+		t.Errorf("an unfiltered report carries tokens.change: %#v", all["change"])
+	}
+}
+
+func TestMetricsJSONTokensForOneChange(t *testing.T) {
+	tok := objectAt(t, metricsJSON(t, []string{"alpha"}, twoChangeGit(time.Now().Unix()), tokenFixture(t), ""), "tokens")
+	change := objectAt(t, tok, "change")
+	if change["name"] != "alpha" {
+		t.Errorf("name = %#v, want alpha", change["name"])
+	}
+	if got := usageOf(t, change, "totals"); got != [4]float64{7, 70, 700, 7000} {
+		t.Errorf("totals = %v", got)
+	}
+	byPhase := objectAt(t, change, "by_phase")
+	if len(byPhase) != 2 {
+		t.Errorf("by_phase = %#v, want write-spec and build-and-check", byPhase)
+	}
+	if got := usageOf(t, byPhase, "write-spec"); got != [4]float64{1, 10, 100, 1000} {
+		t.Errorf("by_phase.write-spec = %v", got)
+	}
+	if got := usageOf(t, byPhase, "build-and-check"); got != [4]float64{2, 20, 200, 2000} {
+		t.Errorf("by_phase.build-and-check = %v", got)
+	}
+}
+
+func TestMetricsJSONUnattributedChangeCarriesItsNameAlone(t *testing.T) {
+	tok := objectAt(t, metricsJSON(t, []string{"beta"}, twoChangeGit(time.Now().Unix()), tokenFixture(t), ""), "tokens")
+	change := objectAt(t, tok, "change")
+	if len(change) != 1 || change["name"] != "beta" {
+		t.Errorf("change = %#v, want its name alone", change)
+	}
+}
+
+func TestMetricsJSONNoPhaseIsNeverDistributed(t *testing.T) {
+	change := objectAt(t, objectAt(t, metricsJSON(t, []string{"alpha"}, twoChangeGit(time.Now().Unix()), tokenFixture(t), ""), "tokens"), "change")
+	if got := usageOf(t, change, "no_phase"); got != [4]float64{4, 40, 400, 4000} {
+		t.Errorf("no_phase = %v, want the one entry that named no phase", got)
+	}
+
+	// Every entry naming a phase: no no_phase key.
+	named := transcriptRoot(t, "/repo", map[string][]string{"a.jsonl": {assistantLine("feat/alpha", "write-spec", 1, 1, 1, 1)}})
+	change = objectAt(t, objectAt(t, metricsJSON(t, []string{"alpha"}, twoChangeGit(time.Now().Unix()), named, ""), "tokens"), "change")
+	if _, ok := change["no_phase"]; ok {
+		t.Errorf("change = %#v, want no no_phase when every entry named a phase", change)
+	}
+}
+
+func TestMetricsJSONOmitsLoopWithoutARunLog(t *testing.T) {
+	for _, log := range []string{"", filepath.Join(t.TempDir(), "libretto", "loop.jsonl")} {
+		if doc := metricsJSON(t, nil, twoChangeGit(time.Now().Unix()), "", log); doc["loop"] != nil {
+			t.Errorf("log=%q: loop = %#v, want no key", log, doc["loop"])
+		}
+	}
+}
+
+func TestMetricsJSONAnEmptyRunLogIsKnown(t *testing.T) {
+	for want, log := range map[float64]string{0: writeRunLog(t), 2: writeRunLog(t, "junk", `{"round":1}`)} {
+		loop := objectAt(t, metricsJSON(t, nil, twoChangeGit(time.Now().Unix()), "", log), "loop")
+		if c := arrayAt(t, loop, "changes"); len(c) != 0 {
+			t.Errorf("skipped %v: changes = %#v, want []", want, c)
+		}
+		if loop["skipped"] != want {
+			t.Errorf("skipped = %#v, want %v", loop["skipped"], want)
+		}
+	}
+}
+
+func TestMetricsJSONLoopRows(t *testing.T) {
+	log := writeRunLog(t,
+		`{"change":"beta","round":1,"closed":1,"open":1,"cost_usd":0.5}`,
+		`{"change":"alpha","round":1,"closed":1,"open":2,"cost_usd":0.125}`,
+		`{"change":"alpha","round":2,"closed":-1,"open":3,"cost_usd":0.5}`,
+		`{"change":"alpha","round":3,"closed":2,"open":1}`,
+		`{"change":"beta","round":2,"stopped":"error"}`,
+	)
+	rows := arrayAt(t, objectAt(t, metricsJSON(t, nil, twoChangeGit(time.Now().Unix()), "", log), "loop"), "changes")
+	want := []map[string]any{
+		{"name": "alpha", "rounds": float64(3), "net_closed": float64(2), "cost_usd": 0.625, "unpriced": float64(1)},
+		{"name": "beta", "rounds": float64(2), "net_closed": float64(1), "cost_usd": 0.5, "unpriced": float64(1)},
+	}
+	if len(rows) != len(want) {
+		t.Fatalf("loop.changes = %#v, want %d rows", rows, len(want))
+	}
+	for i, w := range want {
+		got := rows[i].(map[string]any)
+		if len(got) != len(w) {
+			t.Errorf("row %d = %#v, want %#v", i, got, w)
+		}
+		for k, v := range w {
+			if got[k] != v {
+				t.Errorf("row %d %s = %#v, want %#v", i, k, got[k], v)
+			}
+		}
+	}
+
+	filtered := arrayAt(t, objectAt(t, metricsJSON(t, []string{"beta"}, twoChangeGit(time.Now().Unix()), "", log), "loop"), "changes")
+	if len(filtered) != 1 || filtered[0].(map[string]any)["name"] != "beta" {
+		t.Errorf("under a beta filter, loop.changes = %#v", filtered)
+	}
+}
+
+func TestMetricsJSONUnpricedOmitsCost(t *testing.T) {
+	log := writeRunLog(t,
+		`{"change":"alpha","round":1,"closed":1,"open":0}`,
+		`{"change":"beta","round":1,"closed":1,"open":0,"cost_usd":0}`,
+	)
+	rows := arrayAt(t, objectAt(t, metricsJSON(t, nil, twoChangeGit(time.Now().Unix()), "", log), "loop"), "changes")
+	alpha, beta := rows[0].(map[string]any), rows[1].(map[string]any)
+	if _, ok := alpha["cost_usd"]; ok {
+		t.Errorf("an unpriced change carries cost_usd: %#v", alpha)
+	}
+	if got, ok := beta["cost_usd"].(float64); !ok || got != 0 {
+		t.Errorf("a reported zero cost = %#v, want 0 present", beta["cost_usd"])
+	}
+}
+
+func TestMetricsJSONCountsSkippedLines(t *testing.T) {
+	log := writeRunLog(t,
+		`{"change":"alpha","round":1,"closed":1,"open":0}`,
+		`not a record`,
+		`{"change":"beta","round":1}`,
+		`{"change":"alpha","round":`,
+	)
+	for _, args := range [][]string{nil, {"alpha"}} {
+		loop := objectAt(t, metricsJSON(t, args, twoChangeGit(time.Now().Unix()), "", log), "loop")
+		if loop["skipped"] != float64(2) {
+			t.Errorf("args=%q: skipped = %#v, want 2 over the whole file", args, loop["skipped"])
+		}
+	}
+	clean := objectAt(t, metricsJSON(t, nil, twoChangeGit(time.Now().Unix()), "", writeRunLog(t, `{"change":"alpha","round":1}`)), "loop")
+	if got, ok := clean["skipped"].(float64); !ok || got != 0 {
+		t.Errorf("skipped = %#v, want 0 present", clean["skipped"])
+	}
+}
+
+func TestMetricsJSONUnreadableRunLogNamesTheError(t *testing.T) {
+	log := writeRunLog(t, `{"change":"alpha","round":1}`)
+	if err := os.Chmod(log, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(log, 0o644) })
+	if f, err := os.Open(log); err == nil {
+		f.Close()
+		t.Skip("this user can read a mode-000 file; the unreadable state cannot be built")
+	}
+
+	loop := objectAt(t, metricsJSON(t, nil, twoChangeGit(time.Now().Unix()), "", log), "loop")
+	if e, _ := loop["error"].(string); !strings.Contains(e, "permission denied") {
+		t.Errorf("loop.error = %#v, want the open error", loop["error"])
+	}
+	for _, key := range []string{"changes", "skipped"} {
+		if _, ok := loop[key]; ok {
+			t.Errorf("an unreadable log carries %s: %#v", key, loop)
+		}
+	}
+}
+
+// noHistory is a repository root git has seen no change in, with a ledger, transcripts
+// and a run log all present.
+func noHistory(t *testing.T) (git gitRunner, projects, log string) {
+	root := ledgerAt(t, "## 2026-08-13 · - · write-spec\n")
+	projects = transcriptRoot(t, root, map[string][]string{"a.jsonl": {assistantLine("main", "", 1, 1, 1, 1)}})
+	return gitAtRoot(root, fakeGit("", nil, nil)), projects, writeRunLog(t, `{"change":"alpha","round":1}`)
+}
+
+func TestMetricsJSONEmptyHistoryIsAnEmptyArray(t *testing.T) {
+	doc := metricsJSON(t, nil, fakeGit("", nil, nil), "", "")
+	if c := arrayAt(t, doc, "changes"); len(c) != 0 {
+		t.Errorf("changes = %#v, want []", c)
+	}
+}
+
+func TestMetricsJSONEmptyHistoryKeepsTheOtherBlocks(t *testing.T) {
+	git, projects, log := noHistory(t)
+	doc := metricsJSON(t, nil, git, projects, log)
+	if c := arrayAt(t, doc, "changes"); len(c) != 0 {
+		t.Errorf("changes = %#v, want []", c)
+	}
+	if objectAt(t, doc, "corrections")["outside_changes"] != float64(1) {
+		t.Errorf("corrections = %#v, want the ledger's one orphan", doc["corrections"])
+	}
+	if objectAt(t, doc, "tokens")["entries"] != float64(1) {
+		t.Errorf("tokens = %#v, want the one entry", doc["tokens"])
+	}
+	if rows := arrayAt(t, objectAt(t, doc, "loop"), "changes"); len(rows) != 1 {
+		t.Errorf("loop = %#v, want alpha's round", doc["loop"])
+	}
+}
+
+func TestMetricsTextWithNoHistoryIsUnchanged(t *testing.T) {
+	git, projects, log := noHistory(t)
+	if got := metricsText(t, nil, git, projects, log); got != "\n  no changes in this repository's history yet\n\n" {
+		t.Errorf("text with no history = %q, want only the no-changes line", got)
+	}
+}
+
+func TestMetricsJSONFlagAndChangeInEitherOrder(t *testing.T) {
+	for _, args := range [][]string{{"--json", "alpha"}, {"alpha", "--json"}} {
+		var out strings.Builder
+		if err := metricsWith(&out, args, twoChangeGit(time.Now().Unix()), "", ""); err != nil {
+			t.Fatalf("%q: %v", args, err)
+		}
+		changes := arrayAt(t, decodeObject(t, out.String()), "changes")
+		if len(changes) != 1 || changes[0].(map[string]any)["name"] != "alpha" {
+			t.Errorf("%q: changes = %#v, want alpha alone", args, changes)
+		}
+	}
+	if err := metricsWith(&strings.Builder{}, []string{"--json", "--all"}, twoChangeGit(time.Now().Unix()), "", ""); err == nil {
+		t.Error("--all was accepted beside --json; any other flag is still refused")
+	}
+}
