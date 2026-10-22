@@ -443,6 +443,44 @@ else
   while IFS= read -r h; do fail "spec-writer named outside write-spec's fan-out: $h"; done <<< "$sw_hits"
 fi
 
+# converge: a side door that re-derives a drifted checklist. One fresh reader judges, the
+# session runs every proof it closes on, and nothing the reader says is evidence — so the
+# reader is declared shell-less, and a Bash added later fails here rather than in a review.
+check_wiring commands/libretto-converge.md 'Skill\(skill="converge"\)'   'libretto-converge routes to the converge skill'
+check_wiring skills/converge/SKILL.md 'exactly one .converge-reader.'     'converge launches exactly one converge-reader'
+check_wiring skills/converge/SKILL.md 'none of the conversation'          'the converge reader is given paths and none of the conversation'
+check_wiring skills/converge/SKILL.md 'never a diff range'                'the converge reader reads the tree as it is, never a diff range'
+check_wiring agents/converge-reader.md '^tools: Read, Grep, Glob, Skill$' 'converge-reader declares exactly Read, Grep, Glob, Skill'
+check_wiring agents/converge-reader.md 'exactly one of open, closable or drifted' 'converge-reader returns every open box as one of three verdicts'
+check_wiring skills/converge/SKILL.md 'a dirty tree stops converge before the reader' 'tracked modifications stop converge before the reader'
+check_wiring skills/converge/SKILL.md '--untracked-files=no'              'converge reads dirtiness off tracked files only'
+check_wiring skills/converge/SKILL.md 'ask which one'                     'converge asks which change when several are in flight'
+check_wiring skills/converge/SKILL.md 'source 1 only, never the queue'    'converge runs find-work source 1 and never the queue scan'
+check_wiring skills/converge/SKILL.md 'find-work. defines the box'        'converge points to find-work for the box and the checklist file'
+check_absent skills/converge/SKILL.md '\^\\s\*\[-\*\]\\s\+\\\[\( \|x\|X\)\\\]' 'converge does not restate the box pattern'
+check_wiring skills/converge/SKILL.md 'drift is reported, never rewritten' 'converge leaves a drifted box untouched'
+check_wiring skills/converge/SKILL.md 'beside the reader.s file and line' 'converge reports a drifted box beside what the code does'
+# A test name that does not exist exits 0 under `go test -run` (measured), so a named
+# citation passes on its own --- PASS: line and never on an exit status.
+check_wiring skills/converge/SKILL.md 'a reader.s verdict never closes a box' 'converge closes a box only on proof the session ran and read'
+check_wiring skills/converge/SKILL.md 'spec-drift --anchors. before any proof' 'converge runs spec-drift --anchors before any proof'
+check_wiring skills/converge/SKILL.md '--- PASS: <TestName>'              'a test-named citation passes only on its --- PASS: line'
+check_wiring skills/converge/SKILL.md 'whatever its exit status'          'a test-named citation is never passed on its exit status'
+check_wiring skills/converge/SKILL.md 'exits 0 and prints no FAIL line'   'a file-only citation passes on exit 0 with no FAIL line'
+check_wiring skills/converge/SKILL.md 'reported as .unmapped.'            'a box with no unambiguous Closes: match stays open, reported unmapped'
+check_wiring skills/converge/SKILL.md 'converged <date>: <citation>, <citation> passed' 'a converged box carries every citation that passed and the date'
+check_wiring skills/converge/SKILL.md 'the box.s last line'               'the converged mark goes on the box'"'"'s last line'
+check_wiring skills/converge/SKILL.md 'writes to the checklist and nothing else' 'converge writes to the checklist and nothing else'
+check_wiring skills/converge/SKILL.md 'never unchecks a closed box'       'converge never unchecks a closed box'
+check_wiring skills/converge/SKILL.md 'docs\(<change>\): converge the checklist' 'converge commits as docs(<change>): converge the checklist'
+check_wiring skills/converge/SKILL.md 'stages nothing else'               'the converge commit holds the checklist file alone'
+check_wiring skills/converge/SKILL.md 'nothing was marked or appended, no commit' 'converge makes no commit when nothing changed'
+check_wiring skills/converge/SKILL.md 'never pushes and never creates a branch' 'converge never pushes and never creates a branch'
+check_wiring skills/converge/SKILL.md 'uncovered means the change.s own criteria' 'converge counts only the change'"'"'s own criteria as uncovered'
+check_wiring skills/converge/SKILL.md 'appended after the checklist.s last box' 'an uncovered criterion whose proof fails gets a box after the last one'
+check_wiring skills/converge/SKILL.md '\(converge <date>\)'              'an appended box is marked (converge <date>)'
+check_wiring skills/converge/SKILL.md 'passes already, so no box is appended' 'an uncovered criterion whose proof passes gets no box'
+
 printf '\n── skills never point at an executable that is not installed ──\n'
 # `libretto install` links skills/, agents/ and commands/ — nothing else. A SKILL.md
 # telling the user to run scripts/foo is broken for everyone who installed it:

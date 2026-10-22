@@ -20,6 +20,7 @@ specification is [SPEC.md](SPEC.md). This page is only what ships.
 | `build-and-check` | Trigger: a checklist exists and a task is ready to implement; writing code for a spec; deciding how much to test; choosing a branch or a worktree. Phase 6 of the flow. Writes the code and leaves proportionate proof behind. |
 | `caveman-commit` | Ultra-compressed commit message generator. Cuts noise from commit messages while preserving intent and reasoning. Conventional Commits format. Subject ≤50 chars, body only when why isn't obvious. Use when user says write a commit, commit message, generate commit, /commit, or invokes /caveman-commit. Auto-triggers when staging changes. |
 | `caveman` | Ultra-compressed communication mode. Cuts output tokens 65% (measured) by speaking like caveman while keeping full technical accuracy. Supports intensity levels: lite, full (default), ultra, wenyan-lite, wenyan-full, wenyan-ultra. Use when user says caveman mode, talk like caveman, use caveman, less tokens, be brief, or invokes /caveman. Also auto-triggers when token efficiency is requested. |
+| `converge` | Trigger: a checklist stopped describing the code; open boxes that may already be built, or built otherwise; 'converge', 're-derive the boxes', 'the plan drifted'. Launches one fresh converge-reader over the tree as it is, runs the cited proofs itself, closes only what it watched pass, reports every other open box as open, drifted or unmapped, appends a box for each of the change's own uncovered criteria whose proof fails, and commits the checklist alone. A side door, not a phase. |
 | `evidence` | Trigger: running tests, builds, linters or any command whose result decides what happens next; reporting work as done; a test that fails; deciding whether to keep going. Applies at every phase of the flow. Nothing is true here until it has been observed. |
 | `find-work` | Trigger: starting the Libretto flow; asking what to work on; resuming a half-finished change; reading a Jira task, issue URL or board URL; a request made in conversation. Phase 1 — finds the work wherever it came from and loads exactly one piece of it. |
 | `ponytail-debt` | Harvest every `ponytail:` comment in the codebase into a debt ledger, so the deliberate shortcuts and deferrals ponytail leaves behind get tracked instead of rotting into later means never. Use when the user says ponytail debt, /ponytail-debt, what did ponytail defer, list the shortcuts, ponytail ledger, or what did we mark to do later. One-shot report, changes nothing. |
@@ -45,6 +46,7 @@ specification is [SPEC.md](SPEC.md). This page is only what ships.
 
 | | |
 |---|---|
+| `converge-reader` | Reads one change's open boxes against the code as it stands — launched fresh by converge when a checklist may have drifted from what got built. Returns a verdict per open box and the change's criteria no box closes. It runs nothing and writes nothing; its verdict is never evidence, and that is the point. |
 | `review-lens-design` | The design lens of review-project. Reads one frozen diff for over-engineering, YAGNI and KISS violations, SOLID breaches and the wrong abstraction — every finding a labelled judgment call. |
 | `review-lens-intent` | The intent lens of review-project. Reads one frozen diff against the PR/MR's own stated intent and asks whether the change does what it says. The only lens that runs commands, and the only one whose brief carries forge payload. |
 | `review-lens-reliability` | The reliability lens of review-project. Reads one frozen diff for what breaks at runtime — logic errors, edge cases, races, unbounded work, error paths that lose data. |
@@ -59,6 +61,7 @@ specification is [SPEC.md](SPEC.md). This page is only what ships.
 | | |
 |---|---|
 | `libretto-attacca` | Run the flow without stopping — attacca, the score's instruction to go on to the next movement without pausing |
+| `libretto-converge` | Re-derive a change's open boxes against the code as it stands — for a checklist that stopped describing what got built |
 | `libretto-flow` | Run the Libretto flow — read a task, spec it, plan it, build it, record it |
 | `libretto-next` | Take the next queued idea and run it through the flow |
 | `libretto-queue` | Capture feature ideas into the change queue, one after another. No spec, no plan, no code. |
