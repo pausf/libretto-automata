@@ -33,6 +33,20 @@ var jsonRows = []jsonRow{
 		name: "doctor", ok: linkedPayload("doctor"), failing: unreadablePayload("doctor"),
 		more: map[string]func(*testing.T) jsonRunner{"needs attention": unlinkedPayload("doctor")},
 	},
+	{name: "queue", ok: queueRunner(), failing: queueRunner("bogus")},
+}
+
+// queueRunner is a project with one queued idea, run with lead before any extra argument.
+// A lead argument is one queue refuses, which is its only failure.
+func queueRunner(lead ...string) func(*testing.T) jsonRunner {
+	return func(t *testing.T) jsonRunner {
+		root := t.TempDir()
+		writeProposal(t, root, "an-idea", "Queued: 2026-08-01\n\n## Reading\n\nAn idea.\n")
+		return func(extra ...string) (string, error) {
+			out, _, err := runQueue(t, root, queueGit(root, "", nil, nil), append(append([]string{}, lead...), extra...)...)
+			return out, err
+		}
+	}
 }
 
 // unlinkedPayload is a payload with one item of each kind, none of them linked.

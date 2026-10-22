@@ -122,21 +122,61 @@ func splitDispatched(ideas []queuedIdea, branches []string) (kept []queuedIdea, 
 	return kept, dropped
 }
 
+// queueReport is what one queue run gathered. branchesRead is false both when git failed
+// and when there is no .agents/changes/ and git was never asked: either way, nobody knows
+// which ideas are dispatched.
+type queueReport struct {
+	hasChanges   bool
+	kept         []queuedIdea
+	dropped      []dispatchedIdea
+	branchesRead bool
+}
+
 // queue is `libretto queue`: read-only, and every empty state exits 0. Changes are read at
 // the repository root — `metrics` once trusted the cwd and reported nothing from a
 // subdirectory — and git failing to list branches keeps every idea, find-work's fail-safe
-// direction.
+// direction. --json is the one argument it reads.
 func queue(w, errw io.Writer, args []string, cwd string, git gitRunner) error {
+	asJSON, args := jsonFlag(args)
 	if len(args) > 0 {
 		return fmt.Errorf("queue takes no arguments, got %q", args[0])
 	}
+	r := gatherQueue(errw, cwd, git)
+	if asJSON {
+		return writeJSON(w, queueDocOf(r))
+	}
+
+	if !r.hasChanges {
+		fmt.Fprintln(w, "no .agents/changes/ here — nothing is queued")
+		return nil
+	}
+	if len(r.kept) == 0 {
+		fmt.Fprintln(w, "nothing is queued")
+	}
+	for _, i := range r.kept {
+		line := i.date + "  " + i.name
+		if i.reading != "" {
+			line += "  " + i.reading
+		}
+		fmt.Fprintln(w, line)
+	}
+	if len(r.dropped) > 0 {
+		names := make([]string, len(r.dropped))
+		for n, d := range r.dropped {
+			names[n] = fmt.Sprintf("%s (%s)", d.name, d.branch)
+		}
+		fmt.Fprintln(w, "already taken by a branch: "+strings.Join(names, ", "))
+	}
+	return nil
+}
+
+func gatherQueue(errw io.Writer, cwd string, git gitRunner) queueReport {
 	root := cwd
 	if out, err := git("rev-parse", "--show-toplevel"); err == nil && strings.TrimSpace(out) != "" {
 		root = strings.TrimSpace(out)
 	}
 	if info, err := os.Stat(filepath.Join(root, ".agents", "changes")); err != nil || !info.IsDir() {
-		fmt.Fprintln(w, "no .agents/changes/ here — nothing is queued")
-		return nil
+		return queueReport{}
 	}
 	ideas := queuedIdeas(root)
 	branches, err := unmergedBranches(git)
@@ -144,22 +184,5 @@ func queue(w, errw io.Writer, args []string, cwd string, git gitRunner) error {
 		fmt.Fprintf(errw, "cannot list branches (%v) — the queue is shown unfiltered\n", err)
 	}
 	kept, dropped := splitDispatched(ideas, branches)
-	if len(kept) == 0 {
-		fmt.Fprintln(w, "nothing is queued")
-	}
-	for _, i := range kept {
-		line := i.date + "  " + i.name
-		if i.reading != "" {
-			line += "  " + i.reading
-		}
-		fmt.Fprintln(w, line)
-	}
-	if len(dropped) > 0 {
-		names := make([]string, len(dropped))
-		for n, d := range dropped {
-			names[n] = fmt.Sprintf("%s (%s)", d.name, d.branch)
-		}
-		fmt.Fprintln(w, "already taken by a branch: "+strings.Join(names, ", "))
-	}
-	return nil
+	return queueReport{hasChanges: true, kept: kept, dropped: dropped, branchesRead: err == nil}
 }

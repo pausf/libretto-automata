@@ -743,7 +743,7 @@ Executed by `build-and-check`. Box 1 comes first; boxes 2, 3 and 4 each wait onl
       TestDoctorJSONReportsAFailedCheck, TestDoctorJSONListsPrerequisites,
       TestReleaseLineIsRenderedFromTheCheck, and the shared criteria's `doctor` rows.
       Waits on: box 1.
-- [ ] **`queue --json`, end to end.** `queue` accepts `--json` and still refuses any other
+- [x] **`queue --json`, end to end.** `queue` accepts `--json` and still refuses any other
       argument, with `TestQueueRefusesArguments` gaining the `--json` row; kept, dropped
       and whether branches were asked and read gathered once; text unchanged or the
       `queue` shape; the `queue` rows of the shared tables. Closes:

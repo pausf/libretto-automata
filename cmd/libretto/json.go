@@ -120,3 +120,37 @@ func doctorDocOf(tg target.Target, problems []link.Entry, root string, c release
 	}
 	return doctorDoc{Schema: jsonSchema, Target: targetOf(tg), Problems: itemsOf(problems), Release: rel, Prerequisites: ps}
 }
+
+type queuedJSON struct {
+	Name    string `json:"name"`
+	Date    string `json:"date"`
+	Reading string `json:"reading,omitempty"`
+}
+
+type dispatchedJSON struct {
+	Name   string `json:"name"`
+	Branch string `json:"branch"`
+}
+
+// queueDoc's Dispatched is a pointer so the two states stay apart: nil is unknown and
+// omitted, a pointer to an empty slice is known-empty and written [].
+type queueDoc struct {
+	Schema     int               `json:"schema"`
+	Queued     []queuedJSON      `json:"queued"`
+	Dispatched *[]dispatchedJSON `json:"dispatched,omitempty"`
+}
+
+func queueDocOf(r queueReport) queueDoc {
+	doc := queueDoc{Schema: jsonSchema, Queued: make([]queuedJSON, 0, len(r.kept))}
+	for _, i := range r.kept {
+		doc.Queued = append(doc.Queued, queuedJSON{Name: i.name, Date: i.date, Reading: i.reading})
+	}
+	if r.branchesRead {
+		d := make([]dispatchedJSON, 0, len(r.dropped))
+		for _, i := range r.dropped {
+			d = append(d, dispatchedJSON{Name: i.name, Branch: i.branch})
+		}
+		doc.Dispatched = &d
+	}
+	return doc
+}
