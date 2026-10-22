@@ -1,0 +1,14 @@
+{
+  "name": "libretto-automata",
+  "description": "The Libretto Automata payload as a Claude Code plugin.",
+  "owner": {
+    "name": "Pau Sánchez"
+  },
+  "plugins": [
+    {
+      "name": "libretto",
+      "source": "./",
+      "description": "An eight-phase spec-driven flow for Claude Code: find the work, spec it, plan it, build it, review it, record it."
+    }
+  ]
+}

@@ -488,7 +488,7 @@ only: under `--json` stdout stays one object. Codex and OpenCode never ask.
 | the derived version is not the commit SHA, or does not move between commits, and updates never arrive | **unmitigated before merge**: a GitHub-marketplace install needs the manifests on `main`, and `--plugin-dir` loads in place with no version. Accepted, and reported by phase 7 as the first thing to observe after the merge — install from the marketplace in an isolated config and read `version` in its `installed_plugins.json` across two tags. If it fails, alternative B is the next change |
 | executable bits lost in the cache copy — `skills/record-work/spec-drift` is run by path | box 2 runs `spec-drift --self-test` from the loaded plugin's path; the cache-copy case shares the risk above |
 | a developer's local-directory marketplace loads the checkout in place, and `make build` puts `bin/libretto` on the Bash tool's `PATH` | accepted. The GitHub install has no `bin/` (it is ignored), and the local case runs the developer's own binary |
-| `CLAUDE.md` at the plugin root: the docs say `claude plugin validate` warns about it | measured: the validate run on this worktree did not warn. `--strict` is not a gate here, so a warning would cost nothing |
+| `CLAUDE.md` at the plugin root: the docs say `claude plugin validate` warns about it | measured at box 1: with the manifests in place `claude plugin validate .` warns ("CLAUDE.md at the plugin root is not loaded as project context") and still passes. Harmless: the file is repository guidance, not plugin context, and `--strict` is not a gate here |
 | a project-scope install of the plugin strips links every other project needs | only a `user`-scope install defers, pinned by `TestProjectOrLocalPluginInstallDoesNotSuppressLinks` |
 | a user has another tool's plugin named `libretto` | the id check is the full `libretto@libretto-automata`, pinned by `TestClaudePluginIgnoresAnotherMarketplacesLibretto` |
 | Claude Code changes the record's shape | the decode fails, which is "could not tell": install links as before and `doctor` names the file. No mitigation beyond that — the record is the vendor's |
@@ -523,7 +523,7 @@ this change exists to remove, for the users least likely to notice.
 Executed by `build-and-check`. Box 1 first. Box 2 waits on box 1 and gates boxes 3 and 4;
 box 4 waits on box 3; box 5 waits on box 1; box 6 waits on all.
 
-- [ ] **The manifests, pinned.** `.claude-plugin/marketplace.json` and
+- [x] **The manifests, pinned.** `.claude-plugin/marketplace.json` and
       `.claude-plugin/plugin.json` as *The approach* describes; `internal/dist/plugin_test.go`
       decoding both as shipped; `claude plugin validate .` run locally and its output read.
       Closes: TestPluginManifestNamesLibretto, TestMarketplaceIsNamedAfterTheRepository,

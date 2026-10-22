@@ -1,0 +1,10 @@
+{
+  "name": "libretto",
+  "description": "An eight-phase spec-driven flow for Claude Code: find the work, spec it, plan it, build it, review it, record it.",
+  "author": {
+    "name": "Pau Sánchez"
+  },
+  "homepage": "https://github.com/pausf/libretto-automata",
+  "repository": "https://github.com/pausf/libretto-automata",
+  "license": "MIT"
+}
