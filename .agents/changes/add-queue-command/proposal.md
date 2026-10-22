@@ -417,7 +417,7 @@ Rollback: one revert. Nothing migrates, nothing is written.
 
 Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its own.
 
-- [ ] **`libretto queue` lists the queue, filtered as find-work filters it.** `queue.go`
+- [x] **`libretto queue` lists the queue, filtered as find-work filters it.** `queue.go`
       with `queuedIdeas`, `unmergedBranches`, `dispatchedBy`, `splitDispatched` and the
       command, the checklist clause inside `queuedIdeas`; `readInFlight` calls
       `queuedIdeas` with no branch filter, so the wiki's output changes only for a queued
