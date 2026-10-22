@@ -592,6 +592,16 @@ func TestParseSessionResultReadsTheHostsCost(t *testing.T) {
 	}
 }
 
+// JSON that carries no result field is not the host's report, so what the session said
+// is the raw output — a bare `null` or `{}` must not print nothing.
+func TestJSONWithoutAResultPrintsTheRawOutput(t *testing.T) {
+	for _, out := range []string{"null", "{}", `{"other":1}`} {
+		if got := parseSession([]byte(out)).text; got != out {
+			t.Errorf("%s: wanted the raw output printed, got %q", out, got)
+		}
+	}
+}
+
 func TestTheSessionsTextStillReachesTheTerminal(t *testing.T) {
 	dir := t.TempDir()
 	plan := writeTasks(t, dir, "c", "- [ ] one\n- [ ] two\n")

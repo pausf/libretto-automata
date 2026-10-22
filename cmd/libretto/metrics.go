@@ -556,6 +556,8 @@ func loopBlock(w io.Writer, path, only string) {
 	sort.Strings(names)
 
 	switch {
+	case len(rows) == 0 && only == "":
+		fmt.Fprintf(w, "\n  no loop runs are recorded in this repository\n")
 	case len(names) == 0 && only != "":
 		fmt.Fprintf(w, "\n  no loop rounds recorded for %s\n", only)
 	case len(names) > 0:

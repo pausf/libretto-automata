@@ -1211,7 +1211,8 @@ func TestAnUnpricedChangeReportsADashNotAZero(t *testing.T) {
 }
 
 func TestNoRunLogIsAStateNotAnError(t *testing.T) {
-	for _, log := range []string{filepath.Join(t.TempDir(), "libretto", "loop.jsonl"), ""} {
+	// An empty log is the same state as none: a file with no records is no runs.
+	for _, log := range []string{filepath.Join(t.TempDir(), "libretto", "loop.jsonl"), "", writeRunLog(t)} {
 		out := runMetricsWithLog(t, nil, log)
 		if strings.Count(out, "no loop runs are recorded in this repository") != 1 {
 			t.Errorf("log=%q: wanted the one no-log line:\n%s", log, out)

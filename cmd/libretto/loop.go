@@ -214,7 +214,8 @@ func claudeArgs(prompt, budget string) []string {
 }
 
 // parseSession reads the host's one JSON result object. Output that is not one — an older
-// host, a crash mid-write — is kept whole as the text, with nothing else known.
+// host, a crash mid-write — is kept whole as the text, with nothing else known. JSON with
+// no result field still yields what it reports, and its text is the raw output.
 func parseSession(out []byte) session {
 	var r struct {
 		Cost      *float64 `json:"total_cost_usd"`
@@ -222,12 +223,16 @@ func parseSession(out []byte) session {
 		SessionID string   `json:"session_id"`
 		Subtype   string   `json:"subtype"`
 		IsError   *bool    `json:"is_error"`
-		Result    string   `json:"result"`
+		Result    *string  `json:"result"`
 	}
 	if err := json.Unmarshal(out, &r); err != nil {
 		return session{text: string(out)}
 	}
-	return session{r.Cost, r.Duration, r.SessionID, r.Subtype, r.IsError, r.Result}
+	text := string(out)
+	if r.Result != nil {
+		text = *r.Result
+	}
+	return session{r.Cost, r.Duration, r.SessionID, r.Subtype, r.IsError, text}
 }
 
 func execClaude(prompt, budget string) (session, error) {
