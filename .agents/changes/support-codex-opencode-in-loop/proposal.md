@@ -569,7 +569,7 @@ waits on box 2. The landing edits to the cli spec — the loop section, its code
 non-goal, and the `init` paragraph's scope-flag sentence, with the replacement text in
 *Approach* step 8 — ride the landing commit and are not a box.
 
-- [ ] **`loop --opencode` drives OpenCode through `sessionFor`, `--codex` is refused, the
+- [x] **`loop --opencode` drives OpenCode through `sessionFor`, `--codex` is refused, the
       header names the tool.** `loopWith` gains the tool parameter and `loopOpts.tool`;
       `loop()` passes claude; `main.go` passes `scopeFlags`' tool; the three `loopWith`
       calls in `TestDryRunWritesNoRecord` pass `target.ClaudeTool`; the codex refusal and

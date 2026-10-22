@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/pausf/libretto-automata/internal/target"
 )
 
 // The loop runner — one fresh session per task, driven from outside the session.
@@ -119,15 +121,23 @@ func readPlan(path string) (planCount, error) {
 	return countBoxes(f), nil
 }
 
+// attaccaRoute is the command every round is routed to. Kept apart from its arguments
+// because OpenCode takes the two separately: the command by name, the arguments on stdin.
+const attaccaRoute = "/libretto-attacca "
+
 // loopPrompt is what each fresh session is handed. It routes and does not instruct:
 // every rule the iteration needs already lives in a skill, and restating one here
 // creates a second copy that drifts from the installed one.
 func loopPrompt(change, checklist string) string {
+	return attaccaRoute + loopArguments(change, checklist)
+}
+
+func loopArguments(change, checklist string) string {
 	where := ""
 	if checklist == "proposal.md" {
 		where = " under `## Checklist`"
 	}
-	return fmt.Sprintf(`/libretto-attacca continue the change %q.
+	return fmt.Sprintf(`continue the change %q.
 
 Read .agents/changes/%s/%s, take the FIRST unchecked box%s, and do only that one.
 Mark it the moment it is genuinely finished, and commit. Then stop — do not take a
@@ -142,6 +152,7 @@ type loopOpts struct {
 	dryRun bool
 	log    string
 	budget string
+	tool   target.Tool
 }
 
 // budgetValue is the only spelling of a budget that reaches the host. ParseFloat alone
@@ -235,13 +246,53 @@ func parseSession(out []byte) session {
 	return session{r.Cost, r.Duration, r.SessionID, r.Subtype, r.IsError, text}
 }
 
-func execClaude(prompt, budget string) (session, error) {
+// opencodeArgs names the command and never the message: `run` re-quotes a positional
+// argument containing a space, so the arguments travel on stdin, where they arrive verbatim.
+// No permission flag — the loop grants `claude` none either.
+func opencodeArgs() []string {
+	return []string{"run", "--command", "libretto-attacca", "--format", "json"}
+}
+
+func opencodeStdin(prompt string) string {
+	return strings.TrimPrefix(prompt, attaccaRoute)
+}
+
+// hostSession is one tool's way of running a round: the executable, what it is handed,
+// and how its output is read.
+type hostSession struct {
+	name  string
+	args  func(prompt, budget string) []string
+	stdin func(prompt string) string
+	parse func([]byte) session
+}
+
+// sessionFor is the only place an executable is paired with its argument builder, so the
+// pairing is tested rather than trusted. Codex has none: it is refused before this is asked.
+func sessionFor(tool target.Tool) (hostSession, bool) {
+	switch tool {
+	case target.ClaudeTool:
+		return hostSession{name: "claude", args: claudeArgs, parse: parseSession}, true
+	case target.OpencodeTool:
+		return hostSession{
+			name:  "opencode",
+			args:  func(string, string) []string { return opencodeArgs() },
+			stdin: opencodeStdin,
+			parse: func(out []byte) session { return session{text: string(out)} },
+		}, true
+	}
+	return hostSession{}, false
+}
+
+func execHost(h hostSession, prompt, budget string) (session, error) {
 	var out bytes.Buffer
-	c := exec.Command("claude", claudeArgs(prompt, budget)...)
+	c := exec.Command(h.name, h.args(prompt, budget)...)
+	if h.stdin != nil {
+		c.Stdin = strings.NewReader(h.stdin(prompt))
+	}
 	c.Stdout = &out
 	c.Stderr = os.Stderr
 	err := c.Run()
-	return parseSession(out.Bytes()), err
+	return h.parse(out.Bytes()), err
 }
 
 // loopLogPath is the run log, inside git's common dir: never tracked, never in `git
@@ -257,15 +308,24 @@ func loopLogPath(git gitRunner) string {
 }
 
 func loop(projectDir string, args []string) error {
-	return loopWith(projectDir, args, func() string { return loopLogPath(execGit(projectDir)) })
+	return loopWith(projectDir, target.ClaudeTool, args, func() string { return loopLogPath(execGit(projectDir)) })
 }
 
 // loopWith is loop with the run log's resolver handed in, so a test can prove it is never
 // called before a refusal or under --dry-run.
-func loopWith(projectDir string, args []string, logPath func() string) error {
+func loopWith(projectDir string, tool target.Tool, args []string, logPath func() string) error {
 	o, err := parseLoopArgs(args)
 	if err != nil {
 		return err
+	}
+	o.tool = tool
+	// Both refusals come before the checklist, because no checklist could change them.
+	switch {
+	case tool == target.CodexTool:
+		return fmt.Errorf("codex cannot run the loop — every round is routed to /libretto-attacca,\n" +
+			"       a command, and Codex installs skills only. Use --claude or --opencode")
+	case tool == target.OpencodeTool && o.budget != "":
+		return fmt.Errorf("--max-budget-usd has nothing to reach under opencode — `opencode run` has no budget flag")
 	}
 	// The checklist is checked before PATH is, and the order is the point: `loop <typo>`
 	// on a machine without `claude` should name the file it could not find, and a queued
@@ -274,14 +334,20 @@ func loopWith(projectDir string, args []string, logPath func() string) error {
 	if _, _, err := openChecklist(projectDir, o.change); err != nil {
 		return err
 	}
+	h, _ := sessionFor(tool)
 	if !o.dryRun {
-		if _, err := exec.LookPath("claude"); err != nil {
-			return fmt.Errorf("claude is not on PATH — the loop relaunches it once per task\n" +
-				"       install Claude Code, or use --dry-run to see what would run")
+		if _, err := exec.LookPath(h.name); err != nil {
+			return fmt.Errorf("%s is not on PATH — the loop relaunches it once per task\n"+
+				"       %s, or use --dry-run to see what would run", h.name, installHint[tool])
 		}
 		o.log = logPath()
 	}
-	return runLoop(os.Stdout, projectDir, o, func(p string) (session, error) { return execClaude(p, o.budget) })
+	return runLoop(os.Stdout, projectDir, o, func(p string) (session, error) { return execHost(h, p, o.budget) })
+}
+
+var installHint = map[target.Tool]string{
+	target.ClaudeTool:   "install Claude Code",
+	target.OpencodeTool: "install OpenCode",
 }
 
 // loopRecord is one line of the run log. Every optional field is absent rather than zero
@@ -422,8 +488,12 @@ func runLoop(w io.Writer, projectDir string, o loopOpts, run loopRunner) error {
 		return err
 	}
 
-	fmt.Fprintf(w, "\n  %s — %d open, %d done, at most %d iteration(s)\n\n",
-		o.change, before.open, before.done, o.max)
+	via := ""
+	if o.tool != "" {
+		via = " · via " + string(o.tool)
+	}
+	fmt.Fprintf(w, "\n  %s — %d open, %d done, at most %d iteration(s)%s\n\n",
+		o.change, before.open, before.done, o.max, via)
 	if b, err := strconv.ParseFloat(o.budget, 64); err == nil {
 		fmt.Fprintf(w, "  budget %s USD per round · worst case %.2f USD for the run\n\n", o.budget, b*float64(o.max))
 	}

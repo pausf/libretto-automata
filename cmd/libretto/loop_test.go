@@ -6,9 +6,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/pausf/libretto-automata/internal/target"
 )
 
 func writeChecklist(t *testing.T, dir, change, name, body string) string {
@@ -496,7 +499,7 @@ func textOnly(f func(string) error) loopRunner {
 }
 
 // closingRunner closes one box per round and reports whatever out holds for that round,
-// parsed the way execClaude parses a real session's stdout.
+// parsed the way execHost parses a real session's stdout.
 func closingRunner(t *testing.T, plan string, out ...string) loopRunner {
 	t.Helper()
 	round := 0
@@ -928,13 +931,13 @@ func TestDryRunWritesNoRecord(t *testing.T) {
 	writeTasks(t, dir, "c", "- [ ] one\n")
 	never := func() string { t.Fatal("the run log path must not be resolved"); return "" }
 
-	if err := loopWith(dir, []string{"nope"}, never); err == nil {
+	if err := loopWith(dir, target.ClaudeTool, []string{"nope"}, never); err == nil {
 		t.Fatal("wanted the missing checklist refused")
 	}
-	if err := loopWith(dir, []string{"c"}, never); err == nil || !strings.Contains(err.Error(), "claude") {
+	if err := loopWith(dir, target.ClaudeTool, []string{"c"}, never); err == nil || !strings.Contains(err.Error(), "claude") {
 		t.Fatalf("wanted the missing claude refused, got %v", err)
 	}
-	if err := loopWith(dir, []string{"c", "--dry-run"}, never); err != nil {
+	if err := loopWith(dir, target.ClaudeTool, []string{"c", "--dry-run"}, never); err != nil {
 		t.Fatalf("--dry-run must not fail, got %v", err)
 	}
 
@@ -1051,5 +1054,219 @@ func TestTheRecordCarriesTheBudgetThatApplied(t *testing.T) {
 				t.Fatalf("wanted budget_usd %v, got %v", tc.want, v)
 			}
 		})
+	}
+}
+
+// Through run, because scopeFlags strips --opencode before dispatch: a test of loopWith
+// alone would pass with the flag never reaching the loop.
+func TestTheToolFlagReachesTheLoop(t *testing.T) {
+	t.Setenv("PATH", "")
+	t.Setenv(EnvRoot, filepath.Join(t.TempDir(), "never-installed"))
+	dir := t.TempDir()
+	writeTasks(t, dir, "c", "- [ ] one\n")
+	t.Chdir(dir)
+
+	out, _, err := capture(t, func() error { return run([]string{"loop", "c", "--opencode", "--dry-run"}) })
+	if err != nil {
+		t.Fatalf("--opencode --dry-run must not fail, got %v", err)
+	}
+	if !strings.Contains(out, " · via opencode\n") {
+		t.Fatalf("wanted the header to name opencode, got:\n%s", out)
+	}
+}
+
+func TestTheHeaderNamesTheTool(t *testing.T) {
+	dir := t.TempDir()
+	writeTasks(t, dir, "c", "- [ ] one\n")
+	for _, tool := range []target.Tool{target.ClaudeTool, target.OpencodeTool} {
+		var out strings.Builder
+		if err := runLoop(&out, dir, loopOpts{change: "c", max: 5, dryRun: true, tool: tool}, textOnly(func(string) error {
+			t.Fatal("--dry-run must not start a session")
+			return nil
+		})); err != nil {
+			t.Fatal(err)
+		}
+		want := "\n  c — 1 open, 0 done, at most 5 iteration(s) · via " + string(tool) + "\n"
+		if !strings.HasPrefix(out.String(), want) {
+			t.Errorf("wanted the first line to end with \" · via %s\", got:\n%q", tool, out.String())
+		}
+	}
+}
+
+// An absent tool reads as claude, the way an absent `tool` in a record does, and prints the
+// header this change found — so every test calling runLoop without one prints what it did.
+func TestAnEmptyToolPrintsTheHeaderItAlwaysPrinted(t *testing.T) {
+	dir := t.TempDir()
+	writeTasks(t, dir, "c", "- [ ] one\n")
+	var out strings.Builder
+	if err := runLoop(&out, dir, loopOpts{change: "c", max: 5, dryRun: true}, textOnly(func(string) error {
+		t.Fatal("--dry-run must not start a session")
+		return nil
+	})); err != nil {
+		t.Fatal(err)
+	}
+	want := "\n  c — 1 open, 0 done, at most 5 iteration(s)\n\n" +
+		"  ── 1/5 · 1 box(es) open\n\n" + loopPrompt("c", "tasks.md") + "\n\n"
+	if out.String() != want {
+		t.Fatalf("the header moved with no tool set:\n got %q\nwant %q", out.String(), want)
+	}
+}
+
+// sessionFor is the only place an executable is paired with its argument builder, so a
+// swapped pairing fails here rather than on somebody's machine.
+func TestLoopDrivesClaudeWhenNoOtherToolIsNamed(t *testing.T) {
+	c, ok := sessionFor(target.ClaudeTool)
+	if !ok || c.name != "claude" {
+		t.Fatalf("wanted claude to run `claude`, got %q, %v", c.name, ok)
+	}
+	if got, want := c.args("p", "2.50"), claudeArgs("p", "2.50"); !slices.Equal(got, want) {
+		t.Errorf("claude's args: got %q, want %q", got, want)
+	}
+	if c.stdin != nil {
+		t.Error("claude takes its prompt as an argument, never on stdin")
+	}
+	if got := c.parse([]byte(hostJSON)); got.sessionID != "abc-123" {
+		t.Errorf("claude's output must be read by parseSession, got %+v", got)
+	}
+
+	o, ok := sessionFor(target.OpencodeTool)
+	if !ok || o.name != "opencode" {
+		t.Fatalf("wanted opencode to run `opencode`, got %q, %v", o.name, ok)
+	}
+	if got, want := o.args("p", ""), opencodeArgs(); !slices.Equal(got, want) {
+		t.Errorf("opencode's args: got %q, want %q", got, want)
+	}
+	if o.stdin == nil || o.stdin("/libretto-attacca x") != opencodeStdin("/libretto-attacca x") {
+		t.Error("opencode's stdin must be opencodeStdin")
+	}
+
+	if _, ok := sessionFor(target.CodexTool); ok {
+		t.Error("codex has no session to run")
+	}
+
+	t.Setenv("PATH", "")
+	dir := t.TempDir()
+	writeTasks(t, dir, "c", "- [ ] one\n")
+	if err := loop(dir, []string{"c"}); err == nil || !strings.HasPrefix(err.Error(), "claude is not on PATH") {
+		t.Errorf("loop() with no tool named must look for claude, got %v", err)
+	}
+}
+
+func TestLoopRefusesCodexAndSaysWhy(t *testing.T) {
+	t.Setenv("PATH", "")
+	never := func() string { t.Fatal("the run log path must not be resolved"); return "" }
+	for _, args := range [][]string{{"nope"}, {"nope", "--dry-run"}} {
+		err := loopWith(t.TempDir(), target.CodexTool, args, never)
+		if err == nil {
+			t.Fatalf("%q: wanted codex refused", args)
+		}
+		for _, want := range []string{"codex", "/libretto-attacca"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("%q: the refusal must name %q, got %v", args, want, err)
+			}
+		}
+		if strings.Contains(err.Error(), "no checklist") {
+			t.Errorf("%q: codex is refused before the checklist is read, got %v", args, err)
+		}
+	}
+}
+
+func TestOpencodeRefusesABudgetItCannotEnforce(t *testing.T) {
+	t.Setenv("PATH", "")
+	never := func() string { t.Fatal("the run log path must not be resolved"); return "" }
+	err := loopWith(t.TempDir(), target.OpencodeTool, []string{"nope", "--max-budget-usd", "2"}, never)
+	if err == nil {
+		t.Fatal("wanted a budget under opencode refused")
+	}
+	for _, want := range []string{"--max-budget-usd", "opencode"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal must name %q, got %v", want, err)
+		}
+	}
+	if strings.Contains(err.Error(), "no checklist") {
+		t.Errorf("the budget is refused before the checklist is read, got %v", err)
+	}
+}
+
+func TestTheMissingToolIsNamed(t *testing.T) {
+	t.Setenv("PATH", "")
+	dir := t.TempDir()
+	writeTasks(t, dir, "c", "- [ ] one\n")
+	never := func() string { t.Fatal("the run log path must not be resolved"); return "" }
+	err := loopWith(dir, target.OpencodeTool, []string{"c"}, never)
+	if err == nil {
+		t.Fatal("wanted the missing opencode refused")
+	}
+	for _, want := range []string{"opencode is not on PATH", "install OpenCode, or use --dry-run to see what would run"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal must say %q, got %v", want, err)
+		}
+	}
+}
+
+func TestTheMissingClaudeMessageIsUnchanged(t *testing.T) {
+	t.Setenv("PATH", "")
+	dir := t.TempDir()
+	writeTasks(t, dir, "c", "- [ ] one\n")
+	never := func() string { t.Fatal("the run log path must not be resolved"); return "" }
+	want := "claude is not on PATH — the loop relaunches it once per task\n" +
+		"       install Claude Code, or use --dry-run to see what would run"
+	err := loopWith(dir, target.ClaudeTool, []string{"c"}, never)
+	if err == nil || err.Error() != want {
+		t.Fatalf("the missing-claude refusal moved:\n got %q\nwant %q", err, want)
+	}
+}
+
+func TestTheMissingChecklistIsReportedBeforeTheMissingOpencode(t *testing.T) {
+	t.Setenv("PATH", "")
+	never := func() string { t.Fatal("the run log path must not be resolved"); return "" }
+	err := loopWith(t.TempDir(), target.OpencodeTool, []string{"nope"}, never)
+	if err == nil || !strings.Contains(err.Error(), "no checklist at") {
+		t.Fatalf("wanted the missing checklist named, got %v", err)
+	}
+}
+
+func TestDryRunNeedsNoOpencodeOnPath(t *testing.T) {
+	t.Setenv("PATH", "")
+	dir := t.TempDir()
+	writeTasks(t, dir, "c", "- [ ] one\n")
+	never := func() string { t.Fatal("the run log path must not be resolved"); return "" }
+	if _, _, err := capture(t, func() error {
+		return loopWith(dir, target.OpencodeTool, []string{"c", "--dry-run"}, never)
+	}); err != nil {
+		t.Fatalf("--dry-run must work with an empty PATH, got %v", err)
+	}
+}
+
+func TestOpencodeArgsRunTheAttaccaCommand(t *testing.T) {
+	want := []string{"run", "--command", "libretto-attacca", "--format", "json"}
+	if got := opencodeArgs(); !slices.Equal(got, want) {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+// run re-quotes a positional argument containing a space, while piped stdin with no
+// positional message is the message verbatim — so the arguments go on stdin, unchanged.
+func TestOpencodeArgumentsArriveOnStdinVerbatim(t *testing.T) {
+	prompt := loopPrompt("add-thing", "proposal.md")
+	want := "continue the change \"add-thing\".\n\n" +
+		"Read .agents/changes/add-thing/proposal.md, take the FIRST unchecked box under `## Checklist`, and do only that one.\n" +
+		"Mark it the moment it is genuinely finished, and commit. Then stop — do not take a\n" +
+		"second box, and do not push or open a request. Another session follows this one.\n\n" +
+		"If a gate fails twice on this box, stop and say what you observed."
+	if got := opencodeStdin(prompt); got != want {
+		t.Fatalf("stdin is not the prompt's arguments verbatim:\n got %q\nwant %q", got, want)
+	}
+	if prompt != "/libretto-attacca "+want {
+		t.Fatalf("the prompt is not the route followed by its arguments:\n%q", prompt)
+	}
+}
+
+func TestOpencodeArgsGrantNoPermissions(t *testing.T) {
+	for _, a := range opencodeArgs() {
+		switch a {
+		case "--auto", "--yolo", "--dangerously-skip-permissions":
+			t.Errorf("the loop grants opencode no permission, got %q in %q", a, opencodeArgs())
+		}
 	}
 }
