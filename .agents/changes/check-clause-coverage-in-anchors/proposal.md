@@ -1,7 +1,6 @@
 # check-clause-coverage-in-anchors
 
 Tracker: none
-Queued: 2026-08-21
 
 ## The ask, verbatim
 
