@@ -1,7 +1,6 @@
 # package-payload-as-claude-plugin
 
 Tracker: none
-Queued: 2026-08-21
 
 ## The ask, verbatim
 
