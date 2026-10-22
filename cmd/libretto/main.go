@@ -213,7 +213,7 @@ func run(args []string) error {
 	case "loop":
 		return loopWith(projectDir, args[1:], func() string { return loopLogPath(execGit(projectDir)) })
 	case "metrics":
-		return metrics(os.Stdout, args[1:], execGit(projectDir), transcriptProjects())
+		return metricsWith(os.Stdout, args[1:], execGit(projectDir), transcriptProjects(), loopLogPath(execGit(projectDir)))
 	case "land":
 		return land(os.Stdout, os.Stderr, args[1:], execGit(projectDir))
 	case "init":

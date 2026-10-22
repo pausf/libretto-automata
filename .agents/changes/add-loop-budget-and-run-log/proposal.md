@@ -140,6 +140,7 @@ is inspectable after the fact and `metrics` can consume it.
   wrong, malformed lines vanish under every filter, which is the silent skip the count
   exists to prevent.
 - Q: a func field makes loopOpts uncomparable (TestParseLoopArgs) and a new loop() signature edits four existing call sites — which seam? → A: loop(projectDir, args) stays and delegates to loopWith(projectDir, args, resolver); main.go calls loopWith; loopOpts carries the resolved path as a string. No existing test line moves (assumed, builder's question at box 1; if wrong, the four call sites take a third argument)
+- Q: metrics gaining the log path as a parameter edits 28 existing call sites — same seam? → A: yes; metrics(...) keeps its signature and delegates to metricsWith(..., logPath); main.go calls metricsWith. Existing tests print the no-log line and stay unedited (assumed, box 3; if wrong, the 28 call sites take a fifth argument)
 
 ## Outcomes
 
@@ -540,7 +541,7 @@ Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its
       TestClaudeArgsCarryTheBudgetOnlyWhenGiven, TestParseLoopArgsRefusesABadBudget,
       TestTheHeaderStatesTheWorstCaseSpend, TestTheRecordCarriesTheBudgetThatApplied,
       TestHelpNamesTheLoopBudget. Waits on: box 1 (`claudeArgs` and the record).
-- [ ] **`metrics` reads the run log.** The path passed from `main.go`, the sorted loop
+- [x] **`metrics` reads the run log.** The path passed from `main.go`, the sorted loop
       block with net closed and a `%.2f` cost, the absent, filtered-empty and malformed
       states, the cost label, and the proof that `metrics` never writes the log. Closes:
       TestMetricsReportsLoopRoundsPerChange, TestAnUnpricedChangeReportsADashNotAZero,
