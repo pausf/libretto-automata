@@ -419,3 +419,14 @@ func TestHelpNamesEveryDestination(t *testing.T) {
 		}
 	}
 }
+
+// A budget nobody can find is a budget nobody sets.
+func TestHelpNamesTheLoopBudget(t *testing.T) {
+	_, stderr, err := capture(t, func() error { usage(); return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stderr, "--max-budget-usd") {
+		t.Errorf("the loop help does not name --max-budget-usd:\n%s", stderr)
+	}
+}

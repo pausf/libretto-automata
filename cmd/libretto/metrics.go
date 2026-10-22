@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bufio"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,7 +14,7 @@ import (
 	"time"
 )
 
-// Flow metrics, derived and never recorded.
+// Flow metrics, derived from git — the loop's run log is the one thing recorded, by the binary.
 //
 // The obvious build is instrumentation: each phase writes a timestamp somewhere, and
 // the report reads them back. That buys precision and costs a new artifact in every
@@ -365,6 +368,10 @@ func corrections(root string) (counts, byPhase map[string]int, orphans int, seen
 // git was pointed, and `--show-toplevel` is the only thing that knows how far up the root
 // is. A projectDir parameter here would be a second answer that agrees only by accident.
 func metrics(w io.Writer, args []string, git gitRunner, projects string) error {
+	return metricsWith(w, args, git, projects, "")
+}
+
+func metricsWith(w io.Writer, args []string, git gitRunner, projects, loopLog string) error {
 	var only string
 	for _, a := range args {
 		if strings.HasPrefix(a, "-") {
@@ -446,6 +453,7 @@ func metrics(w io.Writer, args []string, git gitRunner, projects string) error {
 	}
 	phaseBreakdown(w, byPhase, ledgerSeen)
 	tokenBlock(w, projects, root, allNames, only)
+	loopBlock(w, loopLog, only)
 	fmt.Fprintf(w, "\n%s\n\n%s\n\n", flowLegend, flowCeiling)
 	return nil
 }
@@ -478,6 +486,94 @@ func phaseBreakdown(w io.Writer, byPhase map[string]int, seen bool) {
 	fmt.Fprintf(w, "\n  corrections by phase — where the flow got corrected, as the ledger spells it:\n")
 	for _, p := range phases {
 		fmt.Fprintf(w, "    %-20s %3d\n", p, byPhase[p])
+	}
+}
+
+// loopTally is one change's rounds in the loop's run log.
+type loopTally struct {
+	rounds, net, unpriced int
+	cost                  float64
+	priced                bool
+}
+
+// loopBlock prints what the loop's run log says each change's rounds did and cost. It
+// opens the log for reading only: the loop is its one writer.
+//
+// The skipped count is taken before the filter, always. A malformed line names no change,
+// so filtering it would make it vanish under every filter — the silent skip the count
+// exists to prevent.
+func loopBlock(w io.Writer, path, only string) {
+	f, err := os.Open(path)
+	if path == "" || errors.Is(err, os.ErrNotExist) {
+		fmt.Fprintf(w, "\n  no loop runs are recorded in this repository\n")
+		return
+	}
+	if err != nil {
+		fmt.Fprintf(w, "\n  run log unreadable: %v\n", err)
+		return
+	}
+	defer f.Close()
+
+	rows := map[string]*loopTally{}
+	skipped := 0
+	// bufio.Reader, not Scanner: the transcript reader's rule, no line-length cap.
+	r := bufio.NewReader(f)
+	for {
+		line, err := r.ReadString('\n')
+		if t := strings.TrimSpace(line); t != "" {
+			var rec loopRecord
+			if json.Unmarshal([]byte(t), &rec) != nil || rec.Change == "" {
+				skipped++
+			} else {
+				row := rows[rec.Change]
+				if row == nil {
+					row = &loopTally{}
+					rows[rec.Change] = row
+				}
+				row.rounds++
+				if rec.Closed != nil {
+					row.net += *rec.Closed
+				}
+				if rec.CostUSD != nil {
+					row.cost += *rec.CostUSD
+					row.priced = true
+				} else {
+					row.unpriced++
+				}
+			}
+		}
+		if err != nil {
+			break
+		}
+	}
+
+	names := make([]string, 0, len(rows))
+	for n := range rows {
+		if only == "" || n == only {
+			names = append(names, n)
+		}
+	}
+	sort.Strings(names)
+
+	switch {
+	case len(rows) == 0 && only == "":
+		fmt.Fprintf(w, "\n  no loop runs are recorded in this repository\n")
+	case len(names) == 0 && only != "":
+		fmt.Fprintf(w, "\n  no loop rounds recorded for %s\n", only)
+	case len(names) > 0:
+		fmt.Fprintf(w, "\n  %-34s %7s %10s %12s %9s\n", "loop", "rounds", "net closed", "host est. $", "unpriced")
+		for _, n := range names {
+			row := rows[n]
+			cost := "—"
+			if row.priced {
+				cost = fmt.Sprintf("%.2f", row.cost)
+			}
+			fmt.Fprintf(w, "  %-34s %7d %10d %12s %9d\n", trunc(n, 34), row.rounds, row.net, cost, row.unpriced)
+		}
+		fmt.Fprintf(w, "  cost is the host's reported estimate in dollars, summed as reported — never priced here\n")
+	}
+	if skipped > 0 {
+		fmt.Fprintf(w, "  %d run log line(s) skipped — not a loop record\n", skipped)
 	}
 }
 

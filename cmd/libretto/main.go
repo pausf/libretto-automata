@@ -211,9 +211,9 @@ func run(args []string) error {
 	case "models":
 		return models(root, tg, args[1:])
 	case "loop":
-		return loop(projectDir, args[1:])
+		return loopWith(projectDir, args[1:], func() string { return loopLogPath(execGit(projectDir)) })
 	case "metrics":
-		return metrics(os.Stdout, args[1:], execGit(projectDir), transcriptProjects())
+		return metricsWith(os.Stdout, args[1:], execGit(projectDir), transcriptProjects(), loopLogPath(execGit(projectDir)))
 	case "land":
 		return land(os.Stdout, os.Stderr, args[1:], execGit(projectDir))
 	case "init":
@@ -1347,6 +1347,7 @@ func usage() {
   %[2]s models effort <level> <agent>…   declare the effort; --all for every agent
   %[2]s loop <change>   one fresh session per open box, until the plan is done
   %[2]s loop <change> --max 3 --dry-run   raise the cap; print the prompt, run nothing
+  %[2]s loop <change> --max-budget-usd 2.50   the host's dollar cap on each round
   %[2]s metrics        what every change cost, derived from git, read-only
   %[2]s metrics <change>   just that one
   %[2]s land [<change>]   verify the staged landing commit, read-only; non-zero on a missing part

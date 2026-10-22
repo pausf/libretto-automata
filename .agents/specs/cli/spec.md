@@ -419,6 +419,20 @@ prerequisite report, and `init`'s bootstrap of a project's `.agents/` layout.
 - **`init` writing to git.** No commit, no staging: one `rev-parse --show-toplevel` is
   the only git it runs. Committing the user's repository is the user's act.
 - **`--force` for `init`.** There is no overwrite path to force.
+- **a loop-wide spending cap.** The header prints the worst case instead. Returns if a
+  ceiling across rounds is asked for; the run log already holds what it would sum.
+- **a loop budget in rounds, wall time or tokens.** `--max` is already the round cap and
+  the host enforces dollars; a second unit is a second budget.
+- **stopping the loop on the first budget hit**, or reading back anything the host
+  reports. Stuck detection already bounds a run of budget-cut rounds.
+- **reading the run log anywhere but `metrics`** — no `status` line, no panel row.
+- **a budget or a cost for `codex` and `opencode`.** `--max-budget-usd` and the JSON
+  result are `claude`'s; `support-codex-opencode-in-loop` decides what a budget means for
+  a tool without them.
+- **rotating, pruning or migrating the run log.** A record is a few hundred bytes; rotation
+  is a later change with its own ceiling.
+- **a checkpoint written by the loop.** Each session commits its box, and the checklist is
+  the state; nothing new is written for it.
 - **a panel row for `init`.** It is a once-per-project command typed on purpose; a row
   earns its place when somebody misses it.
 - **the payload half of bootstrap.** The non-goal that keeps skills from creating
@@ -534,6 +548,16 @@ the authority and a divergence is a bug in the Go copy. It needs no payload and 
 `needsPayload` exemptions beside `land` — a machine with nothing installed is exactly the
 machine a fresh project is bootstrapped on. Scope flags are stripped by `scopeFlags` before
 dispatch and mean nothing to it, the same as `metrics` and `loop`.
+
+**The run log is written only by `loop`, and only outside the project tree.** Its path is
+`<git-common-dir>/libretto/loop.jsonl`, located with one `git rev-parse
+--path-format=absolute --git-common-dir`; no `.gitignore` is written into a project the
+tool does not own. The path is resolved behind an injected function, so the suite hands
+in a `t.TempDir()` path and never touches this repository's `.git` — the one exception,
+`TestTheRunLogLeavesGitStatusClean`, builds its own temporary repository and is skipped by
+`make test-short`. Records are appended with one `Write` on an `O_APPEND` descriptor, and
+two loops in two worktrees writing at once is accepted untested. `metrics` opens the log
+for reading and never creates it. Stdlib only, and `loop` keeps needing no payload.
 
 **Nothing in the test suite writes to a real payload home, and nothing runs a real `go install`.**
 `LIBRETTO_ROOT` is the second half of what `CLAUDE_HOME` does for targets, and `resolveRoot` takes
@@ -772,6 +796,58 @@ equivalent. It goes when `libretto install` has been verified against a real
 - **A symlink at an artifact path is present, dangling or not.** Found by the 6→7 review,
   2026-10-21: `os.Stat` followed a dangling link and the write landed outside `.agents/`.
   The check is `Lstat`, and a link is never written through.
+- **The loop's budget is the host's `--max-budget-usd`, per session, which is per round —
+  passed through under the host's own name, as typed.** Retired from
+  `add-loop-budget-and-run-log`, assumed 2026-10-22, attacca run. The host enforces it and
+  the record carries what was reported, so an overshoot is visible rather than hidden. The
+  value must match `^[0-9]+(\.[0-9]+)?$` and exceed zero: `strconv.ParseFloat` alone lost
+  because it accepts `1e2`, `0x1p-2`, `+3` and `inf`, which would reach the host with
+  meanings nobody checked. Tokens as the unit lost to a cap the host enforces natively. If
+  wrong (a loop-wide cap was meant): sum the log's `cost_usd` and stop at a total.
+- **No loop-wide cap; the header prints `--max` × budget to the cent.** Retired from
+  `add-loop-budget-and-run-log`, assumed 2026-10-22. **Ceiling:** adequate while somebody
+  reads the header; the day a run is left unwatched with a large `--max`, a total cap is
+  the replacement.
+- **Nothing the host reports is interpreted, and a budget-cut session gets no special
+  case.** Retired from `add-loop-budget-and-run-log`, assumed 2026-10-22. `subtype` and
+  `is_error` are recorded verbatim and `error` carries the exec error's message — two
+  fields, because one field holding both merges two sources with different meanings, which
+  is interpreting them. The budget-hit spelling was never observed; if the first hit should
+  end a run, it becomes one stop reason keyed on the recorded subtype, once observed.
+- **The run log lives at `<git-common-dir>/libretto/loop.jsonl`, one JSON-lines file for
+  every change.** Retired from `add-loop-budget-and-run-log`, assumed 2026-10-22. Never
+  tracked, never in `git status`, no `.gitignore` written, shared by every worktree — which
+  is why its messages say *repository*, never *checkout*. What lost: a self-ignoring
+  `.agents/loop/`, because it is per worktree and the log would die with the worktree the
+  loop ran in; a log inside the change folder, which the session commits — a race — and
+  the landing deletes; and `~/.claude/projects/`, the host's directory the token block
+  promises never to write. **Ceiling:** it is per machine — a fresh clone starts with no
+  history, like the host's transcripts. If that stops being acceptable, it moves under
+  `.agents/`.
+- **The run log is the one recorded artifact, and its writer is the binary.** Retired from
+  `add-loop-budget-and-run-log`, 2026-10-22, amending *nothing is instrumented*: the rule
+  rejected artifacts eight skills would have to remember to write, and the loop is one
+  writer that runs every round by construction and cannot forget. A phase writing to it,
+  or anything landing in a change folder, still breaks the rule.
+- **Loop cost is the host's `total_cost_usd`, recorded verbatim, absent when unreported,
+  never zero.** Retired from `add-loop-budget-and-run-log`, assumed 2026-10-22. It extends
+  *no pricing* rather than relitigating it — the binary still prices nothing, and the
+  observed run labels the figure `"costBasis": "list"`, so it is shown as the host's
+  estimate. Joining the host transcripts by `session_id` instead lost: transcripts carry
+  tokens, never dollars, and give no budget at all.
+- **`closed` is signed, and `metrics` reports it as a net figure.** Retired from
+  `add-loop-budget-and-run-log`, assumed 2026-10-22. If closes and reopens should be
+  counted apart, the record gains a second field, the way the change table already splits
+  them.
+- **A run log that cannot be located or written warns once and never stops the loop; a
+  round whose checklist vanished is still recorded, as `stopped: "error"`.** Retired from
+  `add-loop-budget-and-run-log`, assumed 2026-10-22. If the user would rather not spend
+  without a record, it becomes a refusal before the first session.
+- **`loopWith` and `metricsWith` exist so the run log path is injected without moving a
+  call site.** Retired from `add-loop-budget-and-run-log`, 2026-10-22: `loop` and `metrics`
+  keep their signatures and delegate, and `main.go` calls the `With` forms. A resolver in
+  `loopOpts` would have made it uncomparable for `TestParseLoopArgs`, and a new parameter
+  would have edited four `loop` and twenty-eight `metrics` call sites.
 
 ## Task breakdown
 
@@ -800,6 +876,7 @@ equivalent. It goes when `libretto install` has been verified against a real
 - [x] `wiki --html` — the same specs as one self-contained, marker-owned viewer
 - [x] the `wiki` panel row — project scope only, absent without specs
 - [x] `init` — the `.agents/` layout bootstrapped at the repository root, never over anything
+- [x] `loop --max-budget-usd` and the per-round run log, read back by `metrics`
 
 ## Verification criteria
 
@@ -1046,7 +1123,8 @@ A missing payload:
   reads the boxes and nothing else. Only the box is parsed, never the task text: the flow
   owns the checklist's shape, and a runner that understood it would be a second opinion
   about what a task is. The section boundary is the one addition, and it decides which
-  boxes are in scope, never what they say.
+  boxes are in scope, never what they say. The run log below is a record the loop writes
+  and never reads back: no decision about the next round is taken from it.
   Proof: cmd/libretto/loop_test.go TestCountBoxesReadsOnlyTheBox
 - **When counting a change document, the section counter shall count only `planLine` boxes
   that lie after a `## Checklist` line, before the next line matching `^##\s`, and outside
@@ -1137,15 +1215,111 @@ A missing payload:
   asked, and an omission reads as an oversight to whatever is on the other end.
   Proof: cmd/libretto/loop_test.go TestTheLoopPromptRoutesAndNeverAuthorises
 
-### `metrics` — what the flow cost, derived and never recorded
+#### The per-round budget and the run log
 
-- **nothing is instrumented.** The obvious build has each phase write a timestamp and the
-  report read them back; that costs a new artifact in every change folder which eight
-  skills have to remember, and a metric collected only when somebody remembers has holes
-  exactly where the interesting runs are. Git already holds the answer: a change folder's
-  first and last commits are the wall clock, the commits between are the iterations, and
-  the checklist's diffs are the churn. It works retroactively on every change ever landed.
+A round is one `claude -p` session, so the host's own per-session `--max-budget-usd` is
+exactly a per-round budget: the loop passes it through and the host enforces it. Every
+session is asked for its JSON result, and every round that runs leaves one JSON line in
+`<git-common-dir>/libretto/loop.jsonl` — inside git's own directory, so nothing is
+tracked, `git status` shows nothing new, and every worktree of the repository shares one
+log. What the host reports is recorded verbatim and never interpreted.
+
+- **When the loop starts a session, the `claude` argument list it builds shall carry
+  `-p <prompt>` and `--output-format json`.**
+  Proof: cmd/libretto/loop_test.go TestEverySessionIsAskedForItsJSONResult
+- **Where `--max-budget-usd <amount>` is given, the `claude` argument list shall carry
+  `--max-budget-usd <amount>` with the amount exactly as typed; where it is not given, the
+  list shall carry no `--max-budget-usd`.**
+  Proof: cmd/libretto/loop_test.go TestClaudeArgsCarryTheBudgetOnlyWhenGiven
+- **If `--max-budget-usd` is missing its value, or its value does not match
+  `^[0-9]+(\.[0-9]+)?$`, or it equals zero, then `parseLoopArgs` shall return an error
+  naming `--max-budget-usd`** — the table covers `1e2`, `0x1`, `+3`, `-1`, `inf`, `.5`,
+  `0` and `0.00`.
+  Proof: cmd/libretto/loop_test.go TestParseLoopArgsRefusesABadBudget
+- **While a budget is set, the loop header shall print the per-round budget and the
+  product of `--max` and that budget formatted with `%.2f` as the worst case for the run**
+  — `--max 3 --max-budget-usd 0.1` prints `0.30`.
+  Proof: cmd/libretto/loop_test.go TestTheHeaderStatesTheWorstCaseSpend
+- **The loop help shall name `--max-budget-usd`.**
+  Proof: cmd/libretto/main_test.go TestHelpNamesTheLoopBudget
+- **When the session's output is the host's JSON result object, the session parser shall
+  return its `total_cost_usd`, `duration_ms`, `session_id`, `subtype`, `is_error` and
+  `result`; if the output is not JSON or carries no `total_cost_usd`, then the parser
+  shall report the cost as unknown, never as zero.**
+  Proof: cmd/libretto/loop_test.go TestParseSessionResultReadsTheHostsCost
+- **When a session ends, the loop shall print the `result` text of its JSON to stdout; if
+  the output does not parse as JSON, then the loop shall print it unchanged.** JSON that
+  carries no `result` field — a bare `null`, `{}` — is not the host's report either, and
+  its raw output is what gets printed, so a session never reaches the terminal as nothing.
+  Proof: cmd/libretto/loop_test.go TestTheSessionsTextStillReachesTheTerminal
+  Proof: cmd/libretto/loop_test.go TestJSONWithoutAResultPrintsTheRawOutput
+- **When a round ends, the loop shall append exactly one JSON line to the run log.**
+  Proof: cmd/libretto/loop_test.go TestEveryRoundAppendsOneRecord
+- **Each record shall carry `time` as an RFC 3339 timestamp of when the round ended,
+  `change` as the change name, and `round` as the 1-based round number.**
+  Proof: cmd/libretto/loop_test.go TestTheRecordSaysWhenWhichChangeAndWhichRound
+- **Each record of a round whose checklist was read after the session shall carry
+  `closed` as `after.done − before.done`, negative when a box reopened, and `open` as the
+  open boxes after the round.**
+  Proof: cmd/libretto/loop_test.go TestClosedIsSignedSoAReopenedBoxIsNegative
+- **Where the session's JSON carried them, the record shall carry `cost_usd`,
+  `duration_ms`, `session_id`, `subtype` and `is_error` with the host's values
+  unchanged.**
+  Proof: cmd/libretto/loop_test.go TestTheRecordCarriesTheHostsReportVerbatim
+- **If the session reported no cost, then the round's record shall omit `cost_usd`
+  entirely rather than write zero; if it reported no `is_error`, then the record shall
+  omit `is_error`.** Unknown and zero are different facts.
+  Proof: cmd/libretto/loop_test.go TestAnUnpricedRoundOmitsCostRatherThanWritingZero
+- **Where a budget is set, each round's record shall carry it as `budget_usd`; where none
+  is set, the record shall omit `budget_usd`.**
+  Proof: cmd/libretto/loop_test.go TestTheRecordCarriesTheBudgetThatApplied
+- **If the session exited non-zero, then the record shall carry the exec error's message
+  as `error`; when it exited zero, the record shall omit `error`.**
+  Proof: cmd/libretto/loop_test.go TestTheRecordCarriesTheExecErrorOnlyOnFailure
+- **When the loop stops because every box closed, two rounds closed nothing, the cap was
+  reached, or the checklist could not be read, the last record it wrote shall carry
+  `stopped` set to `done`, `stuck`, `cap` or `error` respectively, and no earlier record
+  shall carry `stopped`.**
+  Proof: cmd/libretto/loop_test.go TestTheLastRecordSaysWhyTheLoopStopped
+- **If the checklist cannot be read after a session, then the loop shall append that
+  round's record with `closed` and `open` omitted, `stopped` set to `error` and the read
+  error in `error`, and shall return the error it returns today.**
+  Proof: cmd/libretto/loop_test.go TestAVanishedChecklistIsStillRecorded
+- **The loop shall write the run log at `<git-common-dir>/libretto/loop.jsonl`, and
+  `git status --porcelain` in the project shall print nothing after a loop over a clean
+  tree.**
+  Proof: cmd/libretto/loop_test.go TestTheRunLogLeavesGitStatusClean
+- **If the git common dir cannot be located, then the loop shall print the one warning
+  `run log not recorded: git common dir not found` and shall run every round it would
+  have run with a log.** The checklist is the state the loop decides on; the log is a
+  record of it, and losing the record is no reason to stop work.
+  Proof: cmd/libretto/loop_test.go TestAnUnlocatableLogWarnsAndCarriesOn
+- **If the run log cannot be written, then the loop shall print one warning naming the
+  log's path, however many rounds fail to write, and shall run every round it would have
+  run with a writable log.**
+  Proof: cmd/libretto/loop_test.go TestAnUnwritableLogDoesNotStopTheLoop
+- **When `loop` refuses a missing checklist or a missing `claude`, it shall not have
+  resolved the run log path; while `--dry-run` is set, the loop shall not resolve the
+  path, shall print no log warning, and shall write no record.** The path is resolved
+  after both refusals, so *the missing plan is reported before the missing dependency*
+  holds unchanged.
+  Proof: cmd/libretto/loop_test.go TestDryRunWritesNoRecord
+
+### `metrics` — what the flow cost, derived from git and the loop's own log
+
+- **The change folders and the flow shall stay uninstrumented; the only recorded data
+  shall be the loop's own run log, written by the binary and nothing else.** The obvious
+  build has each phase write a timestamp and the report read them back; that costs a new
+  artifact in every change folder which eight skills have to remember, and a metric
+  collected only when somebody remembers has holes exactly where the interesting runs are.
+  Git already holds the answer: a change folder's first and last commits are the wall
+  clock, the commits between are the iterations, and the checklist's diffs are the churn.
+  It works retroactively on every change ever landed. The run log does not reopen that
+  rule: it has one writer, the loop, which runs every round by construction and cannot
+  forget — nothing lands in a change folder, and no skill learns anything. `metrics` only
+  reads it.
   Proof: cmd/libretto/metrics_test.go TestChangeNamesSeesLandedChangesNotJustOpenOnes
+  Proof: cmd/libretto/metrics_test.go TestMetricsNeverWritesTheRunLog
 - **`--full-history` on every query, and it is load-bearing.** Git's default history
   simplification prunes commits that do not change a path's *final* state, and a landed
   change's final state is "does not exist" — so the entire history of every change this
@@ -1390,11 +1564,47 @@ is written, and nothing under the transcript root is written at all.
 the tests pick the corrections cell by counting from the right, so a column on that side
 breaks a proof for a cosmetic reason — and it would force a choice of one number among
 four, or a composite. Prices change under the repository, and a stale price table reports
-confident nonsense; tokens are what was measured.
+confident nonsense; tokens are what was measured. The binary prices nothing anywhere: the
+only dollars in the report are the loop block's below, and those are the host's own
+figure, recorded as it reported them.
 
 **Plain digits, no thousands separator and no exponent.** A space inside a number breaks
 every pipe a report gets read through, and an exponent throws away the precision that
-makes two runs comparable, which is the entire use this was built for.
+makes two runs comparable, which is the entire use this was built for. Dollars follow the
+same rule at `%.2f`.
+
+#### Loop rounds, read off the run log
+
+The loop's run log is the one artifact `metrics` reads that git does not hold. It gets its
+own block after the token block, one row per change, never a column in the change table.
+The cost is the host's `total_cost_usd` — a list-price estimate by the host's own label,
+not a bill — and the column says so.
+
+- **Where a run log exists, `metrics` shall print a loop block with one row per change,
+  sorted by change name, holding its rounds, the net sum of its `closed` values under a
+  header that says net, the sum of its `cost_usd` values formatted with `%.2f`, and the
+  count of its rounds with no `cost_usd`.**
+  Proof: cmd/libretto/metrics_test.go TestMetricsReportsLoopRoundsPerChange
+- **If a change's rounds all lack `cost_usd`, then its cost cell shall print a dash, never
+  `0.00`.**
+  Proof: cmd/libretto/metrics_test.go TestAnUnpricedChangeReportsADashNotAZero
+- **If no run log exists, then `metrics` shall print the one line `no loop runs are
+  recorded in this repository`, and shall print every other block as it does today.** A
+  log that holds no record reads the same: an empty file is no runs, never an empty block.
+  The log is shared by every worktree, which is why the line says *repository*.
+  Proof: cmd/libretto/metrics_test.go TestNoRunLogIsAStateNotAnError
+- **If a run log line does not parse as a record, then `metrics` shall skip it, keep every
+  other row, and print the number of skipped lines counted over the whole file, whether
+  or not a change is named.** A malformed line names no change, so a filtered count would
+  hide it under every filter.
+  Proof: cmd/libretto/metrics_test.go TestAMalformedRunLogLineIsSkippedAndCounted
+- **Where a change is named, the loop block shall print only that change's row; if the
+  named change has no record, then it shall print the one line `no loop rounds recorded
+  for <change>`.**
+  Proof: cmd/libretto/metrics_test.go TestTheLoopBlockFollowsTheChangeFilter
+- **The loop block shall label its cost column as the host's reported estimate in
+  dollars.**
+  Proof: cmd/libretto/metrics_test.go TestTheLoopBlockLabelsCostAsTheHostsFigure
 
 #### A per-agent model recommendation, and it is never applied
 

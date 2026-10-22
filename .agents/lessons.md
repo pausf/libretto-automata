@@ -326,3 +326,17 @@ pass: the delta and init.go's comment cite SPEC_ROOTS/CHANGE_ROOTS and the non-g
 
 The README gained an init row that the cli delta's scope never named. Fixed in this pass: Scope ·
 In names the README row and that no readme promise moves.
+
+## 2026-10-22 · add-loop-budget-and-run-log · 6→7
+
+metrics printed nothing at all for a run log that exists but holds no records: the three states
+the outcome named (no log, a named change with no rounds, malformed lines) left "present and
+empty" uncovered. Fixed in this pass: an empty log reads as no runs, case added to
+TestNoRunLogIsAStateNotAnError and observed red first.
+
+## 2026-10-22 · add-loop-budget-and-run-log · 6→7
+
+parseSession treated any valid JSON as the host's report, so `null` or `{}` printed nothing where
+the session's text should reach the terminal. Fixed in this pass: with no result field the text is
+the raw output while the reported fields are still read — the first fix dropped them and broke the
+reported-zero criterion, which caught it.

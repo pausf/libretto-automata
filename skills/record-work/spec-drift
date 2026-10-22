@@ -150,7 +150,9 @@ matches_any() {
   return 1
 }
 
-has_line() { printf '%s\n' "$1" | rg -qxF "$2"; }
+# A reader that stops early SIGPIPEs the writer, and under pipefail that 141 reads as
+# no match. Every pipe into a test reads its input whole: rg to /dev/null, never -q.
+has_line() { printf '%s\n' "$1" | rg -xF "$2" >/dev/null; }
 
 # without_checklist — a markdown document on stdin, minus its `## Checklist` section: from
 # that heading to the next level-2 heading outside a fence.
@@ -389,7 +391,7 @@ retired() {
   dying=$(while IFS= read -r doc; do
     [ -n "$doc" ] || continue
     case "$doc" in
-      (*/proposal.md) staged_or_empty HEAD "$doc" | defenced /dev/stdin | rg -qN '^[[:space:]]*Targets:' || continue ;;
+      (*/proposal.md) staged_or_empty HEAD "$doc" | defenced /dev/stdin | rg -N '^[[:space:]]*Targets:' >/dev/null || continue ;;
     esac
     printf '%s\n' "$doc"
   done <<< "$dying")
@@ -418,7 +420,7 @@ retired() {
     local declared=0
     while IFS= read -r plan; do
       case "$plan" in (".agents/changes/$change/"*) ;; (*) continue ;; esac
-      staged_or_empty HEAD "$plan" | rg -qN '^[[:space:]]*Durable decisions:[[:space:]]*none[[:space:]]*$' && declared=1
+      staged_or_empty HEAD "$plan" | rg -N '^[[:space:]]*Durable decisions:[[:space:]]*none[[:space:]]*$' >/dev/null && declared=1
     done <<< "$dying"
     if [ "$declared" -eq 1 ]; then
       printf '  ok      %s — it declared it had nothing to retire\n' "$change"
@@ -711,6 +713,9 @@ self_test() {
           (no)     printf 'Queued: 2026-10-21\n' ;;
         esac
         [ "$2" = yes ] && printf 'Durable decisions: none\n'
+        # A real change document runs to hundreds of lines; under pipefail an early-exiting
+        # reader turned the writer's SIGPIPE into "no Targets:" and skipped the gate.
+        [ "${5:-}" = big ] && yes 'a long line of contract prose, for size' | head -n 20000
         printf '\n## Verification criteria\n\n- it shall work\n\n## Checklist\n\n- [x] the box\n'
       } > .agents/changes/a-change/proposal.md
       [ "$4" = yes ] && printf '# Plan\n\nDurable decisions: the one below\n' > .agents/changes/a-change/plan.md
@@ -735,6 +740,8 @@ self_test() {
   want 'a queued capture is no contract'                 '0 0' "$(retire no no no no)"
   want 'a fenced Targets: is no contract'                '0 0' "$(retire fenced no no no)"
   want 'a plan and its contract are reported once'       '1 1' "$(retire yes no no yes)"
+  want 'a long contract is still a contract'            '1 1' "$(retire yes no no no big)"
+  want 'a long contract declaring none still passes'    '0 1' "$(retire yes yes no no big)"
 
   # Marking a box is not the contract moving. Default mode, through --block so the
   # verdict is an exit code: ticking a box beside staged code still reports the code,

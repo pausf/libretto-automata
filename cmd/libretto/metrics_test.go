@@ -1122,3 +1122,175 @@ func TestASmallMissRateDoesNotRoundAwayToZero(t *testing.T) {
 		t.Errorf("want a sub-1%% miss rate said as <1%%:\n%s", s)
 	}
 }
+
+// writeRunLog writes the loop's run log as the lines given, one per line.
+func writeRunLog(t *testing.T, lines ...string) string {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), "libretto", "loop.jsonl")
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+// loopBlockOf is the output from the loop block's header on, so a row is never confused
+// with the change table's row for the same name.
+func loopBlockOf(t *testing.T, out string) string {
+	t.Helper()
+	i := strings.Index(out, "\n  loop ")
+	if i < 0 {
+		t.Fatalf("no loop block in:\n%s", out)
+	}
+	return out[i:]
+}
+
+// loopRow is the fields of the loop block's row for one change, or nil.
+func loopRow(block, change string) []string {
+	for _, l := range strings.Split(block, "\n") {
+		if f := strings.Fields(l); len(f) > 0 && f[0] == change {
+			return f
+		}
+	}
+	return nil
+}
+
+func runMetricsWithLog(t *testing.T, args []string, log string) string {
+	t.Helper()
+	var out strings.Builder
+	if err := metricsWith(&out, args, twoChangeGit(time.Now().Unix()), "", log); err != nil {
+		t.Fatal(err)
+	}
+	return out.String()
+}
+
+func TestMetricsReportsLoopRoundsPerChange(t *testing.T) {
+	log := writeRunLog(t,
+		`{"change":"beta","round":1,"closed":1,"open":1,"cost_usd":0.5}`,
+		`{"change":"alpha","round":1,"closed":1,"open":2,"cost_usd":0.123}`,
+		`{"change":"alpha","round":2,"closed":-1,"open":3,"cost_usd":0.456}`,
+		`{"change":"alpha","round":3,"closed":2,"open":1}`,
+		`{"change":"beta","round":2,"stopped":"error"}`,
+	)
+	block := loopBlockOf(t, runMetricsWithLog(t, nil, log))
+	header := strings.SplitN(strings.TrimPrefix(block, "\n"), "\n", 2)[0]
+	if !strings.Contains(header, "net") {
+		t.Errorf("the closed column must say it is net:\n%s", header)
+	}
+	if a, b := strings.Index(block, "\n  alpha"), strings.Index(block, "\n  beta"); a < 0 || b < 0 || a > b {
+		t.Fatalf("wanted alpha before beta, sorted by change:\n%s", block)
+	}
+	for _, tc := range []struct {
+		change string
+		want   []string
+	}{
+		{"alpha", []string{"alpha", "3", "2", "0.58", "1"}},
+		{"beta", []string{"beta", "2", "1", "0.50", "1"}},
+	} {
+		if got := loopRow(block, tc.change); strings.Join(got, " ") != strings.Join(tc.want, " ") {
+			t.Errorf("wanted the %s row %q, got %q in:\n%s", tc.change, tc.want, got, block)
+		}
+	}
+}
+
+func TestAnUnpricedChangeReportsADashNotAZero(t *testing.T) {
+	log := writeRunLog(t,
+		`{"change":"alpha","round":1,"closed":1,"open":0}`,
+		`{"change":"beta","round":1,"closed":1,"open":0,"cost_usd":0}`,
+	)
+	block := loopBlockOf(t, runMetricsWithLog(t, nil, log))
+	if got := loopRow(block, "alpha"); len(got) < 4 || got[3] != "—" {
+		t.Errorf("an unpriced change's cost must be a dash, got %q in:\n%s", got, block)
+	}
+	// A reported zero is still a figure, so it prints as one.
+	if got := loopRow(block, "beta"); len(got) < 4 || got[3] != "0.00" {
+		t.Errorf("a reported zero must print as 0.00, got %q in:\n%s", got, block)
+	}
+}
+
+func TestNoRunLogIsAStateNotAnError(t *testing.T) {
+	// An empty log is the same state as none: a file with no records is no runs.
+	for _, log := range []string{filepath.Join(t.TempDir(), "libretto", "loop.jsonl"), "", writeRunLog(t)} {
+		out := runMetricsWithLog(t, nil, log)
+		if strings.Count(out, "no loop runs are recorded in this repository") != 1 {
+			t.Errorf("log=%q: wanted the one no-log line:\n%s", log, out)
+		}
+		for _, want := range []string{"change", "commits", "per-phase duration"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("log=%q: every other block must print as today, missing %q:\n%s", log, want, out)
+			}
+		}
+	}
+}
+
+func TestAMalformedRunLogLineIsSkippedAndCounted(t *testing.T) {
+	log := writeRunLog(t,
+		`{"change":"alpha","round":1,"closed":1,"open":0,"cost_usd":0.25}`,
+		`not a record`,
+		`{"change":"beta","round":1,"closed":1,"open":0}`,
+		`{"change":"alpha","round":`,
+	)
+	for _, args := range [][]string{nil, {"alpha"}} {
+		block := loopBlockOf(t, runMetricsWithLog(t, args, log))
+		if !strings.Contains(block, "2 run log line(s) skipped") {
+			t.Errorf("args=%q: wanted 2 skipped lines counted over the whole file:\n%s", args, block)
+		}
+		if got := loopRow(block, "alpha"); len(got) < 2 || got[1] != "1" {
+			t.Errorf("args=%q: the good alpha line must still count, got %q:\n%s", args, got, block)
+		}
+	}
+	if loopRow(loopBlockOf(t, runMetricsWithLog(t, nil, log)), "beta") == nil {
+		t.Error("a malformed line must not take the rows after it")
+	}
+}
+
+func TestTheLoopBlockFollowsTheChangeFilter(t *testing.T) {
+	log := writeRunLog(t, `{"change":"alpha","round":1,"closed":1,"open":0}`)
+	block := loopBlockOf(t, runMetricsWithLog(t, []string{"alpha"}, log))
+	if loopRow(block, "alpha") == nil {
+		t.Errorf("the named change's row is missing:\n%s", block)
+	}
+	out := runMetricsWithLog(t, []string{"beta"}, log)
+	if !strings.Contains(out, "no loop rounds recorded for beta") {
+		t.Errorf("wanted the no-rounds line for beta:\n%s", out)
+	}
+	if loopRow(out, "alpha") != nil {
+		t.Errorf("a filter on beta must not print alpha's loop row:\n%s", out)
+	}
+}
+
+func TestTheLoopBlockLabelsCostAsTheHostsFigure(t *testing.T) {
+	block := loopBlockOf(t, runMetricsWithLog(t, nil, writeRunLog(t, `{"change":"alpha","round":1,"cost_usd":1}`)))
+	for _, want := range []string{"host", "estimate", "dollars"} {
+		if !strings.Contains(block, want) {
+			t.Errorf("the cost must be labelled as the host's estimate in dollars, missing %q:\n%s", want, block)
+		}
+	}
+}
+
+// metrics reads the run log and never creates or touches it: the loop is its one writer.
+func TestMetricsNeverWritesTheRunLog(t *testing.T) {
+	absent := filepath.Join(t.TempDir(), "libretto", "loop.jsonl")
+	runMetricsWithLog(t, nil, absent)
+	if _, err := os.Stat(filepath.Dir(absent)); !os.IsNotExist(err) {
+		t.Errorf("metrics created the log's directory: %v", err)
+	}
+
+	log := writeRunLog(t, `{"change":"alpha","round":1}`, `junk`)
+	old := time.Now().Add(-time.Hour).Truncate(time.Second)
+	if err := os.Chtimes(log, old, old); err != nil {
+		t.Fatal(err)
+	}
+	before, _ := os.ReadFile(log)
+	runMetricsWithLog(t, []string{"alpha"}, log)
+	after, _ := os.ReadFile(log)
+	fi, err := os.Stat(log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) || !fi.ModTime().Equal(old) {
+		t.Errorf("metrics changed the run log: mtime %s, want %s", fi.ModTime(), old)
+	}
+}
