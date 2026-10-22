@@ -120,6 +120,18 @@ Installing this repository gives a working flow on a machine that has nothing el
   to change a promise that works today. A capability migrates when a delta lands on it.
   The gate checks the marker and never the sentence — *"the system shall behave
   correctly"* passes it, and `review-spec` is what asks whether the response is concrete
+- **two promises on one proof are named, never failed.** A criterion carrying two or more
+  `shall` on exactly one `Proof:` line, naming no ceiling, is *joined*: one test rarely
+  holds two promises, and a criterion whose citation exercises half its clause is this
+  flow's most recurrent miss — eight entries in the lessons ledger. `spec-drift --trace`
+  lists every joined criterion, in capability specs and change documents, with its file and
+  a count in its summary line; `--anchors` prints one line counting them per scope and
+  decides its exit status exactly as before, and with nothing joined its output is byte for
+  byte what it was. The author answers by splitting the criterion, citing a second proof,
+  or naming its ceiling in it — and the line goes away. **Structural, not semantic**: it
+  reads the criterion and counts its citations, never the cited test, so it runs before the
+  test exists — and it cannot see one `shall` promising a list whose proof asserts part of
+  it, which stays a reading for `work-reviewer`
 - **one stop before code, on the whole document.** The contract lane stops exactly once
   before code: after the fresh reviewer returns, on contract, approach and checklist
   together, with the reviewer's findings relayed unedited. `review-spec` owns it and asks
@@ -306,6 +318,14 @@ third-party items and their attribution.
   point, and an edited entry is history that lies.
 - **the Go binary writing the ledger.** Delivery reads it (the corrections column in
   `metrics`); only the payload writes it.
+- **searching a cited test's body for the criterion's terms**, in any form, and opening,
+  parsing or running a cited test to judge a criterion. Rejected on a measurement — see
+  *Prior decisions*.
+- **failing on a joined criterion**, in a change document or a capability spec. It is a
+  count in `--anchors` and a list in `--trace`.
+- **telling an enumerated response from a sentence.** One `shall` promising a list whose
+  proof asserts part of it is six of the ledger's eight half-clause cases, and recognising
+  an enumeration is a reading; `work-reviewer` caught all eight and stays the mechanism.
 
 ### A stop is a place where the user changes something
 
@@ -898,6 +918,54 @@ finding, which is the sentence the `readme` capability was created to answer abo
   queued" is the thing find-work's single-owner rule exists to prevent, and status would
   behave differently on a skills-only machine. If wrong, status calls the binary where it
   is on PATH, with the skill's scan as the fallback.
+- **A cited test's body is not searched for the criterion's terms — rejected on a
+  measurement, so do not re-propose it without a new one.** Retired from
+  `check-clause-coverage-in-anchors`, 2026-10-22, attacca run. The ask was exactly this
+  heuristic: the EARS trigger clause's key terms (backticked spans, quoted strings,
+  `--flags`) looked up in the body of the cited Go test. A throwaway prototype ran it over
+  every criterion in `.agents/specs/*/spec.md` — 706 criteria, 719 citations (637 Go tests,
+  61 `check-payload`, 16 `spec-drift`, 5 other). The trigger-clause variant flagged 15 of
+  the 52 Go-proved criteria carrying a term (2.1% of all 706); the whole-criterion variant
+  flagged 106 of 304 (15.0%). **Ten flags hand-checked from each were twenty false
+  positives**: terms reach a test through helpers, constants, fixtures and `filepath.Join`
+  segments, a negated trigger is *correctly* absent from the body, and a `check-payload`
+  citation has no body at all — where two of the eight ledger cases live. Run against each
+  of the ledger's six Go-proved cases at its fix commit's parent, the trigger variant
+  caught none for the right reason and the whole-criterion variant one. And of the eight
+  ledger cases only one missed the trigger; six missed an item of an enumerated response,
+  which a trigger heuristic cannot see. **What would reopen it:** a resolver that follows
+  a test into its helpers — a Go call graph, a dependency this bash script refuses — or a
+  new measurement beating these numbers. If it ever ships, it ships behind its own flag,
+  warn-only, never inside `--anchors`, its false-positive rate in the help line.
+- **A criterion is joined when it carries two or more `shall`, exactly one `Proof:` line,
+  and no occurrence of *ceiling*.** Retired from `check-clause-coverage-in-anchors`,
+  assumed 2026-10-22. Structural on purpose: it reads the document and never guesses about
+  the test, so it runs before the test exists — at `review-spec`, where splitting a
+  criterion costs a line. `shall` is counted the way `is_ears` matches it, so the two
+  checks never disagree about what a `shall` is. A criterion with no `Proof:` is not
+  listed: it is already `--trace`'s *unproven criterion*. If wrong, the predicate is one
+  function, `is_joined`.
+- **Joined criteria warn and never fail, in change documents and capability specs alike.**
+  Retired from `check-clause-coverage-in-anchors`, assumed 2026-10-22. Measured: 72 of the
+  706 capability criteria (10.2%) and 36 of the 99 criteria in the ten landed EARS-era
+  deltas history recovers are joined; 6 of 26 hand-checked flags were real gaps (23%). A
+  gate failing one criterion in three, wrong three times in four, gets muted. *Failing on
+  change documents, like `--ears`* lost on those numbers. **Ceiling named:** of the
+  ledger's eight entries it saw one — wiki-flow-board, whose two joined criteria were both
+  real misses. Three predate EARS and carry no `shall`; four rest one `shall` on an
+  enumerated response, invisible to it. If wrong, `joined` returns 1 on change documents
+  only.
+- **`--anchors` carries a count, `--trace` carries the list.** Retired from
+  `check-clause-coverage-in-anchors`, assumed 2026-10-22. The gate's output is read on
+  every commit; one line there costs nothing, and 72 per-criterion lines would be the
+  warning that gets muted. A separate `--joined` flag lost: the list already has a home in
+  the map `review-spec`'s reader runs first, and a flag nobody runs finds nothing.
+- **The escape is a declaration in the criterion — split it, a second `Proof:` line, or
+  the word *ceiling*, by house phrase "Ceiling named:" — never a flag.** Retired from
+  `check-clause-coverage-in-anchors`, assumed 2026-10-22, on the precedent of `Durable
+  decisions: none`: written by whoever knew, at the moment they knew. The accepted risk is
+  that *ceiling* mentioned for another reason silences a real joined criterion — an author
+  who wrote the word was thinking about what the proof misses.
 
 ## Task breakdown
 
@@ -1176,12 +1244,56 @@ finding, which is the sentence the `readme` capability was created to answer abo
   was never staged while a spec existed is invisible to both, forever.** In a repository
   whose specs arrived after its code that is most of the repository, and the contract can
   pass every check while governing a third of the tree. `--trace` reads the tracked tree
-  and names orphan code, a `Governs:` glob matching nothing, and a criterion under
-  *Verification criteria* with no `Proof:` beneath it. **It exits 0 unconditionally**: the
+  and names orphan code, a `Governs:` glob matching nothing, a criterion under
+  *Verification criteria* with no `Proof:` beneath it, and a joined criterion — two or
+  more `shall` resting on one `Proof:` with no ceiling named. **It exits 0 unconditionally**: the
   first run here found sixteen orphans and sixteen unproven bullets, which is the honest
   state rather than a regression, and a report that fails the build the day it lands is a
   report somebody deletes.
   Proof: skills/record-work/spec-drift --self-test
+- **Where** a verification criterion carries the EARS marker two or more times — counted as
+  `is_ears` matches it — sits above exactly one `Proof:` line, and contains no
+  case-insensitive `ceiling`, `is_joined` **shall** return true for it, and false for every
+  other criterion. The self-test drives the real `is_joined` through six cases: two markers
+  on one proof, two markers with "Ceiling named:", two markers on two proofs, one marker, a
+  bolded pair, and `marshalling` beside one real marker.
+  Proof: skills/record-work/spec-drift --self-test
+- **Where** a change document holds `## Verification criteria`, holding one criterion with
+  a `Proof:` and one without, then `## Checklist`, `joined_of` **shall** print one line,
+  carrying the proven criterion's `Proof:` count. It prints nothing for the unproven
+  criterion, which is `--trace`'s *unproven criterion* already, and nothing for the boxes.
+  Proof: skills/record-work/spec-drift --self-test
+- **When** `spec-drift --trace` runs in a repository whose capability spec and change
+  document each hold one joined criterion, it **shall** list both under the joined-criteria
+  section, each with its file.
+  Proof: skills/record-work/spec-drift --self-test
+- **When** `spec-drift --trace` runs in a repository holding exactly two joined criteria,
+  its summary line **shall** end in `, 2 joined criterion(a)`. The self-test asserts that
+  exact text, so a missing count and a wrong one both fail it.
+  Proof: skills/record-work/spec-drift --self-test
+- **When** `spec-drift --anchors` runs in a repository holding a joined criterion whose
+  citation resolves, it **shall** print exactly one line counting joined criteria in change
+  documents and in capability specs.
+  Proof: skills/record-work/spec-drift --self-test
+- **While** no criterion in the repository is joined, `spec-drift --anchors` **shall**
+  print no joined line, and its output is byte-identical to `anchors`, `ears` and `retired`
+  run directly in the same repository with the separators `anchors_and_ears` prints between
+  them. That composition stands in for the gate as it was before the joined count existed,
+  which the self-test cannot run.
+  Proof: skills/record-work/spec-drift --self-test
+- **If** joined criteria are the only finding, **then** `spec-drift --anchors` **shall**
+  exit 0.
+  Proof: skills/record-work/spec-drift --self-test
+- The `record-work` skill **shall** carry joined criteria as a row of its `--trace` table,
+  pinned by a `check_wiring` row on the pattern `^\| \*\*joined criterion\*\* \|`. Proved
+  as wiring only. **Ceiling named:** the row proves the table names joined criteria. It
+  does not prove the row's description matches what `is_joined` does, which is a reading.
+  Proof: scripts/check-payload
+- The `review-spec` skill **shall** state that `--trace` lists joined criteria as a prompt
+  to "split the criterion or name its ceiling", pinned by a `check_wiring` row on the
+  pattern `split the criterion or name its ceiling`. Proved as wiring only. **Ceiling
+  named:** the row proves the wording is present, not that a reviewer acts on it.
+  Proof: scripts/check-payload
 - **a criterion is a column-0 bullet under the criteria heading, and nothing else.** Its
   `Proof:` survives the continuation lines beneath it and ends at the next such bullet or
   the next heading. Reading every bullet in the document instead buries the real findings
