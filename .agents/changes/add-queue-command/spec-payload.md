@@ -11,19 +11,22 @@ are in `proposal.md`, and the vocabulary is its: *queued*, *dispatched by a bran
 - `payload`'s non-goal "the Go binary knowing about the queue. It is payload, not
   delivery." is gone, replaced by the line that still holds: the binary never *defines*
   what is queued.
-- find-work's *The queue — captured, never started* states the tie-breaker on one
-  `Queued:` date — change name, ascending — so `/libretto-next`'s recommended pick and
-  `libretto queue`'s first line are the same change.
+- find-work's *The queue — captured, never started* states that a proposal holding a box
+  under its `## Checklist` is not queued, because the box means the work started — the
+  same condition `queuedIdeas` and the wiki apply, so the skill and the binary keep one
+  definition.
+- The same section states the tie-breaker on one `Queued:` date — change name,
+  ascending — so `/libretto-next`'s recommended pick and `libretto queue`'s first line are
+  the same change.
 - The same section names `libretto queue` as an implementation of it, and says the
   section is the rule where the two disagree.
-- `/libretto-status` and `/libretto-next` are unchanged: they delegate the scan to
-  find-work and never call the binary.
+- `/libretto-status` and `/libretto-next` are unchanged and never call the binary.
 
 ## Scope boundaries
 
-**In:** two sentences in `skills/find-work/SKILL.md`; four lines in
+**In:** three sentences in `skills/find-work/SKILL.md`; five lines in
 `scripts/check-payload`; at landing, the non-goal rewritten in
-`.agents/specs/payload/spec.md` and the three criteria below added to it.
+`.agents/specs/payload/spec.md` and the four criteria below added to it.
 
 **Out:**
 
@@ -31,6 +34,8 @@ are in `proposal.md`, and the vocabulary is its: *queued*, *dispatched by a bran
 - **find-work running `libretto queue` in place of its own scan.** The skill works on a
   machine with skills and no binary; the binary is a reader, never the source.
 - **restating the branch filter anywhere else in the payload.** find-work owns it.
+- **a second criterion that status and next delegate the scan.** The existing payload
+  criterion "the queue commands delegate the scan too" owns it.
 
 ## Constraints
 
@@ -48,6 +53,10 @@ are in `proposal.md`, and the vocabulary is its: *queued*, *dispatched by a bran
   queue section is the definition; `libretto queue` and the wiki implement it, and where
   they disagree the binary is the bug." The original was already broken by the wiki's
   flow board, which read `Queued:` lines from the day it landed; this change says so.
+- **A checklist box disqualifies a `Queued:` proposal.** Assumed 2026-10-22, attacca run,
+  on review-spec's finding. Queued is three conditions — the `Queued:` line at column 0,
+  no unmerged branch taking the name, no box under `## Checklist` — stated in find-work
+  and applied by `queuedIdeas`. If wrong, the clause leaves both together.
 - **Ties on one `Queued:` date go by change name, ascending.** Assumed 2026-10-22,
   attacca run. If wrong (capture order), the sentence and the binary change together.
 - **`/libretto-status` and `/libretto-next` never call `libretto queue`.** Assumed
@@ -57,14 +66,18 @@ are in `proposal.md`, and the vocabulary is its: *queued*, *dispatched by a bran
 
 ## Task breakdown
 
-- the tie-breaker sentence in find-work's queue section
+- the checklist-clause sentence in find-work's queue section
+- the tie-breaker sentence
 - the sentence naming `libretto queue` as an implementation, the section winning
 - `check_wiring` for each sentence; `check_absent` of `libretto queue` in the status and
   next commands
-- at landing: the non-goal rewritten, the three criteria added
+- at landing: the non-goal rewritten, the four criteria added
 
 ## Verification criteria
 
+- **find-work's queue section shall state that a proposal holding a box under its
+  `## Checklist` is not queued.** Proved as wiring only.
+  Proof: scripts/check-payload
 - **find-work's queue section shall order queued changes that carry the same `Queued:`
   date by change name, ascending.** Proved as wiring only.
   Proof: scripts/check-payload
@@ -72,6 +85,6 @@ are in `proposal.md`, and the vocabulary is its: *queued*, *dispatched by a bran
   definition, and shall state that where the two disagree the section is the rule.**
   Proved as wiring only.
   Proof: scripts/check-payload
-- **`/libretto-status` and `/libretto-next` shall not invoke `libretto queue`, and shall
-  keep delegating the queue scan to find-work.** Proved as absence of the string.
+- **`/libretto-status` and `/libretto-next` shall not invoke `libretto queue`.** Proved as
+  absence of the string.
   Proof: scripts/check-payload

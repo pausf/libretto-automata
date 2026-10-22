@@ -2,7 +2,7 @@
 
 Tracker: none
 Targets: cli
-Durable decisions: every entry in Prior decisions below, and the three in spec-payload.md
+Durable decisions: every entry in Prior decisions below, and the four in spec-payload.md
 
 ## The ask, verbatim
 
@@ -33,9 +33,9 @@ parsing the wiki flow board already does. Reverses the queue-blind non-goal in
   `cmd/libretto/wiki.go` counts every `proposal.md` holding a line that starts with the
   `Queued:` prefix and runs no git at all. find-work's *The queue — captured, never
   started* says a queued name matching an unmerged branch is in flight, never queued. **The
-  two definitions disagree today**, observed in this very worktree:
-  `add-loop-budget-and-run-log` still carries its `Queued:` line here although its work
-  merged as PR #74. A finding.
+  two definitions disagree today**. Observed on this worktree's base before it was rebased:
+  `add-loop-budget-and-run-log` still carried its `Queued:` line there although its work
+  had merged as PR #74. After the rebase onto `main` that folder is gone, landed. A finding.
 - Q: does the binary honour the branch filter? → A: yes, the skill's rule exactly — local
   branches, one leading `feat/` `fix/` `docs/` `chore/` `refactor/` removed, the change
   name matched whole (assumed). If wrong — the binary should list the raw `Queued:` scan —
@@ -80,8 +80,8 @@ parsing the wiki flow board already does. Reverses the queue-blind non-goal in
   scan to find-work and never call the binary, so they work where only the skills are
   installed (assumed). If wrong, status runs `libretto queue` where it is on PATH and keeps
   the skill's scan as the fallback — two paths to keep in agreement.
-- Q: what changes in the skills? → A: find-work's queue section gains two sentences — the
-  tie-breaker, and that `libretto queue` implements this section, the section winning any
+- Q: what changes in the skills? → A: find-work's queue section gains three sentences — the
+  checklist clause (added after review-spec, below), the tie-breaker, and that `libretto queue` implements this section, the section winning any
   disagreement (assumed). No other skill moves.
 - Q: a panel row, `--json`, a README row? → A: none (assumed). `--json` is the queued
   `add-json-output`'s; a panel row earns its place when missed; the README's command table
@@ -95,14 +95,51 @@ parsing the wiki flow board already does. Reverses the queue-blind non-goal in
 - Q: the stop before code → A: carried into phase 6 by the invocation (assumed);
   `review-spec`'s findings, if any, are acted on and named in the report.
 
+### Session 2026-10-22, after review-spec (the run acting as author on the reviewer's findings)
+
+- Q: is "no `.agents/changes/`" the same state as "nothing queued"? → A: no. With no
+  directory the command prints `no .agents/changes/ here — nothing is queued`; with a
+  directory holding no queued idea it prints `nothing is queued`. Both exit 0 (assumed).
+  A missing directory usually means a project that never ran `init`, and saying so points
+  at the fix. If wrong, the two collapse into one line again.
+- Q: is "nothing is queued" measured before or after the branch filter? → A: after. When
+  every queued change is dispatched, the command prints `nothing is queued` and then the
+  closing line naming the dispatched ones (assumed). Before the filter it would print an
+  empty list under a claim that something is queued. If wrong, the empty line is
+  suppressed whenever anything was dropped.
+- Q: which stream carries the closing dispatched line? → A: stdout — it is information,
+  not an error. Only the unreadable-branches line goes to stderr (assumed). If wrong, the
+  dispatched line moves to stderr and a pipe sees only the queue.
+- Q: does a `Queued:` proposal holding a box under `## Checklist` count as queued? → A: no.
+  A proposal is queued when it carries a `Queued:` line at column 0, **and** no unmerged
+  local branch takes its name, **and** it has no box under its `## Checklist`, because a
+  box means the work started. `queuedIdeas` applies all three, the amended `cli` wiki
+  criterion keeps its checklist clause and adds the branch clause, and find-work's queue
+  section gains the same sentence so the skill and the binary keep one definition
+  (assumed). If wrong — a box should not disqualify — the clause comes out of all three
+  places together.
+- Q: is "the wiki lists what the command lists" an outcome without a test? → A: it gets its
+  own criterion, `TestWikiQueueMatchesTheCommand`: one fixture, and the wiki's flow-board
+  queue names the same changes, in the same order, as `queuedIdeas` (assumed). Box 2
+  closes it. If wrong, the outcome is dropped rather than left unproven.
+- Q: does `spec-payload.md`'s third criterion also promise that status and next delegate to
+  find-work? → A: no. The existing payload criterion "the queue commands delegate the scan
+  too" already owns that; the new one keeps only the absence of `libretto queue`
+  (assumed). A duplicate drifts. If wrong, the clause returns and the two criteria are
+  merged at landing.
+
 ## Outcomes
 
 - `libretto queue` prints the project's queued ideas, one per line — date, name, what the
   proposal says it is for — oldest `Queued:` date first, ties by name.
+- Queued means three things at once: a `Queued:` line at column 0, no unmerged local
+  branch carrying the name, and no box under the proposal's `## Checklist`.
 - A change whose name an unmerged local branch carries is not in that list; a closing line
-  names it with the branch.
-- An empty queue, a missing `.agents/changes/`, and a project where git cannot list
-  branches all exit 0 with one line saying which.
+  on stdout names it with the branch.
+- A missing `.agents/changes/` prints `no .agents/changes/ here — nothing is queued`; a
+  changes directory with no queued idea left after the filter prints `nothing is queued`,
+  followed by the dispatched line when anything was dropped. A project where git cannot
+  list branches gets the unfiltered queue and one stderr line. All of these exit 0.
 - Nothing on disk changes when it runs.
 - The wiki's in-flight strip count and its flow-board queue list exactly what
   `libretto queue` lists, in the same order.
@@ -115,7 +152,7 @@ parsing the wiki flow board already does. Reverses the queue-blind non-goal in
 - `cmd/libretto/queue.go`: the scan, the branch filter, the command
 - the wiki reading the queue through that scan
 - dispatch, the `needsPayload` exemption, the help line, one line in `AGENTS.md`
-- find-work's two sentences and their wiring checks (`spec-payload.md`)
+- find-work's three sentences and their wiring checks (`spec-payload.md`)
 - reversing `payload`'s non-goal (`spec-payload.md`)
 
 **Out:**
@@ -164,9 +201,20 @@ parsing the wiki flow board already does. Reverses the queue-blind non-goal in
   wrong, both add remote branches together.
 - **The wiki reads the same filtered scan.** Assumed 2026-10-22, attacca run. This amends
   `cli`'s criterion "Where a change's `proposal.md` carries a `Queued:` line and no box
-  under `## Checklist`, the wiki shall count it in the queue": at landing it gains "and no
-  unmerged local branch carries its name". If wrong, the wiki's unfiltered count stays and
-  one binary holds two definitions.
+  under `## Checklist`, the wiki shall count it in the queue": at landing it keeps its
+  checklist clause and gains "and no unmerged local branch carries its name". If wrong,
+  the wiki's unfiltered count stays and one binary holds two definitions.
+- **Queued is three conditions, applied in one place.** A `Queued:` line at column 0, no
+  unmerged local branch taking the name, and no box under `## Checklist` — a box means the
+  work started. `queuedIdeas` applies all three for both the wiki and the command, and
+  find-work's queue section states the same three. Assumed 2026-10-22, attacca run, on
+  review-spec's finding. If wrong, the checklist clause leaves all three places together.
+- **The empty states are told apart, and measured after the filter.** No
+  `.agents/changes/` prints `no .agents/changes/ here — nothing is queued`; nothing left
+  after the filter prints `nothing is queued`, then the dispatched line when anything was
+  dropped. Exit 0 either way. Assumed 2026-10-22, attacca run.
+- **The dispatched line is stdout; only the unreadable-branches line is stderr.** Assumed
+  2026-10-22, attacca run — information, not an error.
 - **Ties on one `Queued:` date go by change name, ascending.** Assumed 2026-10-22, attacca
   run. Already the wiki's order; find-work gains the sentence. If wrong (capture order),
   both move to one `git log` per proposal.
@@ -185,7 +233,8 @@ parsing the wiki flow board already does. Reverses the queue-blind non-goal in
 ## Task breakdown
 
 - extract the `Queued:` scan from `readInFlight` into one function returning name, date
-  and reading, sorted by date then name
+  and reading, sorted by date then name, skipping any proposal with a box under its
+  `## Checklist`
 - list unmerged local branches through `gitRunner`; match names after removing one known
   prefix; split the scan into queued and dispatched
 - the command: repository root, the filter, one line per idea, the closing line, the
@@ -193,8 +242,8 @@ parsing the wiki flow board already does. Reverses the queue-blind non-goal in
 - dispatch, the `needsPayload` exemption, the help line, `AGENTS.md`
 - the wiki: branches through a seam like its other git seams; strip count and flow board
   read the filtered scan
-- find-work's two sentences; `check-payload` wiring for them and for status and next not
-  calling the binary
+- find-work's three sentences; `check-payload` wiring for them and for status and next
+  not calling the binary
 
 ## Verification criteria
 
@@ -211,10 +260,13 @@ parsing the wiki flow board already does. Reverses the queue-blind non-goal in
 - **If a proposal mentions `Queued:` anywhere but at the start of a line, then the command
   shall not list that change.**
   Proof: cmd/libretto/queue_test.go TestQueueReadsOnlyALineStartingWithQueued
+- **If a proposal carrying a `Queued:` line holds a box under its `## Checklist`, then the
+  command shall not list that change.**
+  Proof: cmd/libretto/queue_test.go TestQueueSkipsAProposalWithAChecklistBox
 - **If an unmerged local branch's name, with one leading `feat/`, `fix/`, `docs/`,
   `chore/` or `refactor/` removed, equals a queued change's name, then the command shall
   leave that change out of the list and shall name it, with the branch, on a closing
-  line.**
+  line written to stdout.**
   Proof: cmd/libretto/queue_test.go TestQueueDropsAChangeItsBranchAlreadyTook
 - **If a branch matches a queued change's name only in part, or only after removing a
   prefix outside that list, then the command shall keep the change in the list.**
@@ -228,9 +280,16 @@ parsing the wiki flow board already does. Reverses the queue-blind non-goal in
 - **When run from a subdirectory of a repository, the command shall read the
   `.agents/changes/` at the repository root.**
   Proof: cmd/libretto/queue_test.go TestQueueReadsTheRepositoryRoot
-- **While no change carries a `Queued:` line, or no `.agents/changes/` exists, the command
-  shall print one line saying nothing is queued and shall exit 0.**
+- **While no `.agents/changes/` exists at the repository root, the command shall print
+  `no .agents/changes/ here — nothing is queued` and shall exit 0.**
+  Proof: cmd/libretto/queue_test.go TestQueueWithoutAChangesDirSaysSo
+- **While `.agents/changes/` exists and no change in it is queued after the branch filter,
+  the command shall print `nothing is queued` and shall exit 0.**
   Proof: cmd/libretto/queue_test.go TestQueueEmptyIsAStateNotAnError
+- **If every queued change is dispatched by a branch, then the command shall print
+  `nothing is queued` followed by the closing line naming each dispatched change with its
+  branch, both on stdout.**
+  Proof: cmd/libretto/queue_test.go TestQueueAllDispatchedSaysNothingQueuedThenNamesThem
 - **The command shall leave every file under the project byte-identical.**
   Proof: cmd/libretto/queue_test.go TestQueueWritesNothing
 - **If the command is given any argument, then it shall exit non-zero naming the argument,
@@ -243,6 +302,9 @@ parsing the wiki flow board already does. Reverses the queue-blind non-goal in
 - **If an unmerged local branch carries a queued change's name, then the wiki shall
   neither list that change in the flow board's queue nor count it in the in-flight strip.**
   Proof: cmd/libretto/wiki_test.go TestWikiQueueDropsAChangeItsBranchAlreadyTook
+- **The wiki's flow-board queue shall list the same change names, in the same order, as
+  `queuedIdeas` returns for the same changes directory and branch list.**
+  Proof: cmd/libretto/wiki_test.go TestWikiQueueMatchesTheCommand
 
 ## Approach
 
@@ -270,15 +332,15 @@ naming the binary as its implementation; `payload`'s non-goal is reversed.
   `cmd/libretto/main_test.go`, `cmd/libretto/root.go`, `AGENTS.md`,
   `skills/find-work/SKILL.md`, `scripts/check-payload`; at landing the deltas onto
   `.agents/specs/cli/spec.md` and `.agents/specs/payload/spec.md`.
-- This worktree branched before PR #74 merged; `main.go`'s help text and `loop` moved
-  there. Rebase before box 1, and the conflict, if any, is the help block.
 - Gates: the six in `AGENTS.md`.
 
 ### The approach
 
 1. **The scan.** `queuedIdeas(dir string) []queuedIdea` walks `<dir>/.agents/changes/*/`,
    reads each `proposal.md`, and keeps those holding a line with the `Queued:` prefix at
-   column 0 — `readInFlight`'s loop, moved. `queuedIdea` is `{name, date, reading string}`;
+   column 0 — `readInFlight`'s loop, moved — and drops any whose `## Checklist` holds a
+   box, counted with `readPlan`'s box definition so the loop and the scan agree on what a
+   box is. `queuedIdea` is `{name, date, reading string}`;
    `reading` is `firstSentence` over the non-empty lines between `## Reading` and the next
    `## ` heading. Sorted by date, then name — the sort `readInFlight` already does. A
    missing directory returns nil.
@@ -290,9 +352,11 @@ naming the binary as its implementation; `payload`'s non-goal is reversed.
    order and the dropped ones paired with their branch.
 3. **The command.** `queue(w, errw io.Writer, args []string, cwd string, git gitRunner)
    error`. Any argument: an error naming it. Root: `rev-parse --show-toplevel`, trimmed,
-   else `cwd`. Branches: on error, one stderr line and no filter. Prints
-   `<date>  <name>  <reading>` per idea; with none, one line saying nothing is queued;
-   when anything was dropped, one closing line naming each `name (branch)`. `main.go`
+   else `cwd`. No `<root>/.agents/changes/`: `no .agents/changes/ here — nothing is
+   queued`. Branches: on error, one stderr line and no filter. After the filter it prints
+   `<date>  <name>  <reading>` per idea, or `nothing is queued` when none is left; then,
+   when anything was dropped, one closing line on stdout naming each `name (branch)`.
+   `main.go`
    dispatches `queue` with `execGit(projectDir)`; `root.go` adds it to the exemption list;
    `usage()` gains a line; `AGENTS.md`'s command block gains one.
 4. **The wiki.** `readInFlight` replaces its inline loop with `queuedIdeas(projectDir)`
@@ -300,9 +364,11 @@ naming the binary as its implementation; `payload`'s non-goal is reversed.
    `unmergedBranches(execGit(dir))`. `wikiQueued` gives way to `queuedIdea`. Its error
    path is no filter, so every existing wiki test — temporary directories that are not
    repositories — keeps its current output.
-5. **The payload.** find-work's queue section gains: ties on one `Queued:` date go by
-   change name; and `libretto queue` implements this section, which is the rule where the
-   two disagree. `check-payload` gains a `check_wiring` for each, and a `check_absent` of
+5. **The payload.** find-work's queue section gains: a proposal with a box under its
+   `## Checklist` is not queued, because the box means the work started; ties on one
+   `Queued:` date go by change name; and `libretto queue` implements this section, which
+   is the rule where the two disagree. `check-payload` gains a `check_wiring` for each of
+   the three, and a `check_absent` of
    `libretto queue` in `commands/libretto-status.md` and `commands/libretto-next.md`.
 
 ### The alternatives it beat
@@ -328,7 +394,7 @@ naming the binary as its implementation; `payload`'s non-goal is reversed.
 
 ### Validation and rollback
 
-New tests: the fifteen named under Verification criteria, plus the four `check-payload`
+New tests: the nineteen named under Verification criteria, plus the five `check-payload`
 lines. Two must be forced red before they are believed:
 
 - `TestQueueDropsAChangeItsBranchAlreadyTook` passes if the fixture's change is simply
@@ -353,22 +419,26 @@ Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its
 
 - [ ] **`libretto queue` lists the queue, filtered as find-work filters it.** `queue.go`
       with `queuedIdeas`, `unmergedBranches`, `dispatchedBy`, `splitDispatched` and the
-      command; `readInFlight` calls `queuedIdeas` with no filter, so the wiki's output is
-      unchanged; dispatch, the `needsPayload` exemption, the help line, the `AGENTS.md`
-      line. Closes: TestQueueListsOldestFirst, TestQueueBreaksDateTiesByName,
+      command, the checklist clause inside `queuedIdeas`; `readInFlight` calls
+      `queuedIdeas` with no branch filter, so the wiki's output changes only for a queued
+      proposal holding a checklist box; dispatch, the `needsPayload` exemption, the help
+      line, the `AGENTS.md` line. Closes: TestQueueListsOldestFirst, TestQueueBreaksDateTiesByName,
       TestQueueWithoutAReadingPrintsTheNameAlone, TestQueueReadsOnlyALineStartingWithQueued,
-      TestQueueDropsAChangeItsBranchAlreadyTook,
+      TestQueueSkipsAProposalWithAChecklistBox, TestQueueDropsAChangeItsBranchAlreadyTook,
       TestQueueKeepsAChangeOnAPartialOrForeignMatch,
       TestQueueAsksGitForUnmergedLocalBranches,
       TestQueueUnreadableBranchesListsUnfiltered, TestQueueReadsTheRepositoryRoot,
-      TestQueueEmptyIsAStateNotAnError, TestQueueWritesNothing, TestQueueRefusesArguments,
-      TestQueueNeedsNoPayload, TestHelpNamesQueue. Waits on: nothing.
+      TestQueueWithoutAChangesDirSaysSo, TestQueueEmptyIsAStateNotAnError,
+      TestQueueAllDispatchedSaysNothingQueuedThenNamesThem, TestQueueWritesNothing,
+      TestQueueRefusesArguments, TestQueueNeedsNoPayload, TestHelpNamesQueue. Waits on: nothing.
 - [ ] **The wiki reads the same filtered queue.** The `wikiGitBranches` seam;
       `readInFlight` filters through `splitDispatched`; every existing wiki test unchanged.
-      Closes: TestWikiQueueDropsAChangeItsBranchAlreadyTook. Waits on: box 1.
-- [ ] **find-work names the tie-breaker and the binary.** The two sentences in
-      `skills/find-work/SKILL.md`; `check-payload` gains their two `check_wiring` lines
-      and the two `check_absent` lines for `/libretto-status` and `/libretto-next`.
-      Closes: the three criteria in `spec-payload.md`, all on scripts/check-payload.
+      Closes: TestWikiQueueDropsAChangeItsBranchAlreadyTook, TestWikiQueueMatchesTheCommand.
+      Waits on: box 1.
+- [ ] **find-work states the checklist clause, the tie-breaker and the binary.** The three
+      sentences in `skills/find-work/SKILL.md`; `check-payload` gains their three
+      `check_wiring` lines and the two `check_absent` lines for `/libretto-status` and
+      `/libretto-next`. Closes: the four criteria in `spec-payload.md`, all on
+      scripts/check-payload.
       Waits on: box 1, so the sentence never names a command that does not exist.
       Independent of box 2.
