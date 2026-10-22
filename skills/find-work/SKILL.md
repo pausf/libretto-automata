@@ -4,7 +4,7 @@ description: "Trigger: starting the Libretto flow; asking what to work on; resum
 license: MIT
 metadata:
   author: pausf
-  version: "1.3"
+  version: "1.4"
 ---
 
 ## What this does
@@ -187,9 +187,9 @@ that nothing else has to walk the same directory: `/libretto-status` reports it,
 version. Two answers to "what is queued" is one too many, and the one that disagrees is
 always the one nobody is reading.
 
-`/libretto-queue` writes proposals carrying a `Queued:` line. **That line is the whole
-definition** — present means captured and not started, absent means the change is
-underway:
+`/libretto-queue` writes proposals carrying a `Queued:` line. **That line is where the
+definition starts** — absent means the change is underway; present means captured and not
+started, unless one of the two conditions below says otherwise:
 
 ```
 rg -l '^Queued:' .agents/changes/*/proposal.md
@@ -197,6 +197,15 @@ rg -l '^Queued:' .agents/changes/*/proposal.md
 
 Run it whenever the caller asks for the queue, including in reporting mode. For each one,
 oldest `Queued:` date first: its name and what its proposal says it is for, in one line.
+Two proposals carrying the same `Queued:` date go by change name, ascending — so
+`/libretto-next`'s pick and the first line `libretto queue` prints are the same change.
+
+A proposal holding a box under its `## Checklist` is not queued, whatever its `Queued:`
+line says: the box means the work started.
+
+`libretto queue` implements this section; where the two disagree, the section is the rule.
+The binary is a reader, never the source — on a machine with the skills and no binary this
+section is still the whole rule.
 
 ### The line is necessary and not sufficient — drop the ones already **dispatched by a branch**
 

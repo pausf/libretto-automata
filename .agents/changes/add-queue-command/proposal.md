@@ -435,7 +435,7 @@ Phase 6 runs these with `build-and-check`. Each box leaves the tree green on its
       `readInFlight` filters through `splitDispatched`; every existing wiki test unchanged.
       Closes: TestWikiQueueDropsAChangeItsBranchAlreadyTook, TestWikiQueueMatchesTheCommand.
       Waits on: box 1.
-- [ ] **find-work states the checklist clause, the tie-breaker and the binary.** The three
+- [x] **find-work states the checklist clause, the tie-breaker and the binary.** The three
       sentences in `skills/find-work/SKILL.md`; `check-payload` gains their three
       `check_wiring` lines and the two `check_absent` lines for `/libretto-status` and
       `/libretto-next`. Closes: the four criteria in `spec-payload.md`, all on
