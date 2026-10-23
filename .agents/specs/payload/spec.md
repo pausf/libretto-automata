@@ -1109,6 +1109,19 @@ finding, which is the sentence the `readme` capability was created to answer abo
   matching nothing is a dead claim. Lost: a separate `Excludes:` key (a second line to keep
   beside the first) and listing cli's files one by one (a glob nobody maintains).
 
+- **The fresh readers run on every contract-lane change; verification is not tiered by risk.**
+  Retired from `tier-verification-by-risk`. Measured 2026-10-23 over the ten changes merged 2026-10-22/23 (`measurement.tsv` in this
+  change's history): per PR, the cold read's decision-log questions, the 6→7 entries in
+  `.agents/lessons.md`, and the PR's lines outside `.agents/`. `spec-reviewer` found 3–17
+  consequential gaps in **9 of 9** contract-lane changes, and size did not predict it — the
+  81-line change had 5, the 2,195-line one 6. `work-reviewer` found something in **4 of 10**,
+  and size did not predict that either: nothing in the two largest (2,195 and 691 lines), a
+  real regex gap in the 81-line gate change, and `init` writing outside `.agents/` in a
+  472-line one. A tier rule by size would have skipped exactly the reviews that found bugs.
+  What would reopen it: reviewer cost measured per change, and a predictor that names in
+  advance which reviews come back empty — neither exists here, and ten changes is a small
+  sample. Prompted by comparing the flow with gentle-ai's risk-tiered verification.
+
 ## Task breakdown
 
 - [x] `find-work` — phase 1, three sources
