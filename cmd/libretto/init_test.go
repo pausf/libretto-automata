@@ -218,6 +218,23 @@ func TestInitRefusesOutsideAGitRepository(t *testing.T) {
 	if exists(filepath.Join(dir, ".agents")) {
 		t.Error("init created .agents/ outside a repository")
 	}
+
+	// The criterion's other half: git absent from PATH altogether, not merely a directory
+	// git disowns. Without it the test proved one trigger of an "or".
+	t.Run("git unavailable", func(t *testing.T) {
+		repo := t.TempDir()
+		t.Setenv("PATH", t.TempDir())
+		err := initCmd(os.Stdout, execGit(repo))
+		if err == nil {
+			t.Fatal("init did not refuse with git unavailable")
+		}
+		if !strings.Contains(err.Error(), "git") {
+			t.Errorf("the refusal does not name git: %v", err)
+		}
+		if exists(filepath.Join(repo, ".agents")) {
+			t.Error("init created .agents/ with git unavailable")
+		}
+	})
 }
 
 // tempRepo builds a real git repository and returns its root, symlinks resolved —
