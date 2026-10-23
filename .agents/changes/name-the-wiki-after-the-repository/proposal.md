@@ -28,12 +28,18 @@ wrote `# Specs — libretto-automata-wt-add-queue-command` on line 3 of
 - Q: what names the repository? → A: the directory holding git's common dir — the main checkout's root, shared by every worktree (`git rev-parse --path-format=absolute --git-common-dir`, its parent) (assumed; if wrong, the remote's name, which needs a remote)
 - Q: when git cannot answer? → A: the directory the wiki runs in, as today — a project outside git keeps its title (assumed)
 
+### Session 2026-10-23, after review-spec
+- Q: a submodule or a --separate-git-dir layout reports a common dir whose parent is not the checkout — which side? → A: the common dir names the repository only when its own base name is `.git`; any other layout falls back to the run directory's name, as today (assumed; if wrong, `--show-toplevel` of the main worktree, one more git call)
+- Q: is the main-checkout case proved? → A: yes, its own criterion — no existing test asserts the heading (assumed)
+- Q: the HTML criterion — `<title>` alone? → A: both `<title>` and the home `<h1>`, which share one variable today (assumed)
+
 ## Outcomes
 
 1. `libretto wiki` run from a linked worktree titles both views — `README.md`'s heading and
    `wiki.html`'s `<title>` and heading — after the main checkout's directory.
 2. Run from the main checkout, the title is what it is today.
-3. Where git cannot say, the title is the run directory's name, as today.
+3. Where git cannot say, or its common dir is not named `.git` (a submodule, a separate git
+   dir), the title is the run directory's name, as today.
 
 ## Scope boundaries
 
@@ -62,18 +68,24 @@ wrote `# Specs — libretto-automata-wt-add-queue-command` on line 3 of
 - **When** `libretto wiki` runs in a linked worktree, the `README.md` heading **shall** name
   the main checkout's directory.
   Proof: cmd/libretto/wiki_test.go TestWikiFromAWorktreeNamesTheRepository
-- **When** `libretto wiki --html` runs in a linked worktree, `wiki.html`'s title **shall**
-  name the main checkout's directory.
+- **When** `libretto wiki --html` runs in a linked worktree, `wiki.html`'s `<title>` and its
+  home page's `<h1>` **shall** both name the main checkout's directory.
   Proof: cmd/libretto/wiki_test.go TestWikiHTMLFromAWorktreeNamesTheRepository
 - **If** git cannot report a common dir, **then** the title **shall** be the run directory's
   name.
   Proof: cmd/libretto/wiki_test.go TestWikiOutsideGitKeepsTheDirectoryName
+- **If** the common dir git reports is not named `.git`, **then** the title **shall** be the
+  run directory's name.
+  Proof: cmd/libretto/wiki_test.go TestWikiProjectNameFallsBackOffAPlainGitDir
+- **When** `libretto wiki` runs in the main checkout, the `README.md` heading **shall** name
+  that checkout's directory.
+  Proof: cmd/libretto/wiki_test.go TestWikiFromTheMainCheckoutNamesItsDirectory
 
 ## Approach
 
 `wikiProjectName(projectDir)` — a package variable, like `wikiGitBranches` — returns the
-base name of the parent of `git rev-parse --path-format=absolute --git-common-dir`, or
-`filepath.Base(projectDir)` on any error. Both renderers call it once. The worktree tests
+base name of the parent of `git rev-parse --path-format=absolute --git-common-dir` when
+that dir is named `.git`, and `filepath.Base(projectDir)` on any error or any other layout. Both renderers call it once. The worktree tests
 build a real repository plus `git worktree add`, so `make test-short` skips them, as the
 other real-git tests are skipped; the outside-git test needs no git.
 
@@ -82,10 +94,11 @@ other real-git tests are skipped; the outside-git test needs no git.
 | the origin remote's name | a repository need not have a remote, and a fork renames it |
 | `--show-toplevel` | it is the worktree's own root, which is the bug |
 
-Risk: a bare repository's common dir is the repository itself, so its parent is wrong —
-accepted, the wiki needs a working tree and a bare repository has none.
+Risk: a submodule and a `--separate-git-dir` layout keep today's title rather than the
+repository's — accepted, and proved by the `.git`-name fallback test; a bare repository has no
+working tree for the wiki to run in.
 
 ## Checklist
 
 - [ ] **The wiki names the repository from any worktree.** The helper, both renderers, the
-  three tests, each red first. Closes: the three criteria. Waits on: nothing.
+  five tests, each red first. Closes: the five criteria. Waits on: nothing.
