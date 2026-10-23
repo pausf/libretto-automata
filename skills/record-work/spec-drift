@@ -817,6 +817,29 @@ self_test() {
   want 'a queued capture is no contract'                 '0 0' "$(retire no no no no)"
   want 'a fenced Targets: is no contract'                '0 0' "$(retire fenced no no no)"
   want 'a plan and its contract are reported once'       '1 1' "$(retire yes no no yes)"
+  # The criterion's third clause: no deletion staged at all. A change sits committed, with
+  # a plan and a contract, and nothing is in the index — --retired reports nothing and
+  # passes. Without this case only the clauses that fire were ever exercised.
+  nothing_staged() {
+    local d out rc
+    d=$(mktemp -d) || return 99
+    out=$(
+      cd "$d" || exit 99
+      export HOME="$d" GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+      git init -q .
+      git config user.email t@t; git config user.name t
+      mkdir -p .agents/specs/thing .agents/changes/a-change
+      printf '# Thing\n\nGoverns: src/**\n\n## Prior decisions\n\n- one\n' > .agents/specs/thing/spec.md
+      printf '# Proposal\n\nTargets: thing\n' > .agents/changes/a-change/proposal.md
+      printf '# Plan\n\nDurable decisions: the one below\n' > .agents/changes/a-change/plan.md
+      git add -A && git commit -qm base
+      "$SELF" --retired 2>&1
+    )
+    rc=$?
+    rm -rf "$d"
+    printf '%s %s\n' "$rc" "$(printf '%s\n' "$out" | rg -c ' a-change ' || echo 0)"
+  }
+  want 'nothing staged retires nothing and passes'          '0 0' "$(nothing_staged)"
   want 'a long contract is still a contract'            '1 1' "$(retire yes no no no big)"
   want 'a long contract declaring none still passes'    '0 1' "$(retire yes yes no no big)"
 
