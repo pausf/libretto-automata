@@ -40,6 +40,7 @@ change should pay for the paths it actually takes.
 - Q: (spec-reviewer) the checklist's shape — what syntax? → A: each box carries a `Closes:` naming the criteria it closes, the token converge already maps on, and a row pins it in write-tasks. (assumed)
 - Q: (spec-reviewer) how do status and next reach `queue.md` without a hardcoded path? → A: they already invoke find-work, and find-work's SKILL.md says when to read `queue.md` beside itself; the commands change nothing. (assumed)
 - Q: (spec-reviewer) "labelled request" against record-work's unlabeled-is-honest rule? → A: AGENTS.md says "green, with its bump label when the bump was decided" — record-work's rule stands. (assumed)
+- Q: (work-reviewer) the deviations from "verbatim"? → A: four, all deliberate. (1) record-work's landing item 1 reads "whatever code remains — often none": the trial run's landing commit held no code, because every box had committed its own. (2) tracker.md's `AskUserQuestion` gained its fallback phrase, which the host-neutral scan demands of any file that names it. (3) tracker.md's `## Output` is `## What to report`, since the phase's own Output stays in SKILL.md. (4) forge.md restates the "sits below" paragraph for its new place. (assumed)
 - Q: (spec-reviewer) docs/DESIGN.md's writing-plans prose? → A: left; it is a dated design record, not a list of what ships. README's and FLOW.md's counts and lists are updated. (assumed)
 
 ## Outcomes

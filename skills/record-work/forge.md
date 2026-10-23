@@ -2,6 +2,10 @@
 
 Read this when the repository has a remote, before the push question in `SKILL.md`.
 
+It is read **after** the push section on purpose. When the exception below sat above
+the native-prompt paragraph, what followed it read as reinstating the ask
+unconditionally. That was the reviewer's finding on the run that landed the mode.
+
 ## The one exception, and it is the whole of `/libretto-attacca`
 
 **Everything in `SKILL.md`'s push section — the question, the native prompt, the
@@ -186,7 +190,7 @@ the bump, or authorised one in advance: then there is nothing left to ask, and a
 opened unlabelled fails the label check's `opened` run and mails the user a red check for a
 question already answered. That happened three times in one day. The other side is
 untouched: under `/libretto-attacca` with no bump decided, the request is opened unlabelled
-on purpose and its red check *is* the bump question — see the section on the bump below.
+on purpose and its red check *is* the bump question — see the section on the bump above.
 
 A missing or unauthenticated CLI **stops**, with the install line and nothing else —
 the shape `skills/find-work/` already uses for `jira`:

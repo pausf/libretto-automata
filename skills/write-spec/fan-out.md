@@ -113,7 +113,7 @@ without the context that made it a question.
 Read every returned spec. Where a writer left `[NEEDS CLARIFICATION: question]`, its
 inputs did not say enough, and the resolution is the interview's tail:
 
-1. Ask each marker's question — same shape as step 4, one at a time, a reasoned
+1. Ask each marker's question — same shape as `SKILL.md`'s step 4, one at a time, a reasoned
    recommendation first.
 2. Log the answer under `## Decision log`, verbatim, like every other answer.
 3. **Replace the bracket expression — the brackets and everything inside them, nothing
