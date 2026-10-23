@@ -130,6 +130,9 @@ any other overlap in cli.
   and its row. Closes: the six payload criteria. Waits on: nothing.
 - [x] **The wiki footer honours `!` per capability.** `governedSplit` takes one entry list per
   capability. Closes: spec-cli's criteria. Waits on: box 1.
-- [ ] **The four test files move to their owners.** cli's and ci's `Governs:` lines; observed
+- [x] **The four test files move to their owners.** cli's and ci's `Governs:` lines; observed
   with the worktree's spec-drift: `gates_test.go` staged alone names ci, not cli. Closes:
   Outcome 5, observed. Waits on: boxes 1–2.
+  Observed 2026-10-23 with ./skills/record-work/spec-drift: gates_test.go staged alone named cli
+  before the move and ci after; readme_test.go named readme alone; --trace reported no dead claim
+  from the new lines.
