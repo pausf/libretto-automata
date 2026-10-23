@@ -17,7 +17,9 @@ hand. Each becomes a check, so the class stops arriving instead of being caught 
 
 - a fence opened in prose and never closed hid 157 `Proof:` citations from `--anchors`;
 - a pipe into `rg -q` under `pipefail` read a SIGPIPE as "no match" — live in `--retired`
-  (fixed in v0.37.0), latent in `check-payload`'s marker search (fixed here);
+  (fixed in v0.37.0). `check-payload`'s marker search has the same shape but is not
+  vulnerable, measured: it squashes newlines first, so `rg` reads the one line whole before it
+  can match. It is rewritten anyway, so the new row holds with no exception;
 - a `release:` label added after `gh pr create` failed the label check's `opened` run and
   emailed the user a false alarm, three times.
 
@@ -44,8 +46,9 @@ hand. Each becomes a check, so the class stops arriving instead of being caught 
 2. With every fence closed, `--anchors` prints exactly what it printed before.
 3. `scripts/check-payload` fails, naming the file and line, when a file under `skills/` or
    `scripts/` pipes into `rg` with a short-flag group containing `q`, or `--quiet`.
-4. `check-payload`'s marker search reads each file whole, so a skill past the pipe buffer
-   cannot read as non-compliant.
+4. `check-payload`'s marker search no longer pipes into `rg -q`. Measured: it was not
+   vulnerable (one squashed line is read whole), so this is the row holding without an
+   exception, not a fix.
 5. `record-work` says to pass the `release:` label to `gh pr create` whenever the bump is
    already decided before the request exists — the user named it, or authorised it in
    advance — and why. attacca with no decided bump is untouched: its red check is still the
@@ -80,7 +83,9 @@ paragraph, version bump).
 - **Nothing in the payload's scripts pipes into `rg -q`.** Decided 2026-10-23: under
   `set -o pipefail`, `rg -q` stops reading at its first match, the writer before it dies of
   SIGPIPE, and the pipeline's 141 reads as no match. It made `--retired` fail open on a long
-  change document (fixed v0.37.0) and sat latent in `check-payload`'s marker search. Read the
+  change document (fixed v0.37.0). Measured 2026-10-23: 40,000 lines through `| rg -q` exit
+  141, the same lines through `rg … >/dev/null` exit 0, and a newline-squashed single line
+  exits 0 either way — the reader must finish the line before it can match. Read the
   input whole — `rg … >/dev/null` — and a `check-payload` row keeps it that way.
 
 ## Task breakdown
@@ -137,7 +142,7 @@ the row names the shape it pins.
 
 - [x] **`--anchors` fails on an unclosed fence.** `fences` in spec-drift, two self-test
   cases, forced red by removing the call. Closes: the two fence criteria. Waits on: nothing.
-- [ ] **No pipe into `rg -q` in the payload's scripts.** The row, line 576 fixed, the row
+- [x] **No pipe into `rg -q` in the payload's scripts.** The row, line 576 fixed, the row
   observed red on today's tree first. Closes: the `rg -q` criterion. Waits on: nothing.
 - [ ] **The label rides `gh pr create`.** The paragraph, the row, record-work 1.7. Closes:
   the label criterion. Waits on: nothing.
