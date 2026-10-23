@@ -281,8 +281,8 @@ check_wiring skills/find-work/queue.md   '.libretto queue. implements this secti
 check_absent commands/libretto-status.md 'libretto queue'               '/libretto-status never calls the binary for the queue'
 check_absent commands/libretto-next.md   'libretto queue'               '/libretto-next never calls the binary for the queue'
 check_wiring skills/write-spec/SKILL.md  'never the corpus'             'phase 2 selects the governing spec, not the spec root'
-check_wiring skills/write-spec/SKILL.md  'proposal\.md.*always the vocabulary' 'a fan-out writer is given proposal.md by path, its vocabulary always'
-check_wiring skills/write-spec/SKILL.md  'rebills the whole context'    'the fan-out of spec-<capability>.md writers states what a mid-phase model switch costs'
+check_wiring skills/write-spec/fan-out.md  'proposal\.md.*always the vocabulary' 'a fan-out writer is given proposal.md by path, its vocabulary always'
+check_wiring skills/write-spec/fan-out.md  'rebills the whole context'    'the fan-out of spec-<capability>.md writers states what a mid-phase model switch costs'
 check_wiring skills/record-work/drift.md 'opt-in and stays' 'the block hook snippet is documented as opt-in'
 check_wiring skills/record-work/drift.md '^\| \*\*joined criterion\*\* \|' 'record-work carries joined criteria as a row of its --trace table'
 check_wiring skills/review-spec/SKILL.md 'split the criterion or name its ceiling' 'review-spec reads joined criteria as a prompt to split or name a ceiling'
@@ -292,7 +292,7 @@ check_wiring skills/write-spec/SKILL.md 'no hard cap, and the bias is toward ask
 check_wiring skills/write-spec/SKILL.md 'never a form-length interrogation' 'the judgment rule keeps its upper edge'
 check_wiring skills/write-spec/SKILL.md  '## Decision log'              'phase 2 defines the decision log as a section of proposal.md, verbatim and dated'
 check_wiring skills/write-spec/SKILL.md  'one question per .AskUserQuestion. call' 'phase 2 interviews: one at a time, recommendation reasoned, no-more always offered'
-check_wiring skills/write-spec/SKILL.md  'NEEDS CLARIFICATION'          'the orchestrator resolves markers: ask, log, patch the bracket expression only'
+check_wiring skills/write-spec/fan-out.md  'NEEDS CLARIFICATION'          'the orchestrator resolves markers: ask, log, patch the bracket expression only'
 check_wiring agents/spec-writer.md       'NEEDS CLARIFICATION'          'the writer marks what its inputs left open, never guesses past it'
 check_wiring skills/write-plan/SKILL.md  'two or three approaches'      'phase 5 forks: the user chooses the approach from named tradeoffs'
 check_wiring skills/write-plan/SKILL.md  '## Decision log'              'the fork logs chosen and rejected, with why, verbatim'
@@ -399,6 +399,8 @@ check_wiring skills/record-work/SKILL.md 'When .*, read .drift\.md. beside this 
 check_wiring skills/record-work/SKILL.md 'When .*, read .forge\.md. beside this file' 'record-work names forge.md with its condition'
 check_wiring skills/find-work/SKILL.md 'When .*, read .queue\.md. beside this file' 'find-work names queue.md with its condition'
 check_wiring skills/find-work/SKILL.md 'When .*, read .tracker\.md. beside this file' 'find-work names tracker.md with its condition'
+check_wiring skills/write-spec/SKILL.md 'When .*, read .fan-out\.md. beside this file' 'write-spec names fan-out.md with its condition'
+check_absent skills/write-spec/SKILL.md 'drive plan\.md, and shall' 'the EARS after-example carries one shall'
 check_absent skills/record-work/SKILL.md 'does three things together' 'the landing list is not introduced as three things'
 # The ceilings sit below each body's size before the split, so the rows were red first.
 for budget in record-work:300 find-work:300 write-spec:580; do
@@ -468,6 +470,7 @@ fi
 # closes on the next level-2 heading outside a fence, the boundary spec-drift reads too.
 sw_hits=$(rg -l 'spec-writer' skills agents commands 2>/dev/null | while IFS= read -r f; do
   [ "$f" = agents/spec-writer.md ] && continue
+  [ "$f" = skills/write-spec/fan-out.md ] && continue
   awk -v f="$f" -v ws="$([ "$f" = skills/write-spec/SKILL.md ] && echo 1)" '
     /^```/ { fence = !fence }
     ws && !fence && /^## / { fan = ($0 ~ /^## Step 2b/) }
@@ -475,7 +478,7 @@ sw_hits=$(rg -l 'spec-writer' skills agents commands 2>/dev/null | while IFS= re
   ' "$f"
 done)
 if [ -z "$sw_hits" ]; then
-  ok 'spec-writer is named only in write-spec'"'"'s fan-out section and its own file'
+  ok 'spec-writer is named only in write-spec'"'"'s fan-out section, fan-out.md and its own file'
 else
   while IFS= read -r h; do fail "spec-writer named outside write-spec's fan-out: $h"; done <<< "$sw_hits"
 fi
