@@ -1052,9 +1052,11 @@ func TestWikiPageCarriesTheActivitySparkline(t *testing.T) {
 	specs := writeSpecs(t, dir, ".agents/specs")
 	pd, pdd := wikiGitDates, wikiGitDate
 	t.Cleanup(func() { wikiGitDates, wikiGitDate = pd, pdd })
+	// Dates years in the past, so a window ending at the clock holds none of them and this
+	// test fails on one. Dated in 2026 it passed either way until the clock left their window.
 	wikiGitDates = func(_, p string) []string {
 		if strings.Contains(p, "pricing") {
-			return []string{"2026-08-18", "2026-08-02", "2026-06-11", "2026-01-01"}
+			return []string{"2020-08-18", "2020-08-02", "2020-06-11", "2019-12-01"}
 		}
 		return nil
 	}
@@ -1065,8 +1067,8 @@ func TestWikiPageCarriesTheActivitySparkline(t *testing.T) {
 	if !strings.Contains(got, `class="spark"`) {
 		t.Fatal("sparkline missing")
 	}
-	// Window is the 8 months ending 2026-08: aug has 2 commits (max → 18), jun 1 (9);
-	// 2026-01 falls outside and must not widen anything.
+	// Window is the 8 months ending 2020-08 (Jan–Aug): aug has 2 commits (max → 18), jun 1
+	// (9); 2019-12 falls outside and must not widen anything.
 	if !strings.Contains(got, `height="18"`) || !strings.Contains(got, `height="9"`) {
 		t.Fatal("bar heights are not proportional to monthly counts")
 	}
