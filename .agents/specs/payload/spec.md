@@ -1093,6 +1093,13 @@ finding, which is the sentence the `readme` capability was created to answer abo
   newline-squashed single line exits 0 either way, since the reader must finish the line —
   which is why `check-payload`'s marker search, rewritten here, was never actually vulnerable.
   Ceiling named: a pipe split across lines, or a `|` inside a quoted argument, is not seen.
+- **No bare dollar-digit in a skill or command body.** Decided 2026-10-23 from a trial run
+  of the flow in a throwaway project: Claude Code substitutes a dollar-digit in a skill body
+  with the words of the invocation's arguments, so `find-work`'s awk read `want="a"` under
+  `/libretto-attacca Add a …` — the scan was broken exactly when the flow was given a task.
+  `${1}` and `$(0)` mean the same and are left alone; `check-payload` refuses the bare form.
+  The scan also runs through `bash`, since zsh aborts on an unmatched glob. Lost: escaping
+  case by case (the next skill to embed shell would not know to).
 - **A decided bump rides `gh pr create --label`.** Retired from
   `gate-recurring-defect-classes`, decided 2026-10-23: three requests opened unlabelled with
   the bump already authorised failed the label check's `opened` run and mailed the user a red
@@ -1935,6 +1942,10 @@ one of those in its own plan before the reviewer found four more in its skill.
 - **`commands/libretto-attacca.md` restates none of it** — no prompt, no `gh pr edit` — and
   its `Never` list forbids labelling only with a bump the user did not choose, while merging,
   tagging and releasing stay absolute
+  Proof: scripts/check-payload
+- **No skill or command body shall carry a bare dollar-digit**, and `find-work`'s scan
+  shall run through `bash` — Claude Code substitutes a dollar-digit with the invocation's
+  arguments, and zsh aborts on the unmatched glob of an empty `.agents/changes/`
   Proof: scripts/check-payload
 
 **What none of this verifies is behaviour.** A skill is a prompt, and a prompt is

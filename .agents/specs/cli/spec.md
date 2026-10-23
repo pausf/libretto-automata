@@ -2127,6 +2127,11 @@ symlinked, and it regenerates wherever the specs move.
   line, its criteria, and a relative link to its spec. A spec with no prose before its
   first heading gets a section without an intro — absent is absent, never an error.
   Proof: cmd/libretto/wiki_test.go TestWikiWritesIndexAndSections
+- **the generated `README.md` shall carry no line `spec-drift` reads as a `Governs:` key**
+  — the section labels it `**Governs**`. `spec-drift` reads every `.md` under the specs
+  directory, so a view written in the contract's syntax claimed every path a second time and
+  `--trace` reported each one as dead.
+  Proof: cmd/libretto/wiki_test.go TestWikiReadmeCarriesNoGovernsKey
 - **the generated file shall open with a marker comment** naming `libretto wiki` as its
   generator and the command that refreshes it.
   Proof: cmd/libretto/wiki_test.go TestGeneratedReadmeCarriesTheMarker
@@ -2605,6 +2610,10 @@ exits zero.
 - **`init` shall work with no payload installed** — the `needsPayload` exemption,
   proven the way `models` proves its own.
   Proof: cmd/libretto/init_test.go TestInitWorksWithNoPayload
+- **If `-h` or `--help` follows any subcommand, then `libretto` shall print the usage and
+  run nothing.** `init` reads no flags, so `init --help` bootstrapped the directory it was
+  asked to describe.
+  Proof: cmd/libretto/init_test.go TestHelpFlagAfterASubcommandRunsNothing
 - **The report shall name the repository root it acted on before the per-artifact
   lines, and shall carry no escape codes when piped.**
   Proof: cmd/libretto/init_test.go TestInitNamesTheRootAndCarriesNoEscapeCodes

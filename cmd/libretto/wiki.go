@@ -276,7 +276,7 @@ func renderWiki(projectDir string, caps []wikiCapability) []byte {
 			b.WriteString(strings.Join(c.intro, " ") + "\n\n")
 		}
 		if c.governs != "" {
-			fmt.Fprintf(&b, "Governs: `%s`\n\n", c.governs)
+			fmt.Fprintf(&b, "**Governs** `%s`\n\n", c.governs)
 		}
 		for _, crit := range c.criteria {
 			fmt.Fprintf(&b, "- %s\n", crit)

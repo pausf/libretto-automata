@@ -350,3 +350,8 @@ documents, leaving the seam undocumented. Fixed in this pass: the comment is bac
 
 The rg -q row's pipe pattern began with [^|], so a pipe in column 0 — a non-|| pipe into
 rg -q — could never match. Fixed in this pass: (^|[^|]), checked against a column-0 case.
+
+## 2026-10-23 · fix-four-flow-trial-bugs · 6→7
+The payload criterion promised two things, and its Proof: gated only the dollar-digit half.
+Nothing checked that find-work's scan runs through bash. Fixed: a check_wiring row for
+`bash <<'SCAN'`, forced red by renaming the wrapper.

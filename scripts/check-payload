@@ -382,8 +382,18 @@ if [ -z "$pipe_hits" ]; then
 else
   while IFS= read -r h; do fail "a pipe into rg -q reads SIGPIPE as no match under pipefail — $h"; done <<< "$pipe_hits"
 fi
+# Claude Code substitutes a bare dollar-digit in a skill or command body with the words of
+# the invocation's arguments, so shell or awk written that way runs on the user's request
+# instead of its input. `${1}` and `$(0)` mean the same and are left alone.
+argv_hits=$(rg -n -e '\$[0-9]' skills/*/SKILL.md commands/*.md 2>/dev/null)
+if [ -z "$argv_hits" ]; then
+  ok 'no bare dollar-digit in a skill or command body'
+else
+  while IFS= read -r h; do fail "a bare dollar-digit is replaced by the invocation's arguments — $h"; done <<< "$argv_hits"
+fi
 check_wiring skills/record-work/SKILL.md 'the label rides .gh pr create' 'a bump decided before the request rides gh pr create --label'
 check_wiring skills/write-spec/SKILL.md 'a leading .!. excludes' 'write-spec names the Governs: exclusion'
+check_wiring skills/find-work/SKILL.md "^bash <<'SCAN'$" 'find-work runs its scan through bash, which zsh cannot abort on an empty glob'
 check_wiring commands/libretto-status.md 'Skill\(skill="find-work"\)' 'status delegates the scan to find-work'
 check_wiring commands/libretto-status.md 'proposal\.md..s .## Checklist.' 'status names proposal.md among the files the scan reads'
 
