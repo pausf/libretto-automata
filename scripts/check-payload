@@ -283,8 +283,8 @@ check_absent commands/libretto-next.md   'libretto queue'               '/libret
 check_wiring skills/write-spec/SKILL.md  'never the corpus'             'phase 2 selects the governing spec, not the spec root'
 check_wiring skills/write-spec/SKILL.md  'proposal\.md.*always the vocabulary' 'a fan-out writer is given proposal.md by path, its vocabulary always'
 check_wiring skills/write-spec/SKILL.md  'rebills the whole context'    'the fan-out of spec-<capability>.md writers states what a mid-phase model switch costs'
-check_wiring skills/record-work/SKILL.md 'opt-in and stays' 'the block hook snippet is documented as opt-in'
-check_wiring skills/record-work/SKILL.md '^\| \*\*joined criterion\*\* \|' 'record-work carries joined criteria as a row of its --trace table'
+check_wiring skills/record-work/drift.md 'opt-in and stays' 'the block hook snippet is documented as opt-in'
+check_wiring skills/record-work/drift.md '^\| \*\*joined criterion\*\* \|' 'record-work carries joined criteria as a row of its --trace table'
 check_wiring skills/review-spec/SKILL.md 'split the criterion or name its ceiling' 'review-spec reads joined criteria as a prompt to split or name a ceiling'
 check_wiring skills/build-and-check/SKILL.md 'judging the change means looking' 'phase 6 renders and looks at visual output'
 check_wiring skills/review-work/SKILL.md 'the phase field exactly .6→7.' 'the seam ledgers each finding as 6→7'
@@ -311,19 +311,19 @@ check_wiring skills/evidence/SKILL.md    'Said:'                        'the cap
 check_wiring skills/retro/SKILL.md       'Resolved:'                    'retro spends entries by marking, never editing'
 check_wiring skills/retro/SKILL.md       'Never apply it'               'retro proposes payload diffs and never applies'
 check_wiring commands/libretto-retro.md  'Skill\(skill="retro"\)'       'libretto-retro routes to the retro skill'
-check_wiring skills/record-work/SKILL.md 'the bump is asked once' 'attacca asks the bump at the end'
-check_wiring skills/record-work/SKILL.md 'read the request back'  'the applied label is read back off the request'
-check_wiring skills/record-work/SKILL.md 'never the first option' 'release:major is never recommended'
-check_wiring skills/record-work/SKILL.md 'defines none of the three' 'a repository without the labels is not asked'
-check_wiring skills/record-work/SKILL.md 'is never withdrawn' 'the red-check line survives an unanswered question'
-check_wiring skills/record-work/SKILL.md 'the bump a person chose' 'the request records who chose the bump'
+check_wiring skills/record-work/forge.md 'the bump is asked once' 'attacca asks the bump at the end'
+check_wiring skills/record-work/forge.md 'read the request back'  'the applied label is read back off the request'
+check_wiring skills/record-work/forge.md 'never the first option' 'release:major is never recommended'
+check_wiring skills/record-work/forge.md 'defines none of the three' 'a repository without the labels is not asked'
+check_wiring skills/record-work/forge.md 'is never withdrawn' 'the red-check line survives an unanswered question'
+check_wiring skills/record-work/forge.md 'the bump a person chose' 'the request records who chose the bump'
 # The four below came from the phase 6→7 reviewer. Each guards a defect that shipped
 # green: a detection that inverts silently, a promise with no step behind it, a prefix
 # match, and the same file forbidding absolutely what it two paragraphs later permits.
-check_wiring skills/record-work/SKILL.md 'Never a bare .gh label list.' 'label detection is searched and bounded, never the default 30'
-check_wiring skills/record-work/SKILL.md 'Never a prefix or a substring' 'labels are matched by whole name'
-check_wiring skills/record-work/SKILL.md 'this step is not optional' 'the chosen bump is written back into the description'
-check_wiring skills/record-work/SKILL.md 'label the user did not choose' 'the push consent does not extend to a label'
+check_wiring skills/record-work/forge.md 'Never a bare .gh label list.' 'label detection is searched and bounded, never the default 30'
+check_wiring skills/record-work/forge.md 'Never a prefix or a substring' 'labels are matched by whole name'
+check_wiring skills/record-work/forge.md 'this step is not optional' 'the chosen bump is written back into the description'
+check_wiring skills/record-work/forge.md 'label the user did not choose' 'the push consent does not extend to a label'
 # Line-scoped, like every row above: the phrase has to sit on one line in the skill. It
 # proves the mandate is present and nothing about whether a plan obeyed it — that is
 # judgment, and it belongs to phase 6 and the 6→7 reviewer.
@@ -391,8 +391,19 @@ if [ -z "$argv_hits" ]; then
 else
   while IFS= read -r h; do fail "a bare dollar-digit is replaced by the invocation's arguments — $h"; done <<< "$argv_hits"
 fi
-check_wiring skills/record-work/SKILL.md 'the label rides .gh pr create' 'a bump decided before the request rides gh pr create --label'
+check_wiring skills/record-work/forge.md 'the label rides .gh pr create' 'a bump decided before the request rides gh pr create --label'
 check_wiring skills/write-spec/SKILL.md 'a leading .!. excludes' 'write-spec names the Governs: exclusion'
+# trim-skill-reading-cost: a skill body loads whole on every invocation, so guidance that
+# applies only on a condition lives in a sibling file, named with its condition on one line.
+check_wiring skills/record-work/SKILL.md 'When .*, read .drift\.md. beside this file' 'record-work names drift.md with its condition'
+check_wiring skills/record-work/SKILL.md 'When .*, read .forge\.md. beside this file' 'record-work names forge.md with its condition'
+check_absent skills/record-work/SKILL.md 'does three things together' 'the landing list is not introduced as three things'
+# The ceilings sit below each body's size before the split, so the rows were red first.
+for budget in record-work:300 find-work:300 write-spec:580; do
+  f="skills/${budget%%:*}/SKILL.md"; n=$(wc -l < "$f" | tr -d ' ')
+  if [ "$n" -le "${budget##*:}" ]; then ok "$f is $n lines, within ${budget##*:}"
+  else fail "$f is $n lines, over its budget of ${budget##*:} — move conditional guidance to a sibling file"; fi
+done
 check_wiring skills/find-work/SKILL.md "^bash <<'SCAN'$" 'find-work runs its scan through bash, which zsh cannot abort on an empty glob'
 check_wiring commands/libretto-status.md 'Skill\(skill="find-work"\)' 'status delegates the scan to find-work'
 check_wiring commands/libretto-status.md 'proposal\.md..s .## Checklist.' 'status names proposal.md among the files the scan reads'
@@ -514,7 +525,7 @@ printf '\n── skills never point at an executable that is not installed ─�
 # Scoped to executables on purpose. Prose mentioning docs/ or an example
 # internal/foo_test.go path is describing, not instructing, and failing those
 # turns this check into noise nobody reads.
-unreachable=$(rg -oN '(^|[^A-Za-z0-9._/~-])(scripts|bin)/[A-Za-z0-9._-]+' skills/*/SKILL.md 2>/dev/null || true)
+unreachable=$(rg -oN '(^|[^A-Za-z0-9._/~-])(scripts|bin)/[A-Za-z0-9._-]+' skills/*/*.md 2>/dev/null || true)
 if [ -n "$unreachable" ]; then
   printf '%s\n' "$unreachable" | while IFS= read -r hit; do
     fail "not installed, so unreachable for users: $hit"

@@ -198,7 +198,7 @@ Rollback: one revert.
 
 ## Checklist
 
-- [ ] record-work split into SKILL.md, forge.md and drift.md, with rows re-pointed and a budget row · closes criteria 1–2
+- [x] record-work split into SKILL.md, forge.md and drift.md, with rows re-pointed and a budget row · closes criteria 1–2
 - [ ] find-work split into SKILL.md, tracker.md and queue.md, with status and next pointed at queue.md · closes criteria 1–2
 - [ ] write-spec's fan-out moved to fan-out.md, with the spec-writer row and EARS example fixed · closes criteria 1, 2 and 4
 - [ ] write-tasks shape inlined and writing-plans removed from the payload and every list · closes criterion 3
