@@ -34,6 +34,15 @@ a capability when one of its plain globs matches and none of its `!` globs does.
 - Q: does an exclusion that matches nothing count as a dead claim? → A: yes — it is a glob pointing at nothing, the same staleness (assumed)
 - Q: do cli's remaining overlaps go too? → A: only the four the queue named; the rest are a reading for whoever next touches them (assumed)
 
+### Session 2026-10-23, after review-spec
+- Q: the Go wiki matches Governs: too (governedSplit, which cli promises mirrors spec-drift) — in or out? → A: in. Two matching authorities is what cli's promise forbids; the footer honours `!` by the same rule, per capability (assumed)
+- Q: governedSplit pools every capability's globs into one list — with exclusions that is wrong (cli's `!` would hide a path ci claims) → A: it takes one entry list per capability; a path is governed when some capability governs it (assumed)
+- Q: is editing another capability's Governs: line amending it? → A: yes — it changes what that capability owns; spec-cli.md and spec-ci.md carry those edits. readme's line does not change (assumed)
+- Q: which readers does the self-test drive? → A: both, not only governed_by: a --trace orphan case and a default-mode case through --block (assumed)
+- Q: the two other places that define orphan as "no Governs: glob claims" (record-work's --trace table, spec-drift's header)? → A: both are rewritten to "no Governs: line governs" in this change (assumed)
+- Q: which write-spec passage? → A: "And the spec declares what it governs" (assumed)
+- Q: how is Outcome 5 observed? → A: with the worktree's spec-drift (./skills/record-work/spec-drift, never the installed one), default mode, gates_test.go staged alone: it names ci and not cli (assumed)
+
 ## Outcomes
 
 1. A `!` entry in a capability's `Governs:` removes the paths it matches from that capability.
@@ -47,11 +56,13 @@ a capability when one of its plain globs matches and none of its `!` globs does.
 
 ## Scope boundaries
 
-**In:** `skills/record-work/spec-drift` (the rule, its self-test cases), the `Governs:` lines
-of `cli`, `ci` and `readme`, `write-spec`'s sentence that defines `Governs:`.
+**In:** `skills/record-work/spec-drift` (the rule, its self-test cases, its header comment),
+`skills/record-work/SKILL.md` (the `--trace` table's orphan row), `write-spec`'s "And the spec
+declares what it governs" section; through `spec-cli.md`, the wiki footer's matcher and
+cli's `Governs:` line; through `spec-ci.md`, ci's `Governs:` line.
 
 **Out:** negation inside a glob (`[!x]` keeps meaning what `case` means); ordering rules (no
-"later wins" — exclusion always beats inclusion); the Go wiki, which shows the line verbatim;
+"later wins" — exclusion always beats inclusion); how the wiki *renders* the line (verbatim);
 any other overlap in cli.
 
 ## Constraints
@@ -76,8 +87,14 @@ any other overlap in cli.
 
 ## Verification criteria
 
-- **Where** a capability's `Governs:` holds a `!` entry matching a path, spec-drift **shall**
-  treat that path as not governed by that capability, even when a plain entry matches it.
+- **Where** a capability's `Governs:` holds a `!` entry matching a path, `governed_by`
+  **shall** answer that the capability does not govern it, even when a plain entry matches.
+  Proof: skills/record-work/spec-drift --self-test
+- **If** a path is excluded by the only capability whose plain entries match it, **then**
+  `spec-drift --trace` **shall** list it as an orphan.
+  Proof: skills/record-work/spec-drift --self-test
+- **When** a path one capability excludes and another claims is staged alone, spec-drift's
+  default mode **shall** name only the claiming capability's spec.
   Proof: skills/record-work/spec-drift --self-test
 - **While** a `Governs:` line holds no `!` entry, spec-drift **shall** treat its paths as it
   did before this change.
@@ -85,7 +102,8 @@ any other overlap in cli.
 - **If** a `!` entry in `Governs:` matches no tracked file, **then** `spec-drift --trace`
   **shall** report it as a dead claim.
   Proof: skills/record-work/spec-drift --self-test
-- **When** `write-spec` defines `Governs:`, it **shall** name the `!` exclusion. Proved as
+- **When** `write-spec` defines `Governs:` in "And the spec declares what it governs", it
+  **shall** name the `!` exclusion. Proved as
   wiring only, pinned on `a leading .!. excludes`. Ceiling named: the row pins the phrase.
   Proof: scripts/check-payload
 
@@ -106,8 +124,12 @@ any other overlap in cli.
 
 ## Checklist
 
-- [ ] **`Governs:` excludes with `!`.** `governed_by`, both readers regrouped, three self-test
-  cases red first, the `write-spec` sentence and its row. Closes: all four criteria. Waits on:
-  nothing.
-- [ ] **The four test files move to their owners.** The three `Governs:` lines; `--trace`
-  before and after compared. Closes: Outcome 5, observed. Waits on: box 1.
+- [ ] **`Governs:` excludes with `!` in spec-drift.** `governed_by`, both readers regrouped,
+  five self-test cases red first (the helper, the unchanged case, the dead `!`, the orphan,
+  the default-mode naming), the header comment, record-work's row, the `write-spec` sentence
+  and its row. Closes: the six payload criteria. Waits on: nothing.
+- [ ] **The wiki footer honours `!` per capability.** `governedSplit` takes one entry list per
+  capability. Closes: spec-cli's criteria. Waits on: box 1.
+- [ ] **The four test files move to their owners.** cli's and ci's `Governs:` lines; observed
+  with the worktree's spec-drift: `gates_test.go` staged alone names ci, not cli. Closes:
+  Outcome 5, observed. Waits on: boxes 1–2.
