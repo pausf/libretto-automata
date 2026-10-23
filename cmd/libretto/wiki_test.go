@@ -1491,3 +1491,95 @@ func TestWikiQueueMatchesTheCommand(t *testing.T) {
 		t.Errorf("flow board queue = %v, queuedIdeas = %v", board, want)
 	}
 }
+
+// wikiWorktree builds a repository named name with one commit, and a linked worktree
+// beside it named after the queue run's own layout, then returns both roots.
+func wikiWorktree(t *testing.T, name string) (main, linked string) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("builds a real git repository and a worktree")
+	}
+	base := t.TempDir()
+	main = filepath.Join(base, name)
+	if err := os.MkdirAll(main, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitLand(t, main, "init", "-q")
+	writeLand(t, main, "seed.txt", "seed\n")
+	gitLand(t, main, "add", "seed.txt")
+	gitLand(t, main, "commit", "-qm", "seed")
+	linked = filepath.Join(base, name+"-wt-some-change")
+	gitLand(t, main, "worktree", "add", "-q", "-b", "some-change", linked)
+	return main, linked
+}
+
+func TestWikiFromAWorktreeNamesTheRepository(t *testing.T) {
+	_, linked := wikiWorktree(t, "the-repo")
+	specs := writeSpecs(t, linked, ".agents/specs")
+	if _, err := runWiki(t, linked); err != nil {
+		t.Fatal(err)
+	}
+	if got := readme(t, specs); !strings.Contains(got, "# Specs — the-repo\n") {
+		t.Errorf("a worktree's wiki must name the repository, got heading: %q", firstHeading(got))
+	}
+}
+
+func TestWikiHTMLFromAWorktreeNamesTheRepository(t *testing.T) {
+	_, linked := wikiWorktree(t, "the-repo")
+	specs := writeSpecs(t, linked, ".agents/specs")
+	if _, err := runWiki(t, linked, "--html"); err != nil {
+		t.Fatal(err)
+	}
+	got := wikiHTML(t, specs)
+	for _, want := range []string{"<title>Specs — the-repo</title>", "<h1>the-repo</h1>"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("a worktree's wiki.html must carry %q", want)
+		}
+	}
+}
+
+func TestWikiFromTheMainCheckoutNamesItsDirectory(t *testing.T) {
+	main, _ := wikiWorktree(t, "the-repo")
+	specs := writeSpecs(t, main, ".agents/specs")
+	if _, err := runWiki(t, main); err != nil {
+		t.Fatal(err)
+	}
+	if got := readme(t, specs); !strings.Contains(got, "# Specs — the-repo\n") {
+		t.Errorf("the main checkout's wiki must name its directory, got heading: %q", firstHeading(got))
+	}
+}
+
+func TestWikiOutsideGitKeepsTheDirectoryName(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "plain-project")
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir); err != nil {
+		t.Fatal(err)
+	}
+	if got := readme(t, specs); !strings.Contains(got, "# Specs — plain-project\n") {
+		t.Errorf("outside git the title is the directory's name, got heading: %q", firstHeading(got))
+	}
+}
+
+// A submodule's common dir is <super>/.git/modules/<name>: its parent is "modules", which
+// names nothing. Only a common dir called .git names the repository.
+func TestWikiProjectNameFallsBackOffAPlainGitDir(t *testing.T) {
+	for _, tc := range []struct{ common, want string }{
+		{"/work/the-repo/.git", "the-repo"},
+		{"/work/super/.git/modules/sub", "run-dir"},
+		{"/elsewhere/separate.git", "run-dir"},
+		{"", "run-dir"},
+	} {
+		if got := projectNameFrom(tc.common, "/somewhere/run-dir"); got != tc.want {
+			t.Errorf("common dir %q: got %q, want %q", tc.common, got, tc.want)
+		}
+	}
+}
+
+func firstHeading(readme string) string {
+	for _, l := range strings.Split(readme, "\n") {
+		if strings.HasPrefix(l, "# ") {
+			return l
+		}
+	}
+	return ""
+}

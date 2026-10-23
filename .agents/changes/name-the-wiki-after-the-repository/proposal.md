@@ -100,5 +100,5 @@ working tree for the wiki to run in.
 
 ## Checklist
 
-- [ ] **The wiki names the repository from any worktree.** The helper, both renderers, the
+- [x] **The wiki names the repository from any worktree.** The helper, both renderers, the
   five tests, each red first. Closes: the five criteria. Waits on: nothing.
