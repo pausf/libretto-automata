@@ -109,8 +109,9 @@ The vendored skills that remain are untouched.
   condition is paid for on every run. Lost: shortening each skill in place, which would put
   52 guarded rules at risk in one unreviewable diff.
 - **Each split SKILL.md has a line budget in check-payload.** Decided 2026-10-23
-  (assumed): without one, the bodies grow back one rationale paragraph at a time. The
-  budget is the measured size at landing. Raising it is a visible edit, never a drift.
+  (assumed): without one, the bodies grow back one rationale paragraph at a time. The budget is a ceiling set
+  below each body's size before the split, so every row was red first. Raising it is a
+  visible edit, never a drift.
 - **`writing-plans` is not shipped.** Decided 2026-10-23 (assumed): only write-tasks used
   it, and write-tasks spent a 26-line table overriding its file path, its header and its
   execution question. A vendored skill whose every instruction is overridden costs reading
@@ -172,7 +173,8 @@ gain one line per sibling: the condition and the path, for example *"With a remo
     forge goes to `forge.md`; the `--trace` table and the `--block` hook go to `drift.md`
 - **find-work:** keeps the phase-1 contract, source 1, the branches and source 3. It moves
   source 2 to `tracker.md` and the queue section to `queue.md`. `libretto-status` and
-  `libretto-next` name `queue.md`.
+  `libretto-next` change nothing: they already invoke find-work, whose SKILL.md says when to
+  read `queue.md`.
 - **write-spec:** keeps a short Step 2b that says when to fan out and points at
   `fan-out.md`.
 - **write-tasks:** loses the delegation table and gains the shape it needs: boxes only,
@@ -199,10 +201,10 @@ Rollback: one revert.
 
 ## Checklist
 
-- [x] record-work split into SKILL.md, forge.md and drift.md, with rows re-pointed and a budget row · closes criteria 1–2
-- [x] find-work split into SKILL.md, tracker.md and queue.md, with status and next pointed at queue.md · closes criteria 1–2
-- [x] write-spec's fan-out moved to fan-out.md, with the spec-writer row and EARS example fixed · closes criteria 1, 2 and 4
-- [x] write-tasks shape inlined and writing-plans removed from the payload and every list · closes criterion 3
-- [x] present-work, record-work and the reviewer launches de-contradicted · closes criteria 4–5
+- [x] record-work split into SKILL.md, forge.md and drift.md, with rows re-pointed and a budget row · Closes: criteria 1–2
+- [x] find-work split into SKILL.md, tracker.md and queue.md, reached through find-work's own pointer · Closes: criteria 1–2
+- [x] write-spec's fan-out moved to fan-out.md, with the spec-writer row and EARS example fixed · Closes: criteria 1, 2 and 7
+- [x] write-tasks shape inlined and writing-plans removed from the payload and every list · Closes: criteria 3–4
+- [x] present-work, record-work and the reviewer launches de-contradicted · Closes: criteria 5, 6, 8 and 9
 - [x] AGENTS.md rules for apparatus, trial runs and where the agent stops · no criterion (repository instructions)
 - [ ] payload spec: criteria for "three things", the vendored refs and the fan-out location amended · Closes: outcome 5

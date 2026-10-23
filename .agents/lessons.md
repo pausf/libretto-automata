@@ -370,3 +370,15 @@ fan-out.md's "same shape as step 4" pointed at a step only SKILL.md has. Fixed: 
 
 ## 2026-10-23 · trim-skill-reading-cost · 6→7
 The Approach and box 2 said status and next "name queue.md", but the decision log, and the code, changed no command. Fixed: the Approach and the box wording now match the code.
+
+## 2026-10-23 · trim-skill-reading-cost · 6→7
+A paragraph explaining why the attacca exception sits below the native-prompt paragraph was dropped in the move to forge.md, not moved. Fixed: restated for its new place.
+
+## 2026-10-23 · trim-skill-reading-cost · 6→7
+Record-work's landing item 1 was reworded beyond the "three things" fix, with no logged decision. Fixed: logged as deliberate, since the trial run's landing commit held no code.
+
+## 2026-10-23 · trim-skill-reading-cost · 6→7
+tracker.md gained the host-neutral fallback phrase and renamed its Output heading, against "verbatim". Fixed: logged as deliberate deviations forced by the host-neutral scan.
+
+## 2026-10-23 · trim-skill-reading-cost · 6→7
+fan-out.md's "same shape as step 4" pointed at a step only SKILL.md has. Fixed: it now names SKILL.md.
