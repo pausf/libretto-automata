@@ -1,6 +1,6 @@
 # Continuous Integration
 
-Governs: .github/** Makefile
+Governs: .github/** Makefile cmd/libretto/release_workflow_test.go cmd/libretto/label_workflow_test.go cmd/libretto/gates_test.go
 
 The six gates, run by a machine that is not the author's, before a request can merge.
 
@@ -271,6 +271,11 @@ before it can merge**.
   The red check is not what that change removed — what changed is that somebody is asked
   before they meet it, and an unanswered question still lands here, red, exactly as before.
 
+- **ci owns the tests of its workflows.** Retired from `let-governs-exclude-a-path`, decided
+  2026-10-23: `release_workflow_test.go`, `label_workflow_test.go` and `gates_test.go` read
+  `.github/workflows/*.yml` and `Makefile`, which ci governs, so a change to them is a ci
+  change; under cli they made drift warnings point at the wrong spec.
+
 ## Task breakdown
 
 1. `.github/workflows/gates.yml`: the six gates, one step each, `rg` installed, Go from
@@ -399,3 +404,7 @@ checks: ["gates", "label"]   pr_required: true   strict: false   admins_enforced
   workflow breaks the release of the merge that lands it, and the evidence arrives after the
   merge. So a change here carries its `release:` label like any other, and the run is read
   afterwards rather than assumed.
+- **When** `cmd/libretto/gates_test.go` is staged alone, spec-drift's default mode **shall**
+  name ci's spec and not cli's. Ceiling named: the self-test proves the rule on a fixture;
+  this repository's case was observed once, at landing, with the worktree's spec-drift.
+  Proof: skills/record-work/spec-drift --self-test

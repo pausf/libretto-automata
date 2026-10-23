@@ -1099,6 +1099,16 @@ finding, which is the sentence the `readme` capability was created to answer abo
   check for an answered question. attacca with no bump decided keeps its designed red check,
   which is the question.
 
+- **`Governs:` can exclude a path with a `!` entry.** Retired from
+  `let-governs-exclude-a-path`, decided 2026-10-23: four test files under `cmd/libretto/**`
+  prove ci's and readme's promises, and a glob list with no subtraction could only keep
+  claiming them, so drift warnings pointed at cli for other capabilities' tests — 6 of 10
+  hand-checked warned landings in report-drift-trend-in-metrics were overlaps of this kind.
+  One rule, `governed_by`, decides for every reader: a plain entry claims, a `!` entry gives
+  back, the exclusion wins, and entries are one capability's, never pooled. An exclusion
+  matching nothing is a dead claim. Lost: a separate `Excludes:` key (a second line to keep
+  beside the first) and listing cli's files one by one (a glob nobody maintains).
+
 ## Task breakdown
 
 - [x] `find-work` — phase 1, three sources
@@ -1379,13 +1389,33 @@ finding, which is the sentence the `readme` capability was created to answer abo
   was never staged while a spec existed is invisible to both, forever.** In a repository
   whose specs arrived after its code that is most of the repository, and the contract can
   pass every check while governing a third of the tree. `--trace` reads the tracked tree
-  and names orphan code, a `Governs:` glob matching nothing, a criterion under
+  and names orphan code (a tracked file no `Governs:` line governs), a `Governs:` entry
+  matching nothing, a criterion under
   *Verification criteria* with no `Proof:` beneath it, and a joined criterion — two or
   more `shall` resting on one `Proof:` with no ceiling named. **It exits 0 unconditionally**: the
   first run here found sixteen orphans and sixteen unproven bullets, which is the honest
   state rather than a regression, and a report that fails the build the day it lands is a
   report somebody deletes.
   Proof: skills/record-work/spec-drift --self-test
+- **Where** a capability's `Governs:` holds a `!` entry matching a path, `governed_by`
+  **shall** answer that the capability does not govern it, even when a plain entry matches.
+  Proof: skills/record-work/spec-drift --self-test
+- **While** a `Governs:` line holds no `!` entry, spec-drift **shall** treat its paths as it
+  did before exclusions existed.
+  Proof: skills/record-work/spec-drift --self-test
+- **If** a path is excluded by the only capability whose plain entries match it, **then**
+  `spec-drift --trace` **shall** list it as an orphan.
+  Proof: skills/record-work/spec-drift --self-test
+- **When** a path one capability excludes and another claims is staged alone, spec-drift's
+  default mode **shall** name only the claiming capability's spec.
+  Proof: skills/record-work/spec-drift --self-test
+- **If** a `!` entry in `Governs:` matches no tracked file, **then** `spec-drift --trace`
+  **shall** report it as a dead claim.
+  Proof: skills/record-work/spec-drift --self-test
+- **When** `write-spec` defines `Governs:` in "And the spec declares what it governs", it
+  **shall** name the `!` exclusion. Proved as wiring only, pinned on `a leading .!. excludes`.
+  Ceiling named: the row pins the phrase.
+  Proof: scripts/check-payload
 - **Where** a verification criterion carries the EARS marker two or more times — counted as
   `is_ears` matches it — sits above exactly one `Proof:` line, and contains no
   case-insensitive `ceiling`, `is_joined` **shall** return true for it, and false for every

@@ -1585,3 +1585,22 @@ func firstHeading(readme string) string {
 	}
 	return ""
 }
+
+// The footer applies spec-drift's governed_by: a `!` entry gives a path back, per
+// capability. An excluded path nobody else claims is an orphan.
+func TestWikiFooterHonoursAnExclusion(t *testing.T) {
+	tracked := []string{"src/a.go", "src/gen/x.go"}
+	governed, orphan := governedSplit(tracked, [][]string{{"src/**", "!src/gen/**"}})
+	if governed != 1 || orphan != 1 {
+		t.Errorf("governed %d, orphan %d — want 1 and 1: src/gen/x.go is excluded and unclaimed", governed, orphan)
+	}
+}
+
+// Pooled into one list, broad's `!src/gen/**` would hide the path narrow claims.
+func TestWikiFooterExclusionIsPerCapability(t *testing.T) {
+	tracked := []string{"src/a.go", "src/gen/x.go"}
+	governed, orphan := governedSplit(tracked, [][]string{{"src/**", "!src/gen/**"}, {"src/gen/**"}})
+	if governed != 2 || orphan != 0 {
+		t.Errorf("governed %d, orphan %d — want 2 and 0: another capability claims src/gen/x.go", governed, orphan)
+	}
+}

@@ -4,7 +4,7 @@ description: "Trigger: a task has been read and needs a specification; writing o
 license: MIT
 metadata:
   author: pausf
-  version: "2.1"
+  version: "2.2"
 ---
 
 ## What this does
@@ -495,6 +495,11 @@ One line per spec file:
 ```
 Governs: cmd/** internal/** scripts/**
 ```
+
+An entry with a leading `!` excludes: `Governs: cmd/** !cmd/tool/gates_test.go` claims
+everything under `cmd/` but that test, whose promise belongs to another capability. A path
+is governed when a plain entry matches it and none of the spec's `!` entries does — an
+exclusion always wins, as in .gitignore.
 
 That is the other half of the anchor. Without it, "code changed but the spec did
 not" is a guess about the whole repository. With it, the question is precise: this

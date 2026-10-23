@@ -155,6 +155,23 @@ matches_any() {
   return 1
 }
 
+# governed_by <path> <Governs: entries...> — the one rule every reader applies. A plain
+# entry claims what it matches; a `!` entry gives it back, as .gitignore does, and an
+# exclusion always beats an inclusion. Entries are one capability's: pooling two
+# capabilities' lists would let one's `!` hide a path the other claims.
+governed_by() {
+  local path="$1"; shift
+  local e claimed=1
+  for e in "$@"; do
+    case "$e" in
+      ('') ;;
+      ('!'*) matches_any "$path" "${e#!}" && return 1 ;;
+      (*)    [ "$claimed" -eq 1 ] && matches_any "$path" "$e" && claimed=0 ;;
+    esac
+  done
+  return $claimed
+}
+
 # A reader that stops early SIGPIPEs the writer, and under pipefail that 141 reads as
 # no match. Every pipe into a test reads its input whole: rg to /dev/null, never -q.
 has_line() { printf '%s\n' "$1" | rg -xF "$2" >/dev/null; }
@@ -209,7 +226,7 @@ drift() {
       local globs; globs=$(governs_of "$s")
       [ -n "$globs" ] || continue
       # shellcheck disable=SC2086  # word splitting is how globs arrive
-      matches_any "$path" $globs || continue
+      governed_by "$path" $globs || continue
 
       governed=1
       has_line "$staged" "$s" && continue                       # the spec moved
@@ -532,7 +549,7 @@ ears() {
 #
 # Four questions, none of them a judgement:
 #
-#   orphan code        a tracked file no Governs: glob claims
+#   orphan code        a tracked file no Governs: line governs (see governed_by)
 #   dead ownership     a Governs: glob that matches no tracked file
 #   unproven criterion a bullet under Verification criteria with no Proof: under it
 #   joined criterion   two or more `shall` on exactly one Proof:, no ceiling named —
@@ -628,11 +645,12 @@ trace() {
     [ -n "$path" ] || continue
     has_line "$specs" "$path" && continue
     has_line "$changes" "$path" && continue
-    local owned=0 c
-    while IFS='|' read -r _ c; do
-      [ -n "$c" ] || continue
-      matches_any "$path" "$c" && { owned=1; break; }
-    done <<< "$claims"
+    local owned=0 sp_
+    while IFS= read -r sp_; do
+      [ -n "$sp_" ] || continue
+      # shellcheck disable=SC2046  # word splitting is how entries arrive
+      governed_by "$path" $(governs_of "$sp_") && { owned=1; break; }
+    done <<< "$specs"
     [ "$owned" -eq 1 ] && continue
     printf '  orphan  %s\n' "$path"
     orphans=$((orphans + 1))
@@ -646,7 +664,7 @@ trace() {
     local hit=0
     while IFS= read -r path; do
       [ -n "$path" ] || continue
-      matches_any "$path" "$gl" && { hit=1; break; }
+      matches_any "$path" "${gl#!}" && { hit=1; break; }
     done <<< "$tracked"
     [ "$hit" -eq 1 ] && continue
     printf '  dead    %s claims %s — matches no tracked file\n' "$sp" "$gl"
@@ -1073,6 +1091,38 @@ also none' "$(criteria_without_proof "$tmp")"
   ( cd "$blockrepo" && "$self" >/dev/null 2>&1 );         want 'default still exits 0 on drift' 0 "$?"
   ( cd "$blockrepo" && printf 'moved\n' >> .agents/specs/thing/spec.md && git add .agents &&
     "$self" --block >/dev/null 2>&1 ); want '--block exits 0 when the spec moved' 0 "$?"
+
+  # A `!` entry excludes: a path is governed when a plain entry matches it and none of
+  # that capability's `!` entries does. Proved through the helper and through both
+  # readers, because the orphan check matched claim by claim and could not see one.
+  gb() { governed_by "$@" && echo yes || echo no; }
+  want 'an excluded path is not governed'       no  "$(gb 'src/gen/x.go' 'src/**' '!src/gen/**')"
+  want 'a path beside the exclusion is'         yes "$(gb 'src/a.go' 'src/**' '!src/gen/**')"
+  want 'no exclusion governs as before'         yes "$(gb 'src/gen/x.go' 'src/**')"
+  want 'an exclusion alone governs nothing'     no  "$(gb 'src/a.go' '!src/gen/**')"
+  exrepo=$(mktemp -d)
+  ( cd "$exrepo" &&
+    git init -q && git config user.email t@t && git config user.name t &&
+    mkdir -p .agents/specs/broad .agents/specs/narrow src/gen &&
+    printf 'Governs: src/** !src/gen/** !gone/**\n' > .agents/specs/broad/spec.md &&
+    printf 'x\n' > src/a.go && printf 'x\n' > src/gen/x.go &&
+    git add -A && git commit -qm base )
+  ex_trace=$(cd "$exrepo" && "$self" --trace 2>&1)
+  want 'an excluded, unclaimed path is an orphan' yes \
+    "$(printf '%s\n' "$ex_trace" | rg -F 'orphan  src/gen/x.go' >/dev/null && echo yes || echo no)"
+  want 'a ! entry matching nothing is dead'       yes \
+    "$(printf '%s\n' "$ex_trace" | rg -F 'claims !gone/**' >/dev/null && echo yes || echo no)"
+  want 'a live ! entry is not dead'              no \
+    "$(printf '%s\n' "$ex_trace" | rg -F 'claims !src/gen/**' >/dev/null && echo yes || echo no)"
+  ( cd "$exrepo" &&
+    printf 'Governs: src/gen/**\n' > .agents/specs/narrow/spec.md && git add -A && git commit -qm narrow &&
+    printf 'y\n' >> src/gen/x.go && git add src/gen/x.go )
+  ex_drift=$(cd "$exrepo" && "$self" 2>&1)
+  want 'drift names the claiming spec'          yes \
+    "$(printf '%s\n' "$ex_drift" | rg -F '.agents/specs/narrow/spec.md' >/dev/null && echo yes || echo no)"
+  want 'drift spares the excluding spec'        no \
+    "$(printf '%s\n' "$ex_drift" | rg -F '.agents/specs/broad/spec.md' >/dev/null && echo yes || echo no)"
+  rm -rf "$exrepo"
   rm -rf "$blockrepo"
 
   # The dependency guard: without rg this script must refuse loudly, never report
