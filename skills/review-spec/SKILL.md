@@ -29,7 +29,7 @@ The launch, the relay and the stop below are **the session's conduct** — a
 `spec-reviewer` invoking this skill for the reading starts at *What it does not do* and
 follows nothing above that heading.
 
-**Launch exactly one `spec-reviewer`**, foreground, given by path the change document, every
+**Launch exactly one `spec-reviewer`** — the host may run it in the background, and nothing proceeds until its return is read — given by path the change document, every
 `spec-<capability>.md` beside it, and the capability spec(s) their `Targets:` lines name —
 and none of the conversation. Not a summary of what was decided, not which findings would
 be welcome: telling the reviewer what to expect is priming the witness. A change begun in

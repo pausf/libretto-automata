@@ -54,7 +54,8 @@ priming the witness.
 
 ## Step 2 — Launch exactly one
 
-One `work-reviewer`, foreground, and its return value read in full. The agent file
+One `work-reviewer`, and its return value read in full — the host may run it in the
+background, and nothing proceeds until its return is read. The agent file
 carries its own rules — evidence first, re-run every proof the change touches, no
 edits, no commit, no push.
 

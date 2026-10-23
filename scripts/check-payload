@@ -403,6 +403,11 @@ check_wiring skills/write-spec/SKILL.md 'When .*, read .fan-out\.md. beside this
 check_absent skills/write-spec/SKILL.md 'drive plan\.md, and shall' 'the EARS after-example carries one shall'
 check_wiring skills/write-tasks/SKILL.md 'carries a .Closes:. naming the criteria it closes' 'write-tasks states each box carries a Closes:'
 [ -d skills/writing-plans ] && fail 'skills/writing-plans/ ships again — write-tasks states the checklist shape itself' || ok 'writing-plans is not shipped'
+check_absent skills/present-work/SKILL.md 'then commit it' 'present-work does not claim the commit follows it'
+for f in review-spec review-work converge; do
+  check_absent "skills/$f/SKILL.md" '(spec-reviewer|work-reviewer|converge-reader)[`*]*,? foreground' "$f launches its reader without demanding the foreground"
+  check_wiring "skills/$f/SKILL.md" 'nothing proceeds until its return is read' "$f waits for its reader's return"
+done
 check_absent skills/record-work/SKILL.md 'does three things together' 'the landing list is not introduced as three things'
 # The ceilings sit below each body's size before the split, so the rows were red first.
 for budget in record-work:300 find-work:300 write-spec:580; do

@@ -57,7 +57,8 @@ neither. Read the checklist from the file that skill's rule picks, counted by it
 
 ## Step 2 — Launch exactly one reader
 
-Launch **exactly one `converge-reader`**, foreground, and read its return in full. Its
+Launch **exactly one `converge-reader`** and read its return in full — the host may run it
+in the background, and nothing proceeds until its return is read. Its
 world, all paths and no narration:
 
 - the tree as it is now — the repository root, and **never a diff range**: drift is a
