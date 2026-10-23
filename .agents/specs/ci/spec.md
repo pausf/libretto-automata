@@ -69,8 +69,9 @@ the request itself:
 - **matching is by whole label name.** Names may contain spaces, so a space-joined
   loop counts a label merely *containing* `release:patch` as the real thing. The
   labels arrive as `toJSON` output and `jq` compares whole names.
-- **it checks nothing out and holds no permissions** (`permissions: {}`). The labels
-  are in the event payload, so the job never runs contributor code.
+- **it checks nothing out and holds only `pull-requests: read`.** The labels arrive in
+  the event payload, so the job never runs contributor code; an empty payload is re-read
+  from the live request, because `opened` can fire before the label is attached.
 - `release.yml`'s own refusal stays, as the second fence for when branch protection
   is off. It still parses space-joined — the same word-split hole this check closed —
   and hardening it is a follow-up, not part of this promise.
@@ -237,6 +238,16 @@ before it can merge**.
   to. The version is pinned: `releases/latest` hands a third party the choice of what runs in
   every gate, and `--retry 3` covers the transient case without covering an outage.
 
+- **The label check reads the live labels when the payload has none.** Decided 2026-10-23:
+  GitHub fires `opened` before `gh pr create --label` attaches the label, so the `opened`
+  run can see an empty list. PR #89 measured it: a red `opened` run beside a green
+  `labeled` one on the same request, and a failure mail for a question already answered.
+  PR #88 passed the same race by timing alone. No API creates a request with its labels
+  in one call, so no client can fix this. The fix costs `pull-requests: read`, which
+  reverses "holds no permissions". Reading labels runs no contributor code, so the reason
+  for that promise survives. Lost: dropping `opened` from the triggers, which leaves an
+  unlabelled request with no red check at all.
+
 - **GitHub Actions, not `.gitlab-ci.yml`.** From the proposal: the remote is GitHub, so
   a GitLab file would sit in the tree looking like a gate while every request merged
   unchecked. Both files was rejected too — two definitions of one set of gates diverge,
@@ -349,8 +360,11 @@ under bash, because "refuses zero and two" is behaviour, not shape:
   Proof: cmd/libretto/label_workflow_test.go TestLabelScriptAcceptsExactlyOneLabel
 - matching is by whole label name, never by substring or word
   Proof: cmd/libretto/label_workflow_test.go TestLabelScriptMatchesLabelNamesExactly
-- the workflow asks for no permissions at all
+- **the workflow shall ask for `pull-requests: read` and nothing else**
   Proof: cmd/libretto/label_workflow_test.go TestLabelWorkflowIsReadOnly
+- **If the event payload carries no label and the request's number is known, then the
+  script shall judge the request's live labels instead.**
+  Proof: cmd/libretto/label_workflow_test.go TestLabelScriptRereadsLabelsWhenThePayloadRaced
 - the workflow never checks out contributor code
   Proof: cmd/libretto/label_workflow_test.go TestLabelWorkflowNeedsNoCheckout
 - no `run:` script expands a label inline

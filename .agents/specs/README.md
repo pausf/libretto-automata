@@ -107,7 +107,8 @@ The six gates, run by a machine that is not the author's, before a request can m
 - {the script refuses two release labels cmd/libretto/label_workflow_test.go TestLabelScriptRefusesTwoLabels}
 - {the script accepts exactly one cmd/libretto/label_workflow_test.go TestLabelScriptAcceptsExactlyOneLabel}
 - {matching is by whole label name, never by substring or word cmd/libretto/label_workflow_test.go TestLabelScriptMatchesLabelNamesExactly}
-- {the workflow asks for no permissions at all cmd/libretto/label_workflow_test.go TestLabelWorkflowIsReadOnly}
+- {**the workflow shall ask for `pull-requests: read` and nothing else** cmd/libretto/label_workflow_test.go TestLabelWorkflowIsReadOnly}
+- {**If the event payload carries no label and the request's number is known, then the script shall judge the request's live labels instead.** cmd/libretto/label_workflow_test.go TestLabelScriptRereadsLabelsWhenThePayloadRaced}
 - {the workflow never checks out contributor code cmd/libretto/label_workflow_test.go TestLabelWorkflowNeedsNoCheckout}
 - {no `run:` script expands a label inline cmd/libretto/label_workflow_test.go TestLabelWorkflowNeverExpandsUntrustedTextInsideAScript}
 - {**When** `cmd/libretto/gates_test.go` is staged alone, spec-drift's default mode **shall** name ci's spec and not cli's. Ceiling named: the self-test proves the rule on a fixture; this repository's case was observed once, at landing, with the worktree's spec-drift. skills/record-work/spec-drift --self-test}
