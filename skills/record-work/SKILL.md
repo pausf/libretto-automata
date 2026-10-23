@@ -4,7 +4,7 @@ description: "Trigger: a task is finished and needs committing; writing a commit
 license: MIT
 metadata:
   author: pausf
-  version: "1.6"
+  version: "1.7"
 ---
 
 ## What this does
@@ -432,6 +432,14 @@ git remote get-url origin
 |---|---|
 | `github.com` | `gh pr create` |
 | `gitlab` | `glab mr create` |
+
+**When the bump is decided before the request exists, the label rides `gh pr create`** —
+`gh pr create --label release:<bump>`, never a second `gh pr edit` after it. The user named
+the bump, or authorised one in advance: then there is nothing left to ask, and a request
+opened unlabelled fails the label check's `opened` run and mails the user a red check for a
+question already answered. That happened three times in one day. The other side is
+untouched: under `/libretto-attacca` with no bump decided, the request is opened unlabelled
+on purpose and its red check *is* the bump question — see the section on the bump below.
 
 **No remote at all means no question.** There is nothing to push to, so the phase ends
 at the commit and says so in one line.

@@ -144,5 +144,5 @@ the row names the shape it pins.
   cases, forced red by removing the call. Closes: the two fence criteria. Waits on: nothing.
 - [x] **No pipe into `rg -q` in the payload's scripts.** The row, line 576 fixed, the row
   observed red on today's tree first. Closes: the `rg -q` criterion. Waits on: nothing.
-- [ ] **The label rides `gh pr create`.** The paragraph, the row, record-work 1.7. Closes:
+- [x] **The label rides `gh pr create`.** The paragraph, the row, record-work 1.7. Closes:
   the label criterion. Waits on: nothing.
