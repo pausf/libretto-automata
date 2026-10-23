@@ -1078,6 +1078,27 @@ finding, which is the sentence the `readme` capability was created to answer abo
   criterion already met is not a task. If wrong, an exact quote from the reader is
   accepted as a mapping.
 
+- **An unclosed fence fails `--anchors`.** Retired from `gate-recurring-defect-classes`,
+  decided 2026-10-23 on the queue run's evidence: a criterion that wrote three backticks in
+  prose opened a fence `defenced` never closed, and 157 `Proof:` citations after it went
+  unchecked while the gate stayed green. An odd count is always a defect, so it fails rather
+  than warns; with every fence closed the output does not move by a byte. The fence pattern
+  lives once, in `FENCE`, read by `defenced` and `fences`. Lost: a warning (a gate that lies is
+  still green) and fixing only the instance (the class came back).
+- **Nothing in the payload's scripts pipes into `rg -q`.** Retired from
+  `gate-recurring-defect-classes`, decided 2026-10-23: under `set -o pipefail`, `rg -q` stops
+  reading at its first match, the writer before it dies of SIGPIPE, and the pipeline's 141
+  reads as no match — it made `--retired` fail open on a long change document (fixed v0.37.0).
+  Measured: 40,000 lines through `| rg -q` exit 141, through `rg … >/dev/null` exit 0, and a
+  newline-squashed single line exits 0 either way, since the reader must finish the line —
+  which is why `check-payload`'s marker search, rewritten here, was never actually vulnerable.
+  Ceiling named: a pipe split across lines, or a `|` inside a quoted argument, is not seen.
+- **A decided bump rides `gh pr create --label`.** Retired from
+  `gate-recurring-defect-classes`, decided 2026-10-23: three requests opened unlabelled with
+  the bump already authorised failed the label check's `opened` run and mailed the user a red
+  check for an answered question. attacca with no bump decided keeps its designed red check,
+  which is the question.
+
 ## Task breakdown
 
 - [x] `find-work` — phase 1, three sources
@@ -1398,6 +1419,21 @@ finding, which is the sentence the `readme` capability was created to answer abo
 - **If** joined criteria are the only finding, **then** `spec-drift --anchors` **shall**
   exit 0.
   Proof: skills/record-work/spec-drift --self-test
+- **If** a capability spec or change document holds an odd number of fence lines — the
+  lines `defenced` toggles on, defined once in spec-drift's `FENCE` — **then**
+  `spec-drift --anchors` **shall** exit non-zero naming that file.
+  Proof: skills/record-work/spec-drift --self-test
+- **While** every capability spec and change document holds an even number of fence lines,
+  `spec-drift --anchors` **shall** print no fence line.
+  Proof: skills/record-work/spec-drift --self-test
+- **If** a file under `skills/` or `scripts/` pipes into `rg` with a short-flag group
+  containing `q`, or with `--quiet`, **then** `scripts/check-payload` **shall** fail naming
+  that file and line.
+  Proof: scripts/check-payload
+- **Where** the bump is decided before the request exists, `record-work` **shall** say to
+  pass the label to `gh pr create`. Proved as wiring only, pinned on the phrase `the label
+  rides gh pr create`. Ceiling named: the row pins the phrase, not that a session follows it.
+  Proof: scripts/check-payload
 - The `record-work` skill **shall** carry joined criteria as a row of its `--trace` table,
   pinned by a `check_wiring` row on the pattern `^\| \*\*joined criterion\*\* \|`. Proved
   as wiring only. **Ceiling named:** the row proves the table names joined criteria. It
