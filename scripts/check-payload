@@ -274,10 +274,10 @@ check_wiring skills/review-spec/SKILL.md 'never rewrites the spec'      'review-
 check_wiring skills/write-spec/SKILL.md  'the work is a bug'       'write-spec carries the bug branch'
 check_wiring skills/write-spec/SKILL.md  'fails right now'              'the bug branch demands a red test first'
 check_wiring skills/find-work/SKILL.md   'whether it is a bug'          'phase 1 names bug-or-not'
-check_wiring skills/find-work/SKILL.md   'dispatched by a branch'       'the queue scan drops a proposal its branch already took'
-check_wiring skills/find-work/SKILL.md   'a box under its .## Checklist. is not queued' 'the queue scan drops a proposal whose checklist holds a box'
-check_wiring skills/find-work/SKILL.md   'same .Queued:. date go by change name, ascending' 'the queue breaks a date tie by change name'
-check_wiring skills/find-work/SKILL.md   '.libretto queue. implements this section; where the two disagree, the section is the rule' 'the queue section names the binary as its implementation, and wins'
+check_wiring skills/find-work/queue.md   'dispatched by a branch'       'the queue scan drops a proposal its branch already took'
+check_wiring skills/find-work/queue.md   'a box under its .## Checklist. is not queued' 'the queue scan drops a proposal whose checklist holds a box'
+check_wiring skills/find-work/queue.md   'same .Queued:. date go by change name, ascending' 'the queue breaks a date tie by change name'
+check_wiring skills/find-work/queue.md   '.libretto queue. implements this section; where the two disagree, the section is the rule' 'the queue section names the binary as its implementation, and wins'
 check_absent commands/libretto-status.md 'libretto queue'               '/libretto-status never calls the binary for the queue'
 check_absent commands/libretto-next.md   'libretto queue'               '/libretto-next never calls the binary for the queue'
 check_wiring skills/write-spec/SKILL.md  'never the corpus'             'phase 2 selects the governing spec, not the spec root'
@@ -397,6 +397,8 @@ check_wiring skills/write-spec/SKILL.md 'a leading .!. excludes' 'write-spec nam
 # applies only on a condition lives in a sibling file, named with its condition on one line.
 check_wiring skills/record-work/SKILL.md 'When .*, read .drift\.md. beside this file' 'record-work names drift.md with its condition'
 check_wiring skills/record-work/SKILL.md 'When .*, read .forge\.md. beside this file' 'record-work names forge.md with its condition'
+check_wiring skills/find-work/SKILL.md 'When .*, read .queue\.md. beside this file' 'find-work names queue.md with its condition'
+check_wiring skills/find-work/SKILL.md 'When .*, read .tracker\.md. beside this file' 'find-work names tracker.md with its condition'
 check_absent skills/record-work/SKILL.md 'does three things together' 'the landing list is not introduced as three things'
 # The ceilings sit below each body's size before the split, so the rows were red first.
 for budget in record-work:300 find-work:300 write-spec:580; do
