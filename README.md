@@ -355,12 +355,12 @@ There is no configuration file. A value that never varies is not configuration.
 
 ## Standing on other people's work
 
-Seven skills **ship with this repository**, so the flow works on a machine that has
+Six skills **ship with this repository**, so the flow works on a machine that has
 nothing else installed. Copied unmodified, licence and version recorded in
 [THIRD-PARTY.md](THIRD-PARTY.md):
 
-- [**obra/superpowers**](https://github.com/obra/superpowers) — `writing-plans`,
-  `test-driven-development`, `using-git-worktrees`
+- [**obra/superpowers**](https://github.com/obra/superpowers) — `test-driven-development`,
+  `using-git-worktrees`
 - [**DietrichGebert/ponytail**](https://github.com/DietrichGebert/ponytail) —
   `ponytail`, `ponytail-debt`. Decides how much gets built
 - [**JuliusBrussee/caveman**](https://github.com/JuliusBrussee/caveman) — `caveman`,

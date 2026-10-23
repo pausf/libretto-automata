@@ -8,7 +8,6 @@ first. They are vendored deliberately, not by accident.
 
 | Item | Origin | Version | Licence |
 |---|---|---|---|
-| `skills/writing-plans/` | [obra/superpowers](https://github.com/obra/superpowers) | 6.2.0 | MIT · Copyright (c) 2025 Jesse Vincent |
 | `skills/test-driven-development/` | [obra/superpowers](https://github.com/obra/superpowers) | 6.2.0 | MIT · Copyright (c) 2025 Jesse Vincent |
 | `skills/using-git-worktrees/` | [obra/superpowers](https://github.com/obra/superpowers) | 6.2.0 | MIT · Copyright (c) 2025 Jesse Vincent |
 | `skills/ponytail/` | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) | 4.9.0 · `2ed6c52` | MIT · Copyright (c) 2026 DietrichGebert |

@@ -401,6 +401,8 @@ check_wiring skills/find-work/SKILL.md 'When .*, read .queue\.md. beside this fi
 check_wiring skills/find-work/SKILL.md 'When .*, read .tracker\.md. beside this file' 'find-work names tracker.md with its condition'
 check_wiring skills/write-spec/SKILL.md 'When .*, read .fan-out\.md. beside this file' 'write-spec names fan-out.md with its condition'
 check_absent skills/write-spec/SKILL.md 'drive plan\.md, and shall' 'the EARS after-example carries one shall'
+check_wiring skills/write-tasks/SKILL.md 'carries a .Closes:. naming the criteria it closes' 'write-tasks states each box carries a Closes:'
+[ -d skills/writing-plans ] && fail 'skills/writing-plans/ ships again — write-tasks states the checklist shape itself' || ok 'writing-plans is not shipped'
 check_absent skills/record-work/SKILL.md 'does three things together' 'the landing list is not introduced as three things'
 # The ceilings sit below each body's size before the split, so the rows were red first.
 for budget in record-work:300 find-work:300 write-spec:580; do

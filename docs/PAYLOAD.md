@@ -40,7 +40,6 @@ specification is [SPEC.md](SPEC.md). This page is only what ships.
 | `write-plan` | Trigger: the spec is written and the work needs an approach before any code; choosing between two ways to build something; recording why an alternative lost; naming what could go wrong. Phase 5 of the flow. Writes the how — the document that used to not exist. |
 | `write-spec` | Trigger: a task has been read and needs a specification; writing or extending a spec; splitting a large task into several specs; recording a decision or an answer into a spec. Phase 2 of the flow. Writes the contract before any code exists. |
 | `write-tasks` | Trigger: the contract and the approach are written and the work needs an ordered checklist; tracking task state across agents; marking a task done. The seam between phases 5 and 6. Writes the change document's checklist inline, then owns it. |
-| `writing-plans` | Use when you have a spec or requirements for a multi-step task, before touching code |
 
 ## Agents
 

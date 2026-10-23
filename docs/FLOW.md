@@ -640,7 +640,7 @@ queue, then the parallelism.
 
 ## What ships, and what is merely used
 
-Seven skills written by other people **ship with this repository** — `writing-plans`,
+Six skills written by other people **ship with this repository** —
 `test-driven-development` and `using-git-worktrees` from
 [obra/superpowers](https://github.com/obra/superpowers); `ponytail` and
 `ponytail-debt` from [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail);
