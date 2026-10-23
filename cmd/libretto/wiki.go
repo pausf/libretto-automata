@@ -851,7 +851,6 @@ func readInFlight(projectDir string) (flights []wikiFlight, queued []queuedIdea)
 	return flights, queued
 }
 
-// wikiGitBranches: the unmerged local branches find-work's filter reads.
 // wikiProjectName names the repository the specs belong to, not the directory the wiki
 // runs in: a linked worktree's own directory is a change's name, and it reached committed
 // views seven landings in a row. A seam, like wikiGitBranches, so a test can pin it.
@@ -873,6 +872,7 @@ func projectNameFrom(commonDir, projectDir string) string {
 	return filepath.Base(projectDir)
 }
 
+// wikiGitBranches: the unmerged local branches find-work's filter reads.
 var wikiGitBranches = func(projectDir string) ([]string, error) {
 	return unmergedBranches(execGit(projectDir))
 }
