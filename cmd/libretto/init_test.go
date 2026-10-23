@@ -360,3 +360,18 @@ func TestInitNamesTheRootAndCarriesNoEscapeCodes(t *testing.T) {
 		t.Errorf("the root is named after the per-artifact lines:\n%s", out)
 	}
 }
+
+// A help flag after a subcommand that takes no flags used to run it: `init --help`
+// bootstrapped the cwd it was only asked to describe.
+func TestHelpFlagAfterASubcommandRunsNothing(t *testing.T) {
+	t.Setenv(EnvRoot, filepath.Join(t.TempDir(), "never-installed"))
+	for _, flag := range []string{"-h", "--help"} {
+		t.Chdir(tempRepo(t))
+		if _, _, err := capture(t, func() error { return run([]string{"init", flag}) }); err != nil {
+			t.Errorf("init %s: %v", flag, err)
+		}
+		if exists(".agents") {
+			t.Errorf("init %s created .agents/", flag)
+		}
+	}
+}

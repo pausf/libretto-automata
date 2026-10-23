@@ -23,7 +23,7 @@
 
 Choose which model each payload agent runs on, and how hard that model thinks, so the work that is pattern-matching over prose stops being billed at the rate of the work that is not. The lever is **not fewer agents and not fewer tokens**. It is cheaper tokens for the lenses that read prose and answer in prose. Two keys, and they are independent. `model:` chooses the tier; `effort:` chooses the depth inside it. Keeping an agent on Opus while its effort drops is the case the second key exists for, so neither is expressible only through the other.
 
-Governs: `internal/agentmodel/**`
+**Governs** `internal/agentmodel/**`
 
 - {a declared model is read back internal/agentmodel/frontmatter_test.go TestReadModelReturnsTheDeclaredModel}
 - {a file with no `model:` reads as default, not as an error internal/agentmodel/frontmatter_test.go TestReadModelReportsDefaultWhenTheKeyIsAbsent}
@@ -84,7 +84,7 @@ Governs: `internal/agentmodel/**`
 
 The six gates, run by a machine that is not the author's, before a request can merge.
 
-Governs: `.github/** Makefile cmd/libretto/release_workflow_test.go cmd/libretto/label_workflow_test.go cmd/libretto/gates_test.go`
+**Governs** `.github/** Makefile cmd/libretto/release_workflow_test.go cmd/libretto/label_workflow_test.go cmd/libretto/gates_test.go`
 
 - {**the `gofmt` step fails on an unformatted file**, rather than passing because `gofmt -l` exits zero cmd/libretto/gates_test.go TestGofmtStepFailsOnUnformattedOutput}
 - {**every gate named in `AGENTS.md` appears in the workflow**, so the two cannot drift apart silently cmd/libretto/gates_test.go TestWorkflowRunsEveryGateAgentsNames}
@@ -118,7 +118,7 @@ Governs: `.github/** Makefile cmd/libretto/release_workflow_test.go cmd/libretto
 
 The command surface. Every action is reachable without a terminal, so scripts and CI can use it, and the same binary shows a panel when a human is driving.
 
-Governs: `cmd/libretto/** install.sh !cmd/libretto/readme_test.go !cmd/libretto/release_workflow_test.go !cmd/libretto/label_workflow_test.go !cmd/libretto/gates_test.go`
+**Governs** `cmd/libretto/** install.sh !cmd/libretto/readme_test.go !cmd/libretto/release_workflow_test.go !cmd/libretto/label_workflow_test.go !cmd/libretto/gates_test.go`
 
 - {**a conflict makes `install` exit non-zero, and the foreign file is unchanged** cmd/libretto/main_test.go TestInstallExitsNonZeroOnConflict}
 - {everything linking exits zero, and the link is really there cmd/libretto/main_test.go TestInstallExitsZeroWhenEverythingLinks}
@@ -324,6 +324,7 @@ Governs: `cmd/libretto/** install.sh !cmd/libretto/readme_test.go !cmd/libretto/
 - {**The recommendation table shall have no `plan-writer` or `task-cutter` key.** Both agents were retired on 2026-10-21. Watched red with a `plan-writer` key added, then reverted. cmd/libretto/recommend_test.go TestEveryRecommendationNamesAShippedAgent}
 - {**the `wiki` subcommand shall discover the consolidated specs directory in the order `.agents/specs`, `specs`, `openspec`, `docs/specs`, `spec`, first hit wins** — the same walk `spec-drift` does, verbatim, because two tools with two discovery orders would disagree about which specification a project has. cmd/libretto/wiki_test.go TestWikiDiscoversSpecsDirInDriftOrder}
 - {**when run in a project whose specs directory holds `*/spec.md` files, `wiki` shall write `README.md` inside that directory** with an index row and a section per capability, each section carrying the capability's first paragraph, its `Governs:` line, its criteria, and a relative link to its spec. A spec with no prose before its first heading gets a section without an intro — absent is absent, never an error. cmd/libretto/wiki_test.go TestWikiWritesIndexAndSections}
+- {**the generated `README.md` shall carry no line `spec-drift` reads as a `Governs:` key** — the section labels it `**Governs**`. `spec-drift` reads every `.md` under the specs directory, so a view written in the contract's syntax claimed every path a second time and `--trace` reported each one as dead. cmd/libretto/wiki_test.go TestWikiReadmeCarriesNoGovernsKey}
 - {**the generated file shall open with a marker comment** naming `libretto wiki` as its generator and the command that refreshes it. cmd/libretto/wiki_test.go TestGeneratedReadmeCarriesTheMarker}
 - {**if the target `README.md` exists and does not carry the marker, then `wiki` shall refuse**, report the conflict, exit non-zero, and leave the file untouched — the never-overwrite rule applied to output the tool writes into a directory people also write into. cmd/libretto/wiki_test.go TestWikiNeverOverwritesAHandWrittenReadme}
 - {**if no specs directory is found, or the directory found holds no `*/spec.md`, then `wiki` shall report which of the two it is in one line, exit non-zero, and write nothing** — an empty specification has nothing to index, and a marker-only README would be noise pretending to be a wiki. cmd/libretto/wiki_test.go TestWikiReportsNoSpecsAndExitsNonZero}
@@ -408,6 +409,7 @@ Governs: `cmd/libretto/** install.sh !cmd/libretto/readme_test.go !cmd/libretto/
 - {**A created `lessons.md` shall carry the standard append-only header** — the `# Lessons` heading and the append-only paragraph naming `libretto-retro` and `Resolved:`. cmd/libretto/init_test.go TestInitLessonsHeaderIsTheStandardOne}
 - {**`init` shall write nothing under `.agents/specs/` beyond the keep-file** — in particular no `README.md`, which `libretto wiki` owns by marker. cmd/libretto/init_test.go TestInitWritesNoReadmeIntoSpecs}
 - {**`init` shall work with no payload installed** — the `needsPayload` exemption, proven the way `models` proves its own. cmd/libretto/init_test.go TestInitWorksWithNoPayload}
+- {**If `-h` or `--help` follows any subcommand, then `libretto` shall print the usage and run nothing.** `init` reads no flags, so `init --help` bootstrapped the directory it was asked to describe. cmd/libretto/init_test.go TestHelpFlagAfterASubcommandRunsNothing}
 - {**The report shall name the repository root it acted on before the per-artifact lines, and shall carry no escape codes when piped.** cmd/libretto/init_test.go TestInitNamesTheRootAndCarriesNoEscapeCodes}
 - {**If an artifact path is a symlink, dangling or not, then `init` shall report it as present and shall write nothing through it.** cmd/libretto/init_test.go TestInitNeverWritesThroughASymlink}
 - {**`help` shall list `init` with a line saying what it bootstraps.** cmd/libretto/main_test.go TestHelpNamesInit}
@@ -488,7 +490,7 @@ Governs: `cmd/libretto/** install.sh !cmd/libretto/readme_test.go !cmd/libretto/
 
 The contributor's door. `README.md` is written for somebody deciding whether to install this; this file is for somebody about to change it, and they are a different reader with a different question. **This capability exists because `readme` says so.** That capability governs the front door and names `AGENTS.md` out of scope in as many words — *the contributor's door, and a different reader.* `CONTRIBUTING.md` is that reader, so folding it into `readme` would contradict `readme`'s own boundary.
 
-Governs: `CONTRIBUTING.md`
+**Governs** `CONTRIBUTING.md`
 
 - {**`CONTRIBUTING.md` exists and names each contributor-specific thing, one assertion per clause** — all six gate commands individually, `release:patch`, `.agents/specs/`, the no-tracker section by its heading, and `1.0.0`. cmd/libretto/readme_test.go TestContributingIsADoorNotACopy}
 - {**none of the four phrases `AGENTS.md` owns appears**, matched over the flattened document. cmd/libretto/readme_test.go TestContributingIsADoorNotACopy}
@@ -500,7 +502,7 @@ Governs: `CONTRIBUTING.md`
 
 Finding the payload an installed copy links from, and asking for a newer one. **It downloads nothing and verifies nothing, and that is the whole design.** The payload — `skills/`, `agents/`, `commands/` — ships **inside the Go module**, so `go install <module>/cmd/libretto@latest` already fetches it, already checks it against the checksum database, and already puts it under a path with the version in it. This capability exists to say where that is, and to ask which version is newest.
 
-Governs: `internal/dist/**`
+**Governs** `internal/dist/**`
 
 [full spec](distribution/spec.md)
 
@@ -508,7 +510,7 @@ Governs: `internal/dist/**`
 
 Enumerating what the repository holds and reporting, per item per target, exactly what the situation is. Read-only, always.
 
-Governs: `internal/link/scan.go internal/link/state.go internal/link/scan_test.go internal/link/state_test.go`
+**Governs** `internal/link/scan.go internal/link/state.go internal/link/scan_test.go internal/link/state_test.go`
 
 - {**a generated file whose bytes match the transform is `linked`**, and its `Actual` carries the marker's source — the same meaning the field has for a symlink internal/link/generated_test.go TestGeneratedMatchingContentIsLinked}
 - {**a generated file whose bytes differ is `wrong target`**, not a sixth state: ours, at the right path, with the wrong content, fixable by rewriting — which is what `wrong target` already means internal/link/generated_test.go TestGeneratedDriftIsWrongTarget}
@@ -536,7 +538,7 @@ Governs: `internal/link/scan.go internal/link/state.go internal/link/scan_test.g
 
 The only code in the program that writes. Planning is separated from applying so that every question about what the tool *would* do is answerable without a directory in sight.
 
-Governs: `internal/link/plan.go internal/link/apply.go internal/link/plan_test.go internal/link/apply_test.go`
+**Governs** `internal/link/plan.go internal/link/apply.go internal/link/plan_test.go internal/link/apply_test.go`
 
 - {**`Create` on a generated kind writes the file** — a regular file at 0644, carrying the marker, and recognised as ours immediately afterwards internal/link/apply_generated_test.go TestCreateWritesGeneratedContent}
 - {**`Repoint` rewrites a drifted generated file whole.** Nothing in it is the user's; every byte was derived internal/link/apply_generated_test.go TestRepointRewritesGeneratedContent}
@@ -572,7 +574,7 @@ Governs: `internal/link/plan.go internal/link/apply.go internal/link/plan_test.g
 
 Deciding whether an entry in a target directory belongs to this repository — a symlink by its destination, a generated file by a marker it carries. **This is the single most consequential predicate in the program.** Say "yes" about somebody else's link and `install` overwrites their work. Say "no" about our own and the tool can never repair anything. Every write in `linking` is gated on it.
 
-Governs: `internal/link/own.go internal/link/own_test.go`
+**Governs** `internal/link/own.go internal/link/own_test.go`
 
 - {**a symlink's ownership answer is unchanged by the generated arm** — reaching it requires the path not to be a symlink, so no existing answer can move internal/link/own_generated_test.go TestOwnedSymlinkArmIsUnchanged}
 - {**a regular file carrying a marker inside the repo is ours** internal/link/own_generated_test.go TestOwnedGeneratedFile}
@@ -597,7 +599,7 @@ Governs: `internal/link/own.go internal/link/own_test.go`
 
 The interactive surface: logo, palette, layout, menu. The part of this project where a requirement written before seeing a terminal is a requirement that turns out to be wrong.
 
-Governs: `internal/ui/**`
+**Governs** `internal/ui/**`
 
 - {the frame is flush at every width internal/ui/fluid_test.go TestFrameIsFlushAtEveryWidth}
 - {content width clamps to the 58–98 range internal/ui/fluid_test.go TestContentWidthClamping}
@@ -750,7 +752,7 @@ Governs: `internal/ui/**`
 
 The reason the project exists. Everything else is delivery. The flow itself — its eight phases and its reasoning — is [docs/FLOW.md](../../../docs/FLOW.md). This spec is the contract the payload's *artifacts* have to satisfy.
 
-Governs: `skills/** commands/** agents/** scripts/** THIRD-PARTY.md licenses/**`
+**Governs** `skills/** commands/** agents/** scripts/** THIRD-PARTY.md licenses/**`
 
 - {**When** a change folder's checklist — `proposal.md`'s `## Checklist`, else `tasks.md`, else `plan.md` — holds at least one box and none of those boxes open, phase 1 **shall** report that change as finished and not landed, naming it — and the status command **shall** carry the same report by delegating to that scan. **Where** the folder holds no checklist box, it **shall not** be reported that way: a captured idea is not an unlanded change. The plan skill **shall** state that a `Durable decisions:` line is a claim about whether the list is empty and not the list itself. **Ceiling named:** the gate proves each mandate is *present* in its file, never that a session obeyed it — that is behaviour, checked by running it, and it surfaces in the 6→7 review or not at all. scripts/check-payload }
 - {**If** a staged commit deletes a change's `plan.md` and no capability spec's *Prior decisions* section differs between `HEAD` and the index, **then** `spec-drift` **shall** fail and name the change being landed — **where** the deleted plan declared `Durable decisions: none`, it **shall** pass instead. **When** no such deletion is staged, it **shall** report nothing and **shall not** fail. Driven through real temporary repositories, because a fixture made of strings would prove the awk and not the git plumbing, and the plumbing is where a gate goes silent — which reads as green. The three old-layout cases kept their expected exit codes, unedited, when the change document arrived. skills/record-work/spec-drift --self-test}
@@ -873,6 +875,7 @@ Governs: `skills/** commands/** agents/** scripts/** THIRD-PARTY.md licenses/**`
 - {**a repository defining none of the three is not asked**, and **the closing report's red-check line survives an unanswered question** — the line is written before the question and is never withdrawn by it scripts/check-payload }
 - {**the push consent does not extend to a label**, in `record-work` as well as in the command. The same absolute sentence lived in both; only one was amended and only one was guarded, in the file the contract does not designate as the owner scripts/check-payload }
 - {**`commands/libretto-attacca.md` restates none of it** — no prompt, no `gh pr edit` — and its `Never` list forbids labelling only with a bump the user did not choose, while merging, tagging and releasing stay absolute scripts/check-payload }
+- {**No skill or command body shall carry a bare dollar-digit**, and `find-work`'s scan shall run through `bash` — Claude Code substitutes a dollar-digit with the invocation's arguments, and zsh aborts on the unmatched glob of an empty `.agents/changes/` scripts/check-payload }
 
 [full spec](payload/spec.md)
 
@@ -880,7 +883,7 @@ Governs: `skills/** commands/** agents/** scripts/** THIRD-PARTY.md licenses/**`
 
 The front door. `README.md` is the only document in this repository written for somebody who has never seen the project, and its shape is a promise to that reader: what this is, how to install it, what to type, and only then the detail. **This capability exists because nothing claimed the file.** `docs/` is deliberately uncontracted prose and the README was treated the same way, so it drifted into contributor notes twice — the second time reaching *what to actually type* on line 209 of 334. A path no spec governs is a path where drift is nobody's finding.
 
-Governs: `README.md cmd/libretto/readme_test.go`
+**Governs** `README.md cmd/libretto/readme_test.go`
 
 - {**Outcome 1** — the five load-bearing headings appear in order. cmd/libretto/readme_test.go TestReadmeSectionsAreInReadingOrder}
 - {**Outcome 2** — the install section contains the install commands and a version floor, and none of `GOMODCACHE`, `@v0.`, `checksum database`. cmd/libretto/readme_test.go TestInstallSectionIsStepsOnly}
@@ -900,7 +903,7 @@ Governs: `README.md cmd/libretto/readme_test.go`
 
 Getting the repository the tool lives in, refreshing it, deciding when the compiled binary has been invalidated by what arrived, and knowing whether a newer release exists.
 
-Governs: `internal/repo/**`
+**Governs** `internal/repo/**`
 
 - {only Go sources and module files invalidate the binary internal/repo/git_test.go TestNeedsRebuild}
 - {a repository with an uncommitted change reads as dirty, and a clean one does not internal/repo/git_test.go TestDirtyReportsTheWorkingTree}
@@ -935,7 +938,7 @@ Governs: `internal/repo/**`
 
 Review somebody else's PR/MR without disturbing your own state.
 
-Governs: `skills/review-project/** skills/review-security/** skills/review-design/** skills/review-reliability/** skills/review-tests/** agents/review-lens-security.md agents/review-lens-design.md agents/review-lens-reliability.md agents/review-lens-tests.md agents/review-lens-intent.md commands/libretto-review.md`
+**Governs** `skills/review-project/** skills/review-security/** skills/review-design/** skills/review-reliability/** skills/review-tests/** agents/review-lens-security.md agents/review-lens-design.md agents/review-lens-reliability.md agents/review-lens-tests.md agents/review-lens-intent.md commands/libretto-review.md`
 
 - {frontmatter parses; `name:` matches each skill's directory and each agent's filename; every referenced skill resolves, the four lenses included; no uninstalled path is invoked scripts/check-payload }
 
@@ -945,7 +948,7 @@ Governs: `skills/review-project/** skills/review-security/** skills/review-desig
 
 What an installable destination is. One interface, four implementations, and a hard rule that nothing outside this package may assume where any of them lives.
 
-Governs: `internal/target/**`
+**Governs** `internal/target/**`
 
 - {a kind reports its own item shape, so no caller has to know it internal/target/target_test.go TestKindItemShape}
 - {**the root honours `CLAUDE_HOME` and falls back to `~/.claude`** internal/target/target_test.go TestClaudeRootResolution}

@@ -142,6 +142,19 @@ func TestWikiWritesIndexAndSections(t *testing.T) {
 	}
 }
 
+// spec-drift reads every .md under the specs dir, so a generated view written in the
+// contract's own syntax is read as a second owner of every path it lists.
+func TestWikiReadmeCarriesNoGovernsKey(t *testing.T) {
+	dir := t.TempDir()
+	specs := writeSpecs(t, dir, ".agents/specs")
+	if _, err := runWiki(t, dir); err != nil {
+		t.Fatal(err)
+	}
+	if m := regexp.MustCompile(`(?m)^[[:space:]]*Governs:`).FindString(readme(t, specs)); m != "" {
+		t.Errorf("README carries a Governs: key spec-drift reads as a dead claim: %q", m)
+	}
+}
+
 func TestGeneratedReadmeCarriesTheMarker(t *testing.T) {
 	dir := t.TempDir()
 	specs := writeSpecs(t, dir, "specs")

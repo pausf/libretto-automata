@@ -69,23 +69,31 @@ is not the wasted work — it is a `.agents/changes/` directory nobody trusts an
 Look at home before looking anywhere else.
 
 ```
-scan() {  # $1: ' ' for the open scan, 'xX' for the closed one
+bash <<'SCAN'
+scan() {  # ${1}: ' ' for the open scan, 'xX' for the closed one
   for d in .agents/changes/*/; do
     for f in proposal.md tasks.md plan.md; do
       [ -f "$d$f" ] || continue
-      awk -v doc="$([ $f = proposal.md ] && echo 1)" -v want="$1" '
+      awk -v doc="$([ $f = proposal.md ] && echo 1)" -v want="${1}" '
         /^[[:space:]]*```/ { fenced = !fenced; next }
         fenced { next }
-        doc && /^##[[:space:]]/ { listed = ($0 ~ /^##[[:space:]]+Checklist[[:space:]]*$/); next }
+        doc && /^##[[:space:]]/ { listed = ($(0) ~ /^##[[:space:]]+Checklist[[:space:]]*$/); next }
         doc && !listed { next }
-        /^[[:space:]]*[-*][[:space:]]+\[( |x|X)\]/ { all++; if (index(want, substr($0, index($0, "[") + 1, 1))) n++ }
+        /^[[:space:]]*[-*][[:space:]]+\[( |x|X)\]/ { all++; if (index(want, substr($(0), index($(0), "[") + 1, 1))) n++ }
         END { if (n) print FILENAME ":" n; exit !all }' "$d$f" && break
       [ $f = proposal.md ] || break
     done
   done
 }
 scan ' '; scan xX
+SCAN
 ```
+
+**Spelled `${1}` and `$(0)`, run through `bash`, on purpose.** Claude Code substitutes a
+bare dollar-digit in a skill body with the words of the invocation's arguments, so the
+plain spelling rendered as `want="a"` under `/libretto-attacca Add a …` and the scan read
+nothing. And zsh aborts an unmatched glob, so an empty `.agents/changes/` errored instead
+of reporting nothing in flight. Both measured in a trial run of the flow.
 
 **Three names, because the checklist moved twice.** It was `plan.md` until 2026-08-17,
 then `tasks.md`, and now it is the `## Checklist` section of `proposal.md`. A change

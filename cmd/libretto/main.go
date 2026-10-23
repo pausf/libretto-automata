@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -134,6 +135,12 @@ func run(args []string) error {
 			fmt.Println("libretto-automata", version)
 			return nil
 		case "help", "-h", "--help":
+			usage()
+			return nil
+		}
+		// Asked after a subcommand too, before it runs: init and update read no flags,
+		// so `init --help` used to bootstrap the directory it was asked to describe.
+		if slices.ContainsFunc(args[1:], func(a string) bool { return a == "-h" || a == "--help" }) {
 			usage()
 			return nil
 		}
