@@ -33,7 +33,14 @@ change should pay for the paths it actually takes.
 - Q: the approach? → A: progressive disclosure. Conditional sections move into sibling files that SKILL.md names, each with the condition that loads it. Considered and rejected: rewriting each skill shorter, which would put 52 guarded rules at risk in one diff. (assumed)
 - Q: `writing-plans` — keep or drop? → A: drop it from the payload. Nothing but write-tasks used it, and write-tasks spent 26 lines overriding its format. (assumed)
 - Q: points 2 and 3 — a gate or a rule? → A: a rule in AGENTS.md. A gate for "audit less" is the problem it describes. (assumed)
-- Q: a line budget? → A: yes, one check-payload row per split skill, set at the measured size. It is the only thing that stops the bodies from growing back. (assumed)
+- Q: a line budget? → A: yes, one check-payload row per split skill, at a ceiling below today's size, so the row is red before the split and green after. (assumed)
+- Q: (spec-reviewer) which siblings does "names each sibling with its condition" cover? → A: the new `.md` siblings only; `spec-drift` is a tool, not reading. Each pointer has one shape, `**When <condition>, read `<file>` beside this file**`, and the row pins the condition and the file on the same line. (assumed)
+- Q: (spec-reviewer) "three things" and the EARS example — which occurrences? → A: record-work's landing list only (the attacca description's three-item list is correct and stays); the fenced after-example in write-spec, which joined two `shall`. (assumed)
+- Q: (spec-reviewer) "foreground" — the whole file or the launch? → A: the reader launch only. Running a proof in the foreground stays everywhere. (assumed)
+- Q: (spec-reviewer) the checklist's shape — what syntax? → A: each box carries a `Closes:` naming the criteria it closes, the token converge already maps on, and a row pins it in write-tasks. (assumed)
+- Q: (spec-reviewer) how do status and next reach `queue.md` without a hardcoded path? → A: they already invoke find-work, and find-work's SKILL.md says when to read `queue.md` beside itself; the commands change nothing. (assumed)
+- Q: (spec-reviewer) "labelled request" against record-work's unlabeled-is-honest rule? → A: AGENTS.md says "green, with its bump label when the bump was decided" — record-work's rule stands. (assumed)
+- Q: (spec-reviewer) docs/DESIGN.md's writing-plans prose? → A: left; it is a dated design record, not a list of what ships. README's and FLOW.md's counts and lists are updated. (assumed)
 
 ## Outcomes
 
@@ -51,9 +58,17 @@ change should pay for the paths it actually takes.
    - record-work's "three things" over a list of four
    - write-spec's EARS example, which `--anchors` reads as a joined criterion
    - "foreground" for a reviewer agent that the host runs in the background
-4. `AGENTS.md` carries two rules. A change to this repository's own apparatus needs a
-   defect seen in a real run, and a payload change is followed by a trial run. The agent
-   ends at a green, labelled request, and the merge and headless launches are the user's.
+4. `AGENTS.md` carries three rules:
+   - A change to this repository's own apparatus needs a defect seen in a real run.
+   - A merge that moved the payload is followed by a trial run. A subagent drives
+     `/libretto-attacca` in a throwaway project, and what it finds becomes fixes or queued
+     ideas.
+   - The agent ends at a green request. The merge and any unattended launch are the
+     user's.
+5. The capability spec stays true:
+   - The criterion that has record-work do "three things" says four.
+   - The vendored-reference criterion no longer cites `writing-plans`.
+   - The criteria naming write-spec's fan-out section name `fan-out.md`.
 
 ## Scope boundaries
 
@@ -71,9 +86,19 @@ The vendored skills that remain are untouched.
 
 - Every `check_wiring` and `check_absent` row keeps guarding its sentence wherever that
   sentence moves. No row is deleted to make text movable.
+- The bare-dollar-digit scan stays on SKILL.md and commands. Only an invoked body is
+  substituted, and a sibling file is read, not invoked. The scan for references to
+  unreachable `scripts/` widens to every Libretto skill's `.md` file, so moved text stays
+  in its reach.
+- The push question (`AskUserQuestion`) and the three `spec-drift` modes the landing runs
+  stay in record-work's SKILL.md. `drift.md` takes the `--trace` table and the `--block`
+  hook. `forge.md` takes everything that needs a remote: the attacca exception, the return
+  to base, the bump and the forge detection.
 - A sibling file installs with its skill directory, as `test-driven-development`'s already
   do.
-- The `spec-writer` row allows its name inside `write-spec/fan-out.md`.
+- The `spec-writer` row allows its name inside `write-spec/fan-out.md` and inside the short
+  `## Step 2b` left in SKILL.md. The rows on the vocabulary and the rebilling move to
+  `fan-out.md`, and "context cannot hold" stays in SKILL.md.
 
 ## Prior decisions
 
@@ -101,22 +126,34 @@ The vendored skills that remain are untouched.
 - fix the four contradictions
 - add the AGENTS.md rules
 
-## Verification criteria
+Every row below is wiring: it pins a sentence, never that a reader followed it. The
+repeated trial run is the behavioural check, and it is not a gate.
 
-- **When record-work, find-work or write-spec is invoked, its SKILL.md shall name each
-  sibling file together with the condition that loads it.**
+- **The SKILL.md of record-work, find-work and write-spec shall carry, for each new `.md`
+  sibling, one line of the form `When <condition>, read `<file>` beside this file`.**
+  Ceiling: the row pins the line, not that the condition is right.
   Proof: scripts/check-payload
-- **The payload shall hold each split SKILL.md within its line budget.**
+- **If record-work's SKILL.md exceeds 300 lines, find-work's 300 or write-spec's 580, as
+  `wc -l` counts the whole file, then check-payload shall fail naming it.** Today's are 490,
+  449 and 721, so each row is red before the split.
   Proof: scripts/check-payload
-- **The payload shall not ship `writing-plans`, and write-tasks shall name no namespaced
-  skill.**
+- **The payload shall not ship a `skills/writing-plans/` directory.**
   Proof: scripts/check-payload
-- **present-work shall not say "then commit it", record-work shall not say "three things",
-  and write-spec's EARS example shall carry one `shall`.**
+- **write-tasks shall state that each box carries a `Closes:` naming the criteria it
+  closes.**
   Proof: scripts/check-payload
-- **When review-spec, review-work or converge launches its reader, the skill shall
-  require its return to be read before the flow goes on, and shall not require the
-  foreground.**
+- **If present-work says "then commit it", then check-payload shall fail.**
+  Proof: scripts/check-payload
+- **If record-work's landing list is introduced as "three things", then check-payload shall
+  fail.**
+  Proof: scripts/check-payload
+- **If write-spec's EARS after-example joins two `shall`, then check-payload shall fail.**
+  Proof: scripts/check-payload
+- **If review-spec, review-work or converge launches its reader "foreground", then
+  check-payload shall fail.**
+  Proof: scripts/check-payload
+- **review-spec, review-work and converge shall each say that nothing proceeds until the
+  reader's return is read.**
   Proof: scripts/check-payload
 
 ## Approach
@@ -167,3 +204,4 @@ Rollback: one revert.
 - [ ] write-tasks shape inlined and writing-plans removed from the payload and every list · closes criterion 3
 - [ ] present-work, record-work and the reviewer launches de-contradicted · closes criteria 4–5
 - [ ] AGENTS.md rules for apparatus, trial runs and where the agent stops · no criterion (repository instructions)
+- [ ] payload spec: criteria for "three things", the vendored refs and the fan-out location amended · Closes: outcome 5
