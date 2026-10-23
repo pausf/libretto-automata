@@ -368,6 +368,11 @@ Governs: `cmd/libretto/** install.sh`
 - {**If an unmerged local branch carries a queued change's name, then the wiki shall neither list that change in the flow board's queue nor count it in the in-flight strip.** cmd/libretto/wiki_test.go TestWikiQueueDropsAChangeItsBranchAlreadyTook}
 - {**The wiki's flow-board queue shall list the same change names, in the same order, as `queuedIdeas` returns for the same changes directory and branch list.** cmd/libretto/wiki_test.go TestWikiQueueMatchesTheCommand}
 - {**Where the flow article exists, the home shall link `#flow`; where it does not, no such link.** cmd/libretto/wiki_test.go TestWikiHomeLinksTheFlowBoard}
+- {**When** `libretto wiki` runs in a linked worktree, the `README.md` heading **shall** name the main checkout's directory. cmd/libretto/wiki_test.go TestWikiFromAWorktreeNamesTheRepository}
+- {**When** `libretto wiki --html` runs in a linked worktree, `wiki.html`'s `<title>` and its home page's `<h1>` **shall** both name the main checkout's directory. cmd/libretto/wiki_test.go TestWikiHTMLFromAWorktreeNamesTheRepository}
+- {**When** `libretto wiki` runs in the main checkout, the `README.md` heading **shall** name that checkout's directory. cmd/libretto/wiki_test.go TestWikiFromTheMainCheckoutNamesItsDirectory}
+- {**If** git cannot report a common dir, **then** the title **shall** be the run directory's name. cmd/libretto/wiki_test.go TestWikiOutsideGitKeepsTheDirectoryName}
+- {**If** the common dir git reports is not named `.git`, **then** the title **shall** be the run directory's name. cmd/libretto/wiki_test.go TestWikiProjectNameFallsBackOffAPlainGitDir}
 - {**When the staged index deletes every file of the change folder and modifies each delta's `Targets:` capability spec, `land` shall exit zero.** cmd/libretto/land_test.go TestLandPassesACompleteLanding}
 - {**If a tracked file under the change folder is not a staged deletion, then `land` shall exit non-zero and name that file under part 4.** cmd/libretto/land_test.go TestLandFailsAPartialFolderDeletion}
 - {**If an untracked file remains on disk under the change folder, then `land` shall exit non-zero and name it** — the commit cannot delete a folder it leaves a file in. cmd/libretto/land_test.go TestLandFailsAnUntrackedLeftover}
