@@ -5,8 +5,8 @@
 | Capability | Governs | What it promises |
 |---|---|---|
 | [agent-models](agent-models/spec.md) | `internal/agentmodel/**` | Choose which model each payload agent runs on, and how hard that model thinks, so the work that is pattern-matching over prose stops being billed at the rate of the work that is not. |
-| [ci](ci/spec.md) | `.github/** Makefile` | The six gates, run by a machine that is not the author's, before a request can merge. |
-| [cli](cli/spec.md) | `cmd/libretto/** install.sh` | The command surface. |
+| [ci](ci/spec.md) | `.github/** Makefile cmd/libretto/release_workflow_test.go cmd/libretto/label_workflow_test.go cmd/libretto/gates_test.go` | The six gates, run by a machine that is not the author's, before a request can merge. |
+| [cli](cli/spec.md) | `cmd/libretto/** install.sh !cmd/libretto/readme_test.go !cmd/libretto/release_workflow_test.go !cmd/libretto/label_workflow_test.go !cmd/libretto/gates_test.go` | The command surface. |
 | [contributing](contributing/spec.md) | `CONTRIBUTING.md` | The contributor's door. |
 | [distribution](distribution/spec.md) | `internal/dist/**` | Finding the payload an installed copy links from, and asking for a newer one. |
 | [link-state](link-state/spec.md) | `internal/link/scan.go internal/link/state.go internal/link/scan_test.go internal/link/state_test.go` | Enumerating what the repository holds and reporting, per item per target, exactly what the situation is. |
@@ -84,7 +84,7 @@ Governs: `internal/agentmodel/**`
 
 The six gates, run by a machine that is not the author's, before a request can merge.
 
-Governs: `.github/** Makefile`
+Governs: `.github/** Makefile cmd/libretto/release_workflow_test.go cmd/libretto/label_workflow_test.go cmd/libretto/gates_test.go`
 
 - {**the `gofmt` step fails on an unformatted file**, rather than passing because `gofmt -l` exits zero cmd/libretto/gates_test.go TestGofmtStepFailsOnUnformattedOutput}
 - {**every gate named in `AGENTS.md` appears in the workflow**, so the two cannot drift apart silently cmd/libretto/gates_test.go TestWorkflowRunsEveryGateAgentsNames}
@@ -110,6 +110,7 @@ Governs: `.github/** Makefile`
 - {the workflow asks for no permissions at all cmd/libretto/label_workflow_test.go TestLabelWorkflowIsReadOnly}
 - {the workflow never checks out contributor code cmd/libretto/label_workflow_test.go TestLabelWorkflowNeedsNoCheckout}
 - {no `run:` script expands a label inline cmd/libretto/label_workflow_test.go TestLabelWorkflowNeverExpandsUntrustedTextInsideAScript}
+- {**When** `cmd/libretto/gates_test.go` is staged alone, spec-drift's default mode **shall** name ci's spec and not cli's. Ceiling named: the self-test proves the rule on a fixture; this repository's case was observed once, at landing, with the worktree's spec-drift. skills/record-work/spec-drift --self-test}
 
 [full spec](ci/spec.md)
 
@@ -117,7 +118,7 @@ Governs: `.github/** Makefile`
 
 The command surface. Every action is reachable without a terminal, so scripts and CI can use it, and the same binary shows a panel when a human is driving.
 
-Governs: `cmd/libretto/** install.sh`
+Governs: `cmd/libretto/** install.sh !cmd/libretto/readme_test.go !cmd/libretto/release_workflow_test.go !cmd/libretto/label_workflow_test.go !cmd/libretto/gates_test.go`
 
 - {**a conflict makes `install` exit non-zero, and the foreign file is unchanged** cmd/libretto/main_test.go TestInstallExitsNonZeroOnConflict}
 - {everything linking exits zero, and the link is really there cmd/libretto/main_test.go TestInstallExitsZeroWhenEverythingLinks}
@@ -355,7 +356,9 @@ Governs: `cmd/libretto/** install.sh`
 - {**The in-flight strip shall count boxes with the loop's definition: a `* [ ]` line and a `- [X]` line in a `tasks.md` shall count as one open box and one closed box.** It matched `- [ ]` and `- [x]` by prefix while its comment claimed the loop's definition. cmd/libretto/wiki_test.go TestWikiInFlightCountsBoxesAsTheLoopDoes}
 - {**The home shall carry a segmented health bar whose green width is the integer division of `shall`-carrying criteria over the total and whose amber width is the remainder to 100** — the bar always closes — with the count of criteria whose cited proof does not resolve (file exists; a Go citation also declares the named test). cmd/libretto/wiki_test.go TestWikiHomeMeasuresContractHealth}
 - {**Each capability card shall carry a two-state health marker**: green where every criterion carries `shall` and every cited proof resolves, amber otherwise. No red — the wiki reports, gates block. cmd/libretto/wiki_test.go TestWikiCardsCarryTheHealthDot}
-- {**The home footer shall state how many tracked files some `Governs:` glob claims and how many none does**, over `git ls-files` behind a seam; where git is unavailable the footer shall be absent. Glob matching mirrors spec-drift's bash-case semantics — `*` crosses directory separators — because two matching authorities would disagree exactly when it matters. cmd/libretto/wiki_test.go TestWikiFooterMeasuresGovernedTree}
+- {**The home footer shall state how many tracked files some `Governs:` line governs and how many none does**, over `git ls-files` behind a seam; where git is unavailable the footer shall be absent. Matching mirrors spec-drift's `governed_by` over bash-case globs — `*` crosses directory separators, a `!` entry gives a path back within its own capability — because two matching authorities would disagree exactly when it matters. cmd/libretto/wiki_test.go TestWikiFooterMeasuresGovernedTree}
+- {**Where** a capability's `Governs:` holds a `!` entry matching a tracked file and no other capability claims it, the wiki footer **shall** count that file as unclaimed. cmd/libretto/wiki_test.go TestWikiFooterHonoursAnExclusion}
+- {**Where** one capability excludes a tracked file another capability claims, the wiki footer **shall** count that file as claimed. cmd/libretto/wiki_test.go TestWikiFooterExclusionIsPerCapability}
 - {**Where the dates seam yields commit dates for a spec, the page shall carry a sparkline of monthly commit counts** — eight buckets ending at the most recent commit's month, never the clock's, bar heights proportional — and shall omit it when the seam yields nothing. cmd/libretto/wiki_test.go TestWikiPageCarriesTheActivitySparkline}
 - {**Each criterion on a page shall carry a chip naming its cited proof file and, when one is named, its test** — green where the criterion carries `shall` and its proof resolves, amber otherwise, one definition of resolving shared with the home board. cmd/libretto/wiki_test.go TestWikiCriteriaCarryProofChips}
 - {**Where a spec holds a `Prior decisions` section, the page shall render up to its first three bullets with the section's total count, above the criteria**; where it holds none, the block shall be absent. cmd/libretto/wiki_test.go TestWikiPageSurfacesPriorDecisions}
@@ -774,7 +777,13 @@ Governs: `skills/** commands/** agents/** scripts/** THIRD-PARTY.md licenses/**`
 - {**an invented test name is rejected rather than accepted** skills/record-work/spec-drift --self-test}
 - {**spec-drift without rg refuses loudly.** Every question it asks goes through rg; missing, each match came back empty and default mode exited 0 having checked nothing. Now: exit 2 on stderr naming the tool, distinct from `--anchors`' failure exit 1. Drift findings keep exiting 0 — warn-never-block is about findings, not about being unable to look. skills/record-work/spec-drift --self-test}
 - {every `Proof:` citation in every spec resolves, file and test name skills/record-work/spec-drift --anchors}
-- {**the whole tree is traceable, not only what is staged.** Both existing modes are scoped to a commit — one to staged paths, one to citations that already exist — so **code that was never staged while a spec existed is invisible to both, forever.** In a repository whose specs arrived after its code that is most of the repository, and the contract can pass every check while governing a third of the tree. `--trace` reads the tracked tree and names orphan code, a `Governs:` glob matching nothing, a criterion under *Verification criteria* with no `Proof:` beneath it, and a joined criterion — two or more `shall` resting on one `Proof:` with no ceiling named. **It exits 0 unconditionally**: the first run here found sixteen orphans and sixteen unproven bullets, which is the honest state rather than a regression, and a report that fails the build the day it lands is a report somebody deletes. skills/record-work/spec-drift --self-test}
+- {**the whole tree is traceable, not only what is staged.** Both existing modes are scoped to a commit — one to staged paths, one to citations that already exist — so **code that was never staged while a spec existed is invisible to both, forever.** In a repository whose specs arrived after its code that is most of the repository, and the contract can pass every check while governing a third of the tree. `--trace` reads the tracked tree and names orphan code (a tracked file no `Governs:` line governs), a `Governs:` entry matching nothing, a criterion under *Verification criteria* with no `Proof:` beneath it, and a joined criterion — two or more `shall` resting on one `Proof:` with no ceiling named. **It exits 0 unconditionally**: the first run here found sixteen orphans and sixteen unproven bullets, which is the honest state rather than a regression, and a report that fails the build the day it lands is a report somebody deletes. skills/record-work/spec-drift --self-test}
+- {**Where** a capability's `Governs:` holds a `!` entry matching a path, `governed_by` **shall** answer that the capability does not govern it, even when a plain entry matches. skills/record-work/spec-drift --self-test}
+- {**While** a `Governs:` line holds no `!` entry, spec-drift **shall** treat its paths as it did before exclusions existed. skills/record-work/spec-drift --self-test}
+- {**If** a path is excluded by the only capability whose plain entries match it, **then** `spec-drift --trace` **shall** list it as an orphan. skills/record-work/spec-drift --self-test}
+- {**When** a path one capability excludes and another claims is staged alone, spec-drift's default mode **shall** name only the claiming capability's spec. skills/record-work/spec-drift --self-test}
+- {**If** a `!` entry in `Governs:` matches no tracked file, **then** `spec-drift --trace` **shall** report it as a dead claim. skills/record-work/spec-drift --self-test}
+- {**When** `write-spec` defines `Governs:` in "And the spec declares what it governs", it **shall** name the `!` exclusion. Proved as wiring only, pinned on `a leading .!. excludes`. Ceiling named: the row pins the phrase. scripts/check-payload }
 - {**Where** a verification criterion carries the EARS marker two or more times — counted as `is_ears` matches it — sits above exactly one `Proof:` line, and contains no case-insensitive `ceiling`, `is_joined` **shall** return true for it, and false for every other criterion. The self-test drives the real `is_joined` through six cases: two markers on one proof, two markers with "Ceiling named:", two markers on two proofs, one marker, a bolded pair, and `marshalling` beside one real marker. skills/record-work/spec-drift --self-test}
 - {**Where** a change document holds `## Verification criteria`, holding one criterion with a `Proof:` and one without, then `## Checklist`, `joined_of` **shall** print one line, carrying the proven criterion's `Proof:` count. It prints nothing for the unproven criterion, which is `--trace`'s *unproven criterion* already, and nothing for the boxes. skills/record-work/spec-drift --self-test}
 - {**When** `spec-drift --trace` runs in a repository whose capability spec and change document each hold one joined criterion, it **shall** list both under the joined-criteria section, each with its file. skills/record-work/spec-drift --self-test}

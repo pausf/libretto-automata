@@ -1166,6 +1166,12 @@ equivalent. It goes when `libretto install` has been verified against a real
   naming `modules`. Lost: the origin remote's name (a repository need not have one, and a fork
   renames it) and `--show-toplevel` (the worktree's own root — the bug itself).
 
+- **The wiki footer honours `!` per capability.** Retired from `let-governs-exclude-a-path`,
+  decided 2026-10-23 with payload's exclusion: `governedSplit` pooled every capability's
+  globs into one list, which an exclusion would make wrong — one capability's `!` hiding a
+  path another claims. It takes one entry list per capability. cli gives up `readme_test.go`
+  and the three workflow tests, whose promises are readme's and ci's.
+
 ## Task breakdown
 
 - [x] dispatch, `status`, `preview`, `version`, `help`
@@ -2296,12 +2302,19 @@ never a second authority and never a gate.
   every criterion carries `shall` and every cited proof resolves, amber
   otherwise. No red — the wiki reports, gates block.
   Proof: cmd/libretto/wiki_test.go TestWikiCardsCarryTheHealthDot
-- **The home footer shall state how many tracked files some `Governs:` glob
-  claims and how many none does**, over `git ls-files` behind a seam; where git
-  is unavailable the footer shall be absent. Glob matching mirrors spec-drift's
-  bash-case semantics — `*` crosses directory separators — because two matching
+- **The home footer shall state how many tracked files some `Governs:` line
+  governs and how many none does**, over `git ls-files` behind a seam; where git
+  is unavailable the footer shall be absent. Matching mirrors spec-drift's
+  `governed_by` over bash-case globs — `*` crosses directory separators, a `!`
+  entry gives a path back within its own capability — because two matching
   authorities would disagree exactly when it matters.
   Proof: cmd/libretto/wiki_test.go TestWikiFooterMeasuresGovernedTree
+- **Where** a capability's `Governs:` holds a `!` entry matching a tracked file and no other
+  capability claims it, the wiki footer **shall** count that file as unclaimed.
+  Proof: cmd/libretto/wiki_test.go TestWikiFooterHonoursAnExclusion
+- **Where** one capability excludes a tracked file another capability claims, the wiki footer
+  **shall** count that file as claimed.
+  Proof: cmd/libretto/wiki_test.go TestWikiFooterExclusionIsPerCapability
 
 The capability page carries its own history and its proof, from the same
 sources, absent when the data is.
