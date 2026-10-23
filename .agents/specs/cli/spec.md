@@ -1,6 +1,6 @@
 # CLI
 
-Governs: cmd/libretto/** install.sh
+Governs: cmd/libretto/** install.sh !cmd/libretto/readme_test.go !cmd/libretto/release_workflow_test.go !cmd/libretto/label_workflow_test.go !cmd/libretto/gates_test.go
 
 The command surface. Every action is reachable without a terminal, so scripts and CI
 can use it, and the same binary shows a panel when a human is driving.

@@ -1,6 +1,6 @@
 # Continuous Integration
 
-Governs: .github/** Makefile
+Governs: .github/** Makefile cmd/libretto/release_workflow_test.go cmd/libretto/label_workflow_test.go cmd/libretto/gates_test.go
 
 The six gates, run by a machine that is not the author's, before a request can merge.
 
