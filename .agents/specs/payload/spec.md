@@ -1093,6 +1093,23 @@ finding, which is the sentence the `readme` capability was created to answer abo
   newline-squashed single line exits 0 either way, since the reader must finish the line —
   which is why `check-payload`'s marker search, rewritten here, was never actually vulnerable.
   Ceiling named: a pipe split across lines, or a `|` inside a quoted argument, is not seen.
+- **Conditional guidance lives in a sibling file, named with its condition.** Decided
+  2026-10-23 (assumed, `trim-skill-reading-cost`) from a measured trial run: about 3,000 lines read for a change of
+  about 15. A skill body loads whole on every invocation, so a section that applies on a
+  condition is paid for on every run. Lost: shortening each skill in place, which would put
+  52 guarded rules at risk in one unreviewable diff.
+- **Each split SKILL.md has a line budget in check-payload.** Decided 2026-10-23
+  (assumed, `trim-skill-reading-cost`): without one, the bodies grow back one rationale paragraph at a time. The budget is a ceiling set
+  below each body's size before the split, so every row was red first. Raising it is a
+  visible edit, never a drift.
+- **`writing-plans` is not shipped.** Decided 2026-10-23 (assumed, `trim-skill-reading-cost`): only write-tasks used
+  it, and write-tasks spent a 26-line table overriding its file path, its header and its
+  execution question. A vendored skill whose every instruction is overridden costs reading
+  and buys nothing.
+- **A reviewer is waited for, not run in the foreground.** Decided 2026-10-23 (assumed, `trim-skill-reading-cost`):
+  the host decides where an agent runs, and the trial run saw both reviewers run in the
+  background despite the word. What the flow needs is that nothing proceeds before the
+  return is read.
 - **No bare dollar-digit in a skill or command body.** Decided 2026-10-23 from a trial run
   of the flow in a throwaway project: Claude Code substitutes a dollar-digit in a skill body
   with the words of the invocation's arguments, so `find-work`'s awk read `want="a"` under
@@ -1577,16 +1594,15 @@ finding, which is the sentence the `readme` capability was created to answer abo
 - **`/libretto-status` and `/libretto-next` shall not invoke `libretto queue`.** Proved as
   absence of the string.
   Proof: scripts/check-payload
-- **a vendored skill's namespaced reference is either shipped or answered.** `writing-plans`
-  opens every plan it writes with a header demanding `superpowers:subagent-driven-development`
-  and offers `superpowers:executing-plans`; `test-driven-development` cites
-  `superpowers:writing-skills`. **The payload ships none of the three, and neither does a
-  machine that installed only this** — so the flow's own phase-5 output has instructed its
-  reader to invoke a skill that does not exist since the day the copies landed. Nothing read
+- **a vendored skill's namespaced reference is either shipped or answered.**
+  `test-driven-development` cites `superpowers:writing-skills`, which **the payload does not
+  ship, and neither does a machine that installed only this** — the same hole a vendored
+  `writing-plans` opened before it stopped shipping, when the flow's own output instructed its
+  reader to invoke a skill that did not exist. Nothing read
   the namespace, so nothing noticed. The fix is never an edit to the vendored copy, because
   `THIRD-PARTY.md` promises it stays comparable with upstream and a divergence needs exactly
-  one home: the Libretto skill that delegates to it states the override — `write-plan` for
-  the two execution skills and the worktree one, `build-and-check` for the test-prose one.
+  one home: the Libretto skill that delegates to it states the override — `build-and-check`
+  for the test-prose one.
   The check reads refs only inside vendored directories, listed from `THIRD-PARTY.md` rather
   than hardcoded, and requires each to resolve to a shipped skill or be named by a skill that
   is not the vendored one. **A ref inside a Libretto skill is the answer, never the fault** —
@@ -1618,7 +1634,7 @@ finding, which is the sentence the `readme` capability was created to answer abo
 - **model and effort do not move part-way through a fan-out.** A phase is billed a fraction
   of input price while its prefix stays byte-identical between calls; switching the tier
   invalidates that prefix and rebills the whole context at full price, and a fan-out pays it
-  once per writer. `write-spec` step 2b states it beside the fan-out that costs it, and
+  once per writer. `write-spec/fan-out.md` states it beside the fan-out that costs it, and
   `docs/FLOW.md` carries the same reasoning under *Delegation* — **uncontracted and cited by
   nothing, because no capability governs `docs/`**, and a `Proof:` over an unowned file
   anchors to nothing.
@@ -1700,7 +1716,7 @@ finding, which is the sentence the `readme` capability was created to answer abo
   `check-payload` **shall** fail naming it.
   Proof: scripts/check-payload
 - **If** any file under `skills/`, `agents/` or `commands/` names `spec-writer` outside
-  `write-spec`'s fan-out section and the agent file itself, **then** `check-payload`
+  `write-spec`'s fan-out section, `write-spec/fan-out.md` and the agent file itself, **then** `check-payload`
   **shall** fail naming it. A section-aware row, because the rows are otherwise
   line-scoped.
   Proof: scripts/check-payload
@@ -1744,7 +1760,7 @@ finding, which is the sentence the `readme` capability was created to answer abo
   and the push as what the invocation answered. **Proved as wiring only.**
   Proof: scripts/check-payload
 - **When** phase 8 lands a change-document change, `record-work` **shall** direct the
-  session to do three things in one commit: apply `proposal.md`'s contract and each
+  session to do four things in one commit: commit whatever code remains, apply `proposal.md`'s contract and each
   `spec-<capability>.md` onto the capability spec its `Targets:` names, retire the
   `## Prior decisions` entries that outlive the change, and delete the folder. For an
   old-layout change it **shall** read `spec.md` and `plan.md` as before. **Proved as wiring
@@ -1946,6 +1962,36 @@ one of those in its own plan before the reviewer found four more in its skill.
 - **No skill or command body shall carry a bare dollar-digit**, and `find-work`'s scan
   shall run through `bash` — Claude Code substitutes a dollar-digit with the invocation's
   arguments, and zsh aborts on the unmatched glob of an empty `.agents/changes/`
+  Proof: scripts/check-payload
+
+**From `trim-skill-reading-cost`, 2026-10-23.** Every row below is wiring: it pins a sentence, never that a reader followed it. The
+repeated trial run is the behavioural check, and it is not a gate.
+
+- **The SKILL.md of record-work, find-work and write-spec shall carry, for each new `.md`
+  sibling, one line of the form `When <condition>, read `<file>` beside this file`.**
+  Ceiling: the row pins the line, not that the condition is right.
+  Proof: scripts/check-payload
+- **If record-work's SKILL.md exceeds 300 lines, find-work's 300 or write-spec's 580, as
+  `wc -l` counts the whole file, then check-payload shall fail naming it.** Today's are 490,
+  449 and 721, so each row is red before the split.
+  Proof: scripts/check-payload
+- **The payload shall not ship a `skills/writing-plans/` directory.**
+  Proof: scripts/check-payload
+- **write-tasks shall state that each box carries a `Closes:` naming the criteria it
+  closes.**
+  Proof: scripts/check-payload
+- **If present-work says "then commit it", then check-payload shall fail.**
+  Proof: scripts/check-payload
+- **If record-work's landing list is introduced as "three things", then check-payload shall
+  fail.**
+  Proof: scripts/check-payload
+- **If write-spec's EARS after-example joins two `shall`, then check-payload shall fail.**
+  Proof: scripts/check-payload
+- **If review-spec, review-work or converge launches its reader "foreground", then
+  check-payload shall fail.**
+  Proof: scripts/check-payload
+- **review-spec, review-work and converge shall each say that nothing proceeds until the
+  reader's return is read.**
   Proof: scripts/check-payload
 
 **What none of this verifies is behaviour.** A skill is a prompt, and a prompt is
