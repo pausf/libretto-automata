@@ -6,10 +6,6 @@ It is read **after** the push section on purpose. When the exception below sat a
 the native-prompt paragraph, what followed it read as reinstating the ask
 unconditionally. That was the reviewer's finding on the run that landed the mode.
 
-It is read **after** the push section on purpose. When the exception below sat above
-the native-prompt paragraph, what followed it read as reinstating the ask
-unconditionally. That was the reviewer's finding on the run that landed the mode.
-
 ## The one exception, and it is the whole of `/libretto-attacca`
 
 **Everything in `SKILL.md`'s push section — the question, the native prompt, the
