@@ -128,7 +128,7 @@ any other overlap in cli.
   five self-test cases red first (the helper, the unchanged case, the dead `!`, the orphan,
   the default-mode naming), the header comment, record-work's row, the `write-spec` sentence
   and its row. Closes: the six payload criteria. Waits on: nothing.
-- [ ] **The wiki footer honours `!` per capability.** `governedSplit` takes one entry list per
+- [x] **The wiki footer honours `!` per capability.** `governedSplit` takes one entry list per
   capability. Closes: spec-cli's criteria. Waits on: box 1.
 - [ ] **The four test files move to their owners.** cli's and ci's `Governs:` lines; observed
   with the worktree's spec-drift: `gates_test.go` staged alone names ci, not cli. Closes:

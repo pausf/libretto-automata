@@ -433,11 +433,11 @@ func renderWikiHTML(projectDir string, caps []wikiCapability) []byte {
 		b.WriteString("<p class=\"flowlink\"><a href=\"#flow\">the flow, measured →</a></p>\n")
 	}
 	if tracked := wikiGitTracked(projectDir); len(tracked) > 0 {
-		var globs []string
+		var perCap [][]string
 		for _, c := range caps {
-			globs = append(globs, strings.Fields(c.governs)...)
+			perCap = append(perCap, strings.Fields(c.governs))
 		}
-		governed, orphan := governedSplit(tracked, globs)
+		governed, orphan := governedSplit(tracked, perCap)
 		fmt.Fprintf(&b, "<p class=\"governed\">%d governed \u00b7 %d orphan \u2014 of %d tracked files</p>\n", governed, orphan, len(tracked))
 	}
 	b.WriteString("</section>\n")
@@ -789,23 +789,29 @@ func capHealthy(projectDir string, c wikiCapability) bool {
 	return true
 }
 
-// governedSplit mirrors spec-drift's matches_any, which is a bash case pattern:
-// `*` there crosses directory separators, so the translation is deliberate —
-// `**` and `*` both become .* and `?` becomes one character. Diverging from the
-// script here would be two authorities.
-func governedSplit(tracked []string, globs []string) (governed, orphan int) {
-	res := make([]*regexp.Regexp, 0, len(globs))
-	for _, g := range globs {
-		quoted := regexp.QuoteMeta(g)
-		quoted = strings.ReplaceAll(quoted, `\*\*`, `.*`)
-		quoted = strings.ReplaceAll(quoted, `\*`, `.*`)
-		quoted = strings.ReplaceAll(quoted, `\?`, `.`)
-		res = append(res, regexp.MustCompile("^"+quoted+"$"))
+// governedSplit mirrors spec-drift's governed_by over matches_any, a bash case pattern:
+// `*` there crosses directory separators, so the translation is deliberate — `**` and `*`
+// both become .* and `?` becomes one character. A `!` entry gives a path back and always
+// wins, within its own capability: the lists are never pooled, or one capability's `!`
+// would hide a path another claims. Diverging from the script here would be two authorities.
+func governedSplit(tracked []string, perCap [][]string) (governed, orphan int) {
+	type rule struct{ plain, excl []*regexp.Regexp }
+	rules := make([]rule, 0, len(perCap))
+	for _, entries := range perCap {
+		var r rule
+		for _, e := range entries {
+			if strings.HasPrefix(e, "!") {
+				r.excl = append(r.excl, globRegexp(strings.TrimPrefix(e, "!")))
+			} else {
+				r.plain = append(r.plain, globRegexp(e))
+			}
+		}
+		rules = append(rules, r)
 	}
 	for _, f := range tracked {
 		hit := false
-		for _, re := range res {
-			if re.MatchString(f) {
+		for _, r := range rules {
+			if anyMatch(r.plain, f) && !anyMatch(r.excl, f) {
 				hit = true
 				break
 			}
@@ -817,6 +823,23 @@ func governedSplit(tracked []string, globs []string) (governed, orphan int) {
 		}
 	}
 	return governed, orphan
+}
+
+func globRegexp(g string) *regexp.Regexp {
+	quoted := regexp.QuoteMeta(g)
+	quoted = strings.ReplaceAll(quoted, `\*\*`, `.*`)
+	quoted = strings.ReplaceAll(quoted, `\*`, `.*`)
+	quoted = strings.ReplaceAll(quoted, `\?`, `.`)
+	return regexp.MustCompile("^" + quoted + "$")
+}
+
+func anyMatch(res []*regexp.Regexp, f string) bool {
+	for _, re := range res {
+		if re.MatchString(f) {
+			return true
+		}
+	}
+	return false
 }
 
 // wikiFlight is one open change for the in-flight strip.
