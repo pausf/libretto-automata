@@ -4,7 +4,7 @@ description: "Trigger: a task is finished and needs committing; writing a commit
 license: MIT
 metadata:
   author: pausf
-  version: "1.7"
+  version: "1.8"
 ---
 
 ## What this does
@@ -154,7 +154,7 @@ the contract can be entirely intact by both checks and still govern a third of t
 
 | | |
 |---|---|
-| **orphan code** | a tracked file no `Governs:` glob claims |
+| **orphan code** | a tracked file no `Governs:` line governs — no plain entry claims it, or a `!` entry gives it back |
 | **dead ownership** | a `Governs:` glob matching no tracked file — a package that moved, and a spec still pointing where it was |
 | **unproven criterion** | a bullet under *Verification criteria* with no `Proof:` beneath it |
 | **joined criterion** | two or more `shall` resting on exactly one `Proof:`, with no ceiling named — in capability specs and change documents. One test rarely holds two promises; split it, cite a second proof, or write the ceiling into it. `--anchors` prints the count and never fails on it |

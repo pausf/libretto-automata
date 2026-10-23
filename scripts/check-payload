@@ -383,6 +383,7 @@ else
   while IFS= read -r h; do fail "a pipe into rg -q reads SIGPIPE as no match under pipefail — $h"; done <<< "$pipe_hits"
 fi
 check_wiring skills/record-work/SKILL.md 'the label rides .gh pr create' 'a bump decided before the request rides gh pr create --label'
+check_wiring skills/write-spec/SKILL.md 'a leading .!. excludes' 'write-spec names the Governs: exclusion'
 check_wiring commands/libretto-status.md 'Skill\(skill="find-work"\)' 'status delegates the scan to find-work'
 check_wiring commands/libretto-status.md 'proposal\.md..s .## Checklist.' 'status names proposal.md among the files the scan reads'
 

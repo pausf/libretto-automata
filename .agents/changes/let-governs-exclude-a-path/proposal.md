@@ -124,7 +124,7 @@ any other overlap in cli.
 
 ## Checklist
 
-- [ ] **`Governs:` excludes with `!` in spec-drift.** `governed_by`, both readers regrouped,
+- [x] **`Governs:` excludes with `!` in spec-drift.** `governed_by`, both readers regrouped,
   five self-test cases red first (the helper, the unchanged case, the dead `!`, the orphan,
   the default-mode naming), the header comment, record-work's row, the `write-spec` sentence
   and its row. Closes: the six payload criteria. Waits on: nothing.
