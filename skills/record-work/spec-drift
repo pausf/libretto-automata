@@ -125,7 +125,9 @@ change_files() { md_under "$CHANGE_ROOTS" | sort -u; }
 # mistaken for a declaration. Every document explaining the anchors hits this, so it
 # is the extractor's job to know the difference, not the author's job to avoid
 # illustrating.
-defenced() { awk '/^[[:space:]]*```/ { f = !f; next } !f { print }' "$1" 2>/dev/null; }
+# The one definition of a fence line: defenced toggles on it, fences counts it.
+FENCE='/^[[:space:]]*```/'
+defenced() { awk "$FENCE"' { f = !f; next } !f { print }' "$1" 2>/dev/null; }
 
 governs_of() { defenced "$1" | rg -N -o '^[[:space:]]*Governs:.*' | sed 's/^[[:space:]]*Governs:[[:space:]]*//'; }
 targets_of() { defenced "$1" | rg -N -o '^[[:space:]]*Targets:.*' | sed 's/^[[:space:]]*Targets:[[:space:]]*//'; }
@@ -978,6 +980,40 @@ also none' "$(criteria_without_proof "$tmp")"
     "$([ "$jout" = "$jwant" ] && echo yes || echo no)"
   rm -rf "$jd"
 
+  # A fence opened in prose and never closed hides every Proof: after it from defenced, so
+  # --anchors goes green on citations it never read. An odd count of fence lines is always
+  # that defect; the bytes of a clean tree must not move.
+  fencerepo() { # fencerepo <odd|even> — a spec whose criterion cites a missing test
+    local d tick; d=$(mktemp -d) || return 99; tick='```'
+    mkdir -p "$d/.agents/specs/thing"
+    {
+      printf '# Thing\n\nGoverns: src/**\n\n## Verification criteria\n\n'
+      printf -- '- When a block shows %s, the thing shall run.\n  Proof: src/a_test.go TestA\n' "$tick"
+      [ "$1" = odd ] && printf '\n%s\nexample\n' "$tick"
+      [ "$1" = even ] && printf '\n%s\nexample\n%s\n' "$tick" "$tick"
+      printf -- '- The thing shall stop.\n  Proof: src/b_test.go TestB\n'
+    } > "$d/.agents/specs/thing/spec.md"
+    # Both citations resolve, so the only thing that can fail is the fence: today an odd
+    # count leaves --anchors green, having never read TestB's line.
+    mkdir -p "$d/src"
+    printf 'package src\n\nfunc TestA(t *testing.T) {}\n' > "$d/src/a_test.go"
+    printf 'package src\n\nfunc TestB(t *testing.T) {}\n' > "$d/src/b_test.go"
+    printf '%s' "$d"
+  }
+  fd_=$(fencerepo odd)
+  fout=$(cd "$fd_" && "$SELF" --anchors 2>&1); frc=$?
+  want 'an unclosed fence fails --anchors'   1   "$([ $frc -ne 0 ] && echo 1 || echo 0)"
+  want 'an unclosed fence names its file'    yes \
+    "$(printf '%s\n' "$fout" | rg -F 'UNCLOSED  .agents/specs/thing/spec.md' >/dev/null && echo yes || echo no)"
+  rm -rf "$fd_"
+  fd_=$(fencerepo even)
+  fout=$(cd "$fd_" && "$SELF" --anchors 2>&1; printf x)
+  fwant=$(cd "$fd_" && { anchors; printf '\n'; ears; printf '\n'; retired; } 2>&1; printf x)
+  want 'closed fences print no fence line'   no \
+    "$(printf '%s\n' "$fout" | rg 'UNCLOSED' >/dev/null && echo yes || echo no)"
+  want 'closed fences leave --anchors byte-identical' yes "$([ "$fout" = "$fwant" ] && echo yes || echo no)"
+  rm -rf "$fd_"
+
   # Orphan and dead-claim detection. --trace on this repository reports 0 dead claims, so
   # without these the branch has never been observed producing output at all — a criterion
   # naming three findings whose proof covered one of them.
@@ -1035,6 +1071,23 @@ also none' "$(criteria_without_proof "$tmp")"
 # and the workflow — the exact number-in-two-places drift this repository has already
 # paid for twice. Both halves ask whether a criterion is real, so they share a flag;
 # `--ears` exists to run the new half alone while writing one.
+# fences — a fence opened in prose and never closed hides every line after it from
+# defenced, so the citations below it are never read and --anchors goes green on them.
+# An odd count of fence lines is always that defect. Prints nothing when every count is
+# even, so a clean tree's --anchors output does not move by a byte.
+fences() {
+  local f n out=''
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    n=$(awk "$FENCE"' { c++ } END { print c + 0 }' "$f" 2>/dev/null)
+    [ $((n % 2)) -eq 0 ] && continue
+    out="$out  UNCLOSED  $f — $n fence line(s), one never closed"$'\n'
+  done <<< "$( { spec_files; change_files; } | sort -u )"
+  [ -z "$out" ] && return 0
+  printf '\n%s' "$out"
+  return 1
+}
+
 anchors_and_ears() {
   local rc=0
   anchors || rc=1
@@ -1042,6 +1095,7 @@ anchors_and_ears() {
   ears || rc=1
   printf '\n'
   retired || rc=1
+  fences || rc=1
   joined
   return $rc
 }

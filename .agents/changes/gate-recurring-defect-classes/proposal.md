@@ -135,7 +135,7 @@ the row names the shape it pins.
 
 ## Checklist
 
-- [ ] **`--anchors` fails on an unclosed fence.** `fences` in spec-drift, two self-test
+- [x] **`--anchors` fails on an unclosed fence.** `fences` in spec-drift, two self-test
   cases, forced red by removing the call. Closes: the two fence criteria. Waits on: nothing.
 - [ ] **No pipe into `rg -q` in the payload's scripts.** The row, line 576 fixed, the row
   observed red on today's tree first. Closes: the `rg -q` criterion. Waits on: nothing.
