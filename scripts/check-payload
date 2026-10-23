@@ -374,7 +374,7 @@ done
 # first match, the writer before it dies of SIGPIPE, and the pipeline's 141 reads as "no
 # match": it made spec-drift --retired fail open on a long change document. Read the input
 # whole instead — `rg … >/dev/null`. Built from parts so this row's own source cannot match.
-pipe_rg='[^|]\|[[:space:]]*rg'
+pipe_rg='(^|[^|])\|[[:space:]]*rg'
 quiet_flag='([[:space:]]+[^|[:space:]]+)*[[:space:]]+(-[A-Za-z]*q[A-Za-z]*|--quiet)([[:space:]]|$)'
 pipe_hits=$(rg -n -e "${pipe_rg}${quiet_flag}" skills scripts 2>/dev/null)
 if [ -z "$pipe_hits" ]; then

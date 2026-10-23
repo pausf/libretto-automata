@@ -345,3 +345,8 @@ reported-zero criterion, which caught it.
 
 wikiProjectName was inserted between wikiGitBranches' doc comment and the seam it
 documents, leaving the seam undocumented. Fixed in this pass: the comment is back on its seam.
+
+## 2026-10-23 · gate-recurring-defect-classes · 6→7
+
+The rg -q row's pipe pattern began with [^|], so a pipe in column 0 — a non-|| pipe into
+rg -q — could never match. Fixed in this pass: (^|[^|]), checked against a column-0 case.

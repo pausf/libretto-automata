@@ -135,8 +135,9 @@ paragraph, version bump).
 | a shellcheck dependency | a new dependency for two patterns; the ladder says no |
 | fixing only the instances | the class came back twice in two days; a row is cheaper than a third time |
 
-Risks: the `rg -q` row's pattern could miss a multi-line pipe — accepted, none exists, and
-the row names the shape it pins.
+Risks: the `rg -q` row's pattern misses a pipe split across lines, and a `|` inside a quoted
+argument ends its view of the arguments (`x | rg 'a|b' -q`) — both accepted, neither exists,
+and the row names the shape it pins. A `|` in column 0 is caught (found by the 6→7 review).
 
 ## Checklist
 
