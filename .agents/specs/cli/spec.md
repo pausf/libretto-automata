@@ -1157,6 +1157,15 @@ equivalent. It goes when `libretto install` has been verified against a real
   answers (a commit trailer, a delta naming its landing), which the flow does not write
   today.
 
+- **The wiki's title names the repository, not the run directory.** Retired from
+  `name-the-wiki-after-the-repository`, fixed 2026-10-23: `filepath.Base(projectDir)` wrote a
+  linked worktree's directory name into the committed view seven landings in a row, each
+  worked around with a temporary symlink. The name is the parent of git's common dir, shared
+  by every worktree; only a common dir called `.git` names it, so a submodule
+  (`.git/modules/<name>`) or a separate git dir keeps the run directory's name rather than
+  naming `modules`. Lost: the origin remote's name (a repository need not have one, and a fork
+  renames it) and `--show-toplevel` (the worktree's own root — the bug itself).
+
 ## Task breakdown
 
 - [x] dispatch, `status`, `preview`, `version`, `help`
@@ -2358,6 +2367,28 @@ The flow itself gets a page, from the ledgers, absent when they are.
 - **Where the flow article exists, the home shall link `#flow`; where it does
   not, no such link.**
   Proof: cmd/libretto/wiki_test.go TestWikiHomeLinksTheFlowBoard
+
+#### The title names the repository
+
+The title on both views — `README.md`'s heading, `wiki.html`'s `<title>` and its home
+`<h1>` — is the repository's name: the parent of git's common dir when that dir is `.git`,
+so every linked worktree of one repository writes the same title.
+
+- **When** `libretto wiki` runs in a linked worktree, the `README.md` heading **shall** name
+  the main checkout's directory.
+  Proof: cmd/libretto/wiki_test.go TestWikiFromAWorktreeNamesTheRepository
+- **When** `libretto wiki --html` runs in a linked worktree, `wiki.html`'s `<title>` and its
+  home page's `<h1>` **shall** both name the main checkout's directory.
+  Proof: cmd/libretto/wiki_test.go TestWikiHTMLFromAWorktreeNamesTheRepository
+- **When** `libretto wiki` runs in the main checkout, the `README.md` heading **shall** name
+  that checkout's directory.
+  Proof: cmd/libretto/wiki_test.go TestWikiFromTheMainCheckoutNamesItsDirectory
+- **If** git cannot report a common dir, **then** the title **shall** be the run directory's
+  name.
+  Proof: cmd/libretto/wiki_test.go TestWikiOutsideGitKeepsTheDirectoryName
+- **If** the common dir git reports is not named `.git`, **then** the title **shall** be the
+  run directory's name.
+  Proof: cmd/libretto/wiki_test.go TestWikiProjectNameFallsBackOffAPlainGitDir
 
 ### `land` — the landing commit verified before it exists
 

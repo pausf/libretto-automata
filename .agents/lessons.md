@@ -340,3 +340,8 @@ parseSession treated any valid JSON as the host's report, so `null` or `{}` prin
 the session's text should reach the terminal. Fixed in this pass: with no result field the text is
 the raw output while the reported fields are still read — the first fix dropped them and broke the
 reported-zero criterion, which caught it.
+
+## 2026-10-23 · name-the-wiki-after-the-repository · 6→7
+
+wikiProjectName was inserted between wikiGitBranches' doc comment and the seam it
+documents, leaving the seam undocumented. Fixed in this pass: the comment is back on its seam.

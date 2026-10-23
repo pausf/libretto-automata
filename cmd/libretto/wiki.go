@@ -264,7 +264,7 @@ func parseSpec(r io.Reader, name string) wikiCapability {
 func renderWiki(projectDir string, caps []wikiCapability) []byte {
 	var b strings.Builder
 	b.WriteString(wikiMarker + "\n\n")
-	fmt.Fprintf(&b, "# Specs — %s\n\n", filepath.Base(projectDir))
+	fmt.Fprintf(&b, "# Specs — %s\n\n", wikiProjectName(projectDir))
 	b.WriteString("| Capability | Governs | What it promises |\n|---|---|---|\n")
 	for _, c := range caps {
 		fmt.Fprintf(&b, "| [%s](%s/spec.md) | `%s` | %s |\n",
@@ -331,7 +331,7 @@ var wikiGitDate = func(projectDir, specPath string) string {
 }
 
 func renderWikiHTML(projectDir string, caps []wikiCapability) []byte {
-	name := html.EscapeString(filepath.Base(projectDir))
+	name := html.EscapeString(wikiProjectName(projectDir))
 	total := 0
 	maxCrit := 1
 	for _, c := range caps {
@@ -849,6 +849,27 @@ func readInFlight(projectDir string) (flights []wikiFlight, queued []queuedIdea)
 	branches, _ := wikiGitBranches(projectDir)
 	queued, _ = splitDispatched(queuedIdeas(projectDir), branches)
 	return flights, queued
+}
+
+// wikiProjectName names the repository the specs belong to, not the directory the wiki
+// runs in: a linked worktree's own directory is a change's name, and it reached committed
+// views seven landings in a row. A seam, like wikiGitBranches, so a test can pin it.
+var wikiProjectName = func(projectDir string) string {
+	common, err := execGit(projectDir)("rev-parse", "--path-format=absolute", "--git-common-dir")
+	if err != nil {
+		common = ""
+	}
+	return projectNameFrom(strings.TrimSpace(common), projectDir)
+}
+
+// projectNameFrom is the parent of git's common dir when that dir is .git — the main
+// checkout, shared by every worktree. A submodule's (.git/modules/<name>) or a separate
+// git dir's parent names nothing, so those, and no answer at all, keep the run directory.
+func projectNameFrom(commonDir, projectDir string) string {
+	if filepath.Base(commonDir) == ".git" {
+		return filepath.Base(filepath.Dir(commonDir))
+	}
+	return filepath.Base(projectDir)
 }
 
 // wikiGitBranches: the unmerged local branches find-work's filter reads.
