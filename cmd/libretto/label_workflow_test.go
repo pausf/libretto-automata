@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -78,11 +80,34 @@ func TestLabelScriptMatchesLabelNamesExactly(t *testing.T) {
 	}
 }
 
+// GitHub fires `opened` before `gh pr create --label` attaches the label, so the opened
+// run's payload can carry none — measured on PR #89, whose `labeled` run passed beside a
+// red `opened` one. With the request's number in hand, an empty payload is re-read.
+func TestLabelScriptRereadsLabelsWhenThePayloadRaced(t *testing.T) {
+	lines := runScriptLines(labelWorkflow(t))
+	for _, c := range []struct {
+		live string
+		pass bool
+	}{{`["release:minor"]`, true}, {`[]`, false}} {
+		bin := t.TempDir()
+		fake := "#!/bin/sh\nprintf '%s\\n' '" + c.live + "'\n"
+		if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(fake), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command("bash", "-c", strings.Join(lines, "\n"))
+		cmd.Env = append(cmd.Environ(), "LABELS_JSON=[]", "PR_NUMBER=89", "REPO=o/r",
+			"PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+		if err := cmd.Run(); (err == nil) != c.pass {
+			t.Errorf("payload [] with live labels %s: pass=%v, want %v", c.live, err == nil, c.pass)
+		}
+	}
+}
+
 func TestLabelWorkflowIsReadOnly(t *testing.T) {
 	workflow := labelWorkflow(t)
 
-	if !strings.Contains(workflow, "permissions: {}") {
-		t.Error("the label workflow does not declare an empty permissions block — a job that touches nothing gets no permissions at all")
+	if !strings.Contains(workflow, "permissions:\n  pull-requests: read\n") {
+		t.Error("the label workflow does not declare exactly pull-requests: read — reading the live labels needs nothing more")
 	}
 	if strings.Contains(workflow, "write") {
 		t.Error("the label workflow mentions write access — nothing here has any business writing")

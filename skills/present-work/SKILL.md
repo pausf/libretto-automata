@@ -9,7 +9,7 @@ metadata:
 
 ## What this does
 
-Phase 7 of the Libretto flow: show what was done, then commit it.
+Phase 7 of the Libretto flow: show what was done, before it is recorded.
 
 It runs after `skills/build-and-check/` and **before** `skills/record-work/`, in the
 same turn as both. The order is the point — a report written after the commit is

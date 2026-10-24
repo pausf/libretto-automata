@@ -343,6 +343,38 @@ promise that moved.
 One commit per finished unit of work, so a bisect lands on something meaningful. The
 spec ships in the same commit as the code that taught it.
 
+## The payload before the apparatus
+
+**What ships to other projects is the point; the gates and specs around it are not.** A
+look at this repository's history found more versions spent on gates over gates and specs
+about the flow itself than on the skills people install. Each one was defensible, and
+together they are a payload that improves more slowly than the machinery watching it.
+
+So two rules, and neither is a gate — a gate for "audit less" is the problem it describes:
+
+- **A change to this repository's own apparatus** — a check-payload row, a spec-drift
+  mode, a spec about how this repository releases itself — **needs a defect seen in a real
+  run.** Not a defect that could happen. The rows that exist are the ones that caught
+  something; a row written in advance is reading cost for every future change.
+- **A change that moves the payload is followed by a trial run.** One subagent drives
+  `/libretto-attacca` on a small feature in a throwaway project — a fresh `git init` in the
+  scratchpad, `libretto init`, no remote — and reports the friction per phase. The run of
+  2026-10-23 found four bugs no gate had seen and the reading cost that
+  `trim-skill-reading-cost` answers. A subagent, not `claude -p`: auto mode refuses an
+  unattended headless agent, and it should.
+
+## Where the agent stops
+
+**The agent ends at a green request — carrying its bump label when the bump was decided. The merge is the user's.** Auto mode refuses
+`gh pr merge` from an agent session as a merge without review — even with a standing "do
+everything" — and that refusal is right: the label is the reading, the merge is the
+consent. So the closing report hands over the one command, `! gh pr merge <n> --merge`, and
+says the tag follows from it. Asking for it is not a failure of autonomy; finding out at the
+last step that it was always needed is.
+
+The same holds for anything that launches an unattended agent: `libretto loop`, or
+`claude -p`. The user starts it from their own terminal.
+
 ## Boundaries
 
 ### Always

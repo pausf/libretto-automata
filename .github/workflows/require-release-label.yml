@@ -11,15 +11,17 @@ name: require-release-label
 # would re-run all six gates every time a label moves.
 #
 # No checkout, deliberately. The labels arrive in the event payload, so this job never
-# runs contributor code and never needs the tree — and a job that touches nothing gets
-# no permissions at all.
+# runs contributor code and never needs the tree. It reads one thing past the payload:
+# GitHub fires `opened` before `gh pr create --label` attaches the label, so an empty
+# payload is re-read from the live request — which is all `pull-requests: read` buys.
 
 on:
   pull_request:
     types: [opened, reopened, synchronize, labeled, unlabeled]
     branches: [main]
 
-permissions: {}
+permissions:
+  pull-requests: read
 
 jobs:
   label:
@@ -34,8 +36,15 @@ jobs:
         # jq compares whole names.
         env:
           LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+
+          if [ "$(jq length <<<"$LABELS_JSON")" -eq 0 ] && [ -n "${PR_NUMBER:-}" ]; then
+            LABELS_JSON="$(gh api "repos/$REPO/issues/$PR_NUMBER/labels" --jq '[.[].name]')"
+          fi
 
           COUNT="$(jq -r '[.[] | select(. == "release:patch" or . == "release:minor" or . == "release:major")] | length' <<<"$LABELS_JSON")"
 

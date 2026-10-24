@@ -16,32 +16,18 @@ It is written under a level-2 `## Checklist`, the change document's last section
 `proposal.md` — boxes and nothing else. Not `## Approach`, which holds no box, and not the
 *Task breakdown* pillar, which is a list the checklist is cut against.
 
-**Delegate the shape.** `skills/writing-plans/` already covers task right-sizing,
-checklist structure, the no-placeholders rule and self-review. Invoke it for how a
-checklist is written — it ships with this repository, see `THIRD-PARTY.md`.
+**The shape, whole.** One box per end-to-end unit of work, in dependency order. Each box
+says what it is and carries a `Closes:` naming the criteria it closes, as written under
+`## Verification criteria` — the token `converge` maps a box on — and, when it waits on
+another box, which one:
 
-**What it decides that this flow overrides.** Delegation without stated overrides is two
-skills quietly disagreeing:
+```
+- [ ] one field, stored, served and proved · Closes: the field round-trips
+- [ ] the second field · waits on box 1 · Closes: both fields validate
+```
 
-| It says | Here | Why |
-|---|---|---|
-| save to `docs/superpowers/plans/<date>-<name>.md` | `## Checklist` in `.agents/changes/<change>/proposal.md` | the checklist belongs inside the change document, after the contract and the approach it is cut from, and it disappears with them when the change lands |
-| the file is the handoff to execution | the section is **live state** | several agents read it while the work runs, so it is written continuously, not handed over once |
-| the worktree came from `superpowers:using-git-worktrees` | `using-git-worktrees` | the payload ships that skill unnamespaced. The namespace names a plugin the user may not have; the skill itself is right here |
-| execution needs `superpowers:subagent-driven-development` or `superpowers:executing-plans` | `build-and-check`, phase 6 | **neither is shipped, by anybody, on a machine that installed only this.** A checklist whose header demands a skill that does not exist is a checklist that stalls on its own first line |
-
-**Write the checklist without those two names.** `writing-plans` mandates a header naming
-`superpowers:subagent-driven-development`; here the section is live state that phase 6
-reads, so it names `build-and-check` and nothing else. Same for the execution-handoff
-question at the end — the flow already routed, so there is no choice
-left to offer.
-
-Everything else it says stands. What follows is only what it does not cover.
-
-**The vendored copy is not edited to say this.** `THIRD-PARTY.md` keeps it
-byte-comparable with upstream, so a divergence has exactly one place to live and it is
-this table. The repository's payload gate enforces it: a namespaced skill a vendored copy
-cites, which the payload does not ship, has to be answered here or the gate fails.
+No headers, no per-step sub-boxes, no code blocks inside a box: the approach says how,
+and `libretto loop` counts every box as a task.
 
 ## Written inline, by the session
 
