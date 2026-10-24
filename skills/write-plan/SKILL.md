@@ -61,7 +61,7 @@ it is wrong — the same rule as every question attacca answers in advance.
 ## Written inline, into the change document
 
 With the approach chosen and logged, **the session writes `## Approach` into `proposal.md`
-itself**, below the contract — the six parts below as its `###` subsections — and the
+itself**, below the contract — the seven parts below as its `###` subsections — and the
 `Durable decisions:` line at the top of the file, beside `Targets:`.
 
 No drafter is launched. The session that argued its way to an approach drafts against the
@@ -74,7 +74,7 @@ A change begun in the old layout, with its `plan.md` already written, keeps it t
 
 ## What goes in it
 
-Six things. The fourth and the sixth are the ones that get skipped, and they are the two
+Seven things. The fourth and the sixth are the ones that get skipped, and they are the two
 worth the most in six months.
 
 ### Summary

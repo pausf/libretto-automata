@@ -18,7 +18,7 @@ go vet ./...
 go test ./... -count=1
 scripts/check-payload                            # frontmatter, references, reachability
 skills/record-work/spec-drift --self-test
-skills/record-work/spec-drift --anchors          # every Proof: citation must resolve
+skills/record-work/spec-drift --anchors          # Proof: resolves · delta criteria are EARS · no plan retired silently
 ```
 
 One trap worth knowing, because it has bitten this repository: **never pipe a gate into `head`
