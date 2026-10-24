@@ -407,8 +407,11 @@ licence and version recorded in `THIRD-PARTY.md`.
 
 **The flow's own skills are thin because they delegate to these, and a thin skill whose delegate
 is missing is not thin — it is broken.** That is the whole argument for vendoring rather than
-depending: `write-plan` hands the shape of a plan to `writing-plans`, so a machine that installed
-only Libretto and got no `writing-plans` has a phase 5 that stalls on its own first line.
+depending: `build-and-check` hands the red-green discipline to `test-driven-development`, so a
+machine that installed only Libretto and got no copy of it has a phase 6 that stalls on its own
+first line. (`writing-plans` was vendored for the same reason until 2026-10-23, and dropped
+when its every instruction had to be overridden — a delegate that is overridden whole is not
+a delegate, it is reading cost.)
 
 What each one decides, and why they do not overlap:
 
@@ -440,6 +443,47 @@ eventually treats as meaningful.
 A row marked `shared` is a file this repository owns, reached from more than one
 destination: writing it changes every project on the machine. An unmarked row is a real
 file in that destination and changing it changes nothing else.
+
+### What `libretto models` lists
+
+The values are **aliases**. The listing shows what each one resolves to, and when that was
+last checked:
+
+```
+models available (aliases; versions as of 2026-08):
+  default                 the session's model — whatever you are running
+  haiku      Haiku 4.5    cheapest; fine for pattern-matching over prose  — no effort levels
+  sonnet     Sonnet 5     the everyday working model
+  opus       Opus 5       everyday complex work; Max plans, metered on Pro
+  fable      Fable 5      the hardest, longest-running work; priciest per token
+  resolved for the Anthropic API
+
+effort available (weakest first; as of 2026-08; `models effort <level> <agent>…`):
+  default    no key at all: whatever the session runs at
+  low        short, scoped work that is not intelligence-sensitive
+  medium     cost-sensitive work that can trade off some intelligence
+  high       the balance point — and the host's own default
+  xhigh      deeper reasoning at higher spend
+  max        the deepest; prone to overthinking. Measure before adopting
+```
+
+**And which levels an alias has depends on where your requests go.** `opus` and `sonnet`
+do not name the same model on every provider, so the alias is resolved from your
+environment first and the listing names the provider it resolved for:
+
+```
+$ CLAUDE_CODE_USE_BEDROCK=1 libretto models
+  ...
+  sonnet     Sonnet 4.5   the everyday working model  — no effort levels
+  opus       Opus 5       everyday complex work; Max plans, metered on Pro
+  fable      Fable 5      the hardest, longest-running work; priciest per token
+  resolved for Amazon Bedrock
+```
+
+An explicit `ANTHROPIC_DEFAULT_SONNET_MODEL` pin takes precedence over the provider
+default, and a provider this build cannot resolve is treated as capable rather than
+refused. Reading your environment is all it does — **no request, and never a variable
+holding a secret.** Why, in [DESIGN.md](docs/DESIGN.md).
 
 ### Why an alias resolves from the environment, and what that resolution never touches
 

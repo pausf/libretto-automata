@@ -1,44 +1,77 @@
 # The flow
 
-The payload. What Libretto Automata installs into `~/.claude`: eight phases, two
-standing rules, as skills and commands.
+The payload: what Libretto Automata installs into Claude Code (and, skills and commands
+only, into Codex and OpenCode). Eight phases, two fresh readers, three standing rules, as
+skills, agents and commands.
 
-Read [SPEC.md](SPEC.md) for the CLI that delivers this. The two are independent —
-a phase is a markdown file with frontmatter and can be written today.
+The CLI that delivers it is specified in
+[`.agents/specs/cli/spec.md`](../.agents/specs/cli/spec.md); [SPEC.md](SPEC.md) lists every
+capability. The two are independent — a phase is a markdown file with frontmatter.
 
-## 1 · Read the task
-
-Start from the tracker. One task, its subtasks, nothing invented.
-
-Everything through the CLI. No MCP.
+## The whole flow on one page
 
 ```
-jira issue view EUCAR-1234 --plain
-jira issue list -q "parent = EUCAR-1234" --plain
+ 1  find the work          find-work        in flight · tracker · what you said
+ 2–3 write the contract    write-spec       proposal.md: the ask, decision log, six pillars
+ 5  choose the approach    write-plan       ## Approach, alternatives, Durable decisions:
+ 5→6 cut the checklist     write-tasks      ## Checklist, last — boxes with Closes:
+    a cold read            review-spec      fresh spec-reviewer, then THE ONE STOP
+ 6  build and check        build-and-check  branch first, proportionate proof, commit per box
+    a second cold read     review-work      fresh work-reviewer re-runs every proof; fixes, no ask
+ 7  present                present-work     in the contract's terms, with what was left out
+ 8  record and land        record-work      contract onto the spec, folder deleted; push? (the door)
 ```
 
-Before that runs, a preflight — this ships to people who have configured nothing:
+The trivial lane skips 2 through 7: the change, its check, a commit, and the push question.
+`/libretto-attacca` runs the same rows and answers both stops in advance.
+
+## 1 · Find the work
+
+Phase 1 asks three sources, in this order, and loads exactly one piece of work:
+
+| Source | When |
+|---|---|
+| **a change already in flight** | some `.agents/changes/<c>/` has an open box in its checklist, or an unmerged branch carries work |
+| **a tracker key or URL** | one was given |
+| **what you said** | anything else — the request *is* the input |
+
+**Phase 1 is not finished until its artifact exists.** A request made in conversation leaves
+`.agents/changes/<name>/proposal.md` on disk — `Tracker: none`, the ask verbatim, a verb-led
+name like `add-relative-discounts` — committed on a fresh branch, before the reading is even
+stated. A phase that only described the work had not run, and that happened.
+
+Three more things it reads, because each one was once missed:
+
+- **a branch is work in flight too.** The trivial lane leaves no checklist behind, so
+  unmerged branches and their open requests are listed beside the open boxes.
+- **finished and not landed.** A change whose boxes are all closed and whose folder is still
+  there is reported by name: the landing did not finish. It is not work to continue.
+- **whether it is a bug.** A report that something built behaved wrong changes phase 2's
+  whole shape — the criterion that would have caught it comes first, with a red `Proof:` — so
+  the reading names it, in the reporter's own words.
+
+### The tracker, when one is given
+
+Everything goes through the `jira` CLI — never MCP, never the REST API — and the details
+live in `find-work/tracker.md`, which the skill reads only when a key or URL was given. A
+conversation request never pays for them. The preflight, because this ships to people who
+have configured nothing:
 
 ```
-which jira                            → missing: brew install ankitpokhrel/jira-cli/jira-cli
-test -f ~/.config/.jira/.config.yml   → missing: the user runs `jira init`
-                                      → present: read `server`, continue
+which jira                                          → missing: brew install ankitpokhrel/jira-cli/jira-cli
+test -f "${JIRA_CONFIG_FILE:-~/.config/.jira/.config.yml}"   → missing: the user runs `! jira init`
+jira project list                                   → a real authenticated call; `jira me` proves nothing
 ```
 
-Ask for the domain once and let `jira init` persist it. Do not build a second
-configuration store, and do not write state into the skill — the skill is a
-symlink into this repository.
+Then the task is read with `--raw` and `jq` — `--plain` emits colour codes and omits the
+description, which is the whole point of reading the task.
 
-**The API token never enters the conversation.** `jira init` is interactive and
-the user runs it in their own shell. A token pasted to an agent lands in the
-transcript, the logs and the history. The domain may be asked for. The secret may
-not.
+**The API token never enters the conversation.** `jira init` is interactive and the user
+runs it in their own shell. A token pasted to an agent lands in the transcript, the logs and
+the history. The domain may be asked for. The secret may not.
 
-Detect the git host, never assume it. `gh` and `glab` are not interchangeable and
-a machine may have either, both, or neither.
-
-Preflight belongs in `libretto doctor`, which already answers "is everything present?"
-for symlinks.
+`libretto doctor` runs the same preflight outside the flow: `jira` and its config, `gh` or
+`glab` for the forge, `rg`, `jq`, and the two vendored companions.
 
 ### Why the queue is two commands and not one
 
@@ -53,6 +86,16 @@ and a flow that reads the queue on its own would have to decide when to override
 **Queued is not in flight.** A captured idea never blocks the first source, because
 abandoning an idea costs nothing and a queue that is expensive to add to is a queue nobody
 uses.
+
+What counts as queued is written once, in `find-work/queue.md`, and `libretto queue` reads
+the same rule from the shell: a proposal carrying `Queued:`, oldest first, ties by name —
+minus any whose `## Checklist` already holds a box, and minus any an unmerged branch already
+took. That last filter is a bug fix: a status report once listed as queued a change that was
+open as a pull request, and the next command would have rebuilt it.
+
+`/libretto-next` asks which idea, branches, removes the `Queued:` line, commits that, and
+enters at phase 2. Neither command ever creates `.agents/changes/` in a project that has none;
+`libretto init` is the bootstrap, run on purpose.
 
 ### Why the source order is the point, and not merely an order
 
@@ -113,7 +156,21 @@ by statistical association:
 | **Constraints** | topology, latency, versions, conventions |
 | **Prior decisions** | what must not be relitigated |
 | **Task breakdown** | atomic units, independently assignable |
-| **Verification criteria** | how each unit is proven — each one naming the test that proves it |
+| **Verification criteria** | how each unit is proven — in EARS (*When … the system shall …*), each one naming the test that proves it |
+
+**Criteria carry `shall`, and that is checked.** `spec-drift --ears`, inside `--anchors`,
+fails a change's criterion written in prose: one nobody could fail is treated as satisfied by
+default. Each cites its test by file and name — `Proof: internal/link/apply_test.go
+TestApplyIsIdempotent` — and `--anchors` fails a name that does not exist.
+
+**Phase 2 opens the spec that governs the change, never the whole specification**: the
+change's own `Targets:`, else the `Governs:` line that claims the path, else the index. Each
+capability spec declares what it owns — `Governs: cmd/** !cmd/tool/gates_test.go`, where a
+leading `!` gives a path back.
+
+**A bug gets its criterion before its fix**: name what would have caught it, write its
+`Proof:` as a test, watch it fail, then fix. Reversed, the criterion describes the fix that
+exists and has never been seen to fail.
 
 ### Where it goes
 
@@ -148,7 +205,9 @@ checklist still exist once, in `proposal.md` — a second file about the same ch
 second source of truth.
 
 **The old layout is still read.** A change begun before 2026-10-21 — a `spec.md` delta,
-`plan.md`, `tasks.md` beside its proposal — finishes in the layout it started in. Every
+`plan.md`, `tasks.md` beside its proposal — finishes in the layout it started in. The
+`brief.md` and `decisions.md` of the layout before that are neither written nor read any
+more; the change document is both. Every
 reader picks a change's checklist the same way: `proposal.md` when it holds a box under
 `## Checklist`, otherwise `tasks.md`, otherwise `plan.md`. Nothing in flight is migrated,
 because migrating a half-built change is how its reasoning gets lost in transit.
@@ -161,10 +220,12 @@ Amendments live in the change while the work is in flight, and phase 8 applies t
 onto the capability spec and deletes the change. Exactly one current specification,
 always.
 
-## 3 · One spec per subtask
+## 3 · One contract per capability
 
 When the task touches several capabilities, each gets its own contract: the primary one in
-`proposal.md`, every other one in a `spec-<capability>.md` beside it.
+`proposal.md`, every other one in a `spec-<capability>.md` beside it. The cut follows
+coherence, not the tracker's subtasks — subtasks cut along who does the work, and a spec cut
+that way describes half an idea.
 
 **The session writes them inline**, the same session that held the interview. It already
 holds the answers; a fresh writer would have to rebuild them from files and would get the
@@ -178,6 +239,9 @@ Research fans out; the files stay separate so sessions never collide.
 What keeps a fanned-out set coherent is `proposal.md`, **written first**: its decision log,
 the primary contract and the vocabulary every file will use. Each writer is given it by
 path and reports back what it got wrong. Those reports are where the real findings are.
+
+All of that lives in `write-spec/fan-out.md`, read only when a second capability is
+involved. The common case — one capability — never reads a line of it.
 
 ## 4 · Ask
 
@@ -239,7 +303,7 @@ plans read like task lists. The diagnosis was one line long — the spec's task 
 was transcribed into checkboxes, so the *technical reasoning* never got written down
 anywhere at all.
 
-`## Approach`, in the change document after the contract, holds six things, and the fourth
+`## Approach`, in the change document after the contract, holds seven things, and the fourth
 is the one this flow had no home for:
 
 | | |
@@ -250,6 +314,11 @@ is the one this flow had no home for:
 | **the alternatives it beat** | **one row each, and why it lost** |
 | risks | what breaks, and the mechanism that catches it |
 | validation and rollback | which gates carry it, which test would pass for the wrong reason, how it comes back out |
+| complexity deliberately kept | where it is not the simplest thing that works, and why the simpler thing was wrong |
+
+Before writing it, phase 5 asks its one question — the fork: two or three real approaches,
+the recommended one first with its reason. Under `/libretto-attacca` the recommendation is
+taken and logged `(assumed)`.
 
 A diff shows what was built. Nothing in a repository shows what was **not** built and
 why — so if it is not here it is gone, and the decision gets made again by somebody with
@@ -275,6 +344,19 @@ guaranteed: one writer, derived from the contract, ordered by dependency, every 
 merge on its own. **Only the boxes under that heading are the checklist**; the *Task
 breakdown* pillar is a list, never boxes, so nothing counts a box twice.
 
+A box is one line: what it is, which box it waits on, and a `Closes:` naming the criteria it
+closes — the token `converge` maps a box on. No headers, no sub-boxes, no code inside a box;
+`libretto loop` counts every box as a task.
+
+```
+- [ ] one field, stored, served and proved · Closes: the field round-trips
+- [ ] the second field · waits on box 1 · Closes: both fields validate
+```
+
+**A marked box that was never committed was never marked.** The mark ships in the same
+commit as the work that closed it; a reviewer once found 0/24 boxes ticked on finished work,
+every mark living only in a working tree.
+
 **The session cuts it inline, and one fresh `spec-reviewer` reads it cold.** The session
 that argued its way to an approach cannot tell what it wrote down from what it merely
 decided, and it cuts boxes against the argument: it writes "wire up the adapter" and knows
@@ -288,7 +370,9 @@ nothing, a criterion another capability contradicts. **The checklist, box by box
 contract and the approach fail to answer for building that box — a mechanism never
 described, a criterion with no proof saying what closes it. It names the gap and where the
 answer belonged, and never proposes the answer. It writes nothing; its findings reach the
-user unedited.
+user unedited. Before reading, it runs `spec-drift --trace` and `--ears`, so what a script
+can find is not spent on a reader. A reviewer that returns nothing is relaunched once; twice
+silent is a stopped item, never a clean review.
 
 Until 2026-10-21 that per-box question was a `task-cutter`'s, asked while cutting. Cutting
 and reading do not need to be the same act; what needs to be fresh is the reading.
@@ -304,6 +388,10 @@ Not a numbered phase, on the same grounds as the 6→7 review: independence come
 fresh context, not from renumbering everything that says eight.
 
 ## 6 · Build and test
+
+**The branch comes before the first write**, not before the first commit. `git checkout -b`
+carries uncommitted work along, so editing on the base and branching later appears to work
+until the base moves. Phase 1 usually made the branch already; phase 6 ensures it.
 
 Logic that can break leaves a check behind. **Proportionately** — the smallest
 thing that fails when the logic fails, not a suite per function:
@@ -366,6 +454,11 @@ Two bounds, both named rather than discovered later:
   phase 7 as found-and-not-fixed, and so does anything needing a decision that is not
   ours. Reported, not asked.
 
+Every finding, fixed or not, appends one entry to `.agents/lessons.md` with the phase field
+`6→7`. That is what makes them countable: `libretto metrics` reads the field to say where
+corrections surface, and `/libretto-retro` spends the ledger — fixing what belongs to the
+project, proposing what belongs to the payload, never applying a payload diff itself.
+
 `spec-drift` keeps the older standing — warn, never block — and the two are not
 inconsistent. Drift is a question about whether a contract still describes the code, and
 that answer is the user's. A finding is a breach of a contract already settled.
@@ -379,7 +472,8 @@ from renumbering everything that says eight.
 
 ## 7 · Present
 
-Show what was done. Then commit it, same turn.
+Show what was done, before it is recorded and in the same turn. Every box has already
+committed its own work; what phase 8 adds is the landing.
 
 Three things, and the third is the one that usually goes missing:
 
@@ -409,28 +503,48 @@ a follow-up, not a cleanup pass. A spec updated separately was wrong for however
 the gap lasted, and anyone who read it during that window was misled by a document
 that looked current.
 
-In flight, that means the delta in the change. **When the change lands, one commit
-carries the final code, the delta applied onto the capability spec, and the deletion
-of the change folder.** All three or none — a delta applied without removing its
-change leaves two documents describing one capability, and nobody can tell which is
-current.
+In flight, "the spec" means the change's contract: the pillars in `proposal.md` and any
+`spec-<capability>.md` beside it. **When the change lands, one commit does four things**:
+whatever code remains (often none — every box committed its own), the contract applied onto
+each capability spec its `Targets:` names, the durable decisions retired into that spec's
+*Prior decisions*, and the change folder deleted. All four or none — a contract applied
+without removing its change leaves two documents describing one capability, and a folder
+deleted without retiring its decisions takes the reasoning with it.
+
+The third part is the one that gets skipped, so it is gated: `spec-drift --retired`, inside
+`--anchors`, fails the landing commit unless some *Prior decisions* section moved in it. A
+change that retires nothing says `Durable decisions: none` at the top of its document,
+written with the approach, never added to get past the gate.
+
+Before that commit, where the binary is on PATH: `libretto wiki` refreshes the specs index
+so it rides the same commit, and `libretto land <change>` checks the staged landing — the
+folder gone, the capability spec moved — and names any part that is missing.
 
 This is the whole of Spec-Anchored, and it is one question before each commit: did
 this change teach the spec anything?
 
-`skills/record-work/spec-drift` asks it mechanically, from the staged index, and **warns rather
-than blocks** — always exit 0. Enforcement that surprises someone in their own project
-gets uninstalled, and an uninstalled gate catches nothing. A check that stops a commit in
-someone else's project is a check that gets deleted, and a deleted check finds nothing.
-Whoever wants it to block can wire it into a `pre-commit` hook or CI; that choice belongs
-to them.
+`skills/record-work/spec-drift` answers it in several modes:
 
-Being honest about the level this reaches: a warning is Spec-First discipline with a
-reminder, not the automatic barrier the Spec-Anchored definition asks for. The barrier
-would be a hook, and `settings.json` is out of scope for this project by an earlier
-decision. The gap is deliberate and worth naming rather than papering over.
+| Mode | What it checks | Exit |
+|---|---|---|
+| *(none)* | staged code whose governing spec did not move | always 0 |
+| `--anchors` | every `Proof:` resolves to a test that exists · delta criteria carry `shall` · no reasoning retired silently · fences closed | **fails** — one of the six gates |
+| `--trace` | the whole tree: orphan code, dead `Governs:`, unproven and joined criteria | always 0 |
+| `--block` | the default mode, but exit 1 — for a `pre-commit` hook somebody chose to install | 1 on drift |
 
-The push is asked at the very end — yes or no — and never assumed.
+The default mode **warns rather than blocks**. Enforcement that surprises someone in their
+own project gets uninstalled, and an uninstalled gate catches nothing. A check that stops a
+commit in someone else's project is a check that gets deleted, and a deleted check finds
+nothing. Whoever wants it to block installs the opt-in hook — one line, documented in
+`record-work/drift.md`, never installed by the flow. That hook is a git hook, so the old
+objection — that the barrier would need `settings.json` — no longer applies.
+
+**The push is asked at the very end, once, and never assumed** — push and open the request,
+no, or push without the request. With no remote there is no question: the phase ends at the
+commit and says so. Everything that needs a remote — which forge from `git remote get-url
+origin` (`gh` or `glab`), the attacca exception, the bump, the return to base — lives in
+`record-work/forge.md`, read only when a remote exists. When the bump is already decided, the
+label rides `gh pr create --label` instead of a second command after it.
 
 ### And then the tree goes home
 
@@ -457,7 +571,12 @@ Three things it deliberately does not do:
   fact worth seeing rather than resolving unasked.
 
 On the no path it does nothing at all. Nothing was pushed, so the branch is the only place
-the work exists, and moving off it buys nothing.
+the work exists, and moving off it buys nothing. The base is read off the repository
+(`origin/HEAD`), never hardcoded, and a dirty tree or a refused fast-forward stops it in
+place.
+
+**The merge is not the flow's.** It ends at a green request; merging, tagging and releasing
+are the user's, and the `release:` label on the request is what turns a merge into a tag.
 
 ## Where the flow stops, and why only there
 
@@ -466,9 +585,10 @@ only the door.
 
 | After | Stops | What the user is changing |
 |---|---|---|
-| 1 · read the task | no | — the reading is stated, and the contract is where it gets corrected |
+| 1 · find the work | no | — the reading is stated, and the contract is where it gets corrected |
 | 2–3 · the contract | no | — agreed below, beside what building it costs |
 | 5 · the approach | no | — agreed below, beside the boxes it produced |
+| 5→6 · the checklist | no | — agreed below, in the same decision |
 | before 6 · the change document, after the cold read | **yes** | the whole change document: contract, approach, order |
 | 6 · build | no | — |
 | 6→7 · review | no | — the seam fixes what it finds |
@@ -502,7 +622,12 @@ it would be unverified.
 The version bump is the sharpest case. It turns on whether a promise in `.agents/specs/` moved,
 which is a reading of the specification rather than of the commit types — and a version number
 cannot be recalled once the module proxy has cached it. So the reading stays the user's even
-under a mode built to answer everything else.
+under a mode built to answer everything else: it is **the one question an unattended run asks,
+last of all**, after the request is open. The run recommends its own reading, never
+recommends `release:major`, types the label the user chose, reads it back off the forge, and
+writes who chose it into the request's description. Unanswered — a headless `libretto loop`
+— the request stays unlabelled, and its red check *is* the question. Attended runs do not ask
+it; the user is already at the door.
 
 **And every one of them is a native question**, `AskUserQuestion`, never a sentence at the
 end of a report — along with phase 1's choice between work already in flight and something
@@ -529,18 +654,16 @@ continuing it or not is a choice about the user's priorities, and a missing or
 unconfigured tracker, where nothing downstream exists. Both are the input failing to
 arrive, not a phase boundary asking to be blessed.
 
-### Both answered in advance
+### How an unattended run behaves
 
 `/libretto-attacca` — the score's instruction to go on to the next movement without
-pausing — runs the same flow with both stops answered by the invocation itself, and
-ends at a pushed branch with a request open on it. Nothing about the phases changes: the
-change document, the cold read, the commits and the report are all still there.
+pausing — runs the same phases and ends at a pushed branch with a request open on it. A
+failing gate still stops the run, twice on one task still stops the task, a missing
+credential still stops the phase, and no run reaches for `--force` or a weakened test. A run
+that stops opens no request: there is nothing reviewable to put in one.
 
-**What it cannot answer is a gate**, and the distinction is the whole of the feature. A
-stop is where the user changes something; a gate is where the code is measured. A failing
-gate still stops the run, twice on one task still stops the task, a missing credential
-still stops the phase, and no run reaches for `--force` or a weakened test to get past
-one. **A mode that answers a gate is not unattended, it is unverified.**
+Given no task, it takes the oldest change with open boxes. It never drains the queue — that
+is `/libretto-next`, which asks.
 
 A question the flow cannot settle from the code is not asked either — it becomes an
 assumption written into the decision log and *Prior decisions* marked as assumed, into the
@@ -593,6 +716,10 @@ memory of what was meant:
 | `spec-reviewer` | `review-spec`, once, before the stop | nothing — findings come back |
 | `work-reviewer` | `review-work`, once, between 6 and 7 | nothing — findings come back |
 | `spec-writer` | `write-spec`, only when an extra capability's research will not fit in context | its one `spec-<capability>.md` |
+| `review-lens-*` (five) | `review-project`, behind `/libretto-review` — a PR/MR review, outside the flow | nothing — findings per lens |
+
+A launched reader may run in the background — the host decides that. What the flow requires
+is that nothing proceeds until its return is read.
 
 **Context goes down through a file, findings come back through the return value.**
 The shared ground is `proposal.md`, read by path; a writer writes exactly one file that
@@ -674,11 +801,42 @@ them, and `prune`/`uninstall` removes them like any other item. The upstream plu
 remain the path to what is deliberately not vendored — always-on hook mode, and both
 copies coexist by namespace.
 
-## Open
+## Reading cost
 
-Not decided yet. Recorded so they are not lost.
+A skill's body loads whole every time it is invoked, so guidance that applies only on a
+condition lives in a sibling file that `SKILL.md` names with its condition:
 
-**Settled since — where the artifact gets looked at.** This repository's first
+| Skill | Sibling | Read when |
+|---|---|---|
+| `find-work` | `tracker.md` | a tracker key or URL was given |
+| `find-work` | `queue.md` | the caller asks for the queue |
+| `write-spec` | `fan-out.md` | the change amends more than one capability |
+| `record-work` | `forge.md` | the repository has a remote |
+| `record-work` | `drift.md` | running `--trace` or wiring `--block` |
+
+A trial run on 2026-10-23 read about 3,000 lines of skill text to build 15 lines of code; the
+split skills carry a line budget in `check-payload` so the bodies do not grow back.
+
+## The flow outside a session
+
+The CLI touches the flow in a few places, all of them reading what the payload writes:
+
+| | |
+|---|---|
+| `libretto init` | bootstrap `.agents/` in a project with none |
+| `libretto loop <change>` | one fresh `/libretto-attacca` session per open box, until none are open; stops after two rounds that close nothing, at `--max` (10), or at `--max-budget-usd`; never pushes. `--opencode` drives OpenCode instead |
+| `libretto queue` | the queue, by `find-work/queue.md`'s rule |
+| `libretto metrics [<change>]` | what each change cost — commits, span, boxes closed and reopened, where corrections surfaced — from git and the ledger |
+| `libretto land <change>` | check a staged landing before its commit |
+| `libretto wiki [--html]` | the specs as a README index, or one self-contained page |
+
+`status`, `doctor`, `metrics` and `queue` take `--json`.
+
+## Settled questions
+
+Recorded so the reasoning is not lost.
+
+**Where the artifact gets looked at.** This repository's first
 palette satisfied its spec and was unreadable — 1.4:1 on borders. What caught it was
 `docs/preview.py`, a throwaway that rendered the panel before the theme existed, and
 a WCAG measurement of that render. The answer became a rule inside phase 6, not a
@@ -688,7 +846,7 @@ colour, with what was seen carried in the evidence. See `skills/build-and-check/
 The reviewer in the 6→7 seam still reads specs, diffs and test output, never pixels —
 which is exactly why the look happens before it.
 
-**Settled since:** who keeps the spec true. Phase 8 commits the spec alongside the
+**Who keeps the spec true.** Phase 8 commits the spec alongside the
 code that taught it — see `skills/record-work/`. The three divergences in this
 repository's own `SPEC.md`, accumulated over one phase of work, are what the
 alternative looks like.

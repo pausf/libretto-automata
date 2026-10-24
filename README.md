@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Tests](https://github.com/pausf/libretto-automata/actions/workflows/gates.yml/badge.svg)](https://github.com/pausf/libretto-automata/actions/workflows/gates.yml)
 
-<img src="docs/panel.svg" alt="The libretto panel: a menu with install, uninstall, update, status, models, doctor and prune, acting on a chosen destination — here ~/.claude with all 26 items linked" width="800">
+<img src="docs/panel.svg" alt="The libretto panel: a menu with install, uninstall, update, status, models, doctor and prune, acting on a chosen destination — here ~/.claude with every item linked" width="800">
 
 *The panel — real terminal output, captured from the binary. `tab` switches where it acts.*
 
@@ -33,7 +33,7 @@ Two things, and the first one is the point:
 
 | | |
 |---|---|
-| **The payload** | an eight-phase spec-driven flow for Claude Code, as skills and commands |
+| **The payload** | an eight-phase spec-driven flow for Claude Code — skills and commands reach Codex and OpenCode too |
 | **The CLI** | a Go binary that symlinks the payload into `~/.claude` |
 
 ```mermaid
@@ -57,7 +57,8 @@ flowchart LR
     f2 --> r1["a fresh reviewer<br/>reads it cold"]
     r1 --> s1{"stop: agree<br/>the whole document"}
     s1 --> f6["6. build and check"]
-    f6 --> f7["7. review, present"]
+    f6 --> rw["a second fresh reviewer<br/>re-runs every proof"]
+    rw --> f7["7. present"]
     f7 --> f8["8. record"]
     f8 --> s2{"stop:<br/>push?"}
 ```
@@ -136,8 +137,8 @@ Claude Code** — what follows are slash commands, not shell commands.
    what would bring it back.
 7. **It asks once about pushing.** That answer is always yours.
 
-Those are the two places it waits, the stop and the push, and each one is a question your
-terminal puts in front of you — not a line at the bottom of a report.
+Those are the two places it waits, the stop and the push — plus phase 1, when work is
+already in flight or a tracker is not set up — each one a question in your terminal.
 
 Nothing else to learn to start. The rest is knowing which door to use:
 
@@ -147,7 +148,7 @@ Nothing else to learn to start. The rest is knowing which door to use:
 /libretto-queue               # capture ideas, one after another, and build none of them
 /libretto-next                # take the oldest queued idea into the flow
 /libretto-review <pr-url>     # review a PR/MR in a workspace that restores itself
-/libretto-converge <change>   # re-derive a drifted checklist against the code
+/libretto-converge [change]   # re-derive a drifted checklist against the code
 /libretto-retro               # spend the lessons ledger — fix what the flow got corrected on
 /libretto-attacca             # the same flow, without stopping — straight to a pushed PR
 ```
@@ -164,17 +165,19 @@ already in flight, a tracker key or URL, and what you said — and [FLOW.md](doc
 | | Phase | Skill |
 |---|---|---|
 | 1 | find the work — in flight, tracker, or asked for | `find-work` |
-| 0·2·3 | does a spec even need to exist · the six pillars · one per subtask | `write-spec` |
+| 0·2·3 | does a spec even need to exist · the six pillars · one per extra capability | `write-spec` |
 | 5 | the approach, and the alternatives it beat | `write-plan` |
 | 5→6 | the checklist — the change document's last section, one writer | `write-tasks` |
 | before 6 | a fresh reviewer reads the whole document, then the one stop | `review-spec` |
 | 6 | build, with proportionate checks | `build-and-check` |
+| 6→7 | a second fresh reviewer re-runs the proofs, then every finding is fixed | `review-work` |
 | 7 | present, including what was left out | `present-work` |
 | 8 | commit, and make the spec true again | `record-work` |
 
-Three rules hold at **every** phase, not one of them:
+Three rules hold across phases, not inside one of them:
 
-- **ask** — with a recommended option, real alternatives, and room to answer otherwise
+- **ask** — before the stop only, with a recommended option, real alternatives, and room to
+  answer otherwise; after it, an open question becomes a finding in the report
 - **commit** — per task, so a bisect lands somewhere meaningful
 - **evidence** — nothing is true until it has been observed
 
@@ -196,6 +199,14 @@ Three rules hold at **every** phase, not one of them:
 | `libretto models` | which model each agent runs on, and how hard it thinks. Read-only. |
 | `libretto models set <model> <agent>…` | declare the model; `--all` for every agent |
 | `libretto models effort <level> <agent>…` | declare the effort; `--all` for every agent |
+| `libretto loop <change>` | one fresh session per open box until none are open; `--max`, `--max-budget-usd`, `--dry-run`, `--opencode`. Never pushes |
+| `libretto metrics [<change>]` | what each change cost — commits, span, boxes closed and reopened. Read-only. |
+| `libretto queue` | the queued ideas, oldest first. Read-only. |
+| `libretto land <change>` | check a staged landing before its commit |
+| `libretto wiki [--html]` | render the specs as a README index, or one self-contained page |
+| `libretto version` | the version, stamped from `git describe` |
+
+`status`, `doctor`, `metrics` and `queue` take `--json`.
 
 `prune` and `uninstall` are both dry by default — they change nothing until `--yes`. They
 are **not the same command**: prune removes links whose item is gone, uninstall removes
@@ -229,24 +240,6 @@ libretto models effort default work-reviewer        # back to the session's effo
 rather than written and ignored, and moving an agent onto Haiku clears any level it
 declared — the listing says so on the row it happened to.
 
-**And which levels an alias has depends on where your requests go.** `opus` and `sonnet`
-do not name the same model on every provider, so the alias is resolved from your
-environment first and the listing names the provider it resolved for:
-
-```
-$ CLAUDE_CODE_USE_BEDROCK=1 libretto models
-  ...
-  sonnet     Sonnet 4.5   the everyday working model  — no effort levels
-  opus       Opus 5       everyday complex work; Max plans, metered on Pro
-  fable      Fable 5      the hardest, longest-running work; priciest per token
-  resolved for Amazon Bedrock
-```
-
-An explicit `ANTHROPIC_DEFAULT_SONNET_MODEL` pin takes precedence over the provider
-default, and a provider this build cannot resolve is treated as capable rather than
-refused. Reading your environment is all it does — **no request, and never a variable
-holding a secret.** Why, in [DESIGN.md](docs/DESIGN.md).
-
 The panel has both behind its `models` row: mark agents with `space`, or all of them with
 `a`, then `m` for the model and `e` for the effort.
 
@@ -254,26 +247,8 @@ The panel has both behind its `models` row: mark agents with `space`, or all of 
 `--global`, `<cwd>/.claude/agents` under `--project`. Every agent there is listed and
 editable, not just the ones this repository ships.
 
-The values are **aliases**. The listing shows what each one resolves to, and when that was
-last checked:
-
-```
-models available (aliases; versions as of 2026-08):
-  default                 the session's model — whatever you are running
-  haiku      Haiku 4.5    cheapest; fine for pattern-matching over prose  — no effort levels
-  sonnet     Sonnet 5     the everyday working model
-  opus       Opus 5       everyday complex work; Max plans, metered on Pro
-  fable      Fable 5      the hardest, longest-running work; priciest per token
-  resolved for the Anthropic API
-
-effort available (weakest first; as of 2026-08; `models effort <level> <agent>…`):
-  default    no key at all: whatever the session runs at
-  low        short, scoped work that is not intelligence-sensitive
-  medium     cost-sensitive work that can trade off some intelligence
-  high       the balance point — and the host's own default
-  xhigh      deeper reasoning at higher spend
-  max        the deepest; prone to overthinking. Measure before adopting
-```
+The values are **aliases**, resolved per provider from your environment and never by a
+request. What the listing shows, and why, is in [DESIGN.md](docs/DESIGN.md#why-models-are-named-by-alias-not-by-id).
 
 ### Where it installs
 
