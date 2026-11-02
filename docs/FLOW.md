@@ -767,8 +767,8 @@ queue, then the parallelism.
 
 ## What ships, and what is merely used
 
-Six skills written by other people **ship with this repository** —
-`test-driven-development` and `using-git-worktrees` from
+Seven skills written by other people **ship with this repository** —
+`test-driven-development`, `using-git-worktrees` and `systematic-debugging` from
 [obra/superpowers](https://github.com/obra/superpowers); `ponytail` and
 `ponytail-debt` from [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail);
 `caveman` and `caveman-commit` from

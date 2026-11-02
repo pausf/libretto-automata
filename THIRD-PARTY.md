@@ -10,6 +10,7 @@ first. They are vendored deliberately, not by accident.
 |---|---|---|---|
 | `skills/test-driven-development/` | [obra/superpowers](https://github.com/obra/superpowers) | 6.2.0 | MIT · Copyright (c) 2025 Jesse Vincent |
 | `skills/using-git-worktrees/` | [obra/superpowers](https://github.com/obra/superpowers) | 6.2.0 | MIT · Copyright (c) 2025 Jesse Vincent |
+| `skills/systematic-debugging/` | [obra/superpowers](https://github.com/obra/superpowers) | 6.2.0 | MIT · Copyright (c) 2025 Jesse Vincent |
 | `skills/ponytail/` | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) | 4.9.0 · `2ed6c52` | MIT · Copyright (c) 2026 DietrichGebert |
 | `skills/ponytail-debt/` | [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) | 4.9.0 · `2ed6c52` | MIT · Copyright (c) 2026 DietrichGebert |
 | `skills/caveman/` | [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman) | 0.1.0 · `11ddc0c` | MIT · Copyright (c) 2026 Julius Brussee |
@@ -25,6 +26,9 @@ is the only licence file a reader meets there. **None of them is an alternative 
 is the upstream licence of a vendored skill, and a vendored copy has to carry its own text:
 deleting one to tidy the root would be a licensing failure, not a cleanup.
 
+`systematic-debugging` ships without its upstream `CREATION-LOG.md` and `test-*.md`
+pressure scenarios: they test the skill, not the work, and nothing in the skill reads them.
+
 Copied unmodified. If one of them needs changing for this flow, the change goes in
 the Libretto skill that calls it — never into the vendored copy, so the copy stays
 comparable with upstream.
@@ -32,7 +36,7 @@ comparable with upstream.
 ## Why vendored and not required
 
 The flow's own skills are thin on purpose: `write-plan` delegates plan structure,
-`build-and-check` delegates test discipline and worktree setup. A thin skill whose
+`build-and-check` delegates test discipline, worktree setup and debugging. A thin skill whose
 delegate is missing is not thin, it is broken.
 
 Being installed on the author's machine is not the same as being installed on

@@ -24,8 +24,10 @@ nothing in flight still uses them.
   the test fail before making it pass
 - `skills/using-git-worktrees/` — creating isolation, detecting whether you are
   already in it, and the per-language project setup a fresh checkout needs
+- `skills/systematic-debugging/` — when a test fails for a reason you did not expect,
+  or the task is a bug: root cause first, no fix before it is found
 
-Both ship with this repository; see `THIRD-PARTY.md`.
+All three ship with this repository; see `THIRD-PARTY.md`.
 
 **One thing `test-driven-development` says that this flow overrides.** Its
 `writing-good-tests.md` cites `superpowers:writing-skills` for the prose-versus-behaviour
@@ -34,6 +36,11 @@ that installed only this**, so the citation resolves to nothing. Read the senten
 supports and ignore the name: a test asserts behaviour an agent can fail, never prose a
 human reads. The vendored copy is left byte-comparable with upstream on purpose —
 `THIRD-PARTY.md` says where a divergence lives, and it is here.
+
+**And one that `systematic-debugging` says.** Its phase 4 sends you to
+`superpowers:verification-before-completion` before claiming the fix works. Not shipped
+either: `evidence` is this flow's answer to it — re-run the failing check and read its
+output before saying fixed.
 
 `skills/evidence/` governs everything here. Read it first.
 
